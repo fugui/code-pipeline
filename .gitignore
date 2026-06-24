@@ -1,0 +1,23 @@
+# Binaries
+/code-pipeline
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Database
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Log files
+*.log
+
+# Frontend build products
+/frontend/dist
+/frontend/node_modules
+
+# Workspace sandbox for checked out repos
+/workspace
+/workspace/
