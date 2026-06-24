@@ -1,0 +1,28 @@
+export interface SubMenuItem {
+  path: string;
+  label: string;
+}
+
+export interface MenuGroup {
+  title: string;
+  items: SubMenuItem[];
+}
+
+export const menuGroups: MenuGroup[] = [
+  {
+    title: '构建与检查',
+    items: [
+      { path: '/', label: '控制中心' },
+      { path: '/repos', label: '仓库配置' },
+      { path: '/history', label: '执行历史' }
+    ]
+  }
+];
+
+export const menuItems: SubMenuItem[] = [
+  { path: '/', label: '控制中心' },
+  { path: '/repos', label: '仓库配置' },
+  { path: '/history', label: '执行历史' }
+];
+
+export default menuItems;

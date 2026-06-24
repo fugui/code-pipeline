@@ -7,5 +7,5 @@ server:
   sandbox_dir: "./workspace"     # 流水线代码克隆与执行命令的本地沙箱目录
 
 auth:
-  jwt_secret: "please-change-this-jwt-secret-in-production-environments-123456"
+  jwt_secret: "ABCDEFGHIJKLMNOPQRSTVUWXYZ0987654321"
   password_login_enabled: true

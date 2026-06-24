@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { 
   Play, Square, Trash2, Edit, Plus, Search, 
   RefreshCw, CheckCircle, XCircle, AlertCircle, Loader2, 
@@ -56,8 +57,15 @@ interface DashboardStats {
   recent_runs: ExecutionLog[]
 }
 
-const App: React.FC = () => {
-  const [token, setToken] = useState<string | null>(localStorage.getItem(AUTH_TOKEN_KEY))
+interface AppProps {
+  isEmbedded?: boolean
+}
+
+const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
+  const apiBase = isEmbedded ? '/pipeline/api' : '/api'
+  const [token, setToken] = useState<string | null>(() => {
+    return localStorage.getItem('code_shield_token') || localStorage.getItem(AUTH_TOKEN_KEY);
+  })
   const [user, setUser] = useState<User | null>(null)
   const [currentView, setCurrentView] = useState<'dashboard' | 'repos' | 'history'>('dashboard')
   
@@ -88,12 +96,25 @@ const App: React.FC = () => {
   const [loginError, setLoginError] = useState('')
 
   const activeExecInterval = useRef<any>(null)
+  const location = useLocation()
+
+  // 同步微前端路由
+  useEffect(() => {
+    const path = location.pathname
+    if (path.endsWith('/repos')) {
+      setCurrentView('repos')
+    } else if (path.endsWith('/history')) {
+      setCurrentView('history')
+    } else {
+      setCurrentView('dashboard')
+    }
+  }, [location.pathname])
 
   // Fetch current user
   useEffect(() => {
     if (token) {
       setMeLoading(true)
-      fetch('/api/me', {
+      fetch(`${apiBase}/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       .then(res => {
@@ -144,7 +165,7 @@ const App: React.FC = () => {
     }
 
     activeExecInterval.current = setInterval(() => {
-      fetch(`/api/executions/${activeExec.id}`, {
+      fetch(`${apiBase}/executions/${activeExec.id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       .then(res => res.json())
@@ -167,7 +188,7 @@ const App: React.FC = () => {
   }, [token, activeExec])
 
   const fetchStats = () => {
-    fetch('/api/dashboard/stats', {
+    fetch(`${apiBase}/dashboard/stats`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())
@@ -176,7 +197,7 @@ const App: React.FC = () => {
   }
 
   const fetchRepos = () => {
-    fetch(`/api/repos?search=${encodeURIComponent(searchQuery)}`, {
+    fetch(`${apiBase}/repos?search=${encodeURIComponent(searchQuery)}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())
@@ -185,7 +206,7 @@ const App: React.FC = () => {
   }
 
   const fetchExecutions = () => {
-    let url = `/api/executions?page=${execPage}&limit=10`
+    let url = `${apiBase}/executions?page=${execPage}&limit=10`
     if (historyStatusFilter) url += `&status=${historyStatusFilter}`
     if (historyRepoFilter) url += `&repo_id=${historyRepoFilter}`
 
@@ -205,7 +226,7 @@ const App: React.FC = () => {
     setLoginError('')
     setLoading(true)
 
-    fetch('/api/login', {
+    fetch(`${apiBase}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: loginEmail, password: loginPassword })
@@ -241,7 +262,7 @@ const App: React.FC = () => {
     if (!activeRepo || !activeRepo.name || !activeRepo.git_url) return
 
     const method = activeRepo.id ? 'PUT' : 'POST'
-    const url = activeRepo.id ? `/api/repos/${activeRepo.id}` : '/api/repos'
+    const url = activeRepo.id ? `${apiBase}/repos/${activeRepo.id}` : `${apiBase}/repos`
 
     fetch(url, {
       method,
@@ -266,7 +287,7 @@ const App: React.FC = () => {
   const handleDeleteRepo = (id: number) => {
     if (!window.confirm('您确定要删除此仓库配置吗？相关的定时任务将一并移除。')) return
 
-    fetch(`/api/repos/${id}`, {
+    fetch(`${apiBase}/repos/${id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     })
@@ -278,7 +299,7 @@ const App: React.FC = () => {
   }
 
   const handleTriggerRepo = (id: number) => {
-    fetch(`/api/repos/${id}/trigger`, {
+    fetch(`${apiBase}/repos/${id}/trigger`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     })
@@ -287,7 +308,7 @@ const App: React.FC = () => {
       // 成功触发后跳转到日志或者弹窗
       fetchRepos()
       // 自动获取最新运行任务，展示终端
-      fetch(`/api/executions/${data.execution_id}`, {
+      fetch(`${apiBase}/executions/${data.execution_id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       .then(r => r.json())
@@ -299,7 +320,7 @@ const App: React.FC = () => {
   const handleCancelExecution = (id: number) => {
     if (!window.confirm('确定要取消此流水线的执行任务吗？')) return
 
-    fetch(`/api/executions/${id}/cancel`, {
+    fetch(`${apiBase}/executions/${id}/cancel`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     })
@@ -310,7 +331,7 @@ const App: React.FC = () => {
     .then(() => {
       if (activeExec && activeExec.id === id) {
         // 刷新当前查看的日志状态
-        fetch(`/api/executions/${id}`, {
+        fetch(`${apiBase}/executions/${id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         .then(r => r.json())
@@ -391,48 +412,50 @@ const App: React.FC = () => {
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       {/* Sidebar */}
-      <aside className="glass-card" style={{ width: 260, borderRadius: 0, borderTop: 'none', borderBottom: 'none', borderLeft: 'none', padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Activity color="#6366f1" size={24} />
-            <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '0.5px' }}>Code-Pipeline</span>
+      {!isEmbedded && (
+        <aside className="glass-card" style={{ width: 260, borderRadius: 0, borderTop: 'none', borderBottom: 'none', borderLeft: 'none', padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Activity color="#6366f1" size={24} />
+              <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '0.5px' }}>Code-Pipeline</span>
+            </div>
+
+            <nav style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button 
+                onClick={() => { setCurrentView('dashboard'); setActiveExec(null); }} 
+                className={`btn ${currentView === 'dashboard' ? 'btn-primary' : 'btn-secondary'}`} 
+                style={{ justifyContent: 'flex-start', width: '100%' }}
+              >
+                <LayoutDashboard size={16} /> 仪表盘大屏
+              </button>
+              <button 
+                onClick={() => { setCurrentView('repos'); setActiveExec(null); }} 
+                className={`btn ${currentView === 'repos' ? 'btn-primary' : 'btn-secondary'}`} 
+                style={{ justifyContent: 'flex-start', width: '100%' }}
+              >
+                <GitBranch size={16} /> 仓库流配置
+              </button>
+              <button 
+                onClick={() => { setCurrentView('history'); setActiveExec(null); }} 
+                className={`btn ${currentView === 'history' ? 'btn-primary' : 'btn-secondary'}`} 
+                style={{ justifyContent: 'flex-start', width: '100%' }}
+              >
+                <Clock size={16} /> 执行历史
+              </button>
+            </nav>
           </div>
 
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <button 
-              onClick={() => { setCurrentView('dashboard'); setActiveExec(null); }} 
-              className={`btn ${currentView === 'dashboard' ? 'btn-primary' : 'btn-secondary'}`} 
-              style={{ justifyContent: 'flex-start', width: '100%' }}
-            >
-              <LayoutDashboard size={16} /> 仪表盘大屏
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, borderTop: '1px solid var(--border-color)', paddingTop: 20 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: 14, fontWeight: 600 }}>{user.name}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{user.email}</span>
+            </div>
+            <button onClick={handleLogout} className="btn btn-secondary btn-small" style={{ width: '100%' }}>
+              <LogOut size={14} /> 退出系统
             </button>
-            <button 
-              onClick={() => { setCurrentView('repos'); setActiveExec(null); }} 
-              className={`btn ${currentView === 'repos' ? 'btn-primary' : 'btn-secondary'}`} 
-              style={{ justifyContent: 'flex-start', width: '100%' }}
-            >
-              <GitBranch size={16} /> 仓库流配置
-            </button>
-            <button 
-              onClick={() => { setCurrentView('history'); setActiveExec(null); }} 
-              className={`btn ${currentView === 'history' ? 'btn-primary' : 'btn-secondary'}`} 
-              style={{ justifyContent: 'flex-start', width: '100%' }}
-            >
-              <Clock size={16} /> 执行历史
-            </button>
-          </nav>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, borderTop: '1px solid var(--border-color)', paddingTop: 20 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span style={{ fontSize: 14, fontWeight: 600 }}>{user.name}</span>
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{user.email}</span>
           </div>
-          <button onClick={handleLogout} className="btn btn-secondary btn-small" style={{ width: '100%' }}>
-            <LogOut size={14} /> 退出系统
-          </button>
-        </div>
-      </aside>
+        </aside>
+      )}
 
       {/* Main Content Area */}
       <main style={{ flex: 1, padding: '32px 40px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
