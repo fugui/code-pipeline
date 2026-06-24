@@ -9,3 +9,7 @@ server:
 auth:
   jwt_secret: "please-change-this-jwt-secret-in-production-environments-123456"
   password_login_enabled: true
+
+pipeline_system:
+  get_pipeline_url: "http://192.168.56.18:8080/api/external/pipeline"
+  sync_execution_plan_url: "http://192.168.56.18:8080/api/external/execution-plans"

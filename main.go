@@ -73,6 +73,19 @@ func main() {
 			api.GET("/executions/:id", handlers.GetExecutionDetails)
 			api.POST("/executions/:id/cancel", handlers.CancelExecution)
 
+			// 流水线配置相关接口
+			api.GET("/pipelines", handlers.GetPipelines)
+			api.POST("/pipelines", handlers.CreatePipeline)
+			api.PUT("/pipelines/:id", handlers.UpdatePipeline)
+			api.DELETE("/pipelines/:id", handlers.DeletePipeline)
+			api.GET("/pipelines/fetch-info", handlers.FetchPipelineInfoFromRemote)
+
+			// 执行方案相关接口
+			api.GET("/execution-plans", handlers.GetExecutionPlans)
+			api.POST("/execution-plans", handlers.CreateExecutionPlan)
+			api.PUT("/execution-plans/:id", handlers.UpdateExecutionPlan)
+			api.DELETE("/execution-plans/:id", handlers.DeleteExecutionPlan)
+
 			// 看板状态大屏接口
 			api.GET("/dashboard/stats", handlers.GetDashboardStats)
 		}

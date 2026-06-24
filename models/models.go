@@ -45,3 +45,28 @@ type ExecutionLog struct {
 	EndTime     *time.Time `json:"end_time"`
 	DurationSec int64      `json:"duration_sec"`
 }
+
+type Pipeline struct {
+	ID          uint       `gorm:"primaryKey" json:"id"`
+	PipelineID  string     `gorm:"uniqueIndex;not null" json:"pipeline_id"` // 流水线 ID
+	Name        string     `gorm:"not null" json:"name"`                   // 名称
+	Type        string     `gorm:"not null" json:"type"`                   // 类型 (MR, 每日构建)
+	GroupName   string     `json:"group_name"`                             // 组名称
+	Description string     `json:"description"`                            // 描述
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+type ExecutionPlan struct {
+	ID               uint      `gorm:"primaryKey" json:"id"`
+	ExecutionPlanID  string    `json:"execution_plan_id"`                // 执行方案ID (从真正流水线系统同步回来)
+	PipelineID       uint      `gorm:"index;not null" json:"pipeline_id"` // 关联的 Pipeline ID
+	Repository       string    `gorm:"not null" json:"repository"`        // 代码仓
+	Branch           string    `gorm:"not null" json:"branch"`            // 分支
+	Username         string    `json:"username"`                          // 用户名
+	Password         string    `json:"password"`                          // 密码
+	Languages        string    `json:"languages"`                         // 编程语言 (如: "C/C++,Python,Java")
+	CustomAttributes string    `gorm:"type:text" json:"custom_attributes"`// 自定义属性 (JSON)
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
