@@ -1,27 +1,27 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
 
 :root {
-  --bg-primary: #090d16;
-  --bg-secondary: #111827;
-  --bg-card: rgba(22, 28, 45, 0.4);
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-active: rgba(99, 102, 241, 0.4);
+  --bg-primary: var(--portal-bg-color, #090d16);
+  --bg-secondary: var(--portal-bg-color, #111827);
+  --bg-card: var(--portal-card-bg, rgba(22, 28, 45, 0.4));
+  --border-color: var(--portal-border-color, rgba(255, 255, 255, 0.08));
+  --border-active: var(--portal-primary-color, rgba(99, 102, 241, 0.4));
   
-  --accent-primary: linear-gradient(135deg, #6366f1, #3b82f6);
-  --accent-success: linear-gradient(135deg, #10b981, #059669);
-  --accent-error: linear-gradient(135deg, #f43f5e, #e11d48);
-  --accent-warning: linear-gradient(135deg, #f59e0b, #d97706);
-  --accent-pending: linear-gradient(135deg, #6b7280, #4b5563);
+  --accent-primary: var(--portal-primary-color, linear-gradient(135deg, #6366f1, #3b82f6));
+  --accent-success: #10b981;
+  --accent-error: #f43f5e;
+  --accent-warning: #f59e0b;
+  --accent-pending: #6b7280;
   
-  --text-main: #f3f4f6;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
+  --text-main: var(--portal-text-color, #f3f4f6);
+  --text-secondary: var(--portal-text-secondary, #9ca3af);
+  --text-muted: var(--portal-text-secondary, #6b7280);
   
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'Fira Code', 'Courier New', monospace;
   
   --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
   --radius: 12px;
 }
 
@@ -211,7 +211,7 @@ body {
 
 /* Forms and inputs */
 input, textarea, select {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--portal-bg-color, rgba(255, 255, 255, 0.03));
   border: 1px solid var(--border-color);
   color: var(--text-main);
   padding: 10px 14px;
