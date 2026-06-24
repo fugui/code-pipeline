@@ -25,6 +25,10 @@ type PipelineRequest struct {
 	Type        string `json:"type" binding:"required"`
 	GroupName   string `json:"group_name"`
 	Description string `json:"description"`
+	ServiceID   string `json:"service_id"`
+	WorkspaceID string `json:"workspace_id"`
+	Owner       string `json:"owner"`
+	ServiceName string `json:"service_name"`
 }
 
 // ExecutionPlanRequest 执行方案输入结构体
@@ -70,6 +74,10 @@ func CreatePipeline(c *gin.Context) {
 		Type:        req.Type,
 		GroupName:   req.GroupName,
 		Description: req.Description,
+		ServiceID:   req.ServiceID,
+		WorkspaceID: req.WorkspaceID,
+		Owner:       req.Owner,
+		ServiceName: req.ServiceName,
 	}
 
 	if err := database.DB.Create(&pipeline).Error; err != nil {
@@ -100,6 +108,10 @@ func UpdatePipeline(c *gin.Context) {
 	pipeline.Type = req.Type
 	pipeline.GroupName = req.GroupName
 	pipeline.Description = req.Description
+	pipeline.ServiceID = req.ServiceID
+	pipeline.WorkspaceID = req.WorkspaceID
+	pipeline.Owner = req.Owner
+	pipeline.ServiceName = req.ServiceName
 
 	if err := database.DB.Save(&pipeline).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update pipeline"})
@@ -162,11 +174,15 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 	if apiURLStr == "" {
 		// 未配置接口，返回 Mock 数据
 		c.JSON(http.StatusOK, gin.H{
-			"pipeline_id": pipelineID,
-			"name":        fmt.Sprintf("Mock流水线_%s", pipelineID),
-			"type":        "每日构建",
+			"pipeline_id":  pipelineID,
+			"name":         fmt.Sprintf("Mock流水线_%s", pipelineID),
+			"type":         "每日构建",
 			"group_name":   "DefaultGroup",
 			"description":  "此配置由本地 Mock 数据自动回填，未配置 pipeline_system.get_pipeline_url",
+			"service_id":   "mock_svc_1001",
+			"workspace_id": "mock_ws_2002",
+			"owner":        "MockOwner",
+			"service_name": "MockService",
 			"is_mock":      true,
 		})
 		return
@@ -201,11 +217,15 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 	if err != nil {
 		log.Printf("[Pipeline] Error fetching remote pipeline info (falling back to mock): %v\n", err)
 		c.JSON(http.StatusOK, gin.H{
-			"pipeline_id": pipelineID,
-			"name":        fmt.Sprintf("Mock流水线_%s", pipelineID),
-			"type":        "MR",
+			"pipeline_id":  pipelineID,
+			"name":         fmt.Sprintf("Mock流水线_%s", pipelineID),
+			"type":         "MR",
 			"group_name":   "MockGroup",
 			"description":  fmt.Sprintf("获取远程数据失败: %v。已自动使用 Mock 数据回填进行兜底。", err),
+			"service_id":   "mock_svc_1001",
+			"workspace_id": "mock_ws_2002",
+			"owner":        "MockOwner",
+			"service_name": "MockService",
 			"is_mock":      true,
 		})
 		return
@@ -215,11 +235,15 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("[Pipeline] Remote server returned non-200 status (falling back to mock): %d\n", resp.StatusCode)
 		c.JSON(http.StatusOK, gin.H{
-			"pipeline_id": pipelineID,
-			"name":        fmt.Sprintf("Mock流水线_%s", pipelineID),
-			"type":        "MR",
+			"pipeline_id":  pipelineID,
+			"name":         fmt.Sprintf("Mock流水线_%s", pipelineID),
+			"type":         "MR",
 			"group_name":   "MockGroup",
 			"description":  fmt.Sprintf("三方服务状态异常(HTTP %d)。已自动使用 Mock 数据回填进行兜底。", resp.StatusCode),
+			"service_id":   "mock_svc_1001",
+			"workspace_id": "mock_ws_2002",
+			"owner":        "MockOwner",
+			"service_name": "MockService",
 			"is_mock":      true,
 		})
 		return
@@ -231,42 +255,54 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 		return
 	}
 
-	// 尝试解析远端返回的 JSON
-	var remoteData map[string]interface{}
-	if err := json.Unmarshal(body, &remoteData); err != nil {
+	// 针对新嵌套响应结构的反序列化定义
+	type RemoteResponse struct {
+		Entity struct {
+			Result struct {
+				ID           string `json:"id"`
+				ServiceID    string `json:"serviceId"`
+				WorkspaceID  string `json:"workspaceId"`
+				Owner        string `json:"owner"`
+				ServiceName  string `json:"serviceName"`
+				PipelineName string `json:"pipelineName"`
+			} `json:"result"`
+		} `json:"entity"`
+	}
+
+	var remoteResp RemoteResponse
+	if err := json.Unmarshal(body, &remoteResp); err != nil {
 		log.Printf("[Pipeline] Failed to parse remote data JSON (falling back to mock): %v\n", err)
 		c.JSON(http.StatusOK, gin.H{
-			"pipeline_id": pipelineID,
-			"name":        fmt.Sprintf("Mock流水线_%s", pipelineID),
-			"type":        "MR",
+			"pipeline_id":  pipelineID,
+			"name":         fmt.Sprintf("Mock流水线_%s", pipelineID),
+			"type":         "MR",
 			"group_name":   "MockGroup",
-			"description":  "解析三方服务数据失败，已自动使用 Mock 数据回填进行兜底。",
+			"description":  "解析三方服务数据结构失败，已自动使用 Mock 数据回填进行兜底。",
+			"service_id":   "mock_svc_1001",
+			"workspace_id": "mock_ws_2002",
+			"owner":        "MockOwner",
+			"service_name": "MockService",
 			"is_mock":      true,
 		})
 		return
 	}
 
-	// 提取或使用默认兜底
-	name, _ := remoteData["name"].(string)
+	res := remoteResp.Entity.Result
+	name := res.PipelineName
 	if name == "" {
 		name = fmt.Sprintf("Pipeline_%s", pipelineID)
 	}
-	pType, _ := remoteData["type"].(string)
-	if pType == "" {
-		pType = "每日构建"
-	}
-	group, _ := remoteData["group_name"].(string)
-	if group == "" {
-		group, _ = remoteData["group"].(string)
-	}
-	desc, _ := remoteData["description"].(string)
 
 	c.JSON(http.StatusOK, gin.H{
-		"pipeline_id": pipelineID,
-		"name":        name,
-		"type":        pType,
-		"group_name":   group,
-		"description":  desc,
+		"pipeline_id":  res.ID,
+		"name":         name,
+		"type":         "每日构建", // 默认触发类型
+		"group_name":   "DefaultGroup",
+		"description":  fmt.Sprintf("三方服务 %s (%s) 自动同步录入", res.ServiceName, res.ServiceID),
+		"service_id":   res.ServiceID,
+		"workspace_id": res.WorkspaceID,
+		"owner":        res.Owner,
+		"service_name": res.ServiceName,
 		"is_mock":      false,
 	})
 }

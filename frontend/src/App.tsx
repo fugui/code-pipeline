@@ -379,6 +379,10 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         type: data.type || '每日构建',
         group_name: data.group_name || '',
         description: data.description || '',
+        service_id: data.service_id || '',
+        workspace_id: data.workspace_id || '',
+        owner: data.owner || '',
+        service_name: data.service_name || '',
       }))
     })
     .catch(() => {
@@ -389,6 +393,10 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         type: '每日构建',
         group_name: 'DefaultGroup',
         description: '同步远程流水线信息失败，已自动回填本地 Mock 数据。',
+        service_id: 'mock_svc_1001',
+        workspace_id: 'mock_ws_2002',
+        owner: 'MockOwner',
+        service_name: 'MockService',
       }))
     })
     .finally(() => {
@@ -1062,6 +1070,12 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
                             <span>分组: {p.group_name || '默认组'}</span>
                             <span style={{ maxWidth: '60%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.description || '暂无详细描述'}</span>
                           </div>
+                          {p.service_name && (
+                            <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--text-muted)', marginTop: 6, borderTop: '1px dashed rgba(255,255,255,0.06)', paddingTop: 6 }}>
+                              <span>关联服务: <strong>{p.service_name}</strong></span>
+                              <span>负责人: <strong>{p.owner}</strong></span>
+                            </div>
+                          )}
                         </div>
                       );
                     })
@@ -1084,6 +1098,11 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
                           <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>({selectedPipeline.pipeline_id})</span>
                         </div>
                         <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>触发规则: {selectedPipeline.type} | 团队组名: {selectedPipeline.group_name || '默认组'}</p>
+                        {selectedPipeline.service_name && (
+                          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                            关联服务: <strong>{selectedPipeline.service_name}</strong> ({selectedPipeline.service_id}) | 工作区: <strong>{selectedPipeline.workspace_id}</strong> | 负责人: <strong>{selectedPipeline.owner}</strong>
+                          </p>
+                        )}
                       </div>
                       <button className="btn btn-primary btn-small" onClick={() => { setActivePlan({ pipeline_id: selectedPipeline.id, branch: 'master', languages: '' }); setShowPlanModal(true); }}>
                         <Plus size={13} /> 绑定执行方案
@@ -1329,6 +1348,44 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
                     placeholder="例如: 效能研发组"
                     value={activePipeline.group_name || ''} 
                     onChange={(e) => setActivePipeline((prev: any) => ({ ...prev!, group_name: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>微服务 ID (Service ID - 只读)</label>
+                  <input 
+                    type="text" 
+                    value={activePipeline.service_id || '未拉取'} 
+                    disabled 
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>工作区 ID (Workspace ID - 只读)</label>
+                  <input 
+                    type="text" 
+                    value={activePipeline.workspace_id || '未拉取'} 
+                    disabled 
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>微服务名称 (Service Name - 只读)</label>
+                  <input 
+                    type="text" 
+                    value={activePipeline.service_name || '未拉取'} 
+                    disabled 
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>三方负责人 (Owner - 只读)</label>
+                  <input 
+                    type="text" 
+                    value={activePipeline.owner || '未拉取'} 
+                    disabled 
                   />
                 </div>
               </div>

@@ -53,6 +53,10 @@ type Pipeline struct {
 	Type        string     `gorm:"not null" json:"type"`                   // 类型 (MR, 每日构建)
 	GroupName   string     `json:"group_name"`                             // 组名称
 	Description string     `json:"description"`                            // 描述
+	ServiceID   string     `json:"service_id"`                             // 第三方服务 ID
+	WorkspaceID string     `json:"workspace_id"`                           // 第三方工作区 ID
+	Owner       string     `json:"owner"`                                  // 第三方负责人
+	ServiceName string     `json:"service_name"`                           // 第三方服务名称
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
