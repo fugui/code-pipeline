@@ -179,11 +179,25 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 	}
 
 	q := u.Query()
-	q.Set("id", pipelineID)
+	q.Set("pipelineId", pipelineID)
 	u.RawQuery = q.Encode()
 
+	req, err := http.NewRequestWithContext(c.Request.Context(), "GET", u.String(), nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create HTTP request"})
+		return
+	}
+
+	// 透传前端传递的 Cookie 和 cftk 头
+	if cookie := c.GetHeader("Cookie"); cookie != "" {
+		req.Header.Set("Cookie", cookie)
+	}
+	if cftk := c.GetHeader("cftk"); cftk != "" {
+		req.Header.Set("cftk", cftk)
+	}
+
 	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Get(u.String())
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("[Pipeline] Error fetching remote pipeline info (falling back to mock): %v\n", err)
 		c.JSON(http.StatusOK, gin.H{
