@@ -226,32 +226,15 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		var curlHeaders []string
-		for name, values := range req.Header {
-			for _, value := range values {
-				escapedValue := strings.ReplaceAll(value, "'", "'\\''")
-				curlHeaders = append(curlHeaders, fmt.Sprintf("-H '%s: %s'", name, escapedValue))
-			}
-		}
-		curlCmd := fmt.Sprintf("curl -X %s '%s' %s", req.Method, req.URL.String(), strings.Join(curlHeaders, " "))
-
-		var responseBody string
-		if resp.Body != nil {
-			if bodyBytes, err := io.ReadAll(resp.Body); err == nil {
-				responseBody = string(bodyBytes)
-			}
-		}
-
-		log.Printf("[Pipeline] Curl Command:\n%s\n", curlCmd)
-		log.Printf("[Pipeline] Remote server returned non-200 status: %d, Response: %s\n", resp.StatusCode, responseBody)
-		c.JSON(resp.StatusCode, gin.H{"error": fmt.Sprintf("Remote server returned status %d. Please check if your SSO session has expired.", resp.StatusCode)})
-		return
-	}
-
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read response body"})
+		return
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		logHTTPErrorDetails("FetchPipelineInfo", req, resp.StatusCode, body)
+		c.JSON(resp.StatusCode, gin.H{"error": fmt.Sprintf("Remote server returned status %d. Please check if your SSO session has expired.", resp.StatusCode)})
 		return
 	}
 
@@ -272,6 +255,7 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 	var remoteResp RemoteResponse
 	if err := json.Unmarshal(body, &remoteResp); err != nil {
 		log.Printf("[Pipeline] Failed to parse remote data JSON: %v\n", err)
+		logHTTPErrorDetails("FetchPipelineInfo", req, resp.StatusCode, body)
 		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to parse remote response JSON: %v", err)})
 		return
 	}
@@ -452,24 +436,32 @@ func syncCreateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 		return "", err
 	}
 
+	req, err := http.NewRequest(http.MethodPost, apiURLStr, bytes.NewBuffer(jsonBytes))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
 	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Post(apiURLStr, "application/json", bytes.NewBuffer(jsonBytes))
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return "", fmt.Errorf("remote API returned status code %d", resp.StatusCode)
-	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
 
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		logHTTPErrorDetails("SyncCreatePlan", req, resp.StatusCode, body)
+		return "", fmt.Errorf("remote API returned status code %d", resp.StatusCode)
+	}
+
 	var responseData map[string]interface{}
 	if err := json.Unmarshal(body, &responseData); err != nil {
+		logHTTPErrorDetails("SyncCreatePlan", req, resp.StatusCode, body)
 		return "", err
 	}
 
@@ -524,7 +516,13 @@ func syncUpdateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 	}
 	defer resp.Body.Close()
 
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		logHTTPErrorDetails("SyncUpdatePlan", req, resp.StatusCode, body)
 		return fmt.Errorf("remote API returned status code %d", resp.StatusCode)
 	}
 
@@ -552,7 +550,13 @@ func syncDeleteExecutionPlanRemote(executionPlanID string) error {
 	}
 	defer resp.Body.Close()
 
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusAccepted {
+		logHTTPErrorDetails("SyncDeletePlan", req, resp.StatusCode, body)
 		return fmt.Errorf("remote API returned status code %d", resp.StatusCode)
 	}
 
@@ -644,32 +648,15 @@ func SyncExecutionPlans(c *gin.Context) {
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusOK {
-			var curlHeaders []string
-			for name, values := range req.Header {
-				for _, value := range values {
-					escapedValue := strings.ReplaceAll(value, "'", "'\\''")
-					curlHeaders = append(curlHeaders, fmt.Sprintf("-H '%s: %s'", name, escapedValue))
-				}
-			}
-			curlCmd := fmt.Sprintf("curl -X %s '%s' %s", req.Method, req.URL.String(), strings.Join(curlHeaders, " "))
-
-			var responseBody string
-			if resp.Body != nil {
-				if bodyBytes, err := io.ReadAll(resp.Body); err == nil {
-					responseBody = string(bodyBytes)
-				}
-			}
-
-			log.Printf("[Pipeline] Curl Command:\n%s\n", curlCmd)
-			log.Printf("[Pipeline] Remote server returned non-200 status for plans: %d, Response: %s\n", resp.StatusCode, responseBody)
-			c.JSON(resp.StatusCode, gin.H{"error": fmt.Sprintf("Remote server returned status %d. Please check if your SSO session has expired.", resp.StatusCode)})
-			return
-		}
-
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read response body"})
+			return
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			logHTTPErrorDetails("SyncExecutionPlans", req, resp.StatusCode, body)
+			c.JSON(resp.StatusCode, gin.H{"error": fmt.Sprintf("Remote server returned status %d. Please check if your SSO session has expired.", resp.StatusCode)})
 			return
 		}
 
@@ -681,6 +668,7 @@ func SyncExecutionPlans(c *gin.Context) {
 
 		if err := json.Unmarshal(body, &remoteResp); err != nil {
 			log.Printf("[Pipeline] Failed to parse remote plans JSON: %v\n", err)
+			logHTTPErrorDetails("SyncExecutionPlans", req, resp.StatusCode, body)
 			c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to parse remote response JSON: %v", err)})
 			return
 		}
@@ -752,4 +740,19 @@ func SyncExecutionPlans(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully synced %d execution plans", len(fetchedPlans))})
+}
+
+// logHTTPErrorDetails 打印详细的 HTTP 错误日志，包括等价的 curl 调试命令及三方返回的原始报文
+func logHTTPErrorDetails(contextMsg string, req *http.Request, statusCode int, respBody []byte) {
+	var curlHeaders []string
+	for name, values := range req.Header {
+		for _, value := range values {
+			escapedValue := strings.ReplaceAll(value, "'", "'\\''")
+			curlHeaders = append(curlHeaders, fmt.Sprintf("-H '%s: %s'", name, escapedValue))
+		}
+	}
+	curlCmd := fmt.Sprintf("curl -X %s '%s' %s", req.Method, req.URL.String(), strings.Join(curlHeaders, " "))
+
+	log.Printf("[%s] Curl Command:\n%s\n", contextMsg, curlCmd)
+	log.Printf("[%s] Remote server returned status %d. Response Body: %s\n", contextMsg, statusCode, string(respBody))
 }
