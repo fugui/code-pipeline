@@ -20,18 +20,7 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 	}
 
 	// 1. 获取要透传的 HTTP Headers
-	headers := make(map[string]string)
-	if cookie := c.GetHeader("Cookie"); cookie != "" {
-		headers["Cookie"] = cookie
-	}
-	cftk := c.GetHeader("cftk")
-	if cftk == "" {
-		cftk, _ = c.Cookie("prod_cftk")
-	}
-	if cftk != "" {
-		headers["cftk"] = cftk
-	}
-	headers["x-requested-with"] = "XMLHttpRequest"
+	headers := prepareRequestHeaders(c)
 
 	// 2. 调用 service 获取数据
 	pipelineInfo, err := services.FetchRemotePipelineInfo(c.Request.Context(), pipelineID, headers)
@@ -85,18 +74,7 @@ func SyncExecutionPlans(c *gin.Context) {
 	}
 
 	// 1. 获取要透传的 HTTP Headers
-	headers := make(map[string]string)
-	if cookie := c.GetHeader("Cookie"); cookie != "" {
-		headers["Cookie"] = cookie
-	}
-	cftk := c.GetHeader("cftk")
-	if cftk == "" {
-		cftk, _ = c.Cookie("prod_cftk")
-	}
-	if cftk != "" {
-		headers["cftk"] = cftk
-	}
-	headers["x-requested-with"] = "XMLHttpRequest"
+	headers := prepareRequestHeaders(c)
 
 	// 2. 调用 service 抓取执行方案列表
 	fetchedPlans, err := services.FetchRemoteExecutionPlans(c.Request.Context(), pipeline.PipelineID, pipeline.ID, headers)
@@ -151,4 +129,21 @@ func SyncExecutionPlans(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully synced %d execution plans", len(fetchedPlans))})
+}
+
+// prepareRequestHeaders 透传 Cookie, cftk 和 x-requested-with Header
+func prepareRequestHeaders(c *gin.Context) map[string]string {
+	headers := make(map[string]string)
+	if cookie := c.GetHeader("Cookie"); cookie != "" {
+		headers["Cookie"] = cookie
+	}
+	cftk := c.GetHeader("cftk")
+	if cftk == "" {
+		cftk, _ = c.Cookie("prod_cftk")
+	}
+	if cftk != "" {
+		headers["cftk"] = cftk
+	}
+	headers["x-requested-with"] = "XMLHttpRequest"
+	return headers
 }
