@@ -79,6 +79,16 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
             </div>
           </div>
 
+          <div>
+            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>代码检查任务 ID (Code Checker Task ID)</label>
+            <input 
+              type="text" 
+              placeholder="请输入代码检查任务 ID"
+              value={activePlan.code_checker_task_id || ''} 
+              onChange={(e) => onChange({ ...activePlan, code_checker_task_id: e.target.value })}
+            />
+          </div>
+
           {/* 多选编程语言 */}
           <div>
             <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>

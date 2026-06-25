@@ -68,8 +68,9 @@ type ExecutionPlan struct {
 	Repository       string    `gorm:"not null" json:"repository"`         // 代码仓
 	Branch           string    `gorm:"not null" json:"branch"`             // 分支
 	Username         string    `json:"username"`                           // 用户名
-	Password         string    `json:"password"`                           // 密码
-	Languages        string    `json:"languages"`                          // 编程语言 (如: "C/C++,Python,Java")
+	Password          string    `json:"password"`                           // 密码
+	CodeCheckerTaskID string    `json:"code_checker_task_id"`               // 代码检查任务 ID
+	Languages        string    `json:"languages"`                          // 编程语言 (如: "C/C++,Python,Java")	
 	CustomAttributes string    `gorm:"type:text" json:"custom_attributes"` // 自定义属性 (JSON)
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`

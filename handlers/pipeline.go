@@ -33,13 +33,14 @@ type PipelineRequest struct {
 
 // ExecutionPlanRequest 执行方案输入结构体
 type ExecutionPlanRequest struct {
-	PipelineID       uint   `json:"pipeline_id" binding:"required"`
-	Repository       string `json:"repository" binding:"required"`
-	Branch           string `json:"branch" binding:"required"`
-	Username         string `json:"username"`
-	Password         string `json:"password"`
-	Languages        string `json:"languages"` // 英文逗号分隔字符串
-	CustomAttributes string `json:"custom_attributes"`
+	PipelineID        uint   `json:"pipeline_id" binding:"required"`
+	Repository        string `json:"repository" binding:"required"`
+	Branch            string `json:"branch" binding:"required"`
+	Username          string `json:"username"`
+	Password          string `json:"password"`
+	CodeCheckerTaskID string `json:"code_checker_task_id"`
+	Languages         string `json:"languages"` // 英文逗号分隔字符串
+	CustomAttributes  string `json:"custom_attributes"`
 }
 
 // GetPipelines 获取流水线列表
@@ -316,13 +317,14 @@ func CreateExecutionPlan(c *gin.Context) {
 	}
 
 	plan := models.ExecutionPlan{
-		PipelineID:       req.PipelineID,
-		Repository:       req.Repository,
-		Branch:           req.Branch,
-		Username:         req.Username,
-		Password:         req.Password,
-		Languages:        req.Languages,
-		CustomAttributes: req.CustomAttributes,
+		PipelineID:        req.PipelineID,
+		Repository:        req.Repository,
+		Branch:            req.Branch,
+		Username:          req.Username,
+		Password:          req.Password,
+		CodeCheckerTaskID: req.CodeCheckerTaskID,
+		Languages:         req.Languages,
+		CustomAttributes:  req.CustomAttributes,
 	}
 
 	// 同步去三方流水线系统创建
@@ -366,6 +368,7 @@ func UpdateExecutionPlan(c *gin.Context) {
 	plan.Branch = req.Branch
 	plan.Username = req.Username
 	plan.Password = req.Password
+	plan.CodeCheckerTaskID = req.CodeCheckerTaskID
 	plan.Languages = req.Languages
 	plan.CustomAttributes = req.CustomAttributes
 
@@ -419,13 +422,14 @@ func syncCreateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 	}
 
 	payload := map[string]interface{}{
-		"pipeline_id":       pipelineBusinessID,
-		"repository":        plan.Repository,
-		"branch":            plan.Branch,
-		"username":          plan.Username,
-		"password":          plan.Password,
-		"languages":         strings.Split(plan.Languages, ","),
-		"custom_attributes": plan.CustomAttributes,
+		"pipeline_id":          pipelineBusinessID,
+		"repository":           plan.Repository,
+		"branch":               plan.Branch,
+		"username":             plan.Username,
+		"password":             plan.Password,
+		"code_checker_task_id": plan.CodeCheckerTaskID,
+		"languages":            strings.Split(plan.Languages, ","),
+		"custom_attributes":    plan.CustomAttributes,
 	}
 
 	jsonBytes, err := json.Marshal(payload)
@@ -486,13 +490,14 @@ func syncUpdateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 	targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), plan.ExecutionPlanID)
 
 	payload := map[string]interface{}{
-		"pipeline_id":       pipelineBusinessID,
-		"repository":        plan.Repository,
-		"branch":            plan.Branch,
-		"username":          plan.Username,
-		"password":          plan.Password,
-		"languages":         strings.Split(plan.Languages, ","),
-		"custom_attributes": plan.CustomAttributes,
+		"pipeline_id":          pipelineBusinessID,
+		"repository":           plan.Repository,
+		"branch":               plan.Branch,
+		"username":             plan.Username,
+		"password":             plan.Password,
+		"code_checker_task_id": plan.CodeCheckerTaskID,
+		"languages":            strings.Split(plan.Languages, ","),
+		"custom_attributes":    plan.CustomAttributes,
 	}
 
 	jsonBytes, err := json.Marshal(payload)
@@ -689,6 +694,8 @@ func SyncExecutionPlans(c *gin.Context) {
 							plan.Branch = param.Value
 						case "code_url":
 							plan.Repository = param.Value
+						case "code_checker_task_id":
+							plan.CodeCheckerTaskID = param.Value
 						}
 					}
 				} else {

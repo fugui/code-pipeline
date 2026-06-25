@@ -69,6 +69,7 @@ export interface ExecutionPlan {
   execution_plan_id?: string
   username?: string
   password?: string
+  code_checker_task_id?: string
   languages?: string
   custom_attributes?: string
 }
