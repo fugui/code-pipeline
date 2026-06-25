@@ -375,9 +375,9 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
   }
 
   const handleSyncPipeline = (pipeline: Pipeline) => {
-    if (!pipeline || !pipeline.id) return
+    if (!pipeline || !pipeline.pipeline_id) return
     setLoading(true)
-    fetch(`${apiBase}/execution-plans/sync?pipeline_id=${pipeline.id}`, {
+    fetch(`${apiBase}/execution-plans/sync?pipeline_id=${encodeURIComponent(pipeline.pipeline_id)}`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     })

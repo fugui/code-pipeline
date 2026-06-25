@@ -571,14 +571,8 @@ func SyncExecutionPlans(c *gin.Context) {
 		return
 	}
 
-	pipelineID, err := strconv.ParseUint(pipelineIDStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid pipeline_id"})
-		return
-	}
-
 	var pipeline models.Pipeline
-	if err := database.DB.First(&pipeline, uint(pipelineID)).Error; err != nil {
+	if err := database.DB.Where("pipeline_id = ?", pipelineIDStr).First(&pipeline).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Pipeline not found"})
 		return
 	}
