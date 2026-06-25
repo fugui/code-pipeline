@@ -188,11 +188,23 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 		return
 	}
 
-	req, err := newRemoteGetRequest(c, apiURLStr, pipelineID)
+	u, err := url.Parse(apiURLStr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid configured get_pipeline_url"})
 		return
 	}
+
+	q := u.Query()
+	q.Set("pipelineId", pipelineID)
+	u.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(c.Request.Context(), "GET", u.String(), nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create HTTP request"})
+		return
+	}
+
+	prepareRemoteRequest(c, req)
 
 	client := &http.Client{Timeout: 3 * time.Second}
 	resp, err := client.Do(req)
@@ -581,11 +593,23 @@ func SyncExecutionPlans(c *gin.Context) {
 		}
 	} else {
 		// 调用三方系统抓取执行方案
-		req, err := newRemoteGetRequest(c, apiURLStr, pipeline.PipelineID)
+		u, err := url.Parse(apiURLStr)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid configured get_execution_plan_url"})
 			return
 		}
+
+		q := u.Query()
+		q.Set("pipelineId", pipeline.PipelineID)
+		u.RawQuery = q.Encode()
+
+		req, err := http.NewRequestWithContext(c.Request.Context(), "GET", u.String(), nil)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create HTTP request"})
+			return
+		}
+
+		prepareRemoteRequest(c, req)
 
 		client := &http.Client{Timeout: 3 * time.Second}
 		resp, err := client.Do(req)
@@ -705,22 +729,8 @@ func logHTTPErrorDetails(contextMsg string, req *http.Request, statusCode int, r
 	log.Printf("[%s] Remote server returned status %d. Response Body: %s\n", contextMsg, statusCode, string(respBody))
 }
 
-// newRemoteGetRequest 创建发往外部系统的 GET 请求，处理 URL query 拼接并透传 Header
-func newRemoteGetRequest(c *gin.Context, apiURLStr string, pipelineID string) (*http.Request, error) {
-	u, err := url.Parse(apiURLStr)
-	if err != nil {
-		return nil, fmt.Errorf("invalid configured URL: %w", err)
-	}
-
-	q := u.Query()
-	q.Set("pipelineId", pipelineID)
-	u.RawQuery = q.Encode()
-
-	req, err := http.NewRequestWithContext(c.Request.Context(), "GET", u.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
-	}
-
+// prepareRemoteRequest 透传 Cookie, cftk 和 x-requested-with Header 到发往外部系统的 Request
+func prepareRemoteRequest(c *gin.Context, req *http.Request) {
 	// 透传前端传递的 Cookie 和 cftk 头
 	if cookie := c.GetHeader("Cookie"); cookie != "" {
 		req.Header.Set("Cookie", cookie)
@@ -733,6 +743,4 @@ func newRemoteGetRequest(c *gin.Context, apiURLStr string, pipelineID string) (*
 		req.Header.Set("cftk", cftk)
 	}
 	req.Header.Set("x-requested-with", "XMLHttpRequest")
-
-	return req, nil
 }
