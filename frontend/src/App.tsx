@@ -374,6 +374,69 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     })
   }
 
+  const handleSyncPipeline = (pipeline: Pipeline) => {
+    if (!pipeline || !pipeline.pipeline_id || !pipeline.id) return
+    setLoading(true)
+    fetch(`${apiBase}/pipelines/fetch-info?pipeline_id=${encodeURIComponent(pipeline.pipeline_id)}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(async res => {
+      if (!res.ok) {
+        let errMsg = `HTTP 错误 ${res.status}`
+        try {
+          const errData = await res.json()
+          if (errData && errData.error) errMsg = errData.error
+        } catch (e) {}
+        throw new Error(errMsg)
+      }
+      return res.json()
+    })
+    .then(data => {
+      const updated = {
+        ...pipeline,
+        name: data.name || pipeline.name,
+        type: data.type || pipeline.type,
+        group_name: data.group_name || pipeline.group_name,
+        description: data.description || pipeline.description,
+        service_id: data.service_id || pipeline.service_id,
+        workspace_id: data.workspace_id || pipeline.workspace_id,
+        owner: data.owner || pipeline.owner,
+        service_name: data.service_name || pipeline.service_name,
+      }
+
+      return fetch(`${apiBase}/pipelines/${pipeline.id}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updated)
+      })
+    })
+    .then(async res => {
+      if (!res.ok) {
+        let errMsg = `更新失败 ${res.status}`
+        try {
+          const errData = await res.json()
+          if (errData && errData.error) errMsg = errData.error
+        } catch (e) {}
+        throw new Error(errMsg)
+      }
+      return res.json()
+    })
+    .then((updatedPipeline) => {
+      fetchPipelines()
+      setSelectedPipeline(updatedPipeline)
+      alert('流水线信息同步成功！')
+    })
+    .catch(err => {
+      alert(`同步失败: ${err.message}`)
+    })
+    .finally(() => {
+      setLoading(false)
+    })
+  }
+
   const handleLogin = (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     setLoginError('')
@@ -675,6 +738,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
             }}
             onEditPlan={(plan) => { setActivePlan(plan); setShowPlanModal(true); }}
             onDeletePlan={handleDeletePlan}
+            onSyncPipeline={handleSyncPipeline}
           />
         )}
 

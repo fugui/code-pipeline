@@ -1,5 +1,5 @@
 import React from 'react'
-import { Plus, Search, Edit, Trash2, Activity } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, Activity, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Pipeline, ExecutionPlan } from '../types'
 
 interface PipelineConfigProps {
@@ -16,6 +16,7 @@ interface PipelineConfigProps {
   onAddPlan: () => void
   onEditPlan: (plan: ExecutionPlan) => void
   onDeletePlan: (id: number) => void
+  onSyncPipeline?: (pipeline: Pipeline) => void
 }
 
 export const PipelineConfig: React.FC<PipelineConfigProps> = ({
@@ -31,8 +32,41 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
   onDeletePipeline,
   onAddPlan,
   onEditPlan,
-  onDeletePlan
+  onDeletePlan,
+  onSyncPipeline
 }) => {
+  const [planSearchQuery, setPlanSearchQuery] = React.useState('')
+  const [currentPlanPage, setCurrentPlanPage] = React.useState(1)
+  const planPageSize = 5
+
+  // Reset page & search on pipeline change
+  React.useEffect(() => {
+    setPlanSearchQuery('')
+    setCurrentPlanPage(1)
+  }, [selectedPipeline])
+
+  // Filter plans
+  const filteredPlans = React.useMemo(() => {
+    if (!planSearchQuery.trim()) return plans
+    const q = planSearchQuery.toLowerCase()
+    return plans.filter(plan => {
+      const matchRepo = plan.repository?.toLowerCase().includes(q)
+      const matchBranch = plan.branch?.toLowerCase().includes(q)
+      const matchLang = plan.languages?.toLowerCase().includes(q)
+      const matchId = plan.execution_plan_id?.toLowerCase().includes(q)
+      const matchUser = plan.username?.toLowerCase().includes(q)
+      return matchRepo || matchBranch || matchLang || matchId || matchUser
+    })
+  }, [plans, planSearchQuery])
+
+  // Paginated plans
+  const paginatedPlans = React.useMemo(() => {
+    const startIndex = (currentPlanPage - 1) * planPageSize
+    return filteredPlans.slice(startIndex, startIndex + planPageSize)
+  }, [filteredPlans, currentPlanPage])
+
+  const totalPages = Math.ceil(filteredPlans.length / planPageSize)
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 20, height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -133,20 +167,33 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
             <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%', minHeight: 450 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: 16 }}>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 700 }}>{selectedPipeline.name}</h3>
-                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>({selectedPipeline.pipeline_id})</span>
-                  </div>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>触发规则: {selectedPipeline.type} | 团队组名: {selectedPipeline.group_name || '默认组'}</p>
-                  {selectedPipeline.service_name && (
-                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                      关联服务: <strong>{selectedPipeline.service_name}</strong> ({selectedPipeline.service_id}) | 工作区: <strong>{selectedPipeline.workspace_id}</strong> | 负责人: <strong>{selectedPipeline.owner}</strong>
-                    </p>
-                  )}
+                  <h3 style={{ fontSize: 16, fontWeight: 700 }}>执行方案（{selectedPipeline.name}）</h3>
                 </div>
-                <button className="btn btn-primary btn-small" onClick={onAddPlan}>
-                  <Plus size={13} /> 绑定执行方案
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {onSyncPipeline && (
+                    <button className="btn btn-secondary btn-small" onClick={() => onSyncPipeline(selectedPipeline)}>
+                      <RefreshCw size={13} style={{ marginRight: 4 }} /> 同步
+                    </button>
+                  )}
+                  <button className="btn btn-primary btn-small" onClick={onAddPlan}>
+                    <Plus size={13} style={{ marginRight: 4 }} /> 新增
+                  </button>
+                </div>
+              </div>
+
+              {/* Table search filter */}
+              <div style={{ position: 'relative', paddingLeft: 8, paddingRight: 8 }}>
+                <Search style={{ position: 'absolute', left: 18, top: 10, color: 'var(--text-muted)' }} size={14} />
+                <input 
+                  type="text" 
+                  placeholder="在执行方案中检索仓库、分支、语言或三方 ID..." 
+                  style={{ paddingLeft: 34, height: 34, fontSize: 13, borderRadius: 6, width: '100%' }}
+                  value={planSearchQuery}
+                  onChange={(e) => {
+                    setPlanSearchQuery(e.target.value);
+                    setCurrentPlanPage(1);
+                  }}
+                />
               </div>
 
               <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -162,8 +209,8 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {plans.length > 0 ? (
-                      plans.map((plan) => (
+                    {paginatedPlans.length > 0 ? (
+                      paginatedPlans.map((plan) => (
                         <tr key={plan.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)' }}>
                           <td style={{ padding: '12px 8px', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
                             {plan.execution_plan_id || '未绑定'}
@@ -197,13 +244,40 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                     ) : (
                       <tr>
                         <td colSpan={6} style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)' }}>
-                          暂无仓库绑定的执行方案，请点击右上角绑定代码仓配置
+                          {plans.length > 0 ? '未匹配到符合检索条件的执行方案' : '暂无仓库绑定的执行方案，请点击右上角新增代码仓配置'}
                         </td>
                       </tr>
                     )}
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination UI */}
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: 12, paddingBottom: 4, paddingLeft: 8, paddingRight: 8 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    共 {filteredPlans.length} 条记录，当前第 {currentPlanPage} / {totalPages} 页
+                  </span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button 
+                      className="btn btn-secondary btn-small"
+                      disabled={currentPlanPage === 1}
+                      onClick={() => setCurrentPlanPage(prev => Math.max(1, prev - 1))}
+                      style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4, cursor: currentPlanPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPlanPage === 1 ? 0.5 : 1 }}
+                    >
+                      <ChevronLeft size={14} /> 上一页
+                    </button>
+                    <button 
+                      className="btn btn-secondary btn-small"
+                      disabled={currentPlanPage === totalPages}
+                      onClick={() => setCurrentPlanPage(prev => Math.min(totalPages, prev + 1))}
+                      style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4, cursor: currentPlanPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPlanPage === totalPages ? 0.5 : 1 }}
+                    >
+                      下一页 <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', flex: 1, minHeight: 450, background: 'rgba(255,255,255,0.01)', borderStyle: 'dashed' }}>
