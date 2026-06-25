@@ -14,10 +14,10 @@ import (
 )
 
 type PortalClaims struct {
-	UserID   uint   `json:"user_id"`
-	Email    string `json:"email"`
-	Name     string `json:"name"`
-	IsAdmin  bool   `json:"is_admin"`
+	UserID  uint   `json:"user_id"`
+	Email   string `json:"email"`
+	Name    string `json:"name"`
+	IsAdmin bool   `json:"is_admin"`
 	jwt.RegisteredClaims
 }
 

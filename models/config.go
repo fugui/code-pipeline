@@ -24,7 +24,7 @@ type Config struct {
 		PasswordLoginEnabled bool   `yaml:"password_login_enabled"`
 	} `yaml:"auth"`
 	PipelineSystem struct {
-		GetPipelineURL       string `yaml:"get_pipeline_url"`
+		GetPipelineURL      string `yaml:"get_pipeline_url"`
 		GetExecutionPlanURL string `yaml:"get_execution_plan_url"`
 	} `yaml:"pipeline_system"`
 }

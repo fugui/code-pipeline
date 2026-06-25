@@ -217,7 +217,6 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 	}
 	req.Header.Set("x-requested-with", "XMLHttpRequest")
 
-	log.Printf("[Pipeline] Sending request to remote URL: %s, Headers: %+v\n", req.URL.String(), req.Header)
 	client := &http.Client{Timeout: 3 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -228,7 +227,24 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[Pipeline] Remote server returned non-200 status: %d\n", resp.StatusCode)
+		var curlHeaders []string
+		for name, values := range req.Header {
+			for _, value := range values {
+				escapedValue := strings.ReplaceAll(value, "'", "'\\''")
+				curlHeaders = append(curlHeaders, fmt.Sprintf("-H '%s: %s'", name, escapedValue))
+			}
+		}
+		curlCmd := fmt.Sprintf("curl -X %s '%s' %s", req.Method, req.URL.String(), strings.Join(curlHeaders, " "))
+
+		var responseBody string
+		if resp.Body != nil {
+			if bodyBytes, err := io.ReadAll(resp.Body); err == nil {
+				responseBody = string(bodyBytes)
+			}
+		}
+
+		log.Printf("[Pipeline] Curl Command:\n%s\n", curlCmd)
+		log.Printf("[Pipeline] Remote server returned non-200 status: %d, Response: %s\n", resp.StatusCode, responseBody)
 		c.JSON(resp.StatusCode, gin.H{"error": fmt.Sprintf("Remote server returned status %d. Please check if your SSO session has expired.", resp.StatusCode)})
 		return
 	}

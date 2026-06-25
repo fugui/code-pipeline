@@ -8,7 +8,7 @@ import (
 
 func TestPathTraversalSafety(t *testing.T) {
 	sandboxDir := "/home/fugui/codes/code-pipeline/workspace"
-	
+
 	testCases := []struct {
 		name     string
 		repoName string
