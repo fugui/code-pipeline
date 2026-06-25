@@ -81,12 +81,59 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
 
           <div>
             <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>代码检查任务 ID (Code Checker Task ID)</label>
-            <input 
-              type="text" 
-              placeholder="请输入代码检查任务 ID"
-              value={activePlan.code_checker_task_id || ''} 
-              onChange={(e) => onChange({ ...activePlan, code_checker_task_id: e.target.value })}
-            />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <input 
+                type="text" 
+                placeholder="请输入代码检查任务 ID"
+                style={{ flex: 1 }}
+                value={activePlan.code_checker_task_id || ''} 
+                onChange={(e) => onChange({ ...activePlan, code_checker_task_id: e.target.value })}
+              />
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ whiteSpace: 'nowrap' }}
+                onClick={() => {
+                  let taskId = activePlan.code_checker_task_id;
+                  if (!taskId || taskId.trim() === '') {
+                    taskId = 'task_' + Math.random().toString(36).substring(2, 10);
+                  }
+
+                  const selectedLangs = activePlan.languages ? activePlan.languages.split(',').filter(Boolean) : [];
+                  let currentConfig: any = {};
+                  if (activePlan.custom_attributes) {
+                    try {
+                      currentConfig = JSON.parse(activePlan.custom_attributes);
+                    } catch (e) {
+                      currentConfig = {};
+                    }
+                  }
+
+                  currentConfig.code_checker_task_id = taskId;
+                  currentConfig.languages = selectedLangs;
+
+                  const checker_config: any = {};
+                  if (selectedLangs.includes('C/C++')) {
+                    checker_config.c_cpp_rules = ["memory_leak", "coredump_risk", "thread_create", "float_comparison"];
+                  }
+                  if (selectedLangs.includes('Python')) {
+                    checker_config.python_rules = ["format", "linter", "pylint"];
+                  }
+                  if (selectedLangs.includes('Java')) {
+                    checker_config.java_rules = ["naming", "complexity", "pmd"];
+                  }
+                  currentConfig.checker_config = checker_config;
+
+                  onChange({
+                    ...activePlan,
+                    code_checker_task_id: taskId,
+                    custom_attributes: JSON.stringify(currentConfig, null, 2)
+                  });
+                }}
+              >
+                更新
+              </button>
+            </div>
           </div>
 
           {/* 多选编程语言 */}
