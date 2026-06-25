@@ -212,6 +212,7 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 		req.Header.Set("cftk", cftk)
 	}
 
+	log.Printf("[Pipeline] Sending request to remote URL: %s, Headers: %+v\n", req.URL.String(), req.Header)
 	client := &http.Client{Timeout: 3 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
