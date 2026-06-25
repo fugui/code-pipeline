@@ -649,9 +649,11 @@ func SyncExecutionPlans(c *gin.Context) {
 		}
 
 		var remoteResp struct {
-			Entity struct {
-				Result []map[string]interface{} `json:"result"`
-			} `json:"entity"`
+			Entities []struct {
+				ID              string `json:"id"`
+				Name            string `json:"name"`
+				CustomParameter string `json:"customParameter"`
+			} `json:"entities"`
 		}
 
 		if err := json.Unmarshal(body, &remoteResp); err != nil {
@@ -661,48 +663,45 @@ func SyncExecutionPlans(c *gin.Context) {
 			return
 		}
 
-		for _, item := range remoteResp.Entity.Result {
-			extID, _ := item["id"].(string)
-			if extID == "" {
-				if val, exist := item["execution_plan_id"].(string); exist {
-					extID = val
-				}
+		for _, entity := range remoteResp.Entities {
+			plan := models.ExecutionPlan{
+				ExecutionPlanID:  entity.ID,
+				PipelineID:       pipeline.ID,
+				Branch:           "master",
+				CustomAttributes: entity.CustomParameter,
 			}
-			repo, _ := item["repository"].(string)
-			branch, _ := item["branch"].(string)
-			if branch == "" {
-				branch = "master"
-			}
-			username, _ := item["username"].(string)
-			password, _ := item["password"].(string)
 
-			var langStr string
-			if langVal, exists := item["languages"]; exists {
-				if lSlice, ok := langVal.([]interface{}); ok {
-					var ls []string
-					for _, l := range lSlice {
-						if s, ok := l.(string); ok {
-							ls = append(ls, s)
+			if entity.CustomParameter != "" {
+				var cp struct {
+					BuildParameters []struct {
+						Name  string `json:"name"`
+						Value string `json:"value"`
+					} `json:"buildParameters"`
+				}
+				if err := json.Unmarshal([]byte(entity.CustomParameter), &cp); err == nil {
+					for _, param := range cp.BuildParameters {
+						switch param.Name {
+						case "cmc_username":
+							plan.Username = param.Value
+						case "cmc_password":
+							plan.Password = param.Value
+						case "code_branch":
+							plan.Branch = param.Value
+						case "code_url":
+							plan.Repository = param.Value
 						}
 					}
-					langStr = strings.Join(ls, ",")
-				} else if lStr, ok := langVal.(string); ok {
-					langStr = lStr
+				} else {
+					log.Printf("[Pipeline] Warning: failed to parse customParameter JSON for entity %s: %v\n", entity.ID, err)
 				}
 			}
 
-			customAttrs, _ := item["custom_attributes"].(string)
+			if plan.Repository == "" {
+				log.Printf("[Pipeline] Warning: skipped entity %s because repository (code_url) is empty\n", entity.ID)
+				continue
+			}
 
-			fetchedPlans = append(fetchedPlans, models.ExecutionPlan{
-				ExecutionPlanID:  extID,
-				PipelineID:       pipeline.ID,
-				Repository:       repo,
-				Branch:           branch,
-				Username:         username,
-				Password:         password,
-				Languages:        langStr,
-				CustomAttributes: customAttrs,
-			})
+			fetchedPlans = append(fetchedPlans, plan)
 		}
 	}
 
