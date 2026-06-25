@@ -200,10 +200,9 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                   <thead>
                     <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
-                      <th style={{ padding: '12px 8px' }}>三方系统方案 ID</th>
                       <th style={{ padding: '12px 8px' }}>代码托管仓</th>
                       <th style={{ padding: '12px 8px' }}>默认分支</th>
-                      <th style={{ padding: '12px 8px' }}>编译语言</th>
+                      <th style={{ padding: '12px 8px' }}>编程语言</th>
                       <th style={{ padding: '12px 8px' }}>认证用户</th>
                       <th style={{ padding: '12px 8px', textAlign: 'right' }}>操作</th>
                     </tr>
@@ -212,9 +211,6 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                     {paginatedPlans.length > 0 ? (
                       paginatedPlans.map((plan) => (
                         <tr key={plan.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)' }}>
-                          <td style={{ padding: '12px 8px', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
-                            {plan.execution_plan_id || '未绑定'}
-                          </td>
                           <td style={{ padding: '12px 8px', fontWeight: 500, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={plan.repository}>
                             {plan.repository}
                           </td>
@@ -243,7 +239,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={6} style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)' }}>
+                        <td colSpan={5} style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)' }}>
                           {plans.length > 0 ? '未匹配到符合检索条件的执行方案' : '暂无仓库绑定的执行方案，请点击右上角新增代码仓配置'}
                         </td>
                       </tr>
