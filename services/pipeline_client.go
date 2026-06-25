@@ -375,3 +375,49 @@ func LogHTTPErrorDetails(contextMsg string, req *http.Request, statusCode int, r
 	log.Printf("[%s] Curl Command:\n%s\n", contextMsg, curlCmd)
 	log.Printf("[%s] Remote server returned status %d. Response Body: %s\n", contextMsg, statusCode, string(respBody))
 }
+
+// UpdateCheckerTaskRemote 调用远程三方接口完成：1. 创建任务，2. 获取 ID，3. 进行设置
+func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch string, languages string, customAttributes string, headers map[string]string) (string, string, error) {
+	// TODO: 一步一步实现：
+	// 1. 创建任务 (Remote API Call 1)
+	// 2. 获取任务 ID (Remote API Call 2)
+	// 3. 进行规则/语言配置设置 (Remote API Call 3)
+	
+	// 框架占位实现，暂时生成一个 Mock 任务 ID 并合并配置
+	mockTaskID := "task_" + fmt.Sprintf("%d", time.Now().UnixNano())
+	
+	// 临时 Mock 配置生成 logic
+	var currentConfig map[string]interface{}
+	if customAttributes != "" {
+		_ = json.Unmarshal([]byte(customAttributes), &currentConfig)
+	}
+	if currentConfig == nil {
+		currentConfig = make(map[string]interface{})
+	}
+	
+	currentConfig["code_checker_task_id"] = mockTaskID
+	
+	var selectedLangs []string
+	if languages != "" {
+		selectedLangs = strings.Split(languages, ",")
+	}
+	currentConfig["languages"] = selectedLangs
+	
+	checkerConfig := make(map[string]interface{})
+	for _, lang := range selectedLangs {
+		if lang == "C/C++" {
+			checkerConfig["c_cpp_rules"] = []string{"memory_leak", "coredump_risk", "thread_create"}
+		}
+		if lang == "Python" {
+			checkerConfig["python_rules"] = []string{"format", "linter"}
+		}
+		if lang == "Java" {
+			checkerConfig["java_rules"] = []string{"naming", "complexity"}
+		}
+	}
+	currentConfig["checker_config"] = checkerConfig
+	
+	updatedAttrsBytes, _ := json.MarshalIndent(currentConfig, "", "  ")
+	
+	return mockTaskID, string(updatedAttrsBytes), nil
+}

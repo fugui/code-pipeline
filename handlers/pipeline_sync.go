@@ -147,3 +147,25 @@ func prepareRequestHeaders(c *gin.Context) map[string]string {
 	headers["x-requested-with"] = "XMLHttpRequest"
 	return headers
 }
+
+// UpdateCheckerTask 为执行方案创建并更新三方代码检查任务
+func UpdateCheckerTask(c *gin.Context) {
+	var req ExecutionPlanRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	headers := prepareRequestHeaders(c)
+
+	taskID, updatedAttrs, err := services.UpdateCheckerTaskRemote(c.Request.Context(), req.Repository, req.Branch, req.Languages, req.CustomAttributes, headers)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to update checker task: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code_checker_task_id": taskID,
+		"custom_attributes":    updatedAttrs,
+	})
+}

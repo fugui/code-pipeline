@@ -94,40 +94,41 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                 className="btn btn-secondary"
                 style={{ whiteSpace: 'nowrap' }}
                 onClick={() => {
-                  let taskId = activePlan.code_checker_task_id;
-                  if (!taskId || taskId.trim() === '') {
-                    taskId = 'task_' + Math.random().toString(36).substring(2, 10);
-                  }
-
-                  const selectedLangs = activePlan.languages ? activePlan.languages.split(',').filter(Boolean) : [];
-                  let currentConfig: any = {};
-                  if (activePlan.custom_attributes) {
-                    try {
-                      currentConfig = JSON.parse(activePlan.custom_attributes);
-                    } catch (e) {
-                      currentConfig = {};
+                  const token = localStorage.getItem('token');
+                  fetch('/api/execution-plans/update-checker-task', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    },
+                    body: JSON.stringify({
+                      pipeline_id: activePlan.pipeline_id,
+                      repository: activePlan.repository || '',
+                      branch: activePlan.branch || 'master',
+                      username: activePlan.username || '',
+                      password: activePlan.password || '',
+                      code_checker_task_id: activePlan.code_checker_task_id || '',
+                      languages: activePlan.languages || '',
+                      custom_attributes: activePlan.custom_attributes || '{}'
+                    })
+                  })
+                  .then(async (res) => {
+                    if (!res.ok) {
+                      const errData = await res.json();
+                      throw new Error(errData.error || '更新失败');
                     }
-                  }
-
-                  currentConfig.code_checker_task_id = taskId;
-                  currentConfig.languages = selectedLangs;
-
-                  const checker_config: any = {};
-                  if (selectedLangs.includes('C/C++')) {
-                    checker_config.c_cpp_rules = ["memory_leak", "coredump_risk", "thread_create", "float_comparison"];
-                  }
-                  if (selectedLangs.includes('Python')) {
-                    checker_config.python_rules = ["format", "linter", "pylint"];
-                  }
-                  if (selectedLangs.includes('Java')) {
-                    checker_config.java_rules = ["naming", "complexity", "pmd"];
-                  }
-                  currentConfig.checker_config = checker_config;
-
-                  onChange({
-                    ...activePlan,
-                    code_checker_task_id: taskId,
-                    custom_attributes: JSON.stringify(currentConfig, null, 2)
+                    return res.json();
+                  })
+                  .then((data) => {
+                    onChange({
+                      ...activePlan,
+                      code_checker_task_id: data.code_checker_task_id,
+                      custom_attributes: data.custom_attributes
+                    });
+                    alert('更新配置成功！');
+                  })
+                  .catch((err) => {
+                    alert('更新失败: ' + err.message);
                   });
                 }}
               >
