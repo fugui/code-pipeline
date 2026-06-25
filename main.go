@@ -85,6 +85,7 @@ func main() {
 			api.POST("/execution-plans", handlers.CreateExecutionPlan)
 			api.PUT("/execution-plans/:id", handlers.UpdateExecutionPlan)
 			api.DELETE("/execution-plans/:id", handlers.DeleteExecutionPlan)
+			api.POST("/execution-plans/sync", handlers.SyncExecutionPlans)
 
 			// 看板状态大屏接口
 			api.GET("/dashboard/stats", handlers.GetDashboardStats)

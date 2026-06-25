@@ -558,3 +558,198 @@ func syncDeleteExecutionPlanRemote(executionPlanID string) error {
 
 	return nil
 }
+
+// SyncExecutionPlans 从三方系统同步指定流水线的执行方案，并保存至本地数据库
+func SyncExecutionPlans(c *gin.Context) {
+	pipelineIDStr := c.Query("pipeline_id")
+	if pipelineIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "pipeline_id is required"})
+		return
+	}
+
+	pipelineID, err := strconv.ParseUint(pipelineIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid pipeline_id"})
+		return
+	}
+
+	var pipeline models.Pipeline
+	if err := database.DB.First(&pipeline, uint(pipelineID)).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Pipeline not found"})
+		return
+	}
+
+	apiURLStr := models.AppConfig.PipelineSystem.GetExecutionPlanURL
+	var fetchedPlans []models.ExecutionPlan
+
+	if apiURLStr == "" {
+		// 未配置接口，返回 Mock 数据
+		fetchedPlans = []models.ExecutionPlan{
+			{
+				ExecutionPlanID:  fmt.Sprintf("ext_plan_%d_1", pipeline.ID),
+				PipelineID:       pipeline.ID,
+				Repository:       "git@github.com:mock-org/service-a.git",
+				Branch:          "master",
+				Username:        "mock_user_a",
+				Languages:       "Go,TypeScript",
+				CustomAttributes: "{}",
+			},
+			{
+				ExecutionPlanID:  fmt.Sprintf("ext_plan_%d_2", pipeline.ID),
+				PipelineID:       pipeline.ID,
+				Repository:       "git@github.com:mock-org/service-b.git",
+				Branch:          "main",
+				Username:        "mock_user_b",
+				Languages:       "Python,Java",
+				CustomAttributes: "{}",
+			},
+		}
+	} else {
+		// 调用三方系统抓取执行方案
+		u, err := url.Parse(apiURLStr)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid configured get_execution_plan_url"})
+			return
+		}
+
+		q := u.Query()
+		q.Set("pipelineId", pipeline.PipelineID)
+		u.RawQuery = q.Encode()
+
+		req, err := http.NewRequestWithContext(c.Request.Context(), "GET", u.String(), nil)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create HTTP request"})
+			return
+		}
+
+		// 透传前端传递的 Cookie 和 cftk 头
+		if cookie := c.GetHeader("Cookie"); cookie != "" {
+			req.Header.Set("Cookie", cookie)
+		}
+		cftk := c.GetHeader("cftk")
+		if cftk == "" {
+			cftk, _ = c.Cookie("prod_cftk")
+		}
+		if cftk != "" {
+			req.Header.Set("cftk", cftk)
+		}
+		req.Header.Set("x-requested-with", "XMLHttpRequest")
+
+		client := &http.Client{Timeout: 3 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Printf("[Pipeline] Error fetching remote execution plans: %v\n", err)
+			c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to fetch remote execution plans: %v", err)})
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			var curlHeaders []string
+			for name, values := range req.Header {
+				for _, value := range values {
+					escapedValue := strings.ReplaceAll(value, "'", "'\\''")
+					curlHeaders = append(curlHeaders, fmt.Sprintf("-H '%s: %s'", name, escapedValue))
+				}
+			}
+			curlCmd := fmt.Sprintf("curl -X %s '%s' %s", req.Method, req.URL.String(), strings.Join(curlHeaders, " "))
+
+			var responseBody string
+			if resp.Body != nil {
+				if bodyBytes, err := io.ReadAll(resp.Body); err == nil {
+					responseBody = string(bodyBytes)
+				}
+			}
+
+			log.Printf("[Pipeline] Curl Command:\n%s\n", curlCmd)
+			log.Printf("[Pipeline] Remote server returned non-200 status for plans: %d, Response: %s\n", resp.StatusCode, responseBody)
+			c.JSON(resp.StatusCode, gin.H{"error": fmt.Sprintf("Remote server returned status %d. Please check if your SSO session has expired.", resp.StatusCode)})
+			return
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read response body"})
+			return
+		}
+
+		var remoteResp struct {
+			Entity struct {
+				Result []map[string]interface{} `json:"result"`
+			} `json:"entity"`
+		}
+
+		if err := json.Unmarshal(body, &remoteResp); err != nil {
+			log.Printf("[Pipeline] Failed to parse remote plans JSON: %v\n", err)
+			c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to parse remote response JSON: %v", err)})
+			return
+		}
+
+		for _, item := range remoteResp.Entity.Result {
+			extID, _ := item["id"].(string)
+			if extID == "" {
+				if val, exist := item["execution_plan_id"].(string); exist {
+					extID = val
+				}
+			}
+			repo, _ := item["repository"].(string)
+			branch, _ := item["branch"].(string)
+			if branch == "" {
+				branch = "master"
+			}
+			username, _ := item["username"].(string)
+			password, _ := item["password"].(string)
+
+			var langStr string
+			if langVal, exists := item["languages"]; exists {
+				if lSlice, ok := langVal.([]interface{}); ok {
+					var ls []string
+					for _, l := range lSlice {
+						if s, ok := l.(string); ok {
+							ls = append(ls, s)
+						}
+					}
+					langStr = strings.Join(ls, ",")
+				} else if lStr, ok := langVal.(string); ok {
+					langStr = lStr
+				}
+			}
+
+			customAttrs, _ := item["custom_attributes"].(string)
+
+			fetchedPlans = append(fetchedPlans, models.ExecutionPlan{
+				ExecutionPlanID:  extID,
+				PipelineID:       pipeline.ID,
+				Repository:       repo,
+				Branch:           branch,
+				Username:         username,
+				Password:         password,
+				Languages:        langStr,
+				CustomAttributes: customAttrs,
+			})
+		}
+	}
+
+	// 事务更新本地数据库：先删后加
+	tx := database.DB.Begin()
+	if err := tx.Where("pipeline_id = ?", pipeline.ID).Delete(&models.ExecutionPlan{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to clear old execution plans"})
+		return
+	}
+
+	for i := range fetchedPlans {
+		if err := tx.Create(&fetchedPlans[i]).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save synced execution plans"})
+			return
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Transaction commit failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully synced %d execution plans", len(fetchedPlans))})
+}
