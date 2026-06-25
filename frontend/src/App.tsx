@@ -160,6 +160,8 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
       fetchRepos()
     } else if (currentView === 'history') {
       fetchExecutions()
+    } else if (currentView === 'pipeline-config') {
+      fetchPipelines()
     }
   }, [token, user, currentView, searchQuery, execPage, historyStatusFilter, historyRepoFilter])
 
