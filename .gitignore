@@ -21,3 +21,6 @@
 # Workspace sandbox for checked out repos
 /workspace
 /workspace/
+
+# Local config file
+/config.yaml
