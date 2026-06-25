@@ -378,9 +378,59 @@ func LogHTTPErrorDetails(contextMsg string, req *http.Request, statusCode int, r
 
 // UpdateCheckerTaskRemote 调用远程三方接口完成：1. 创建任务，2. 获取 ID，3. 进行设置
 func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch string, languages string, customAttributes string, headers map[string]string) (string, string, error) {
-	// TODO: 一步一步实现：
-	// 1. 创建任务 (Remote API Call 1)
-	// 2. 获取任务 ID (Remote API Call 2)
+	// 1. 复制任务 (Remote API Call 1)
+	apiURL := models.AppConfig.PipelineSystem.CopyCheckerTaskURL
+	if apiURL == "" {
+		return "", "", fmt.Errorf("copy_checker_task_url not configured")
+	}
+	templateTaskID := models.AppConfig.PipelineSystem.CheckerTaskTemplateID
+	if templateTaskID == "" {
+		return "", "", fmt.Errorf("checker_task_template_id not configured")
+	}
+
+	repoName := extractRepoName(repository)
+	taskName := fmt.Sprintf("%s-%s", repoName, branch)
+
+	postData := map[string]string{
+		"id":              templateTaskID,
+		"name":            taskName,
+		"copyIgnoreGroup": "false",
+		"isCopyCategory":  "false",
+	}
+
+	jsonData, err := json.Marshal(postData)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to marshal copy task request data: %v", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to create HTTP request for copy task: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to send HTTP request to copy task remote API: %v", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read response body from copy task remote API: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		LogHTTPErrorDetails("UpdateCheckerTaskRemote_CopyTask", req, resp.StatusCode, respBody)
+		return "", "", fmt.Errorf("remote copy task server returned status %d", resp.StatusCode)
+	}
+
+	// 2. 获取任务 ID (Remote API Call 2) - 下一步再实现，目前只判断复制成功，故使用原本的 Mock ID 逻辑
 	// 3. 进行规则/语言配置设置 (Remote API Call 3)
 	
 	// 框架占位实现，暂时生成一个 Mock 任务 ID 并合并配置
@@ -420,4 +470,24 @@ func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch stri
 	updatedAttrsBytes, _ := json.MarshalIndent(currentConfig, "", "  ")
 	
 	return mockTaskID, string(updatedAttrsBytes), nil
+}
+
+// extractRepoName 从 Git 仓库 URL 或路径中提取代码仓的 basename 名称
+func extractRepoName(repoURL string) string {
+	u := strings.TrimSuffix(repoURL, "/")
+	u = strings.TrimSuffix(u, ".git")
+
+	// 取最后一个 "/" 后面的部分
+	if idx := strings.LastIndex(u, "/"); idx != -1 {
+		u = u[idx+1:]
+	}
+	// 如果是 ssh 格式类似 git@github.com:org/repo.git ，且刚才没找到 "/" 时只剩下 git@github.com:repo
+	if idx := strings.LastIndex(u, ":"); idx != -1 {
+		u = u[idx+1:]
+	}
+
+	if u == "" {
+		return "repo"
+	}
+	return u
 }

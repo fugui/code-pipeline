@@ -13,3 +13,5 @@ auth:
 pipeline_system:
   get_pipeline_url: "http://192.168.56.18:8080/api/external/pipeline"
   get_execution_plan_url: "http://192.168.56.18:8080/api/external/execution-plans"
+  copy_checker_task_url: "http://192.168.56.18:8080/api/external/copy-checker-task"
+  checker_task_template_id: "template_task_id"
