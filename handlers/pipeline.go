@@ -221,37 +221,15 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 	client := &http.Client{Timeout: 3 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Printf("[Pipeline] Error fetching remote pipeline info (falling back to mock): %v\n", err)
-		c.JSON(http.StatusOK, gin.H{
-			"pipeline_id":  pipelineID,
-			"name":         fmt.Sprintf("Mock流水线_%s", pipelineID),
-			"type":         "MR",
-			"group_name":   "MockGroup",
-			"description":  fmt.Sprintf("获取远程数据失败: %v。已自动使用 Mock 数据回填进行兜底。", err),
-			"service_id":   "mock_svc_1001",
-			"workspace_id": "mock_ws_2002",
-			"owner":        "MockOwner",
-			"service_name": "MockService",
-			"is_mock":      true,
-		})
+		log.Printf("[Pipeline] Error fetching remote pipeline info: %v\n", err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to fetch remote pipeline info: %v", err)})
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[Pipeline] Remote server returned non-200 status (falling back to mock): %d\n", resp.StatusCode)
-		c.JSON(http.StatusOK, gin.H{
-			"pipeline_id":  pipelineID,
-			"name":         fmt.Sprintf("Mock流水线_%s", pipelineID),
-			"type":         "MR",
-			"group_name":   "MockGroup",
-			"description":  fmt.Sprintf("三方服务状态异常(HTTP %d)。已自动使用 Mock 数据回填进行兜底。", resp.StatusCode),
-			"service_id":   "mock_svc_1001",
-			"workspace_id": "mock_ws_2002",
-			"owner":        "MockOwner",
-			"service_name": "MockService",
-			"is_mock":      true,
-		})
+		log.Printf("[Pipeline] Remote server returned non-200 status: %d\n", resp.StatusCode)
+		c.JSON(resp.StatusCode, gin.H{"error": fmt.Sprintf("Remote server returned status %d. Please check if your SSO session has expired.", resp.StatusCode)})
 		return
 	}
 
@@ -277,19 +255,8 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 
 	var remoteResp RemoteResponse
 	if err := json.Unmarshal(body, &remoteResp); err != nil {
-		log.Printf("[Pipeline] Failed to parse remote data JSON (falling back to mock): %v\n", err)
-		c.JSON(http.StatusOK, gin.H{
-			"pipeline_id":  pipelineID,
-			"name":         fmt.Sprintf("Mock流水线_%s", pipelineID),
-			"type":         "MR",
-			"group_name":   "MockGroup",
-			"description":  "解析三方服务数据结构失败，已自动使用 Mock 数据回填进行兜底。",
-			"service_id":   "mock_svc_1001",
-			"workspace_id": "mock_ws_2002",
-			"owner":        "MockOwner",
-			"service_name": "MockService",
-			"is_mock":      true,
-		})
+		log.Printf("[Pipeline] Failed to parse remote data JSON: %v\n", err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to parse remote response JSON: %v", err)})
 		return
 	}
 

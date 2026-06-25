@@ -363,8 +363,19 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     fetch(`${apiBase}/pipelines/fetch-info?pipeline_id=${encodeURIComponent(pipelineID)}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-    .then(res => {
-      if (!res.ok) throw new Error('HTTP status error')
+    .then(async res => {
+      if (!res.ok) {
+        let errMsg = `HTTP 错误 ${res.status}`
+        try {
+          const errData = await res.json()
+          if (errData && errData.error) {
+            errMsg = errData.error
+          }
+        } catch (e) {
+          // 忽略解析错误
+        }
+        throw new Error(errMsg)
+      }
       return res.json()
     })
     .then(data => {
@@ -385,19 +396,8 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         service_name: data.service_name || '',
       }))
     })
-    .catch(() => {
-      setPipelineFetchError('同步外部数据失败，已切换为本地 Mock 数据自动回填。')
-      setActivePipeline((prev: any) => ({
-        ...prev,
-        name: `Mock流水线_${pipelineID}`,
-        type: '每日构建',
-        group_name: 'DefaultGroup',
-        description: '同步远程流水线信息失败，已自动回填本地 Mock 数据。',
-        service_id: 'mock_svc_1001',
-        workspace_id: 'mock_ws_2002',
-        owner: 'MockOwner',
-        service_name: 'MockService',
-      }))
+    .catch((err) => {
+      setPipelineFetchError(`同步外部数据失败: ${err.message || '网络请求错误'}。请确保您已正常登录并具备相关权限，可能需要重新登录 SSO 获取凭证。`)
     })
     .finally(() => {
       setIsFetchingPipeline(false)
