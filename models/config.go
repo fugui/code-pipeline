@@ -25,7 +25,7 @@ type Config struct {
 	} `yaml:"auth"`
 	PipelineSystem struct {
 		GetPipelineURL       string `yaml:"get_pipeline_url"`
-		SyncExecutionPlanURL string `yaml:"sync_execution_plan_url"`
+		GetExecutionPlanURL string `yaml:"get_execution_plan_url"`
 	} `yaml:"pipeline_system"`
 }
 

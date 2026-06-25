@@ -416,9 +416,9 @@ func DeleteExecutionPlan(c *gin.Context) {
 
 // 同步创建远程方案
 func syncCreateExecutionPlanRemote(pipelineBusinessID string, plan models.ExecutionPlan) (string, error) {
-	apiURLStr := models.AppConfig.PipelineSystem.SyncExecutionPlanURL
+	apiURLStr := models.AppConfig.PipelineSystem.GetExecutionPlanURL
 	if apiURLStr == "" {
-		return "", fmt.Errorf("sync_execution_plan_url not configured")
+		return "", fmt.Errorf("get_execution_plan_url not configured")
 	}
 
 	payload := map[string]interface{}{
@@ -472,9 +472,9 @@ func syncCreateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 
 // 同步修改远程方案
 func syncUpdateExecutionPlanRemote(pipelineBusinessID string, plan models.ExecutionPlan) error {
-	apiURLStr := models.AppConfig.PipelineSystem.SyncExecutionPlanURL
+	apiURLStr := models.AppConfig.PipelineSystem.GetExecutionPlanURL
 	if apiURLStr == "" {
-		return fmt.Errorf("sync_execution_plan_url not configured")
+		return fmt.Errorf("get_execution_plan_url not configured")
 	}
 
 	// 拼接具体的 PUT 路由：{url}/{execution_plan_id}
@@ -517,9 +517,9 @@ func syncUpdateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 
 // 同步删除远程方案
 func syncDeleteExecutionPlanRemote(executionPlanID string) error {
-	apiURLStr := models.AppConfig.PipelineSystem.SyncExecutionPlanURL
+	apiURLStr := models.AppConfig.PipelineSystem.GetExecutionPlanURL
 	if apiURLStr == "" {
-		return fmt.Errorf("sync_execution_plan_url not configured")
+		return fmt.Errorf("get_execution_plan_url not configured")
 	}
 
 	targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), executionPlanID)
