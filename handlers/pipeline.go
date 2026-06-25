@@ -215,6 +215,7 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 	if cftk != "" {
 		req.Header.Set("cftk", cftk)
 	}
+	req.Header.Set("x-requested-with", "XMLHttpRequest")
 
 	log.Printf("[Pipeline] Sending request to remote URL: %s, Headers: %+v\n", req.URL.String(), req.Header)
 	client := &http.Client{Timeout: 3 * time.Second}
