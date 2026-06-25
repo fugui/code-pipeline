@@ -208,7 +208,11 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 	if cookie := c.GetHeader("Cookie"); cookie != "" {
 		req.Header.Set("Cookie", cookie)
 	}
-	if cftk := c.GetHeader("cftk"); cftk != "" {
+	cftk := c.GetHeader("cftk")
+	if cftk == "" {
+		cftk, _ = c.Cookie("prod_cftk")
+	}
+	if cftk != "" {
 		req.Header.Set("cftk", cftk)
 	}
 
