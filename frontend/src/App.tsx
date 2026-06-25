@@ -118,6 +118,8 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
       setCurrentView('pipeline-config')
     } else if (path.endsWith('/history')) {
       setCurrentView('history')
+    } else if (path.endsWith('/dashboard')) {
+      setCurrentView('dashboard')
     } else {
       setCurrentView('dashboard')
     }
