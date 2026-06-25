@@ -221,6 +221,14 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 		return
 	}
 
+	// Pretty print remote JSON response to console
+	var prettyJSON bytes.Buffer
+	if err := json.Indent(&prettyJSON, body, "", "  "); err == nil {
+		log.Printf("[Pipeline] FetchPipelineInfo remote response:\n%s\n", prettyJSON.String())
+	} else {
+		log.Printf("[Pipeline] FetchPipelineInfo remote response: %s\n", string(body))
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		logHTTPErrorDetails("FetchPipelineInfo", req, resp.StatusCode, body)
 		c.JSON(resp.StatusCode, gin.H{"error": fmt.Sprintf("Remote server returned status %d. Please check if your SSO session has expired.", resp.StatusCode)})
@@ -624,6 +632,14 @@ func SyncExecutionPlans(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read response body"})
 			return
+		}
+
+		// Pretty print remote JSON response to console
+		var prettyJSON bytes.Buffer
+		if err := json.Indent(&prettyJSON, body, "", "  "); err == nil {
+			log.Printf("[Pipeline] SyncExecutionPlans remote response:\n%s\n", prettyJSON.String())
+		} else {
+			log.Printf("[Pipeline] SyncExecutionPlans remote response: %s\n", string(body))
 		}
 
 		if resp.StatusCode != http.StatusOK {
