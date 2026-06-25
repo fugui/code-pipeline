@@ -9,6 +9,7 @@ import (
 
 	"code-pipeline/database"
 	"code-pipeline/models"
+	"code-pipeline/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -138,7 +139,7 @@ func DeletePipeline(c *gin.Context) {
 	// 同步从三方系统删除方案
 	for _, plan := range plans {
 		if plan.ExecutionPlanID != "" {
-			go syncDeleteExecutionPlanRemote(plan.ExecutionPlanID)
+			go services.SyncDeleteExecutionPlanRemote(plan.ExecutionPlanID)
 		}
 	}
 
@@ -209,7 +210,7 @@ func CreateExecutionPlan(c *gin.Context) {
 	}
 
 	// 同步去三方流水线系统创建
-	extID, err := syncCreateExecutionPlanRemote(pipeline.PipelineID, plan)
+	extID, err := services.SyncCreateExecutionPlanRemote(pipeline.PipelineID, plan)
 	if err != nil {
 		log.Printf("[Pipeline] Remote sync failed for CreateExecutionPlan (using Mock ID): %v\n", err)
 		extID = fmt.Sprintf("ext_plan_%d", time.Now().UnixNano())
@@ -259,7 +260,7 @@ func UpdateExecutionPlan(c *gin.Context) {
 	}
 
 	// 同步修改至三方系统
-	if err := syncUpdateExecutionPlanRemote(pipeline.PipelineID, plan); err != nil {
+	if err := services.SyncUpdateExecutionPlanRemote(pipeline.PipelineID, plan); err != nil {
 		log.Printf("[Pipeline] Remote sync failed for UpdateExecutionPlan: %v\n", err)
 	}
 
@@ -282,7 +283,7 @@ func DeleteExecutionPlan(c *gin.Context) {
 
 	if plan.ExecutionPlanID != "" {
 		// 异步或同步删除远程系统中的方案
-		go syncDeleteExecutionPlanRemote(plan.ExecutionPlanID)
+		go services.SyncDeleteExecutionPlanRemote(plan.ExecutionPlanID)
 	}
 
 	if err := database.DB.Delete(&plan).Error; err != nil {
