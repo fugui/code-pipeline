@@ -6,6 +6,7 @@ interface ExecutionPlanModalProps {
   onChange: (plan: any) => void
   onSave: (e: React.FormEvent) => void
   onClose: () => void
+  apiBase: string
 }
 
 export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
@@ -13,7 +14,8 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
   activePlan,
   onChange,
   onSave,
-  onClose
+  onClose,
+  apiBase
 }) => {
   if (!visible || !activePlan) return null
 
@@ -95,7 +97,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                 style={{ whiteSpace: 'nowrap' }}
                 onClick={() => {
                   const token = localStorage.getItem('token');
-                  fetch('/api/execution-plans/update-checker-task', {
+                  fetch(`${apiBase}/execution-plans/update-checker-task`, {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',

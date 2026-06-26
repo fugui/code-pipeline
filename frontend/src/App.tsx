@@ -741,6 +741,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         onChange={setActivePlan}
         onSave={handleSavePlan}
         onClose={() => { setShowPlanModal(false); setActivePlan(null); }}
+        apiBase={apiBase}
       />
 
       {/* Terminal log Console Drawer */}
