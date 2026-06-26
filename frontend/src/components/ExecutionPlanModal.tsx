@@ -96,7 +96,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                 className="btn btn-secondary"
                 style={{ whiteSpace: 'nowrap' }}
                 onClick={() => {
-                  const token = localStorage.getItem('token');
+                  const token = localStorage.getItem('code_shield_token') || localStorage.getItem('code_pipeline_token');
                   fetch(`${apiBase}/execution-plans/update-checker-task`, {
                     method: 'POST',
                     headers: {
