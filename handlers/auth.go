@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -14,11 +16,35 @@ import (
 )
 
 type PortalClaims struct {
-	UserID  uint   `json:"user_id"`
-	Email   string `json:"email"`
-	Name    string `json:"name"`
-	IsAdmin bool   `json:"is_admin"`
+	UserID    uint   `json:"user_id"`
+	Email     string `json:"email"`
+	Name      string `json:"name"`
+	IsAdmin   bool   `json:"is_admin"`
 	jwt.RegisteredClaims
+	SSOUserID string `json:"-"`
+}
+
+func (c *PortalClaims) UnmarshalJSON(data []byte) error {
+	type Alias PortalClaims
+	aux := &struct {
+		UserID interface{} `json:"user_id"`
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	if aux.UserID != nil {
+		switch v := aux.UserID.(type) {
+		case float64:
+			c.UserID = uint(v)
+		case string:
+			c.SSOUserID = v
+		}
+	}
+	return nil
 }
 
 func parseToken(tokenString string) (*PortalClaims, error) {
@@ -54,17 +80,33 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		claims, err := parseToken(tokenString)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token signature"})
+			log.Printf("[Auth] JWT validation failed: %v", err)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": fmt.Sprintf("Invalid token signature: %v", err)})
 			c.Abort()
 			return
 		}
 
 		// 从数据库中查找对应用户
 		var user models.User
-		if err := database.DB.First(&user, claims.UserID).Error; err != nil {
+		var findErr error
+
+		// 如果是从 SSO 传入的字符串唯一 ID，尝试按 Email 关联定位真正的自增 uint ID
+		if claims.SSOUserID != "" && claims.UserID == 0 && claims.Email != "" {
+			_ = database.DB.Where("email = ?", claims.Email).First(&user).Error
+			if user.ID != 0 {
+				claims.UserID = user.ID
+			}
+		}
+
+		if claims.UserID != 0 {
+			findErr = database.DB.First(&user, claims.UserID).Error
+		} else {
+			findErr = fmt.Errorf("user not found by email or userID")
+		}
+
+		if findErr != nil {
 			// 如果是合法的 SSO 用户但在本系统尚不存在，自动注册
 			user = models.User{
-				ID:       claims.UserID,
 				Email:    claims.Email,
 				Name:     claims.Name,
 				IsAdmin:  claims.IsAdmin,
@@ -76,6 +118,8 @@ func AuthMiddleware() gin.HandlerFunc {
 				c.Abort()
 				return
 			}
+			// 自动注册成功后回填用户自增的 ID
+			claims.UserID = user.ID
 		}
 
 		if !user.IsActive {
