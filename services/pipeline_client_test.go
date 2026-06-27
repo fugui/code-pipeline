@@ -101,7 +101,7 @@ func TestUpdateCheckerTaskRemote(t *testing.T) {
 		t.Fatalf("Failed to parse request payload: %v", err)
 	}
 
-	expectedName := "Code_Shield_my-target-repo-feature/cool-stuff"
+	expectedName := "my-target-repo-feature-cool-stuff"
 	if payload.ID != "template-12345" {
 		t.Errorf("Expected payload.id to be %q, got %q", "template-12345", payload.ID)
 	}
