@@ -92,13 +92,13 @@ func FetchRemotePipelineInfo(ctx context.Context, pipelineID string, headers map
 
 	return &models.Pipeline{
 		PipelineID:  res.ID,
-		Name:         name,
-		Type:         "每日构建",
+		Name:        name,
+		Type:        "每日构建",
 		GroupName:   "DefaultGroup",
-		Description:  fmt.Sprintf("三方服务 %s (%s) 自动同步录入", res.ServiceName, res.ServiceID),
+		Description: fmt.Sprintf("三方服务 %s (%s) 自动同步录入", res.ServiceName, res.ServiceID),
 		ServiceID:   res.ServiceID,
 		WorkspaceID: res.WorkspaceID,
-		Owner:        res.Owner,
+		Owner:       res.Owner,
 		ServiceName: res.ServiceName,
 	}, nil
 }
@@ -378,6 +378,7 @@ func LogHTTPErrorDetails(contextMsg string, req *http.Request, statusCode int, r
 
 // UpdateCheckerTaskRemote 调用远程三方接口完成：1. 创建任务，2. 获取 ID，3. 进行设置
 func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch string, languages string, customAttributes string, headers map[string]string) (string, string, error) {
+
 	// 1. 复制任务 (Remote API Call 1)
 	apiURL := models.AppConfig.PipelineSystem.CopyCheckerTaskURL
 	if apiURL == "" {
@@ -413,6 +414,8 @@ func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch stri
 		req.Header.Set(k, v)
 	}
 
+	log.Printf("[UpdateCheckerTaskRemote_CopyTask] Request URL: %s, Headers: %v, Body: %s", apiURL, req.Header, string(jsonData))
+
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -430,12 +433,14 @@ func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch stri
 		return "", "", fmt.Errorf("remote copy task server returned status %d", resp.StatusCode)
 	}
 
+	log.Printf("[UpdateCheckerTaskRemote_CopyTask] Response Status: %d, Body: %s", resp.StatusCode, string(respBody))
+
 	// 2. 获取任务 ID (Remote API Call 2) - 下一步再实现，目前只判断复制成功，故使用原本的 Mock ID 逻辑
 	// 3. 进行规则/语言配置设置 (Remote API Call 3)
-	
+
 	// 框架占位实现，暂时生成一个 Mock 任务 ID 并合并配置
 	mockTaskID := "task_" + fmt.Sprintf("%d", time.Now().UnixNano())
-	
+
 	// 临时 Mock 配置生成 logic
 	var currentConfig map[string]interface{}
 	if customAttributes != "" {
@@ -444,15 +449,15 @@ func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch stri
 	if currentConfig == nil {
 		currentConfig = make(map[string]interface{})
 	}
-	
+
 	currentConfig["code_checker_task_id"] = mockTaskID
-	
+
 	var selectedLangs []string
 	if languages != "" {
 		selectedLangs = strings.Split(languages, ",")
 	}
 	currentConfig["languages"] = selectedLangs
-	
+
 	checkerConfig := make(map[string]interface{})
 	for _, lang := range selectedLangs {
 		if lang == "C/C++" {
@@ -466,9 +471,9 @@ func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch stri
 		}
 	}
 	currentConfig["checker_config"] = checkerConfig
-	
+
 	updatedAttrsBytes, _ := json.MarshalIndent(currentConfig, "", "  ")
-	
+
 	return mockTaskID, string(updatedAttrsBytes), nil
 }
 
