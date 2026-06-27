@@ -376,17 +376,15 @@ func LogHTTPErrorDetails(contextMsg string, req *http.Request, statusCode int, r
 	log.Printf("[%s] Remote server returned status %d. Response Body: %s\n", contextMsg, statusCode, string(respBody))
 }
 
-// UpdateCheckerTaskRemote 调用远程三方接口完成：1. 创建任务，2. 获取 ID，3. 进行设置
-func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch string, languages string, customAttributes string, headers map[string]string) (string, string, error) {
-
-	// 1. 复制任务 (Remote API Call 1)
+// copyCheckerTask 复制三方检查任务
+func copyCheckerTask(ctx context.Context, repository string, branch string, headers map[string]string) ([]byte, error) {
 	apiURL := models.AppConfig.PipelineSystem.CopyCheckerTaskURL
 	if apiURL == "" {
-		return "", "", fmt.Errorf("copy_checker_task_url not configured")
+		return nil, fmt.Errorf("copy_checker_task_url not configured")
 	}
 	templateTaskID := models.AppConfig.PipelineSystem.CheckerTaskTemplateID
 	if templateTaskID == "" {
-		return "", "", fmt.Errorf("checker_task_template_id not configured")
+		return nil, fmt.Errorf("checker_task_template_id not configured")
 	}
 
 	repoName := extractRepoName(repository)
@@ -407,12 +405,12 @@ func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch stri
 
 	jsonData, err := json.Marshal(postData)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to marshal copy task request data: %v", err)
+		return nil, fmt.Errorf("failed to marshal copy task request data: %v", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create HTTP request for copy task: %v", err)
+		return nil, fmt.Errorf("failed to create HTTP request for copy task: %v", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -425,21 +423,32 @@ func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch stri
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to send HTTP request to copy task remote API: %v", err)
+		return nil, fmt.Errorf("failed to send HTTP request to copy task remote API: %v", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to read response body from copy task remote API: %v", err)
+		return nil, fmt.Errorf("failed to read response body from copy task remote API: %v", err)
 	}
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		LogHTTPErrorDetails("UpdateCheckerTaskRemote_CopyTask", req, resp.StatusCode, respBody)
-		return "", "", fmt.Errorf("remote copy task server returned status %d", resp.StatusCode)
+		return nil, fmt.Errorf("remote copy task server returned status %d", resp.StatusCode)
 	}
 
 	log.Printf("[UpdateCheckerTaskRemote_CopyTask] Response Status: %d, Body: %s", resp.StatusCode, string(respBody))
+	return respBody, nil
+}
+
+// UpdateCheckerTaskRemote 调用远程三方接口完成：1. 创建任务，2. 获取 ID，3. 进行设置
+func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch string, languages string, customAttributes string, headers map[string]string) (string, string, error) {
+
+	// 1. 复制任务 (Remote API Call 1)
+	_, err := copyCheckerTask(ctx, repository, branch, headers)
+	if err != nil {
+		return "", "", err
+	}
 
 	// 2. 获取任务 ID (Remote API Call 2) - 下一步再实现，目前只判断复制成功，故使用原本的 Mock ID 逻辑
 	// 3. 进行规则/语言配置设置 (Remote API Call 3)
