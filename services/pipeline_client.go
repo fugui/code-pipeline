@@ -390,7 +390,7 @@ func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch stri
 	}
 
 	repoName := extractRepoName(repository)
-	taskName := fmt.Sprintf("%s-%s", repoName, branch)
+	taskName := fmt.Sprintf("Code_Shield_%s-%s", repoName, branch)
 
 	postData := map[string]string{
 		"id":              templateTaskID,
