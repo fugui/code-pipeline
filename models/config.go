@@ -12,12 +12,13 @@ import (
 
 type Config struct {
 	Server struct {
-		Port         string        `yaml:"port"`
-		GinLog       bool          `yaml:"gin_log"`
-		ReadTimeout  time.Duration `yaml:"read_timeout"`
-		WriteTimeout time.Duration `yaml:"write_timeout"`
-		WorkerCount  int           `yaml:"worker_count"`
-		SandboxDir   string        `yaml:"sandbox_dir"`
+		Port           string        `yaml:"port"`
+		GinLog         bool          `yaml:"gin_log"`
+		ReadTimeout    time.Duration `yaml:"read_timeout"`
+		WriteTimeout   time.Duration `yaml:"write_timeout"`
+		WorkerCount    int           `yaml:"worker_count"`
+		SandboxDir     string        `yaml:"sandbox_dir"`
+		RepoSyncServer string        `yaml:"repo_sync_server"`
 	} `yaml:"server"`
 	Auth struct {
 		JWTSecret            string `yaml:"jwt_secret"`
@@ -31,9 +32,6 @@ type Config struct {
 		RepoAuthCheckURL       string `yaml:"repo_auth_check_url"`
 		RepoCredentialCheckURL string `yaml:"repo_credential_check_url"`
 	} `yaml:"pipeline_system"`
-	CodeBench struct {
-		APIURL string `yaml:"api_url"`
-	} `yaml:"code_bench"`
 }
 
 var AppConfig Config

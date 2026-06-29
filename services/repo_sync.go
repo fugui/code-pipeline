@@ -114,9 +114,9 @@ func PullRepoDetails(repoID uint) (*models.Repository, error) {
 		return nil, fmt.Errorf("failed to generate auth token: %w", err)
 	}
 
-	apiURLStr := models.AppConfig.CodeBench.APIURL
+	apiURLStr := models.AppConfig.Server.RepoSyncServer
 	if apiURLStr == "" {
-		return nil, fmt.Errorf("code_bench.api_url not configured")
+		return nil, fmt.Errorf("repo_sync_server not configured")
 	}
 	apiURL := fmt.Sprintf("%s/api/repos/%d", apiURLStr, repoID)
 	req, err := http.NewRequest("GET", apiURL, nil)
@@ -183,9 +183,9 @@ func fetchReposFromCodeBench() ([]remoteRepo, error) {
 		return nil, fmt.Errorf("failed to generate auth token: %w", err)
 	}
 
-	apiURLStr := models.AppConfig.CodeBench.APIURL
+	apiURLStr := models.AppConfig.Server.RepoSyncServer
 	if apiURLStr == "" {
-		return nil, fmt.Errorf("code_bench.api_url not configured")
+		return nil, fmt.Errorf("repo_sync_server not configured")
 	}
 	apiURL := fmt.Sprintf("%s/api/repos?pageSize=10000", apiURLStr)
 	req, err := http.NewRequest("GET", apiURL, nil)
