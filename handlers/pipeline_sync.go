@@ -79,59 +79,70 @@ func SyncExecutionPlans(c *gin.Context) {
 
 	// 2.1 先获取 MR 绑定的列表
 	//  根据配置的 MR绑定列表API， 使用查询参数 pipelineId 查询获得全部的MR绑定列表
-	//  返回的对象格式为： { "status":"success",  "result": [ { 
+	//  返回的对象格式为： { "status":"success",  "result": [ {
 	//  "id", "codeUrl", "branches" (使用逗号分开),  schemeId, schemeName
 	//  } ]}
 	mrBindings, err := services.FetchRemoteMRBindings(c.Request.Context(), pipeline.PipelineID, headers)
 	if err != nil {
-		if err.Error() == "get_mr_bindings_url not configured" {
-			log.Println("[SyncExecutionPlans] Warning: get_mr_bindings_url not configured. Using empty list.")
-			mrBindings = []models.MRBinding{}
-		} else {
-			c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to fetch MR bindings: %v", err)})
-			return
-		}
+		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to fetch MR bindings: %v", err)})
 	}
 	log.Printf("[SyncExecutionPlans] Fetched %d MR bindings from remote\n", len(mrBindings))
 
 	// 2.2 调用 service 抓取执行方案列表
 	fetchedPlans, err := services.FetchRemoteExecutionPlans(c.Request.Context(), pipeline.PipelineID, pipeline.ID, headers)
 	if err != nil {
-		if err.Error() == "get_execution_plan_url not configured" {
-			// 未配置接口，返回 Mock 数据
-			var r models.Repository
-			database.DB.First(&r)
-			repoID := r.ID
-
-			fetchedPlans = []models.ExecutionPlan{
-				{
-					ExecutionPlanID:  fmt.Sprintf("ext_plan_%d_1", pipeline.ID),
-					PipelineID:       pipeline.ID,
-					RepositoryID:     repoID,
-					Repository:       r,
-					Branch:           "master",
-					Username:         "mock_user_a",
-					Languages:        "Go,TypeScript",
-					CustomAttributes: "{}",
-				},
-				{
-					ExecutionPlanID:  fmt.Sprintf("ext_plan_%d_2", pipeline.ID),
-					PipelineID:       pipeline.ID,
-					RepositoryID:     repoID,
-					Repository:       r,
-					Branch:           "main",
-					Username:         "mock_user_b",
-					Languages:        "Python,Java",
-					CustomAttributes: "{}",
-				},
-			}
-		} else {
-			c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
-			return
-		}
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
 	}
 
-	// 3. 事务更新本地数据库：先删后加
+	// 3.1 事务更新本地数据库：先删后加
+	// 3.2 根据获取的 MR 数据和 执行计划数据， 更新本地数据
+	// 以 MR 数据为准， 根据 MR 数据中的 SchemeID 匹配 fetchedPlans 中的 ExecutionPlanID， 进行信息合并（把MR中的 CodeURL 和 Branches 覆盖 fetchedPlans 中的信息）
+	// 最终生成完整的 执行计划：
+	var allRepos []models.Repository
+	repoMap := make(map[string]models.Repository)
+	if err := database.DB.Find(&allRepos).Error; err == nil {
+		for _, r := range allRepos {
+			normalizedURL := services.NormalizeGitURL(r.URL)
+			if normalizedURL != "" {
+				repoMap[normalizedURL] = r
+			}
+		}
+	} else {
+		log.Printf("[SyncExecutionPlans] Error pre-loading repositories from DB: %v\n", err)
+	}
+
+	var finalPlans []models.ExecutionPlan
+	for _, binding := range mrBindings {
+		var matchedPlan *models.ExecutionPlan
+		for i := range fetchedPlans {
+			if fetchedPlans[i].ExecutionPlanID == binding.SchemeID {
+				matchedPlan = &fetchedPlans[i]
+				break
+			}
+		}
+
+		if matchedPlan == nil {
+			log.Printf("[SyncExecutionPlans] Warning: MR binding SchemeID %s not found in remote execution plans\n", binding.SchemeID)
+			continue
+		}
+
+		// 合并分支数据
+		matchedPlan.Branch = binding.Branches
+
+		// 合并代码仓数据，并利用规格化逻辑在本地仓库中重新匹配
+		normalizedCodeURL := services.NormalizeGitURL(binding.CodeURL)
+		if r, found := repoMap[normalizedCodeURL]; found {
+			matchedPlan.RepositoryID = r.ID
+			matchedPlan.Repository = r
+		} else {
+			log.Printf("[SyncExecutionPlans] Warning: MR binding CodeURL %s (normalized: %s) not found in local mirrors\n", binding.CodeURL, normalizedCodeURL)
+			matchedPlan.RepositoryID = 0
+		}
+
+		finalPlans = append(finalPlans, *matchedPlan)
+	}
+
 	tx := database.DB.Begin()
 	if err := tx.Where("pipeline_id = ?", pipeline.ID).Delete(&models.ExecutionPlan{}).Error; err != nil {
 		tx.Rollback()
@@ -139,8 +150,8 @@ func SyncExecutionPlans(c *gin.Context) {
 		return
 	}
 
-	for i := range fetchedPlans {
-		if err := tx.Omit("Repository").Create(&fetchedPlans[i]).Error; err != nil {
+	for i := range finalPlans {
+		if err := tx.Omit("Repository").Create(&finalPlans[i]).Error; err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save synced execution plans"})
 			return
@@ -152,7 +163,7 @@ func SyncExecutionPlans(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully synced %d execution plans", len(fetchedPlans))})
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully synced %d execution plans", len(finalPlans))})
 }
 
 // prepareRequestHeaders 透传 Cookie, cftk 和 x-requested-with Header
