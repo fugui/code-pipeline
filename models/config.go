@@ -41,11 +41,6 @@ var AppConfig Config
 func LoadConfig(filename string) error {
 	data, err := os.ReadFile(filename)
 	if err != nil {
-		if os.IsNotExist(err) {
-			log.Println("[Config] config.yaml not found. Using defaults.")
-			applyDefaults()
-			return nil
-		}
 		return err
 	}
 	if err := yaml.Unmarshal(data, &AppConfig); err != nil {
