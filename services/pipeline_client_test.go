@@ -38,19 +38,30 @@ func TestExtractRepoName(t *testing.T) {
 
 func TestUpdateCheckerTaskRemote(t *testing.T) {
 	// Setup mock server
-	var checkReceivedMethod string
-	var checkReceivedURL string
+	var checkAuthReceivedMethod string
+	var checkAuthReceivedURL string
+	var checkCredReceivedMethod string
+	var checkCredReceivedURL string
 	var copyReceivedMethod string
 	var copyReceivedBody []byte
 	var copyReceivedHeaders http.Header
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
-			checkReceivedMethod = r.Method
-			checkReceivedURL = r.URL.String()
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"status": "success", "count": "1"}`))
-			return
+			if strings.Contains(r.URL.RawQuery, "fuzzyMatch=") {
+				checkAuthReceivedMethod = r.Method
+				checkAuthReceivedURL = r.URL.String()
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`{"status": "success", "count": "1"}`))
+				return
+			}
+			if strings.Contains(r.URL.RawQuery, "authorized=true") {
+				checkCredReceivedMethod = r.Method
+				checkCredReceivedURL = r.URL.String()
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`{"success": true, "result": {"content": [{"id": 1}]}}`))
+				return
+			}
 		}
 
 		if r.Method == "POST" {
@@ -71,6 +82,7 @@ func TestUpdateCheckerTaskRemote(t *testing.T) {
 
 	// Configure app config to use mock server
 	models.AppConfig.PipelineSystem.RepoAuthCheckURL = server.URL
+	models.AppConfig.PipelineSystem.RepoCredentialCheckURL = server.URL
 	models.AppConfig.PipelineSystem.CopyCheckerTaskURL = server.URL
 	models.AppConfig.PipelineSystem.CheckerTaskTemplateID = "template-12345"
 
@@ -94,11 +106,19 @@ func TestUpdateCheckerTaskRemote(t *testing.T) {
 	}
 
 	// Verify Check Repo Auth API properties
-	if checkReceivedMethod != "GET" {
-		t.Errorf("Expected GET request for auth check, got %q", checkReceivedMethod)
+	if checkAuthReceivedMethod != "GET" {
+		t.Errorf("Expected GET request for auth check, got %q", checkAuthReceivedMethod)
 	}
-	if !strings.Contains(checkReceivedURL, "fuzzyMatch=git%40github.com%3Amy-org%2Fmy-target-repo.git") {
-		t.Errorf("Expected URL to contain fuzzyMatch param, got %q", checkReceivedURL)
+	if !strings.Contains(checkAuthReceivedURL, "fuzzyMatch=git%40github.com%3Amy-org%2Fmy-target-repo.git") {
+		t.Errorf("Expected URL to contain fuzzyMatch param, got %q", checkAuthReceivedURL)
+	}
+
+	// Verify Check Repo Credential API properties
+	if checkCredReceivedMethod != "GET" {
+		t.Errorf("Expected GET request for credential check, got %q", checkCredReceivedMethod)
+	}
+	if !strings.Contains(checkCredReceivedURL, "authorized=true") || !strings.Contains(checkCredReceivedURL, "uri=git%40github.com%3Amy-org%2Fmy-target-repo.git") {
+		t.Errorf("Expected URL to contain authorized=true and uri param, got %q", checkCredReceivedURL)
 	}
 
 	// Verify Copy Task HTTP Request properties
@@ -228,6 +248,78 @@ func TestCheckRepoAuthorized(t *testing.T) {
 			}
 			if auth != tc.expectedAuth {
 				t.Errorf("Expected auth: %v, got: %v", tc.expectedAuth, auth)
+			}
+		})
+	}
+}
+
+func TestCheckRepoCredentialAssociated(t *testing.T) {
+	testCases := []struct {
+		name           string
+		mockStatus     int
+		mockBody       string
+		expectedAssoc  bool
+		expectedHasErr bool
+	}{
+		{
+			name:           "Associated with credentials",
+			mockStatus:     http.StatusOK,
+			mockBody:       `{"success": true, "result": {"content": [{"id": 1, "name": "cred"}]}}`,
+			expectedAssoc:  true,
+			expectedHasErr: false,
+		},
+		{
+			name:           "Not associated with credentials",
+			mockStatus:     http.StatusOK,
+			mockBody:       `{"success": true, "result": {"content": []}}`,
+			expectedAssoc:  false,
+			expectedHasErr: false,
+		},
+		{
+			name:           "API returns success false",
+			mockStatus:     http.StatusOK,
+			mockBody:       `{"success": false, "result": {"content": []}}`,
+			expectedAssoc:  false,
+			expectedHasErr: true,
+		},
+		{
+			name:           "HTTP status not 200",
+			mockStatus:     http.StatusInternalServerError,
+			mockBody:       `{}`,
+			expectedAssoc:  false,
+			expectedHasErr: true,
+		},
+		{
+			name:           "Invalid JSON body",
+			mockStatus:     http.StatusOK,
+			mockBody:       `{invalid-json}`,
+			expectedAssoc:  false,
+			expectedHasErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				// Verify query parameters
+				authorized := r.URL.Query().Get("authorized")
+				uri := r.URL.Query().Get("uri")
+				if authorized != "true" || uri != "git@github.com:my-org/my-target-repo.git" {
+					t.Errorf("Expected query params authorized=true and uri, got authorized=%q, uri=%q", authorized, uri)
+				}
+				w.WriteHeader(tc.mockStatus)
+				w.Write([]byte(tc.mockBody))
+			}))
+			defer server.Close()
+
+			models.AppConfig.PipelineSystem.RepoCredentialCheckURL = server.URL
+
+			assoc, err := checkRepoCredentialAssociated(context.Background(), "git@github.com:my-org/my-target-repo.git", nil)
+			if (err != nil) != tc.expectedHasErr {
+				t.Fatalf("Expected error: %v, got: %v", tc.expectedHasErr, err)
+			}
+			if assoc != tc.expectedAssoc {
+				t.Errorf("Expected assoc: %v, got: %v", tc.expectedAssoc, assoc)
 			}
 		})
 	}

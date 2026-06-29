@@ -295,7 +295,7 @@ func copyCheckerTask(ctx context.Context, repository string, branch string, head
 // UpdateCheckerTaskRemote 调用远程三方接口完成：1. 创建任务，2. 获取 ID，3. 进行设置
 func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch string, languages string, customAttributes string, headers map[string]string) (string, string, error) {
 
-	//0. 检查代码仓授权
+	//1. 检查代码仓授权
 	authorized, err := checkRepoAuthorized(ctx, repository, headers)
 	if err != nil {
 		return "", "", fmt.Errorf("repo auth check failed: %v", err)
@@ -304,6 +304,16 @@ func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch stri
 		return "", "", fmt.Errorf("repository %s is unauthorized", repository)
 	}
 
+	//2. 需要检查代码仓是否关联到“关联凭证”里面了。
+	// 关联凭证检查需要 API URL， 查询参数 authorized=true, uri=代码仓地址
+	// 返回的响应体为： { "success": true,  "result"：{"content":[]}}， 如果 content 的 size 大于0， 则已经关联凭证了。
+	associated, err := checkRepoCredentialAssociated(ctx, repository, headers)
+	if err != nil {
+		return "", "", fmt.Errorf("repo credential check failed: %v", err)
+	}
+	if !associated {
+		return "", "", fmt.Errorf("repository %s has no associated credentials", repository)
+	}
 	// 1. 复制任务 (Remote API Call 1)
 	_, err = copyCheckerTask(ctx, repository, branch, headers)
 	if err != nil {
@@ -420,6 +430,44 @@ func checkRepoAuthorized(ctx context.Context, repository string, headers map[str
 	}
 
 	return count > 0, nil
+}
+
+// checkRepoCredentialAssociated 检查代码仓是否关联到凭证
+func checkRepoCredentialAssociated(ctx context.Context, repository string, headers map[string]string) (bool, error) {
+	apiURLStr := models.AppConfig.PipelineSystem.RepoCredentialCheckURL
+	if apiURLStr == "" {
+		return false, fmt.Errorf("repo_credential_check_url not configured")
+	}
+
+	body, err := sendHTTPRequest(ctx, "GET", apiURLStr, nil, httpOptions{
+		Headers: headers,
+		QueryParams: map[string]string{
+			"authorized": "true",
+			"uri":        repository,
+		},
+	}, []int{http.StatusOK}, "checkRepoCredentialAssociated")
+	if err != nil {
+		return false, err
+	}
+
+	type CredentialResponse struct {
+		Success bool `json:"success"`
+		Result  struct {
+			Content []interface{} `json:"content"`
+		} `json:"result"`
+	}
+
+	var resp CredentialResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		log.Printf("[checkRepoCredentialAssociated] Failed to parse JSON: %v, Body: %s", err, string(body))
+		return false, fmt.Errorf("failed to parse credential response JSON: %v", err)
+	}
+
+	if !resp.Success {
+		return false, fmt.Errorf("credential association check failed")
+	}
+
+	return len(resp.Result.Content) > 0, nil
 }
 
 // httpOptions 定义 HTTP 请求的附加参数
