@@ -26,7 +26,6 @@ func FetchRemotePipelineInfo(ctx context.Context, pipelineID string, headers map
 	body, err := sendHTTPRequest(ctx, "GET", apiURLStr, nil, httpOptions{
 		Headers:     headers,
 		QueryParams: map[string]string{"pipelineId": pipelineID},
-		Timeout:     3 * time.Second,
 	}, []int{http.StatusOK}, "FetchPipelineInfo")
 	if err != nil {
 		return nil, err
@@ -88,7 +87,6 @@ func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, p
 	body, err := sendHTTPRequest(ctx, "GET", apiURLStr, nil, httpOptions{
 		Headers:     headers,
 		QueryParams: map[string]string{"pipelineId": pipelineBusinessID},
-		Timeout:     3 * time.Second,
 	}, []int{http.StatusOK}, "SyncExecutionPlans")
 	if err != nil {
 		return nil, err
@@ -179,9 +177,7 @@ func SyncCreateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 		"custom_attributes":    plan.CustomAttributes,
 	}
 
-	body, err := sendHTTPRequest(context.Background(), "POST", apiURLStr, payload, httpOptions{
-		Timeout: 3 * time.Second,
-	}, []int{http.StatusOK, http.StatusCreated}, "SyncCreatePlan")
+	body, err := sendHTTPRequest(context.Background(), "POST", apiURLStr, payload, httpOptions{}, []int{http.StatusOK, http.StatusCreated}, "SyncCreatePlan")
 	if err != nil {
 		return "", err
 	}
@@ -224,9 +220,7 @@ func SyncUpdateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 		"custom_attributes":    plan.CustomAttributes,
 	}
 
-	_, err := sendHTTPRequest(context.Background(), "PUT", targetURL, payload, httpOptions{
-		Timeout: 3 * time.Second,
-	}, []int{http.StatusOK, http.StatusNoContent}, "SyncUpdatePlan")
+	_, err := sendHTTPRequest(context.Background(), "PUT", targetURL, payload, httpOptions{}, []int{http.StatusOK, http.StatusNoContent}, "SyncUpdatePlan")
 	return err
 }
 
@@ -239,9 +233,7 @@ func SyncDeleteExecutionPlanRemote(executionPlanID string) error {
 
 	targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), executionPlanID)
 
-	_, err := sendHTTPRequest(context.Background(), "DELETE", targetURL, nil, httpOptions{
-		Timeout: 3 * time.Second,
-	}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeletePlan")
+	_, err := sendHTTPRequest(context.Background(), "DELETE", targetURL, nil, httpOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeletePlan")
 	return err
 }
 
@@ -291,7 +283,6 @@ func copyCheckerTask(ctx context.Context, repository string, branch string, head
 
 	respBody, err := sendHTTPRequest(ctx, "POST", apiURL, postData, httpOptions{
 		Headers: headers,
-		Timeout: 5 * time.Second,
 	}, []int{http.StatusOK, http.StatusCreated}, "UpdateCheckerTaskRemote_CopyTask")
 	if err != nil {
 		return nil, err
@@ -390,8 +381,7 @@ func checkRepoAuthorized(ctx context.Context, repository string, headers map[str
 
 	body, err := sendHTTPRequest(ctx, "GET", apiURLStr, nil, httpOptions{
 		Headers:     headers,
-		QueryParams: map[string]string{"fuzzyMatch": repository},
-		Timeout:     3 * time.Second,
+		QueryParams: map[string]string{"fuzzyMatch": repository, "filterType": "allTeam"},
 	}, []int{http.StatusOK}, "checkRepoAuthorized")
 	if err != nil {
 		return false, err
@@ -436,7 +426,6 @@ func checkRepoAuthorized(ctx context.Context, repository string, headers map[str
 type httpOptions struct {
 	Headers     map[string]string
 	QueryParams map[string]string
-	Timeout     time.Duration
 }
 
 // sendHTTPRequest 封装统一的 HTTP 请求发送与错误处理逻辑
@@ -476,12 +465,7 @@ func sendHTTPRequest(ctx context.Context, method, rawURL string, payload interfa
 		req.Header.Set(k, v)
 	}
 
-	timeout := 5 * time.Second
-	if opt.Timeout > 0 {
-		timeout = opt.Timeout
-	}
-
-	client := &http.Client{Timeout: timeout}
+	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute remote request: %v", err)
@@ -508,4 +492,3 @@ func sendHTTPRequest(ctx context.Context, method, rawURL string, payload interfa
 
 	return body, nil
 }
-
