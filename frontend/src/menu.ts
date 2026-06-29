@@ -14,8 +14,7 @@ export const menuGroups: MenuGroup[] = [
     items: [
       { path: '/dashboard', label: '控制中心' },
       { path: '/repos', label: '仓库配置' },
-      { path: '/pipeline-config', label: '流水线配置' },
-      { path: '/history', label: '执行历史' }
+      { path: '/pipeline-config', label: '流水线配置' }
     ]
   }
 ];
@@ -23,8 +22,7 @@ export const menuGroups: MenuGroup[] = [
 export const menuItems: SubMenuItem[] = [
   { path: '/dashboard', label: '控制中心' },
   { path: '/repos', label: '仓库配置' },
-  { path: '/pipeline-config', label: '流水线配置' },
-  { path: '/history', label: '执行历史' }
+  { path: '/pipeline-config', label: '流水线配置' }
 ];
 
 export default menuItems;

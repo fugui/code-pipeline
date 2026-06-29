@@ -50,7 +50,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
     if (!planSearchQuery.trim()) return plans
     const q = planSearchQuery.toLowerCase()
     return plans.filter(plan => {
-      const matchRepo = plan.repository?.toLowerCase().includes(q)
+      const matchRepo = plan.repository?.name?.toLowerCase().includes(q) || plan.repository?.url?.toLowerCase().includes(q)
       const matchBranch = plan.branch?.toLowerCase().includes(q)
       const matchLang = plan.languages?.toLowerCase().includes(q)
       const matchId = plan.execution_plan_id?.toLowerCase().includes(q)
@@ -211,8 +211,8 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                     {paginatedPlans.length > 0 ? (
                       paginatedPlans.map((plan) => (
                         <tr key={plan.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)' }}>
-                          <td style={{ padding: '12px 8px', fontWeight: 500, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={plan.repository}>
-                            {plan.repository}
+                          <td style={{ padding: '12px 8px', fontWeight: 500, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={plan.repository?.url}>
+                            {plan.repository?.name || `ID: ${plan.repository_id}`}
                           </td>
                           <td style={{ padding: '12px 8px' }}>{plan.branch}</td>
                           <td style={{ padding: '12px 8px' }}>

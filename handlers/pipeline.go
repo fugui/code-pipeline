@@ -30,7 +30,7 @@ type PipelineRequest struct {
 // ExecutionPlanRequest 执行方案输入结构体
 type ExecutionPlanRequest struct {
 	PipelineID        uint   `json:"pipeline_id" binding:"required"`
-	Repository        string `json:"repository" binding:"required"`
+	RepositoryID      uint   `json:"repository_id" binding:"required"`
 	Branch            string `json:"branch" binding:"required"`
 	Username          string `json:"username"`
 	Password          string `json:"password"`
@@ -163,19 +163,35 @@ func DeletePipeline(c *gin.Context) {
 // GetExecutionPlans 获取指定流水线的执行方案
 func GetExecutionPlans(c *gin.Context) {
 	pipelineIDStr := c.Query("pipeline_id")
-	if pipelineIDStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "pipeline_id query parameter is required"})
+	repoIDStr := c.Query("repository_id")
+
+	if pipelineIDStr == "" && repoIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "pipeline_id or repository_id query parameter is required"})
 		return
 	}
 
-	pipelineID, err := strconv.ParseUint(pipelineIDStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid pipeline_id"})
-		return
+	query := database.DB.Preload("Repository")
+
+	if pipelineIDStr != "" {
+		pipelineID, err := strconv.ParseUint(pipelineIDStr, 10, 32)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid pipeline_id"})
+			return
+		}
+		query = query.Where("pipeline_id = ?", uint(pipelineID))
+	}
+
+	if repoIDStr != "" {
+		repoID, err := strconv.ParseUint(repoIDStr, 10, 32)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid repository_id"})
+			return
+		}
+		query = query.Where("repository_id = ?", uint(repoID))
 	}
 
 	var plans []models.ExecutionPlan
-	if err := database.DB.Where("pipeline_id = ?", uint(pipelineID)).Find(&plans).Error; err != nil {
+	if err := query.Find(&plans).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch execution plans"})
 		return
 	}
@@ -200,7 +216,7 @@ func CreateExecutionPlan(c *gin.Context) {
 
 	plan := models.ExecutionPlan{
 		PipelineID:        req.PipelineID,
-		Repository:        req.Repository,
+		RepositoryID:      req.RepositoryID,
 		Branch:            req.Branch,
 		Username:          req.Username,
 		Password:          req.Password,
@@ -221,6 +237,9 @@ func CreateExecutionPlan(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create execution plan in local DB"})
 		return
 	}
+
+	// 加载 repository
+	database.DB.Preload("Repository").First(&plan, plan.ID)
 
 	c.JSON(http.StatusCreated, plan)
 }
@@ -246,7 +265,7 @@ func UpdateExecutionPlan(c *gin.Context) {
 		return
 	}
 
-	plan.Repository = req.Repository
+	plan.RepositoryID = req.RepositoryID
 	plan.Branch = req.Branch
 	plan.Username = req.Username
 	plan.Password = req.Password
@@ -268,6 +287,9 @@ func UpdateExecutionPlan(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update execution plan locally"})
 		return
 	}
+
+	// 加载 repository
+	database.DB.Preload("Repository").First(&plan, plan.ID)
 
 	c.JSON(http.StatusOK, plan)
 }

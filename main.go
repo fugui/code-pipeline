@@ -33,13 +33,14 @@ func main() {
 		log.Fatalf("[Server] Failed to load config.yaml: %v", err)
 	}
 
-	// 3. 启动流水线并发引擎 Worker Pool
-	services.StartWorkerPool(models.AppConfig.Server.WorkerCount)
+	// 启动优雅关闭 context 与拉取同步任务
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	// 4. 启动定时任务调度器 Scheduler
-	services.InitScheduler()
+	// 3. 启动后台只读代码仓 Pull 同步任务
+	services.StartRepoSyncTimer(ctx)
 
-	// 5. 初始化 Gin 引擎
+	// 4. 初始化 Gin 引擎
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
@@ -63,15 +64,10 @@ func main() {
 			// 仓库配置路由
 			api.GET("/repos", handlers.GetRepos)
 			api.GET("/repos/:id", handlers.GetRepoDetails)
-			api.POST("/repos", handlers.CreateRepo)
-			api.PUT("/repos/:id", handlers.UpdateRepo)
-			api.DELETE("/repos/:id", handlers.DeleteRepo)
 			api.POST("/repos/:id/trigger", handlers.TriggerRepo)
+			api.GET("/repos/:id/latest-log", handlers.GetRepoLatestLog)
 
-			// 流水线执行日志路由
-			api.GET("/executions", handlers.GetExecutions)
-			api.GET("/executions/:id", handlers.GetExecutionDetails)
-			api.POST("/executions/:id/cancel", handlers.CancelExecution)
+
 
 			// 流水线配置相关接口
 			api.GET("/pipelines", handlers.GetPipelines)
@@ -159,10 +155,6 @@ func main() {
 		ReadTimeout:  models.AppConfig.Server.ReadTimeout,
 		WriteTimeout: models.AppConfig.Server.WriteTimeout,
 	}
-
-	// 8. 优雅关闭逻辑
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 
 	go func() {
 		log.Printf("[Server] Starting server on %s ...\n", port)

@@ -7,6 +7,7 @@ interface ExecutionPlanModalProps {
   onSave: (e: React.FormEvent) => void
   onClose: () => void
   apiBase: string
+  repos: any[]
 }
 
 export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
@@ -15,9 +16,27 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
   onChange,
   onSave,
   onClose,
-  apiBase
+  apiBase,
+  repos
 }) => {
+  const [isOpen, setIsOpen] = React.useState(false)
+  const [filterQuery, setFilterQuery] = React.useState('')
+
+  React.useEffect(() => {
+    if (activePlan) {
+      const found = repos.find(r => r.id === activePlan.repository_id)
+      setFilterQuery(found ? found.name : '')
+    }
+  }, [activePlan, repos])
+
   if (!visible || !activePlan) return null
+
+  const filteredRepos = repos.filter(r => 
+    r.name.toLowerCase().includes(filterQuery.toLowerCase()) || 
+    r.url.toLowerCase().includes(filterQuery.toLowerCase())
+  )
+
+  const selectedRepo = repos.find(r => r.id === activePlan.repository_id)
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }}>
@@ -28,14 +47,86 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
 
         <form onSubmit={onSave} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>代码托管仓 URL</label>
-            <input 
-              type="text" 
-              placeholder="例如: https://github.com/example/repo.git 或本地物理路径"
-              value={activePlan.repository || ''} 
-              onChange={(e) => onChange({ ...activePlan, repository: e.target.value })}
-              required 
-            />
+            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>关联代码镜像仓库</label>
+            {activePlan.id ? (
+              <input 
+                type="text" 
+                value={selectedRepo ? `${selectedRepo.name} (${selectedRepo.url})` : '未绑定仓库'} 
+                disabled 
+              />
+            ) : (
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type="text" 
+                  placeholder="输入关键字检索并选择仓库 (支持 200+ 仓库模糊过滤)..."
+                  value={filterQuery}
+                  onChange={(e) => {
+                    setFilterQuery(e.target.value);
+                    setIsOpen(true);
+                  }}
+                  onFocus={() => setIsOpen(true)}
+                  onBlur={() => {
+                    // 稍作延时，确保点击项事件在失去焦点前完成触发
+                    setTimeout(() => setIsOpen(false), 200);
+                  }}
+                  required
+                />
+                {isOpen && (
+                  <div 
+                    style={{ 
+                      position: 'absolute', 
+                      top: '100%', 
+                      left: 0, 
+                      right: 0, 
+                      zIndex: 1000, 
+                      maxHeight: 220, 
+                      overflowY: 'auto', 
+                      background: 'rgba(30, 41, 59, 0.98)', 
+                      backdropFilter: 'blur(12px)',
+                      border: '1px solid var(--border-color)', 
+                      borderRadius: 6, 
+                      marginTop: 4, 
+                      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' 
+                    }}
+                    onMouseDown={(e) => e.preventDefault()}
+                  >
+                    {filteredRepos.length > 0 ? (
+                      filteredRepos.map(r => (
+                        <div 
+                          key={r.id} 
+                          style={{ 
+                            padding: '10px 12px', 
+                            cursor: 'pointer', 
+                            borderBottom: '1px solid rgba(255,255,255,0.03)',
+                            transition: 'background 0.2s',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 2
+                          }}
+                          className="search-item"
+                          onClick={() => {
+                            onChange({
+                              ...activePlan,
+                              repository_id: r.id,
+                              repository: r
+                            });
+                            setFilterQuery(r.name);
+                            setIsOpen(false);
+                          }}
+                        >
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{r.name}</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{r.url}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                        无匹配的代码仓数据
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -105,7 +196,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                     },
                     body: JSON.stringify({
                       pipeline_id: activePlan.pipeline_id,
-                      repository: activePlan.repository || '',
+                      repository_id: activePlan.repository_id,
                       branch: activePlan.branch || 'master',
                       username: activePlan.username || '',
                       password: activePlan.password || '',

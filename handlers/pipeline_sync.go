@@ -81,23 +81,29 @@ func SyncExecutionPlans(c *gin.Context) {
 	if err != nil {
 		if err.Error() == "get_execution_plan_url not configured" {
 			// 未配置接口，返回 Mock 数据
+			var r models.Repository
+			database.DB.First(&r)
+			repoID := r.ID
+
 			fetchedPlans = []models.ExecutionPlan{
 				{
 					ExecutionPlanID:  fmt.Sprintf("ext_plan_%d_1", pipeline.ID),
 					PipelineID:       pipeline.ID,
-					Repository:       "git@github.com:mock-org/service-a.git",
-					Branch:          "master",
-					Username:        "mock_user_a",
-					Languages:       "Go,TypeScript",
+					RepositoryID:     repoID,
+					Repository:       r,
+					Branch:           "master",
+					Username:         "mock_user_a",
+					Languages:        "Go,TypeScript",
 					CustomAttributes: "{}",
 				},
 				{
 					ExecutionPlanID:  fmt.Sprintf("ext_plan_%d_2", pipeline.ID),
 					PipelineID:       pipeline.ID,
-					Repository:       "git@github.com:mock-org/service-b.git",
-					Branch:          "main",
-					Username:        "mock_user_b",
-					Languages:       "Python,Java",
+					RepositoryID:     repoID,
+					Repository:       r,
+					Branch:           "main",
+					Username:         "mock_user_b",
+					Languages:        "Python,Java",
 					CustomAttributes: "{}",
 				},
 			}
@@ -156,9 +162,15 @@ func UpdateCheckerTask(c *gin.Context) {
 		return
 	}
 
+	var repo models.Repository
+	if err := database.DB.First(&repo, req.RepositoryID).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Associated repository not found"})
+		return
+	}
+
 	headers := prepareRequestHeaders(c)
 
-	taskID, updatedAttrs, err := services.UpdateCheckerTaskRemote(c.Request.Context(), req.Repository, req.Branch, req.Languages, req.CustomAttributes, headers)
+	taskID, updatedAttrs, err := services.UpdateCheckerTaskRemote(c.Request.Context(), repo.URL, req.Branch, req.Languages, req.CustomAttributes, headers)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to update checker task: %v", err)})
 		return

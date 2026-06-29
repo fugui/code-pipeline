@@ -31,6 +31,9 @@ type Config struct {
 		RepoAuthCheckURL       string `yaml:"repo_auth_check_url"`
 		RepoCredentialCheckURL string `yaml:"repo_credential_check_url"`
 	} `yaml:"pipeline_system"`
+	CodeBench struct {
+		APIURL string `yaml:"api_url"`
+	} `yaml:"code_bench"`
 }
 
 var AppConfig Config

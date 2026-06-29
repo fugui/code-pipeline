@@ -8,19 +8,16 @@ export interface User {
 export interface Repository {
   id: number
   name: string
-  git_url: string
-  branch: string
-  build_cmd: string
-  check_cmd: string
-  cron_expr: string
+  url: string
+  owner_id: number
   is_active: boolean
-  last_run_status: string
-  last_run_time: string | null
   created_at: string
 }
 
 export interface ExecutionLog {
   id: number
+  plan_id: string
+  pipeline_id: string
   repo_id: number
   repo_name: string
   branch: string
@@ -38,6 +35,7 @@ export interface DashboardStats {
   total_repos: number
   active_schedulers: number
   total_runs: number
+  failed_runs?: number
   success_rate: number
   running_count: number
   pending_count: number
@@ -61,11 +59,9 @@ export interface ExecutionPlan {
   id?: number
   pipeline_id: number
   pipeline_name?: string
-  repository_id?: number
-  repository?: string
+  repository_id: number
+  repository?: Repository
   branch: string
-  cron_expr?: string
-  is_active: boolean
   execution_plan_id?: string
   username?: string
   password?: string

@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"code-pipeline/database"
 	"code-pipeline/models"
 )
 
@@ -121,6 +122,7 @@ func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, p
 			CustomAttributes: entity.CustomParameter,
 		}
 
+		var codeURL string
 		if entity.CustomParameter != "" {
 			var cp struct {
 				BuildParameters []struct {
@@ -138,7 +140,7 @@ func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, p
 					case "code_branch":
 						plan.Branch = param.Value
 					case "code_url":
-						plan.Repository = param.Value
+						codeURL = param.Value
 					case "code_checker_task_id":
 						plan.CodeCheckerTaskID = param.Value
 					}
@@ -148,8 +150,18 @@ func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, p
 			}
 		}
 
-		if plan.Repository == "" {
-			log.Printf("[PipelineClient] Warning: skipped entity %s because repository (code_url) is empty\n", entity.ID)
+		if codeURL != "" {
+			var repo models.Repository
+			if err := database.DB.Where("url = ?", codeURL).First(&repo).Error; err == nil {
+				plan.RepositoryID = repo.ID
+				plan.Repository = repo
+			} else {
+				log.Printf("[PipelineClient] Warning: code_url %s not found in local mirrors\n", codeURL)
+			}
+		}
+
+		if plan.RepositoryID == 0 {
+			log.Printf("[PipelineClient] Warning: skipped entity %s because repository ID is 0 or URL %s is not synced\n", entity.ID, codeURL)
 			continue
 		}
 
@@ -166,9 +178,16 @@ func SyncCreateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 		return "", fmt.Errorf("get_execution_plan_url not configured")
 	}
 
+	var repo models.Repository
+	database.DB.First(&repo, plan.RepositoryID)
+	repoURL := repo.URL
+	if repoURL == "" {
+		repoURL = plan.Repository.URL
+	}
+
 	payload := map[string]interface{}{
 		"pipeline_id":          pipelineBusinessID,
-		"repository":           plan.Repository,
+		"repository":           repoURL,
 		"branch":               plan.Branch,
 		"username":             plan.Username,
 		"password":             plan.Password,
@@ -207,11 +226,18 @@ func SyncUpdateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 		return fmt.Errorf("get_execution_plan_url not configured")
 	}
 
+	var repo models.Repository
+	database.DB.First(&repo, plan.RepositoryID)
+	repoURL := repo.URL
+	if repoURL == "" {
+		repoURL = plan.Repository.URL
+	}
+
 	targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), plan.ExecutionPlanID)
 
 	payload := map[string]interface{}{
 		"pipeline_id":          pipelineBusinessID,
-		"repository":           plan.Repository,
+		"repository":           repoURL,
 		"branch":               plan.Branch,
 		"username":             plan.Username,
 		"password":             plan.Password,
@@ -295,7 +321,7 @@ func copyCheckerTask(ctx context.Context, repository string, branch string, head
 // UpdateCheckerTaskRemote 调用远程三方接口完成：1. 创建任务，2. 获取 ID，3. 进行设置
 func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch string, languages string, customAttributes string, headers map[string]string) (string, string, error) {
 
-	//1. 检查代码仓授权
+	//1. 检查代码仓授权（进行 MR 的 Webhook 的配置等）
 	authorized, err := checkRepoAuthorized(ctx, repository, headers)
 	if err != nil {
 		return "", "", fmt.Errorf("repo auth check failed: %v", err)
@@ -314,6 +340,7 @@ func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch stri
 	if !associated {
 		return "", "", fmt.Errorf("repository %s has no associated credentials", repository)
 	}
+
 	// 1. 复制任务 (Remote API Call 1)
 	_, err = copyCheckerTask(ctx, repository, branch, headers)
 	if err != nil {

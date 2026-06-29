@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { 
-  Activity, ShieldAlert, Loader2, LayoutDashboard, GitBranch, Clock, LogOut
+  Activity, ShieldAlert, Loader2, LayoutDashboard, GitBranch, LogOut
 } from 'lucide-react'
 
 // Import types
@@ -10,11 +10,9 @@ import { User, Repository, ExecutionLog, DashboardStats, Pipeline, ExecutionPlan
 // Import page components
 import { Dashboard } from './pages/Dashboard'
 import { Repos } from './pages/Repos'
-import { History } from './pages/History'
 import { PipelineConfig } from './pages/PipelineConfig'
 
 // Import modals
-import { RepositoryModal } from './components/RepositoryModal'
 import { PipelineModal } from './components/PipelineModal'
 import { ExecutionPlanModal } from './components/ExecutionPlanModal'
 import { ExecutionLogModal } from './components/ExecutionLogModal'
@@ -31,7 +29,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     return localStorage.getItem('code_shield_token') || localStorage.getItem(AUTH_TOKEN_KEY);
   })
   const [user, setUser] = useState<User | null>(null)
-  const [currentView, setCurrentView] = useState<'dashboard' | 'repos' | 'history' | 'pipeline-config'>('dashboard')
+  const [currentView, setCurrentView] = useState<'dashboard' | 'repos' | 'pipeline-config'>('dashboard')
   
   // Data lists
   const [repos, setRepos] = useState<Repository[]>([])
@@ -46,23 +44,17 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
   const [plans, setPlans] = useState<ExecutionPlan[]>([])
   const [showPlanModal, setShowPlanModal] = useState(false)
   const [activePlan, setActivePlan] = useState<ExecutionPlan | null>(null)
-  const [executions, setExecutions] = useState<ExecutionLog[]>([])
-  const [totalExecutions, setTotalExecutions] = useState(0)
-  const [execPage, setExecPage] = useState(1)
+
   const [stats, setStats] = useState<DashboardStats | null>(null)
   
   // Searching & Filtering
   const [searchQuery, setSearchQuery] = useState('')
-  const [historyStatusFilter, setHistoryStatusFilter] = useState('')
-  const [historyRepoFilter, setHistoryRepoFilter] = useState('')
   
   // Loading states
   const [loading, setLoading] = useState(false)
   const [meLoading, setMeLoading] = useState(true)
   
   // Modals / Details
-  const [showRepoModal, setShowRepoModal] = useState(false)
-  const [activeRepo, setActiveRepo] = useState<Partial<Repository> | null>(null)
   const [activeExec, setActiveExec] = useState<ExecutionLog | null>(null)
   
   // Login Form
@@ -80,8 +72,6 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
       setCurrentView('repos')
     } else if (path.endsWith('/pipeline-config')) {
       setCurrentView('pipeline-config')
-    } else if (path.endsWith('/history')) {
-      setCurrentView('history')
     } else if (path.endsWith('/dashboard')) {
       setCurrentView('dashboard')
     } else {
@@ -122,12 +112,10 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
       fetchStats()
     } else if (currentView === 'repos') {
       fetchRepos()
-    } else if (currentView === 'history') {
-      fetchExecutions()
     } else if (currentView === 'pipeline-config') {
       fetchPipelines()
     }
-  }, [token, user, currentView, searchQuery, execPage, historyStatusFilter, historyRepoFilter])
+  }, [token, user, currentView, searchQuery])
 
   // Auto-refresh Dashboard Stats
   useEffect(() => {
@@ -155,8 +143,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         if (data.status !== 'running' && data.status !== 'pending') {
           clearInterval(activeExecInterval.current)
           // 刷新列表数据
-          if (currentView === 'history') fetchExecutions()
-          else if (currentView === 'dashboard') fetchStats()
+          fetchStats()
         }
       })
     }, 2000)
@@ -184,22 +171,6 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     .then(res => res.json())
     .then(data => setRepos(data))
     .catch(err => console.error('Failed to fetch repos', err))
-  }
-
-  const fetchExecutions = () => {
-    let url = `${apiBase}/executions?page=${execPage}&limit=10`
-    if (historyStatusFilter) url += `&status=${historyStatusFilter}`
-    if (historyRepoFilter) url += `&repo_id=${historyRepoFilter}`
-
-    fetch(url, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    .then(res => res.json())
-    .then(data => {
-      setExecutions(data.data || [])
-      setTotalExecutions(data.total || 0)
-    })
-    .catch(err => console.error('Failed to fetch executions', err))
   }
 
   const fetchPipelines = () => {
@@ -439,67 +410,21 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     setUser(null)
     setStats(null)
     setRepos([])
-    setExecutions([])
   }
 
-  const handleSaveRepo = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!activeRepo || !activeRepo.name || !activeRepo.git_url) return
-
-    const method = activeRepo.id ? 'PUT' : 'POST'
-    const url = activeRepo.id ? `${apiBase}/repos/${activeRepo.id}` : `${apiBase}/repos`
-
-    fetch(url, {
-      method,
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(activeRepo)
-    })
-    .then(res => {
-      if (!res.ok) throw new Error('Failed to save repository')
-      return res.json()
-    })
-    .then(() => {
-      setShowRepoModal(false)
-      setActiveRepo(null)
-      fetchRepos()
-    })
-    .catch(err => alert(err.message))
-  }
-
-  const handleDeleteRepo = (id: number) => {
-    if (!window.confirm('您确定要删除此仓库配置吗？相关的定时任务将一并移除。')) return
-
-    fetch(`${apiBase}/repos/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    .then(res => {
-      if (!res.ok) throw new Error('Failed to delete repository')
-      fetchRepos()
-    })
-    .catch(err => alert(err.message))
-  }
-
-  const handleTriggerRepo = (id: number) => {
-    fetch(`${apiBase}/repos/${id}/trigger`, {
+  const handleTriggerRepoPlan = (id: number, branch: string) => {
+    fetch(`${apiBase}/repos/${id}/trigger?branch=${encodeURIComponent(branch)}`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     })
-    .then(res => res.json())
-    .then(data => {
-      // 成功触发后跳转到日志或者弹窗
-      fetchRepos()
-      // 自动获取最新运行任务，展示终端
-      fetch(`${apiBase}/executions/${data.execution_id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      .then(r => r.json())
-      .then(exec => setActiveExec(exec))
+    .then(res => {
+      if (!res.ok) throw new Error('一键构建触发失败')
+      return res.json()
     })
-    .catch(err => alert('触发流水线失败: ' + err.message))
+    .then(() => {
+      alert('一键构建已成功向第三方系统触发！')
+    })
+    .catch(err => alert(err.message))
   }
 
   const handleCancelExecution = (id: number) => {
@@ -522,8 +447,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         .then(r => r.json())
         .then(d => setActiveExec(d))
       }
-      if (currentView === 'history') fetchExecutions()
-      else if (currentView === 'dashboard') fetchStats()
+      fetchStats()
     })
     .catch(err => alert(err.message))
   }
@@ -620,13 +544,6 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
               >
                 <Activity size={16} /> 流水线配置
               </button>
-              <button 
-                onClick={() => { setCurrentView('history'); setActiveExec(null); }} 
-                className={`btn ${currentView === 'history' ? 'btn-primary' : 'btn-secondary'}`} 
-                style={{ justifyContent: 'flex-start', width: '100%' }}
-              >
-                <Clock size={16} /> 执行历史
-              </button>
             </nav>
           </div>
 
@@ -662,29 +579,16 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
             loading={loading}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
-            onTrigger={handleTriggerRepo}
-            onAdd={() => { setActiveRepo({ branch: 'master', is_active: true }); setShowRepoModal(true); }}
-            onEdit={(repo) => { setActiveRepo(repo); setShowRepoModal(true); }}
-            onDelete={handleDeleteRepo}
+            onTrigger={handleTriggerRepoPlan}
+            onAddPlan={(repoId) => { setActivePlan({ pipeline_id: pipelines[0]?.id || 0, repository_id: repoId, branch: 'master' }); setShowPlanModal(true); }}
+            onEditPlan={(plan) => { setActivePlan(plan); setShowPlanModal(true); }}
+            onDeletePlan={handleDeletePlan}
+            token={token}
+            apiBase={apiBase}
           />
         )}
 
-        {/* VIEW 3: HISTORY */}
-        {currentView === 'history' && (
-          <History 
-            executions={executions}
-            totalExecutions={totalExecutions}
-            execPage={execPage}
-            setExecPage={setExecPage}
-            statusFilter={historyStatusFilter}
-            setStatusFilter={setHistoryStatusFilter}
-            repoFilter={historyRepoFilter}
-            setRepoFilter={setHistoryRepoFilter}
-            onViewExecDetails={setActiveExec}
-            onCancelExecution={handleCancelExecution}
-            onRefresh={fetchExecutions}
-          />
-        )}
+
 
         {/* VIEW 4: PIPELINE CONFIG */}
         {currentView === 'pipeline-config' && (
@@ -701,7 +605,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
             onDeletePipeline={handleDeletePipeline}
             onAddPlan={() => {
               if (selectedPipeline && selectedPipeline.id) {
-                setActivePlan({ pipeline_id: selectedPipeline.id, branch: 'master', languages: '', is_active: true });
+                setActivePlan({ pipeline_id: selectedPipeline.id, repository_id: repos[0]?.id || 0, branch: 'master', languages: '' });
                 setShowPlanModal(true);
               }
             }}
@@ -712,15 +616,6 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         )}
 
       </main>
-
-      {/* Repository configuration Modal */}
-      <RepositoryModal 
-        visible={showRepoModal}
-        activeRepo={activeRepo}
-        onChange={setActiveRepo}
-        onSave={handleSaveRepo}
-        onClose={() => { setShowRepoModal(false); setActiveRepo(null); }}
-      />
 
       {/* Pipeline metadata Modal */}
       <PipelineModal 
@@ -742,6 +637,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         onSave={handleSavePlan}
         onClose={() => { setShowPlanModal(false); setActivePlan(null); }}
         apiBase={apiBase}
+        repos={repos}
       />
 
       {/* Terminal log Console Drawer */}

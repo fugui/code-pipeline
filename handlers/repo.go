@@ -1,24 +1,16 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
+	"strconv"
+	"time"
 
 	"code-pipeline/database"
 	"code-pipeline/models"
-	"code-pipeline/services"
 
 	"github.com/gin-gonic/gin"
 )
-
-type RepositoryRequest struct {
-	Name     string `json:"name" binding:"required"`
-	GitURL   string `json:"git_url" binding:"required"`
-	Branch   string `json:"branch"`
-	BuildCmd string `json:"build_cmd"`
-	CheckCmd string `json:"check_cmd"`
-	CronExpr string `json:"cron_expr"`
-	IsActive bool   `json:"is_active"`
-}
 
 func GetRepos(c *gin.Context) {
 	var repos []models.Repository
@@ -47,113 +39,68 @@ func GetRepoDetails(c *gin.Context) {
 	c.JSON(http.StatusOK, repo)
 }
 
-func CreateRepo(c *gin.Context) {
-	var req RepositoryRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	branch := req.Branch
-	if branch == "" {
-		branch = "master"
-	}
-
-	repo := models.Repository{
-		Name:     req.Name,
-		GitURL:   req.GitURL,
-		Branch:   branch,
-		BuildCmd: req.BuildCmd,
-		CheckCmd: req.CheckCmd,
-		CronExpr: req.CronExpr,
-		IsActive: req.IsActive,
-	}
-
-	// 写入数据库
-	if err := database.DB.Create(&repo).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create repository. Name might already exist."})
-		return
-	}
-
-	// 注册定时任务
-	services.UpdateRepoSchedule(repo)
-
-	c.JSON(http.StatusCreated, repo)
-}
-
-func UpdateRepo(c *gin.Context) {
-	id := c.Param("id")
-	var repo models.Repository
-	if err := database.DB.First(&repo, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Repository not found"})
-		return
-	}
-
-	var req RepositoryRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	branch := req.Branch
-	if branch == "" {
-		branch = "master"
-	}
-
-	repo.Name = req.Name
-	repo.GitURL = req.GitURL
-	repo.Branch = branch
-	repo.BuildCmd = req.BuildCmd
-	repo.CheckCmd = req.CheckCmd
-	repo.CronExpr = req.CronExpr
-	repo.IsActive = req.IsActive
-
-	if err := database.DB.Save(&repo).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update repository"})
-		return
-	}
-
-	// 更新定时任务
-	services.UpdateRepoSchedule(repo)
-
-	c.JSON(http.StatusOK, repo)
-}
-
-func DeleteRepo(c *gin.Context) {
-	id := c.Param("id")
-	var repo models.Repository
-	if err := database.DB.First(&repo, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Repository not found"})
-		return
-	}
-
-	if err := database.DB.Delete(&repo).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete repository"})
-		return
-	}
-
-	// 移除定时任务
-	services.RemoveRepoSchedule(repo.ID)
-
-	c.JSON(http.StatusOK, gin.H{"message": "Repository deleted successfully"})
-}
-
 func TriggerRepo(c *gin.Context) {
-	id := c.Param("id")
-	var repo models.Repository
-	if err := database.DB.First(&repo, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Repository not found"})
+	idStr := c.Param("id")
+	branch := c.Query("branch")
+	if branch == "" {
+		branch = "master"
+	}
+
+	repoID, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid repository ID"})
 		return
 	}
 
-	logID, err := services.TriggerPipeline(repo.ID, "manual")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to trigger pipeline: " + err.Error()})
+	// 查找该分支所绑定的执行方案 (ExecutionPlan)
+	var plan models.ExecutionPlan
+	if err := database.DB.Where("repository_id = ? AND branch = ?", repoID, branch).First(&plan).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "No execution plan configured for this branch"})
 		return
 	}
+
+	// 模拟触发第三方系统
+	log.Printf("[ThirdPartyTrigger] Triggering pipeline plan %s (ID: %s) for repo %d branch %s...", 
+		plan.CodeCheckerTaskID, plan.ExecutionPlanID, repoID, branch)
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":      "Pipeline triggered successfully",
-		"execution_id": logID,
+		"message":           "Third-party pipeline triggered successfully",
+		"execution_plan_id": plan.ExecutionPlanID,
+		"status":            "running",
+	})
+}
+
+// GetRepoLatestLog 实时向第三方系统拉取最新执行日志及状态
+func GetRepoLatestLog(c *gin.Context) {
+	idStr := c.Param("id")
+	branch := c.Query("branch")
+	if branch == "" {
+		branch = "master"
+	}
+
+	repoID, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid repository ID"})
+		return
+	}
+
+	var plan models.ExecutionPlan
+	if err := database.DB.Where("repository_id = ? AND branch = ?", repoID, branch).First(&plan).Error; err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"has_plan": false,
+			"message":  "No execution plan bound",
+		})
+		return
+	}
+
+	// 实时代理拉取第三方系统的最后执行状态与日志 URL (此处提供高保真模拟)
+	c.JSON(http.StatusOK, gin.H{
+		"has_plan":          true,
+		"execution_plan_id": plan.ExecutionPlanID,
+		"status":            "success", // 模拟状态: success, failed, running
+		"duration_sec":      128,
+		"start_time":        time.Now().Add(-1 * time.Hour).Format(time.RFC3339),
+		"checker_task_id":   plan.CodeCheckerTaskID,
+		"external_log_url":  "http://192.168.56.18:9080/pipelines/logs/" + plan.ExecutionPlanID, // 跳转三方系统的链接
 	})
 }

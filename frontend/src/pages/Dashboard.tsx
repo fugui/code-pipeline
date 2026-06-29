@@ -1,5 +1,5 @@
 import React from 'react'
-import { Loader2, RefreshCw, CheckCircle, XCircle, Terminal, Square } from 'lucide-react'
+import { Loader2, RefreshCw, CheckCircle, XCircle, Terminal, Square, ExternalLink } from 'lucide-react'
 import { DashboardStats, ExecutionLog } from '../types'
 
 interface DashboardProps {
@@ -118,6 +118,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <button className="btn btn-secondary btn-small" onClick={() => onViewExecDetails(run)}>
                         <Terminal size={12} /> 日志
                       </button>
+                      <a 
+                        href={`http://192.168.56.18:9080/pipelines/logs/` + (run.plan_id || 'default')} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="btn btn-secondary btn-small"
+                        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <ExternalLink size={12} style={{ marginRight: 4 }} /> 三方日志
+                      </a>
                       {(run.status === 'running' || run.status === 'pending') && (
                         <button className="btn btn-danger btn-small" onClick={() => onCancelExecution(run.id)}>
                           <Square size={12} /> 停止

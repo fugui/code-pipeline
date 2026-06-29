@@ -280,3 +280,7 @@ input:focus, textarea:focus, select:focus {
   font-size: 12px;
   border-radius: 6px;
 }
+
+.search-item:hover {
+  background: rgba(99, 102, 241, 0.15) !important;
+}
