@@ -122,7 +122,7 @@ func SyncExecutionPlans(c *gin.Context) {
 	}
 
 	for i := range fetchedPlans {
-		if err := tx.Create(&fetchedPlans[i]).Error; err != nil {
+		if err := tx.Omit("Repository").Create(&fetchedPlans[i]).Error; err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save synced execution plans"})
 			return
