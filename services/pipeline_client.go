@@ -113,6 +113,20 @@ func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, p
 		return nil, fmt.Errorf("failed to parse remote response JSON: %v", err)
 	}
 
+	// 在循环外仅查询一次数据库，并将规格化 URL 缓存到 Map 中，实现 O(1) 的超高速匹配
+	var allRepos []models.Repository
+	repoMap := make(map[string]models.Repository)
+	if err := database.DB.Find(&allRepos).Error; err == nil {
+		for _, r := range allRepos {
+			normalizedURL := NormalizeGitURL(r.URL)
+			if normalizedURL != "" {
+				repoMap[normalizedURL] = r
+			}
+		}
+	} else {
+		log.Printf("[PipelineClient] Error pre-loading repositories from DB: %v\n", err)
+	}
+
 	var fetchedPlans []models.ExecutionPlan
 	for _, entity := range remoteResp.Entities {
 		plan := models.ExecutionPlan{
@@ -151,22 +165,10 @@ func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, p
 		}
 
 		if codeURL != "" {
-			var matchedRepo *models.Repository
 			normalizedCodeURL := NormalizeGitURL(codeURL)
-
-			var allRepos []models.Repository
-			if err := database.DB.Find(&allRepos).Error; err == nil {
-				for _, r := range allRepos {
-					if NormalizeGitURL(r.URL) == normalizedCodeURL {
-						matchedRepo = &r
-						break
-					}
-				}
-			}
-
-			if matchedRepo != nil {
+			if matchedRepo, found := repoMap[normalizedCodeURL]; found {
 				plan.RepositoryID = matchedRepo.ID
-				plan.Repository = *matchedRepo
+				plan.Repository = matchedRepo
 			} else {
 				log.Printf("[PipelineClient] Warning: code_url %s (normalized: %s) not found in local mirrors\n", codeURL, normalizedCodeURL)
 			}
