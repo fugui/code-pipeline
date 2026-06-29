@@ -28,6 +28,7 @@ type Config struct {
 	PipelineSystem struct {
 		GetPipelineURL         string `yaml:"get_pipeline_url"`
 		GetExecutionPlanURL    string `yaml:"get_execution_plan_url"`
+		GetMRBindingsURL       string `yaml:"get_mr_bindings_url"`
 		CopyCheckerTaskURL     string `yaml:"copy_checker_task_url"`
 		CheckerTaskTemplateID  string `yaml:"checker_task_template_id"`
 		RepoAuthCheckURL       string `yaml:"repo_auth_check_url"`

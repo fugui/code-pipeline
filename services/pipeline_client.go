@@ -647,3 +647,35 @@ func NormalizeGitURL(u string) string {
 	}
 	return hostPart
 }
+
+// FetchRemoteMRBindings 从三方系统获取指定流水线的 MR 绑定列表
+func FetchRemoteMRBindings(ctx context.Context, pipelineBusinessID string, headers map[string]string) ([]models.MRBinding, error) {
+	apiURLStr := models.AppConfig.PipelineSystem.GetMRBindingsURL
+	if apiURLStr == "" {
+		return nil, fmt.Errorf("get_mr_bindings_url not configured")
+	}
+
+	body, err := sendHTTPRequest(ctx, "GET", apiURLStr, nil, httpOptions{
+		Headers:     headers,
+		QueryParams: map[string]string{"pipelineId": pipelineBusinessID},
+	}, []int{http.StatusOK}, "FetchMRBindings")
+	if err != nil {
+		return nil, err
+	}
+
+	var remoteResp struct {
+		Status string             `json:"status"`
+		Result []models.MRBinding `json:"result"`
+	}
+
+	if err := json.Unmarshal(body, &remoteResp); err != nil {
+		log.Printf("[FetchMRBindings] Failed to parse JSON: %v, Body: %s", err, string(body))
+		return nil, fmt.Errorf("failed to parse remote response JSON: %v", err)
+	}
+
+	if remoteResp.Status != "success" {
+		return nil, fmt.Errorf("remote API returned status: %s", remoteResp.Status)
+	}
+
+	return remoteResp.Result, nil
+}

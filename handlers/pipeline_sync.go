@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"code-pipeline/database"
@@ -76,7 +77,24 @@ func SyncExecutionPlans(c *gin.Context) {
 	// 1. 获取要透传的 HTTP Headers
 	headers := prepareRequestHeaders(c)
 
-	// 2. 调用 service 抓取执行方案列表
+	// 2.1 先获取 MR 绑定的列表
+	//  根据配置的 MR绑定列表API， 使用查询参数 pipelineId 查询获得全部的MR绑定列表
+	//  返回的对象格式为： { "status":"success",  "result": [ { 
+	//  "id", "codeUrl", "branches" (使用逗号分开),  schemeId, schemeName
+	//  } ]}
+	mrBindings, err := services.FetchRemoteMRBindings(c.Request.Context(), pipeline.PipelineID, headers)
+	if err != nil {
+		if err.Error() == "get_mr_bindings_url not configured" {
+			log.Println("[SyncExecutionPlans] Warning: get_mr_bindings_url not configured. Using empty list.")
+			mrBindings = []models.MRBinding{}
+		} else {
+			c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to fetch MR bindings: %v", err)})
+			return
+		}
+	}
+	log.Printf("[SyncExecutionPlans] Fetched %d MR bindings from remote\n", len(mrBindings))
+
+	// 2.2 调用 service 抓取执行方案列表
 	fetchedPlans, err := services.FetchRemoteExecutionPlans(c.Request.Context(), pipeline.PipelineID, pipeline.ID, headers)
 	if err != nil {
 		if err.Error() == "get_execution_plan_url not configured" {

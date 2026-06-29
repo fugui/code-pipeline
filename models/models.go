@@ -55,3 +55,11 @@ type ExecutionPlan struct {
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
 }
+
+type MRBinding struct {
+	ID         int    `json:"id"`
+	CodeURL    string `json:"codeUrl"`
+	Branches   string `json:"branches"`
+	SchemeID   string `json:"schemeId"`
+	SchemeName string `json:"schemeName"`
+}
