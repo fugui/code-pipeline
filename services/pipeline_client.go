@@ -23,34 +23,13 @@ func FetchRemotePipelineInfo(ctx context.Context, pipelineID string, headers map
 		return nil, fmt.Errorf("get_pipeline_url not configured")
 	}
 
-	u, err := url.Parse(apiURLStr)
+	body, err := sendHTTPRequest(ctx, "GET", apiURLStr, nil, httpOptions{
+		Headers:     headers,
+		QueryParams: map[string]string{"pipelineId": pipelineID},
+		Timeout:     3 * time.Second,
+	}, []int{http.StatusOK}, "FetchPipelineInfo")
 	if err != nil {
-		return nil, fmt.Errorf("invalid configured get_pipeline_url: %v", err)
-	}
-
-	q := u.Query()
-	q.Set("pipelineId", pipelineID)
-	u.RawQuery = q.Encode()
-
-	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create HTTP request: %v", err)
-	}
-
-	for k, v := range headers {
-		req.Header.Set(k, v)
-	}
-
-	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute remote request: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %v", err)
+		return nil, err
 	}
 
 	// Pretty print remote JSON response to console
@@ -59,11 +38,6 @@ func FetchRemotePipelineInfo(ctx context.Context, pipelineID string, headers map
 		log.Printf("[PipelineClient] FetchPipelineInfo remote response:\n%s\n", prettyJSON.String())
 	} else {
 		log.Printf("[PipelineClient] FetchPipelineInfo remote response: %s\n", string(body))
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		LogHTTPErrorDetails("FetchPipelineInfo", req, resp.StatusCode, body)
-		return nil, fmt.Errorf("remote server returned status %d", resp.StatusCode)
 	}
 
 	type RemoteResponse struct {
@@ -81,7 +55,7 @@ func FetchRemotePipelineInfo(ctx context.Context, pipelineID string, headers map
 
 	var remoteResp RemoteResponse
 	if err := json.Unmarshal(body, &remoteResp); err != nil {
-		LogHTTPErrorDetails("FetchPipelineInfo", req, resp.StatusCode, body)
+		log.Printf("[FetchPipelineInfo] Failed to parse JSON: %v, Body: %s", err, string(body))
 		return nil, fmt.Errorf("failed to parse remote response JSON: %v", err)
 	}
 
@@ -111,34 +85,13 @@ func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, p
 		return nil, fmt.Errorf("get_execution_plan_url not configured")
 	}
 
-	u, err := url.Parse(apiURLStr)
+	body, err := sendHTTPRequest(ctx, "GET", apiURLStr, nil, httpOptions{
+		Headers:     headers,
+		QueryParams: map[string]string{"pipelineId": pipelineBusinessID},
+		Timeout:     3 * time.Second,
+	}, []int{http.StatusOK}, "SyncExecutionPlans")
 	if err != nil {
-		return nil, fmt.Errorf("invalid configured get_execution_plan_url: %v", err)
-	}
-
-	q := u.Query()
-	q.Set("pipelineId", pipelineBusinessID)
-	u.RawQuery = q.Encode()
-
-	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create HTTP request: %v", err)
-	}
-
-	for k, v := range headers {
-		req.Header.Set(k, v)
-	}
-
-	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch remote execution plans: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %v", err)
+		return nil, err
 	}
 
 	var prettyJSON bytes.Buffer
@@ -146,11 +99,6 @@ func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, p
 		log.Printf("[PipelineClient] SyncExecutionPlans remote response:\n%s\n", prettyJSON.String())
 	} else {
 		log.Printf("[PipelineClient] SyncExecutionPlans remote response: %s\n", string(body))
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		LogHTTPErrorDetails("SyncExecutionPlans", req, resp.StatusCode, body)
-		return nil, fmt.Errorf("remote server returned status %d", resp.StatusCode)
 	}
 
 	var remoteResp struct {
@@ -162,7 +110,7 @@ func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, p
 	}
 
 	if err := json.Unmarshal(body, &remoteResp); err != nil {
-		LogHTTPErrorDetails("SyncExecutionPlans", req, resp.StatusCode, body)
+		log.Printf("[SyncExecutionPlans] Failed to parse JSON: %v, Body: %s", err, string(body))
 		return nil, fmt.Errorf("failed to parse remote response JSON: %v", err)
 	}
 
@@ -231,37 +179,16 @@ func SyncCreateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 		"custom_attributes":    plan.CustomAttributes,
 	}
 
-	jsonBytes, err := json.Marshal(payload)
+	body, err := sendHTTPRequest(context.Background(), "POST", apiURLStr, payload, httpOptions{
+		Timeout: 3 * time.Second,
+	}, []int{http.StatusOK, http.StatusCreated}, "SyncCreatePlan")
 	if err != nil {
 		return "", err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, apiURLStr, bytes.NewBuffer(jsonBytes))
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		LogHTTPErrorDetails("SyncCreatePlan", req, resp.StatusCode, body)
-		return "", fmt.Errorf("remote API returned status code %d", resp.StatusCode)
 	}
 
 	var responseData map[string]interface{}
 	if err := json.Unmarshal(body, &responseData); err != nil {
-		LogHTTPErrorDetails("SyncCreatePlan", req, resp.StatusCode, body)
+		log.Printf("[SyncCreatePlan] Failed to parse JSON: %v, Body: %s", err, string(body))
 		return "", err
 	}
 
@@ -297,35 +224,10 @@ func SyncUpdateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 		"custom_attributes":    plan.CustomAttributes,
 	}
 
-	jsonBytes, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequest(http.MethodPut, targetURL, bytes.NewBuffer(jsonBytes))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		LogHTTPErrorDetails("SyncUpdatePlan", req, resp.StatusCode, body)
-		return fmt.Errorf("remote API returned status code %d", resp.StatusCode)
-	}
-
-	return nil
+	_, err := sendHTTPRequest(context.Background(), "PUT", targetURL, payload, httpOptions{
+		Timeout: 3 * time.Second,
+	}, []int{http.StatusOK, http.StatusNoContent}, "SyncUpdatePlan")
+	return err
 }
 
 // SyncDeleteExecutionPlanRemote 在三方系统中删除执行方案
@@ -337,29 +239,10 @@ func SyncDeleteExecutionPlanRemote(executionPlanID string) error {
 
 	targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), executionPlanID)
 
-	req, err := http.NewRequest(http.MethodDelete, targetURL, nil)
-	if err != nil {
-		return err
-	}
-
-	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusAccepted {
-		LogHTTPErrorDetails("SyncDeletePlan", req, resp.StatusCode, body)
-		return fmt.Errorf("remote API returned status code %d", resp.StatusCode)
-	}
-
-	return nil
+	_, err := sendHTTPRequest(context.Background(), "DELETE", targetURL, nil, httpOptions{
+		Timeout: 3 * time.Second,
+	}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeletePlan")
+	return err
 }
 
 // LogHTTPErrorDetails 打印详细的 HTTP 错误日志，包括等价的 curl 调试命令及三方返回的原始报文
@@ -404,41 +287,17 @@ func copyCheckerTask(ctx context.Context, repository string, branch string, head
 		"isCopyCategory":  "false",
 	}
 
-	jsonData, err := json.Marshal(postData)
+	log.Printf("[UpdateCheckerTaskRemote_CopyTask] Request URL: %s, Headers: %v, Body: %v", apiURL, headers, postData)
+
+	respBody, err := sendHTTPRequest(ctx, "POST", apiURL, postData, httpOptions{
+		Headers: headers,
+		Timeout: 5 * time.Second,
+	}, []int{http.StatusOK, http.StatusCreated}, "UpdateCheckerTaskRemote_CopyTask")
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal copy task request data: %v", err)
+		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create HTTP request for copy task: %v", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	for k, v := range headers {
-		req.Header.Set(k, v)
-	}
-
-	log.Printf("[UpdateCheckerTaskRemote_CopyTask] Request URL: %s, Headers: %v, Body: %s", apiURL, req.Header, string(jsonData))
-
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send HTTP request to copy task remote API: %v", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body from copy task remote API: %v", err)
-	}
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		LogHTTPErrorDetails("UpdateCheckerTaskRemote_CopyTask", req, resp.StatusCode, respBody)
-		return nil, fmt.Errorf("remote copy task server returned status %d", resp.StatusCode)
-	}
-
-	log.Printf("[UpdateCheckerTaskRemote_CopyTask] Response Status: %d, Body: %s", resp.StatusCode, string(respBody))
+	log.Printf("[UpdateCheckerTaskRemote_CopyTask] Response Body: %s", string(respBody))
 	return respBody, nil
 }
 
@@ -529,44 +388,18 @@ func checkRepoAuthorized(ctx context.Context, repository string, headers map[str
 		return false, fmt.Errorf("repo_auth_check_url not configured")
 	}
 
-	u, err := url.Parse(apiURLStr)
+	body, err := sendHTTPRequest(ctx, "GET", apiURLStr, nil, httpOptions{
+		Headers:     headers,
+		QueryParams: map[string]string{"fuzzyMatch": repository},
+		Timeout:     3 * time.Second,
+	}, []int{http.StatusOK}, "checkRepoAuthorized")
 	if err != nil {
-		return false, fmt.Errorf("invalid configured repo_auth_check_url: %v", err)
-	}
-
-	q := u.Query()
-	q.Set("fuzzyMatch", repository)
-	u.RawQuery = q.Encode()
-
-	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
-	if err != nil {
-		return false, fmt.Errorf("failed to create HTTP request: %v", err)
-	}
-
-	for k, v := range headers {
-		req.Header.Set(k, v)
-	}
-
-	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return false, fmt.Errorf("failed to execute repo auth check request: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false, fmt.Errorf("failed to read repo auth check response: %v", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		LogHTTPErrorDetails("checkRepoAuthorized", req, resp.StatusCode, body)
-		return false, fmt.Errorf("remote server returned status %d", resp.StatusCode)
+		return false, err
 	}
 
 	var responseData map[string]interface{}
 	if err := json.Unmarshal(body, &responseData); err != nil {
-		LogHTTPErrorDetails("checkRepoAuthorized", req, resp.StatusCode, body)
+		log.Printf("[checkRepoAuthorized] Failed to parse JSON: %v, Body: %s", err, string(body))
 		return false, fmt.Errorf("failed to parse auth check response JSON: %v", err)
 	}
 
@@ -598,3 +431,81 @@ func checkRepoAuthorized(ctx context.Context, repository string, headers map[str
 
 	return count > 0, nil
 }
+
+// httpOptions 定义 HTTP 请求的附加参数
+type httpOptions struct {
+	Headers     map[string]string
+	QueryParams map[string]string
+	Timeout     time.Duration
+}
+
+// sendHTTPRequest 封装统一的 HTTP 请求发送与错误处理逻辑
+func sendHTTPRequest(ctx context.Context, method, rawURL string, payload interface{}, opt httpOptions, expectedStatuses []int, contextMsg string) ([]byte, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse URL %s: %v", rawURL, err)
+	}
+
+	if len(opt.QueryParams) > 0 {
+		q := u.Query()
+		for k, v := range opt.QueryParams {
+			q.Set(k, v)
+		}
+		u.RawQuery = q.Encode()
+	}
+
+	var bodyReader io.Reader
+	if payload != nil {
+		jsonBytes, err := json.Marshal(payload)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal request payload: %v", err)
+		}
+		bodyReader = bytes.NewBuffer(jsonBytes)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create HTTP request: %v", err)
+	}
+
+	if payload != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	for k, v := range opt.Headers {
+		req.Header.Set(k, v)
+	}
+
+	timeout := 5 * time.Second
+	if opt.Timeout > 0 {
+		timeout = opt.Timeout
+	}
+
+	client := &http.Client{Timeout: timeout}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute remote request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %v", err)
+	}
+
+	isExpected := false
+	for _, status := range expectedStatuses {
+		if resp.StatusCode == status {
+			isExpected = true
+			break
+		}
+	}
+
+	if !isExpected {
+		LogHTTPErrorDetails(contextMsg, req, resp.StatusCode, body)
+		return nil, fmt.Errorf("remote API returned status code %d", resp.StatusCode)
+	}
+
+	return body, nil
+}
+
