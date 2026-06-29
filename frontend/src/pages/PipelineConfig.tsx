@@ -229,11 +229,23 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                           <td style={{ padding: '12px 8px' }}>{plan.username || '-'}</td>
                           <td style={{ padding: '12px 8px', textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                              <button className="btn btn-secondary btn-small" onClick={() => onEditPlan(plan)}>
-                                <Edit size={11} /> 编辑
+                              <button 
+                                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', padding: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', transition: 'color 0.2s' }} 
+                                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-main)'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+                                onClick={() => onEditPlan(plan)}
+                                title="编辑"
+                              >
+                                <Edit size={14} />
                               </button>
-                              <button className="btn btn-secondary btn-small" style={{ color: '#fb7185' }} onClick={() => plan.id && onDeletePlan(plan.id)}>
-                                <Trash2 size={11} />
+                              <button 
+                                style={{ background: 'none', border: 'none', color: '#fda4af', padding: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', transition: 'color 0.2s' }} 
+                                onMouseEnter={(e) => e.currentTarget.style.color = '#fb7185'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = '#fda4af'}
+                                onClick={() => plan.id && onDeletePlan(plan.id)}
+                                title="删除"
+                              >
+                                <Trash2 size={14} />
                               </button>
                             </div>
                           </td>
