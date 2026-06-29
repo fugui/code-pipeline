@@ -263,11 +263,11 @@ func copyCheckerTask(ctx context.Context, repository string, branch string, head
 func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch string, languages string, customAttributes string, headers map[string]string) (string, string, error) {
 
 	//1. 检查代码仓授权（进行 MR 的 Webhook 的配置等）
-	authorized, err := checkRepoAuthorized(ctx, repository, headers)
+	authID, err := checkRepoAuthorized(ctx, repository, headers)
 	if err != nil {
 		return "", "", fmt.Errorf("repo auth check failed: %v", err)
 	}
-	if !authorized {
+	if authID == "" {
 		return "", "", fmt.Errorf("repository %s is unauthorized", repository)
 	}
 
@@ -351,10 +351,12 @@ func extractRepoName(repoURL string) string {
 }
 
 // checkRepoAuthorized 检查代码仓是否授权
-func checkRepoAuthorized(ctx context.Context, repository string, headers map[string]string) (bool, error) {
+// 返回的数据结构： {"status":"success",  "count": 3, "entities": [ {"id"} ]}
+// 所以本函数会检查返回状态是否成功， count 是否大于0， 如果大于0， 则返回第一个 entity 的 id（授权ID）， 否则返回 ""， 表明未授权
+func checkRepoAuthorized(ctx context.Context, repository string, headers map[string]string) (string, error) {
 	apiURLStr := models.AppConfig.PipelineSystem.RepoAuthCheckURL
 	if apiURLStr == "" {
-		return false, fmt.Errorf("repo_auth_check_url not configured")
+		return "", fmt.Errorf("repo_auth_check_url not configured")
 	}
 
 	body, err := sendHTTPRequest(ctx, "GET", apiURLStr, nil, httpOptions{
@@ -362,42 +364,57 @@ func checkRepoAuthorized(ctx context.Context, repository string, headers map[str
 		QueryParams: map[string]string{"fuzzyMatch": repository, "filterType": "allTeam"},
 	}, []int{http.StatusOK}, "checkRepoAuthorized")
 	if err != nil {
-		return false, err
+		return "", err
 	}
 
 	var responseData map[string]interface{}
 	if err := json.Unmarshal(body, &responseData); err != nil {
 		log.Printf("[checkRepoAuthorized] Failed to parse JSON: %v, Body: %s", err, string(body))
-		return false, fmt.Errorf("failed to parse auth check response JSON: %v", err)
+		return "", fmt.Errorf("failed to parse auth check response JSON: %v", err)
 	}
 
 	status, _ := responseData["status"].(string)
 	if status != "success" {
-		return false, fmt.Errorf("auth check failed with status: %s", status)
+		return "", fmt.Errorf("auth check failed with status: %s", status)
 	}
 
-	countVal, exists := responseData["count"]
+	entitiesVal, exists := responseData["entities"]
 	if !exists {
-		return false, fmt.Errorf("auth check response does not contain count")
+		return "", fmt.Errorf("auth check response does not contain entities")
 	}
 
-	var count int
-	switch v := countVal.(type) {
+	entities, ok := entitiesVal.([]interface{})
+	if !ok {
+		return "", fmt.Errorf("entities in auth check response is not an array")
+	}
+
+	if len(entities) == 0 {
+		return "", nil // 未授权，返回空字符串
+	}
+
+	firstEntity, ok := entities[0].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("first entity in auth check response is not an object")
+	}
+
+	idVal, exists := firstEntity["id"]
+	if !exists {
+		return "", fmt.Errorf("first entity does not contain id")
+	}
+
+	var authID string
+	switch v := idVal.(type) {
 	case string:
-		c, err := strconv.Atoi(v)
-		if err != nil {
-			return false, fmt.Errorf("invalid count value %q in auth check response: %v", v, err)
-		}
-		count = c
+		authID = v
 	case float64:
-		count = int(v)
+		authID = strconv.FormatFloat(v, 'f', -1, 64)
 	case int:
-		count = v
+		authID = strconv.Itoa(v)
 	default:
-		return false, fmt.Errorf("unexpected count type %T in auth check response", countVal)
+		authID = fmt.Sprintf("%v", v)
 	}
 
-	return count > 0, nil
+	return authID, nil
 }
 
 // checkRepoCredentialAssociated 检查代码仓是否关联到凭证

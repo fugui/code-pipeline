@@ -52,7 +52,7 @@ func TestUpdateCheckerTaskRemote(t *testing.T) {
 				checkAuthReceivedMethod = r.Method
 				checkAuthReceivedURL = r.URL.String()
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`{"status": "success", "count": "1"}`))
+				w.Write([]byte(`{"status": "success", "count": "1", "entities": [{"id": 12345}]}`))
 				return
 			}
 			if strings.Contains(r.URL.RawQuery, "authorized=true") {
@@ -180,49 +180,49 @@ func TestCheckRepoAuthorized(t *testing.T) {
 		name           string
 		mockStatus     int
 		mockBody       string
-		expectedAuth   bool
+		expectedAuthID string
 		expectedHasErr bool
 	}{
 		{
-			name:           "Authorized string count",
+			name:           "Authorized string ID",
 			mockStatus:     http.StatusOK,
-			mockBody:       `{"status": "success", "count": "1"}`,
-			expectedAuth:   true,
+			mockBody:       `{"status": "success", "count": 1, "entities": [{"id": "auth-12345"}]}`,
+			expectedAuthID: "auth-12345",
 			expectedHasErr: false,
 		},
 		{
-			name:           "Authorized int count",
+			name:           "Authorized numeric ID",
 			mockStatus:     http.StatusOK,
-			mockBody:       `{"status": "success", "count": 2}`,
-			expectedAuth:   true,
+			mockBody:       `{"status": "success", "count": 1, "entities": [{"id": 99999}]}`,
+			expectedAuthID: "99999",
 			expectedHasErr: false,
 		},
 		{
 			name:           "Unauthorized",
 			mockStatus:     http.StatusOK,
-			mockBody:       `{"status": "success", "count": "0"}`,
-			expectedAuth:   false,
+			mockBody:       `{"status": "success", "count": 0, "entities": []}`,
+			expectedAuthID: "",
 			expectedHasErr: false,
 		},
 		{
 			name:           "API returns status error",
 			mockStatus:     http.StatusOK,
-			mockBody:       `{"status": "error", "count": "1"}`,
-			expectedAuth:   false,
+			mockBody:       `{"status": "error", "entities": [{"id": "123"}]}`,
+			expectedAuthID: "",
 			expectedHasErr: true,
 		},
 		{
 			name:           "HTTP status not 200",
 			mockStatus:     http.StatusInternalServerError,
 			mockBody:       `{}`,
-			expectedAuth:   false,
+			expectedAuthID: "",
 			expectedHasErr: true,
 		},
 		{
 			name:           "Invalid JSON body",
 			mockStatus:     http.StatusOK,
 			mockBody:       `{invalid-json}`,
-			expectedAuth:   false,
+			expectedAuthID: "",
 			expectedHasErr: true,
 		},
 	}
@@ -242,12 +242,12 @@ func TestCheckRepoAuthorized(t *testing.T) {
 
 			models.AppConfig.PipelineSystem.RepoAuthCheckURL = server.URL
 
-			auth, err := checkRepoAuthorized(context.Background(), "git@github.com:my-org/my-target-repo.git", nil)
+			authID, err := checkRepoAuthorized(context.Background(), "git@github.com:my-org/my-target-repo.git", nil)
 			if (err != nil) != tc.expectedHasErr {
 				t.Fatalf("Expected error: %v, got: %v", tc.expectedHasErr, err)
 			}
-			if auth != tc.expectedAuth {
-				t.Errorf("Expected auth: %v, got: %v", tc.expectedAuth, auth)
+			if authID != tc.expectedAuthID {
+				t.Errorf("Expected authID: %q, got: %q", tc.expectedAuthID, authID)
 			}
 		})
 	}
