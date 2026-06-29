@@ -57,7 +57,7 @@ type ExecutionPlan struct {
 }
 
 type MRBinding struct {
-	ID         int    `json:"id"`
+	ID         string `json:"id"`
 	CodeURL    string `json:"codeUrl"`
 	Branches   string `json:"branches"`
 	SchemeID   string `json:"schemeId"`
