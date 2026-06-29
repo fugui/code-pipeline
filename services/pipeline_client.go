@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -402,16 +401,9 @@ func checkRepoAuthorized(ctx context.Context, repository string, headers map[str
 		return "", fmt.Errorf("first entity does not contain id")
 	}
 
-	var authID string
-	switch v := idVal.(type) {
-	case string:
-		authID = v
-	case float64:
-		authID = strconv.FormatFloat(v, 'f', -1, 64)
-	case int:
-		authID = strconv.Itoa(v)
-	default:
-		authID = fmt.Sprintf("%v", v)
+	authID, ok := idVal.(string)
+	if !ok {
+		return "", fmt.Errorf("first entity id is not a string")
 	}
 
 	return authID, nil

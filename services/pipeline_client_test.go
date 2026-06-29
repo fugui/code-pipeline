@@ -52,7 +52,7 @@ func TestUpdateCheckerTaskRemote(t *testing.T) {
 				checkAuthReceivedMethod = r.Method
 				checkAuthReceivedURL = r.URL.String()
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`{"status": "success", "count": "1", "entities": [{"id": 12345}]}`))
+				w.Write([]byte(`{"status": "success", "count": "1", "entities": [{"id": "12345"}]}`))
 				return
 			}
 			if strings.Contains(r.URL.RawQuery, "authorized=true") {
@@ -188,13 +188,6 @@ func TestCheckRepoAuthorized(t *testing.T) {
 			mockStatus:     http.StatusOK,
 			mockBody:       `{"status": "success", "count": 1, "entities": [{"id": "auth-12345"}]}`,
 			expectedAuthID: "auth-12345",
-			expectedHasErr: false,
-		},
-		{
-			name:           "Authorized numeric ID",
-			mockStatus:     http.StatusOK,
-			mockBody:       `{"status": "success", "count": 1, "entities": [{"id": 99999}]}`,
-			expectedAuthID: "99999",
 			expectedHasErr: false,
 		},
 		{
