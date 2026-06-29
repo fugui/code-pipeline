@@ -23,6 +23,7 @@ type Config struct {
 	Auth struct {
 		JWTSecret            string `yaml:"jwt_secret"`
 		PasswordLoginEnabled bool   `yaml:"password_login_enabled"`
+		SystemUserID         uint   `yaml:"system_user_id"`
 	} `yaml:"auth"`
 	PipelineSystem struct {
 		GetPipelineURL         string `yaml:"get_pipeline_url"`
@@ -67,6 +68,9 @@ func applyDefaults() {
 	}
 	if AppConfig.Server.RepoSyncServer == "" {
 		AppConfig.Server.RepoSyncServer = "http://localhost:8000"
+	}
+	if AppConfig.Auth.SystemUserID == 0 {
+		AppConfig.Auth.SystemUserID = 1
 	}
 	if AppConfig.Auth.JWTSecret == "" {
 		randomBytes := make([]byte, 32)

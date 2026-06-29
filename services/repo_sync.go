@@ -19,7 +19,7 @@ import (
 func GenerateSystemToken() (string, error) {
 	secret := []byte(models.AppConfig.Auth.JWTSecret)
 	claims := jwt.MapClaims{
-		"user_id":  1,
+		"user_id":  models.AppConfig.Auth.SystemUserID,
 		"email":    "admin@code-shield.com",
 		"name":     "SystemSync",
 		"is_admin": true,

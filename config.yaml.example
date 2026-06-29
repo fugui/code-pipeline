@@ -10,6 +10,7 @@ server:
 auth:
   jwt_secret: "please-change-this-jwt-secret-in-production-environments-123456"
   password_login_enabled: true
+  system_user_id: 1 # 用于系统间调用的虚拟或物理系统用户 ID，必须在 code-bench 侧处于 IsActive=true 状态
 
 pipeline_system:
   get_pipeline_url: "http://192.168.56.18:8080/api/external/pipeline"
