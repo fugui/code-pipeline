@@ -114,6 +114,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
       fetchRepos()
     } else if (currentView === 'pipeline-config') {
       fetchPipelines()
+      fetchRepos("")
     }
   }, [token, user, currentView, searchQuery])
 
@@ -164,12 +165,13 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     .catch(err => console.error('Failed to fetch stats', err))
   }
 
-  const fetchRepos = () => {
-    fetch(`${apiBase}/repos?search=${encodeURIComponent(searchQuery)}`, {
+  const fetchRepos = (search?: string) => {
+    const q = search !== undefined ? search : searchQuery
+    fetch(`${apiBase}/repos?search=${encodeURIComponent(q)}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())
-    .then(data => setRepos(data))
+    .then(data => setRepos(data || []))
     .catch(err => console.error('Failed to fetch repos', err))
   }
 
