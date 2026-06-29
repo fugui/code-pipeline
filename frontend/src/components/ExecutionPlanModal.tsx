@@ -47,7 +47,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
 
         <form onSubmit={onSave} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>关联代码镜像仓库</label>
+            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>代码仓</label>
             {activePlan.id ? (
               <input 
                 type="text" 
@@ -81,7 +81,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                       zIndex: 1000, 
                       maxHeight: 220, 
                       overflowY: 'auto', 
-                      background: 'rgba(30, 41, 59, 0.98)', 
+                      background: 'var(--bg-secondary)', 
                       backdropFilter: 'blur(12px)',
                       border: '1px solid var(--border-color)', 
                       borderRadius: 6, 
@@ -114,7 +114,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                             setIsOpen(false);
                           }}
                         >
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{r.name}</span>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)' }}>{r.name}</span>
                           <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{r.url}</span>
                         </div>
                       ))
