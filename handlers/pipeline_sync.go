@@ -86,6 +86,7 @@ func SyncExecutionPlans(c *gin.Context) {
 	mrBindings, err := services.FetchRemoteMRBindings(c.Request.Context(), pipeline.PipelineID, headers)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to fetch MR bindings: %v", err)})
+		return
 	}
 	log.Printf("[SyncExecutionPlans] Fetched %d MR bindings from remote\n", len(mrBindings))
 
@@ -133,6 +134,7 @@ func SyncExecutionPlans(c *gin.Context) {
 			ExecutionPlanID:  matchedScheme.ID,
 			PipelineID:       pipeline.ID,
 			Branch:           binding.Branches, // 用 MR 数据的分支信息覆盖
+			MRBindingID:      binding.ID,       // 记录绑定的 MR 绑定 ID
 			CustomAttributes: matchedScheme.CustomParameter,
 		}
 
