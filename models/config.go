@@ -65,6 +65,9 @@ func applyDefaults() {
 	if AppConfig.Server.SandboxDir == "" {
 		AppConfig.Server.SandboxDir = "./workspace"
 	}
+	if AppConfig.Server.RepoSyncServer == "" {
+		AppConfig.Server.RepoSyncServer = "http://localhost:8000"
+	}
 	if AppConfig.Auth.JWTSecret == "" {
 		randomBytes := make([]byte, 32)
 		if _, err := rand.Read(randomBytes); err != nil {
