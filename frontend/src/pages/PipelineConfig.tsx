@@ -37,7 +37,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
 }) => {
   const [planSearchQuery, setPlanSearchQuery] = React.useState('')
   const [currentPlanPage, setCurrentPlanPage] = React.useState(1)
-  const planPageSize = 5
+  const planPageSize = 20
 
   // Reset page & search on pipeline change
   React.useEffect(() => {
@@ -201,7 +201,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                   <thead>
                     <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
                       <th style={{ padding: '12px 8px' }}>代码托管仓</th>
-                      <th style={{ padding: '12px 8px' }}>默认分支</th>
+                      <th style={{ padding: '12px 8px' }}>生效分支</th>
                       <th style={{ padding: '12px 8px' }}>编程语言</th>
                       <th style={{ padding: '12px 8px' }}>认证用户</th>
                       <th style={{ padding: '12px 8px', textAlign: 'right' }}>操作</th>
@@ -214,7 +214,9 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                           <td style={{ padding: '12px 8px', fontWeight: 500, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={plan.repository?.url}>
                             {plan.repository?.name || `ID: ${plan.repository_id}`}
                           </td>
-                          <td style={{ padding: '12px 8px' }}>{plan.branch}</td>
+                          <td style={{ padding: '12px 8px' }} title={plan.branch}>
+                            {plan.branch && plan.branch.length > 20 ? plan.branch.substring(0, 20) + '...' : plan.branch}
+                          </td>
                           <td style={{ padding: '12px 8px' }}>
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                               {plan.languages ? plan.languages.split(',').map((l: string) => (
