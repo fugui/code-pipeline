@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -444,8 +445,17 @@ func copyCheckerTask(ctx context.Context, repository string, branch string, head
 // UpdateCheckerTaskRemote 调用远程三方接口完成：1. 创建任务，2. 获取 ID，3. 进行设置
 func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch string, languages string, customAttributes string, headers map[string]string) (string, string, error) {
 
+	//0. 检查代码仓授权
+	authorized, err := checkRepoAuthorized(ctx, repository, headers)
+	if err != nil {
+		return "", "", fmt.Errorf("repo auth check failed: %v", err)
+	}
+	if !authorized {
+		return "", "", fmt.Errorf("repository %s is unauthorized", repository)
+	}
+
 	// 1. 复制任务 (Remote API Call 1)
-	_, err := copyCheckerTask(ctx, repository, branch, headers)
+	_, err = copyCheckerTask(ctx, repository, branch, headers)
 	if err != nil {
 		return "", "", err
 	}
@@ -510,4 +520,81 @@ func extractRepoName(repoURL string) string {
 		return "repo"
 	}
 	return u
+}
+
+// checkRepoAuthorized 检查代码仓是否授权
+func checkRepoAuthorized(ctx context.Context, repository string, headers map[string]string) (bool, error) {
+	apiURLStr := models.AppConfig.PipelineSystem.RepoAuthCheckURL
+	if apiURLStr == "" {
+		return false, fmt.Errorf("repo_auth_check_url not configured")
+	}
+
+	u, err := url.Parse(apiURLStr)
+	if err != nil {
+		return false, fmt.Errorf("invalid configured repo_auth_check_url: %v", err)
+	}
+
+	q := u.Query()
+	q.Set("fuzzyMatch", repository)
+	u.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	if err != nil {
+		return false, fmt.Errorf("failed to create HTTP request: %v", err)
+	}
+
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("failed to execute repo auth check request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false, fmt.Errorf("failed to read repo auth check response: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		LogHTTPErrorDetails("checkRepoAuthorized", req, resp.StatusCode, body)
+		return false, fmt.Errorf("remote server returned status %d", resp.StatusCode)
+	}
+
+	var responseData map[string]interface{}
+	if err := json.Unmarshal(body, &responseData); err != nil {
+		LogHTTPErrorDetails("checkRepoAuthorized", req, resp.StatusCode, body)
+		return false, fmt.Errorf("failed to parse auth check response JSON: %v", err)
+	}
+
+	status, _ := responseData["status"].(string)
+	if status != "success" {
+		return false, fmt.Errorf("auth check failed with status: %s", status)
+	}
+
+	countVal, exists := responseData["count"]
+	if !exists {
+		return false, fmt.Errorf("auth check response does not contain count")
+	}
+
+	var count int
+	switch v := countVal.(type) {
+	case string:
+		c, err := strconv.Atoi(v)
+		if err != nil {
+			return false, fmt.Errorf("invalid count value %q in auth check response: %v", v, err)
+		}
+		count = c
+	case float64:
+		count = int(v)
+	case int:
+		count = v
+	default:
+		return false, fmt.Errorf("unexpected count type %T in auth check response", countVal)
+	}
+
+	return count > 0, nil
 }
