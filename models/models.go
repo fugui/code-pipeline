@@ -63,3 +63,9 @@ type MRBinding struct {
 	SchemeID   string `json:"schemeId"`
 	SchemeName string `json:"schemeName"`
 }
+
+type RemoteExecutionScheme struct {
+	ID              string `json:"id"`
+	Name            string `json:"name"`
+	CustomParameter string `json:"customParameter"`
+}

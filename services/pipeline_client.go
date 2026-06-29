@@ -78,8 +78,8 @@ func FetchRemotePipelineInfo(ctx context.Context, pipelineID string, headers map
 	}, nil
 }
 
-// FetchRemoteExecutionPlans 从三方系统获取指定流水线的执行方案列表
-func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, pipelineID uint, headers map[string]string) ([]models.ExecutionPlan, error) {
+// FetchRemoteExecutionPlans 从三方系统获取指定流水线的执行方案原始数据列表
+func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, headers map[string]string) ([]models.RemoteExecutionScheme, error) {
 	apiURLStr := models.AppConfig.PipelineSystem.GetExecutionPlanURL
 	if apiURLStr == "" {
 		return nil, fmt.Errorf("get_execution_plan_url not configured")
@@ -101,11 +101,7 @@ func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, p
 	}
 
 	var remoteResp struct {
-		Entities []struct {
-			ID              string `json:"id"`
-			Name            string `json:"name"`
-			CustomParameter string `json:"customParameter"`
-		} `json:"entities"`
+		Entities []models.RemoteExecutionScheme `json:"entities"`
 	}
 
 	if err := json.Unmarshal(body, &remoteResp); err != nil {
@@ -113,76 +109,7 @@ func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, p
 		return nil, fmt.Errorf("failed to parse remote response JSON: %v", err)
 	}
 
-	// 在循环外仅查询一次数据库，并将规格化 URL 缓存到 Map 中，实现 O(1) 的超高速匹配
-	var allRepos []models.Repository
-	repoMap := make(map[string]models.Repository)
-	if err := database.DB.Find(&allRepos).Error; err == nil {
-		for _, r := range allRepos {
-			normalizedURL := NormalizeGitURL(r.URL)
-			if normalizedURL != "" {
-				repoMap[normalizedURL] = r
-			}
-		}
-	} else {
-		log.Printf("[PipelineClient] Error pre-loading repositories from DB: %v\n", err)
-	}
-
-	var fetchedPlans []models.ExecutionPlan
-	for _, entity := range remoteResp.Entities {
-		plan := models.ExecutionPlan{
-			ExecutionPlanID:  entity.ID,
-			PipelineID:       pipelineID,
-			Branch:           "master",
-			CustomAttributes: entity.CustomParameter,
-		}
-
-		var codeURL string
-		if entity.CustomParameter != "" {
-			var cp struct {
-				BuildParameters []struct {
-					Name  string `json:"name"`
-					Value string `json:"value"`
-				} `json:"buildParameters"`
-			}
-			if err := json.Unmarshal([]byte(entity.CustomParameter), &cp); err == nil {
-				for _, param := range cp.BuildParameters {
-					switch param.Name {
-					case "cmc_username":
-						plan.Username = param.Value
-					case "cmc_password":
-						plan.Password = param.Value
-					case "code_branch", "codehubTargetBranch":
-						plan.Branch = param.Value
-					case "codehubTargetRepoHttpUrl", "code_url":
-						codeURL = param.Value
-					case "code_checker_task_id":
-						plan.CodeCheckerTaskID = param.Value
-					}
-				}
-			} else {
-				log.Printf("[PipelineClient] Warning: failed to parse customParameter JSON for entity %s: %v\n", entity.ID, err)
-			}
-		}
-
-		if codeURL != "" {
-			normalizedCodeURL := NormalizeGitURL(codeURL)
-			if matchedRepo, found := repoMap[normalizedCodeURL]; found {
-				plan.RepositoryID = matchedRepo.ID
-				plan.Repository = matchedRepo
-			} else {
-				log.Printf("[PipelineClient] Warning: code_url %s (normalized: %s) not found in local mirrors\n", codeURL, normalizedCodeURL)
-			}
-		}
-
-		if plan.RepositoryID == 0 {
-			log.Printf("[PipelineClient] Warning: skipped entity %s because repository ID is 0 or URL %s is not synced\n", entity.ID, codeURL)
-			continue
-		}
-
-		fetchedPlans = append(fetchedPlans, plan)
-	}
-
-	return fetchedPlans, nil
+	return remoteResp.Entities, nil
 }
 
 // SyncCreateExecutionPlanRemote 在三方系统中同步创建执行方案
