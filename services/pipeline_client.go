@@ -152,7 +152,9 @@ func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, p
 					case "cmc_password":
 						plan.Password = param.Value
 					case "code_branch":
+					case "codehubTargetBranch":
 						plan.Branch = param.Value
+					case "codehubTargetRepoHttpUrl":
 					case "code_url":
 						codeURL = param.Value
 					case "code_checker_task_id":
