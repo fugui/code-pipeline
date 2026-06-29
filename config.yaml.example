@@ -17,3 +17,6 @@ pipeline_system:
   checker_task_template_id: "template_task_id"
   repo_auth_check_url: "http://192.168.56.18:8080/api/external/repo-auth-check"
   repo_credential_check_url: "http://192.168.56.18:8080/api/external/repo-credential-check"
+
+code_bench:
+  api_url: "http://192.168.56.18:8000"
