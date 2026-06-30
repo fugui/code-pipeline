@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"code-pipeline/database"
@@ -135,7 +136,12 @@ func GetRepoBranches(c *gin.Context) {
 
 	// 3. 调用 API 获取该代码仓的分支信息， 该API由三方流水线系统提供， 基于 URL 的GET请求的RESTful API
 	// 其返回格式为：{"status":"success", "result": [string]}
-	branches, err := services.GetRepoBranchesRemote(c.Request.Context(), formattedURL, authID, headers)
+	// 查询分支时， 代码仓必须有 .git 结尾
+	urlForBranches := formattedURL
+	if !strings.HasSuffix(urlForBranches, ".git") {
+		urlForBranches = urlForBranches + ".git"
+	}
+	branches, err := services.GetRepoBranchesRemote(c.Request.Context(), urlForBranches, authID, headers)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to fetch branches from remote: %v", err)})
 		return
