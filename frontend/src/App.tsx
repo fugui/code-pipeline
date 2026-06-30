@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { 
-  Activity, ShieldAlert, Loader2, LayoutDashboard, GitBranch, LogOut
+  Activity, Loader2, LayoutDashboard, GitBranch, LogOut
 } from 'lucide-react'
 
 // Import types
@@ -57,10 +57,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
   // Modals / Details
   const [activeExec, setActiveExec] = useState<ExecutionLog | null>(null)
   
-  // Login Form
-  const [loginEmail, setLoginEmail] = useState('admin@code-shield.com')
-  const [loginPassword, setLoginPassword] = useState('admin123')
-  const [loginError, setLoginError] = useState('')
+
 
   const activeExecInterval = useRef<any>(null)
   const location = useLocation()
@@ -379,32 +376,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     })
   }
 
-  const handleLogin = (e?: React.FormEvent) => {
-    if (e) e.preventDefault()
-    setLoginError('')
-    setLoading(true)
 
-    fetch(`${apiBase}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: loginEmail, password: loginPassword })
-    })
-    .then(res => {
-      if (!res.ok) throw new Error('邮箱或密码不正确')
-      return res.json()
-    })
-    .then(data => {
-      localStorage.setItem(AUTH_TOKEN_KEY, data.token)
-      setToken(data.token)
-      setUser(data.user)
-    })
-    .catch(err => {
-      setLoginError(err.message)
-    })
-    .finally(() => {
-      setLoading(false)
-    })
-  }
 
   const handleLogout = () => {
     localStorage.removeItem(AUTH_TOKEN_KEY)
@@ -464,51 +436,15 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
   }
 
   if (!token || !user) {
+    if (window.top) {
+      window.top.location.href = '/'
+    } else {
+      window.location.href = '/'
+    }
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: 20 }}>
-        <div className="glass-card animate-slide-in" style={{ width: '100%', maxWidth: 440, padding: 32 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, justifyContent: 'center' }}>
-            <Activity color="#6366f1" size={32} />
-            <h2 style={{ fontSize: 24, fontWeight: 700, background: 'var(--accent-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Code-Pipeline
-            </h2>
-          </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 14, textAlign: 'center', marginBottom: 24 }}>
-            持续集成与代码流水线大屏管理系统
-          </p>
-
-          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>邮箱地址</label>
-              <input 
-                type="email" 
-                value={loginEmail} 
-                onChange={(e) => setLoginEmail(e.target.value)} 
-                required 
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>系统密码</label>
-              <input 
-                type="password" 
-                value={loginPassword} 
-                onChange={(e) => setLoginPassword(e.target.value)} 
-                required 
-              />
-            </div>
-
-            {loginError && (
-              <div style={{ background: 'rgba(244, 63, 94, 0.1)', color: '#fb7185', padding: '10px 14px', borderRadius: 8, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <ShieldAlert size={16} />
-                <span>{loginError}</span>
-              </div>
-            )}
-
-            <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px 16px', marginTop: 10 }}>
-              {loading ? <Loader2 className="animate-spin" size={18} /> : '立即登入'}
-            </button>
-          </form>
-        </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Loader2 className="animate-spin" size={48} color="#6366f1" />
+        <p style={{ color: 'var(--text-secondary)' }}>登录凭证已失效，正在重定向至统一登录页面...</p>
       </div>
     )
   }
