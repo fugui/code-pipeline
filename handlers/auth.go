@@ -177,7 +177,7 @@ func Login(c *gin.Context) {
 	}
 
 	// 生成 JWT
-	expirationTime := time.Now().Add(24 * time.Hour)
+	expirationTime := time.Now().Add(6 * time.Hour)
 	claims := &PortalClaims{
 		UserID:  user.ID,
 		Email:   user.Email,
