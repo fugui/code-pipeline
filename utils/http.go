@@ -96,5 +96,7 @@ func SendHTTPRequest(ctx context.Context, method, rawURL string, payload interfa
 		return nil, fmt.Errorf("remote API returned status code %d", resp.StatusCode)
 	}
 
+	// 临时把请求打印出来， 调试一下代码
+	LogHTTPErrorDetails(contextMsg, req, resp.StatusCode, body)
 	return body, nil
 }
