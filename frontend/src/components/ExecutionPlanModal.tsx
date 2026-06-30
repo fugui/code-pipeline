@@ -217,7 +217,39 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                 }}>
                   {(() => {
                     const activeBranches = activePlan.branch ? activePlan.branch.split(',').filter(Boolean) : [];
-                    const allOpts = Array.from(new Set([...branches, ...activeBranches])).filter(Boolean);
+                    const sortBranches = (a: string, b: string) => {
+                      const aChecked = activeBranches.includes(a);
+                      const bChecked = activeBranches.includes(b);
+                      if (aChecked && !bChecked) return -1;
+                      if (!aChecked && bChecked) return 1;
+
+                      const isMasterOrMain = (name: string) => name === 'master' || name === 'main';
+                      const aMasterOrMain = isMasterOrMain(a);
+                      const bMasterOrMain = isMasterOrMain(b);
+                      if (aMasterOrMain && !bMasterOrMain) return -1;
+                      if (!aMasterOrMain && bMasterOrMain) return 1;
+                      if (aMasterOrMain && bMasterOrMain) return a.localeCompare(b);
+
+                      const aDevelop = a === 'develop';
+                      const bDevelop = b === 'develop';
+                      if (aDevelop && !bDevelop) return -1;
+                      if (!aDevelop && bDevelop) return 1;
+                      if (aDevelop && bDevelop) return 0;
+
+                      const isFea = (name: string) => name.toLowerCase().startsWith('fea');
+                      const aFea = isFea(a);
+                      const bFea = isFea(b);
+                      if (aFea && !bFea) return -1;
+                      if (!aFea && bFea) return 1;
+                      if (aFea && bFea) return a.localeCompare(b);
+
+                      return a.localeCompare(b);
+                    };
+
+                    const allOpts = Array.from(new Set([...branches, ...activeBranches]))
+                      .filter(Boolean)
+                      .sort(sortBranches);
+
                     if (allOpts.length === 0) {
                       return <span style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 32 }}>暂无分支，请先选择代码仓</span>;
                     }
