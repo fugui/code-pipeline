@@ -26,6 +26,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
   const [loadingBranches, setLoadingBranches] = React.useState(false)
   const [customAttrs, setCustomAttrs] = React.useState<{ key: string; value: string }[]>([]);
   const [animateVisible, setAnimateVisible] = React.useState(false);
+  const [orderedBranches, setOrderedBranches] = React.useState<string[]>([]);
 
   React.useEffect(() => {
     if (activePlan) {
@@ -82,6 +83,46 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
       }
     }
   }, [visible, activePlan?.id]);
+
+  React.useEffect(() => {
+    if (activePlan) {
+      const activeBranches = activePlan.branch ? activePlan.branch.split(',').filter(Boolean) : [];
+      const allOpts = Array.from(new Set([...branches, ...activeBranches])).filter(Boolean);
+
+      const sortBranches = (a: string, b: string) => {
+        const aChecked = activeBranches.includes(a);
+        const bChecked = activeBranches.includes(b);
+        if (aChecked && !bChecked) return -1;
+        if (!aChecked && bChecked) return 1;
+
+        const isMasterOrMain = (name: string) => name === 'master' || name === 'main';
+        const aMasterOrMain = isMasterOrMain(a);
+        const bMasterOrMain = isMasterOrMain(b);
+        if (aMasterOrMain && !bMasterOrMain) return -1;
+        if (!aMasterOrMain && bMasterOrMain) return 1;
+        if (aMasterOrMain && bMasterOrMain) return a.localeCompare(b);
+
+        const aDevelop = a === 'develop';
+        const bDevelop = b === 'develop';
+        if (aDevelop && !bDevelop) return -1;
+        if (!aDevelop && bDevelop) return 1;
+        if (aDevelop && bDevelop) return 0;
+
+        const isFea = (name: string) => name.toLowerCase().startsWith('fea');
+        const aFea = isFea(a);
+        const bFea = isFea(b);
+        if (aFea && !bFea) return -1;
+        if (!aFea && bFea) return 1;
+        if (aFea && bFea) return a.localeCompare(b);
+
+        return a.localeCompare(b);
+      };
+
+      setOrderedBranches(allOpts.sort(sortBranches));
+    } else {
+      setOrderedBranches([]);
+    }
+  }, [branches, visible, activePlan?.id]);
 
   React.useEffect(() => {
     if (visible) {
@@ -162,7 +203,6 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drawer Header */}
         <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
@@ -190,10 +230,8 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
           </button>
         </div>
 
-        {/* Drawer Scrollable Body */}
         <form onSubmit={onSave} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {/* 代码仓 */}
             <div>
               <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>代码仓</label>
               {activePlan.id ? (
@@ -256,7 +294,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                                 ...activePlan,
                                 repository_id: r.id,
                                 repository: r,
-                                branch: '' // 当代码仓发生变化时，清除内存中生效分支的值
+                                branch: ''
                               });
                               setFilterQuery(r.name);
                               setIsOpen(false);
@@ -281,9 +319,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
               )}
             </div>
 
-            {/* 左右对称两列：分支与编程语言 */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              {/* 生效分支 */}
               <div>
                 <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>生效分支 (多选)</label>
                 {loadingBranches ? (
@@ -298,76 +334,45 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                     background: 'rgba(255,255,255,0.01)',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 8
+                    gap: 8,
+                    direction: 'rtl'
                   }}>
-                    {(() => {
-                      const activeBranches = activePlan.branch ? activePlan.branch.split(',').filter(Boolean) : [];
-                      const sortBranches = (a: string, b: string) => {
-                        const aChecked = activeBranches.includes(a);
-                        const bChecked = activeBranches.includes(b);
-                        if (aChecked && !bChecked) return -1;
-                        if (!aChecked && bChecked) return 1;
-
-                        const isMasterOrMain = (name: string) => name === 'master' || name === 'main';
-                        const aMasterOrMain = isMasterOrMain(a);
-                        const bMasterOrMain = isMasterOrMain(b);
-                        if (aMasterOrMain && !bMasterOrMain) return -1;
-                        if (!aMasterOrMain && bMasterOrMain) return 1;
-                        if (aMasterOrMain && bMasterOrMain) return a.localeCompare(b);
-
-                        const aDevelop = a === 'develop';
-                        const bDevelop = b === 'develop';
-                        if (aDevelop && !bDevelop) return -1;
-                        if (!aDevelop && bDevelop) return 1;
-                        if (aDevelop && bDevelop) return 0;
-
-                        const isFea = (name: string) => name.toLowerCase().startsWith('fea');
-                        const aFea = isFea(a);
-                        const bFea = isFea(b);
-                        if (aFea && !bFea) return -1;
-                        if (!aFea && bFea) return 1;
-                        if (aFea && bFea) return a.localeCompare(b);
-
-                        return a.localeCompare(b);
-                      };
-
-                      const allOpts = Array.from(new Set([...branches, ...activeBranches]))
-                        .filter(Boolean)
-                        .sort(sortBranches);
-
-                      if (allOpts.length === 0) {
-                        return <span style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 32 }}>暂无分支，请先选择代码仓</span>;
-                      }
-                      return allOpts.map(branch => {
-                        const checked = activeBranches.includes(branch);
-                        return (
-                          <label key={branch} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'var(--text-main)', userSelect: 'none' }}>
-                            <input 
-                              type="checkbox"
-                              checked={checked}
-                              style={{ width: 'auto', margin: 0 }}
-                              onChange={(e) => {
-                                let current = activePlan.branch ? activePlan.branch.split(',').filter(Boolean) : [];
-                                if (e.target.checked) {
-                                  if (!current.includes(branch)) {
-                                    current.push(branch);
+                    <div style={{ direction: 'ltr', display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+                      {(() => {
+                        const activeBranches = activePlan.branch ? activePlan.branch.split(',').filter(Boolean) : [];
+                        if (orderedBranches.length === 0) {
+                          return <span style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 32, display: 'block', width: '100%' }}>暂无分支，请先选择代码仓</span>;
+                        }
+                        return orderedBranches.map(branch => {
+                          const checked = activeBranches.includes(branch);
+                          return (
+                            <label key={branch} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'var(--text-main)', userSelect: 'none' }}>
+                              <input 
+                                type="checkbox"
+                                checked={checked}
+                                style={{ width: 'auto', margin: 0 }}
+                                onChange={(e) => {
+                                  let current = activePlan.branch ? activePlan.branch.split(',').filter(Boolean) : [];
+                                  if (e.target.checked) {
+                                    if (!current.includes(branch)) {
+                                      current.push(branch);
+                                    }
+                                  } else {
+                                    current = current.filter((x: string) => x !== branch);
                                   }
-                                } else {
-                                  current = current.filter((x: string) => x !== branch);
-                                }
-                                onChange({ ...activePlan, branch: current.join(',') });
-                              }}
-                            />
-                            {branch}
-                          </label>
-                        );
-                      });
-                    })()}
+                                  onChange({ ...activePlan, branch: current.join(',') });
+                                }}
+                              />
+                              {branch}
+                            </label>
+                          );
+                        });
+                      })()}
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* 支持的编程语言 */}
               <div>
                 <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
                   支持的编程语言 (多选)
@@ -410,7 +415,6 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
               </div>
             </div>
 
-            {/* 自定义属性表格 Key/Value */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 200 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>自定义属性</label>
@@ -432,94 +436,96 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                 borderRadius: 6, 
                 background: 'rgba(255,255,255,0.01)', 
                 flex: 1,
-                overflowY: 'auto'
+                overflowY: 'auto',
+                direction: 'rtl'
               }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', textAlign: 'left' }}>
-                      <th style={{ padding: '8px 12px', width: '45%' }}>键 (Key)</th>
-                      <th style={{ padding: '8px 12px', width: '45%' }}>值 (Value)</th>
-                      <th style={{ padding: '8px 12px', width: '10%', textAlign: 'center' }}>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {customAttrs.length === 0 ? (
-                      <tr>
-                        <td colSpan={3} style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
-                          暂无自定义属性，点击右上角“添加属性”新增
-                        </td>
+                <div style={{ direction: 'ltr', width: '100%' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', textAlign: 'left' }}>
+                        <th style={{ padding: '8px 12px', width: '45%' }}>键 (Key)</th>
+                        <th style={{ padding: '8px 12px', width: '45%' }}>值 (Value)</th>
+                        <th style={{ padding: '8px 12px', width: '10%', textAlign: 'center' }}>操作</th>
                       </tr>
-                    ) : (
-                      customAttrs.map((item, index) => (
-                        <tr key={index} style={{ borderBottom: index === customAttrs.length - 1 ? 'none' : '1px solid rgba(255, 255, 255, 0.03)' }}>
-                          <td style={{ padding: '4px 8px' }}>
-                            <input
-                              type="text"
-                              placeholder="例如: timeout"
-                              value={item.key}
-                              style={{ width: '100%', padding: '6px 10px', fontSize: 13, height: 32 }}
-                              onChange={(e) => {
-                                const newList = [...customAttrs];
-                                newList[index] = { ...newList[index], key: e.target.value };
-                                updateCustomAttrs(newList);
-                              }}
-                            />
-                          </td>
-                          <td style={{ padding: '4px 8px' }}>
-                            <input
-                              type="text"
-                              placeholder="例如: 300"
-                              value={item.value}
-                              style={{ width: '100%', padding: '6px 10px', fontSize: 13, height: 32 }}
-                              onChange={(e) => {
-                                const newList = [...customAttrs];
-                                newList[index] = { ...newList[index], value: e.target.value };
-                                updateCustomAttrs(newList);
-                              }}
-                            />
-                          </td>
-                          <td style={{ padding: '4px 8px', textAlign: 'center' }}>
-                            <button
-                              type="button"
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                color: '#fda4af',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                padding: '6px',
-                                borderRadius: '4px',
-                                transition: 'all 0.2s'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.color = '#fb7185';
-                                e.currentTarget.style.background = 'rgba(244, 63, 94, 0.1)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.color = '#fda4af';
-                                e.currentTarget.style.background = 'none';
-                              }}
-                              onClick={() => {
-                                const newList = customAttrs.filter((_, i) => i !== index);
-                                updateCustomAttrs(newList);
-                              }}
-                              title="删除"
-                            >
-                              <Trash2 size={15} />
-                            </button>
+                    </thead>
+                    <tbody>
+                      {customAttrs.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+                            暂无自定义属性，点击右上角“添加属性”新增
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : (
+                        customAttrs.map((item, index) => (
+                          <tr key={index} style={{ borderBottom: index === customAttrs.length - 1 ? 'none' : '1px solid rgba(255, 255, 255, 0.03)' }}>
+                            <td style={{ padding: '4px 8px' }}>
+                              <input
+                                type="text"
+                                placeholder="例如: timeout"
+                                value={item.key}
+                                style={{ width: '100%', padding: '6px 10px', fontSize: 13, height: 32 }}
+                                onChange={(e) => {
+                                  const newList = [...customAttrs];
+                                  newList[index] = { ...newList[index], key: e.target.value };
+                                  updateCustomAttrs(newList);
+                                }}
+                              />
+                            </td>
+                            <td style={{ padding: '4px 8px' }}>
+                              <input
+                                type="text"
+                                placeholder="例如: 300"
+                                value={item.value}
+                                style={{ width: '100%', padding: '6px 10px', fontSize: 13, height: 32 }}
+                                onChange={(e) => {
+                                  const newList = [...customAttrs];
+                                  newList[index] = { ...newList[index], value: e.target.value };
+                                  updateCustomAttrs(newList);
+                                }}
+                              />
+                            </td>
+                            <td style={{ padding: '4px 8px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#fda4af',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: '6px',
+                                  borderRadius: '4px',
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.color = '#fb7185';
+                                  e.currentTarget.style.background = 'rgba(244, 63, 94, 0.1)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.color = '#fda4af';
+                                  e.currentTarget.style.background = 'none';
+                                }}
+                                onClick={() => {
+                                  const newList = customAttrs.filter((_, i) => i !== index);
+                                  updateCustomAttrs(newList);
+                                }}
+                                title="删除"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Drawer Fixed Footer */}
           <div style={{ 
             display: 'flex', 
             justifyContent: 'flex-end', 
