@@ -248,7 +248,7 @@ func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch stri
 	//1. 检查代码仓授权（进行 MR 的 Webhook 的配置等）
 	authID, err := CheckRepoAuthorized(ctx, repository, headers)
 	if err != nil {
-		return "", "", fmt.Errorf("repo auth check failed: %v", err)
+		return "", "", fmt.Errorf("repo auth check failed: %w", err)
 	}
 	if authID == "" {
 		return "", "", fmt.Errorf("repository %s is unauthorized", repository)
@@ -259,7 +259,7 @@ func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch stri
 	// 返回的响应体为： { "success": true,  "result"：{"content":[]}}， 如果 content 的 size 大于0， 则已经关联凭证了。
 	associated, err := checkRepoCredentialAssociated(ctx, repository, headers)
 	if err != nil {
-		return "", "", fmt.Errorf("repo credential check failed: %v", err)
+		return "", "", fmt.Errorf("repo credential check failed: %w", err)
 	}
 	if !associated {
 		return "", "", fmt.Errorf("repository %s has no associated credentials", repository)

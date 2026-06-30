@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -12,6 +13,9 @@ import (
 	"strings"
 	"time"
 )
+
+// ErrSSOExpired 定义 SSO 过期错误
+var ErrSSOExpired = errors.New("SSO session expired")
 
 // HTTPOptions 定义 HTTP 请求的附加参数
 type HTTPOptions struct {
@@ -77,6 +81,13 @@ func SendHTTPRequest(ctx context.Context, method, rawURL string, payload interfa
 		return nil, fmt.Errorf("failed to execute remote request: %v", err)
 	}
 	defer resp.Body.Close()
+
+	// 检查是否返回了 set-cookie: uid=; 代表 SSO 过期
+	for _, cookie := range resp.Cookies() {
+		if cookie.Name == "uid" && cookie.Value == "" {
+			return nil, ErrSSOExpired
+		}
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

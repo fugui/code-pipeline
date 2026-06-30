@@ -126,6 +126,9 @@ func GetRepoBranches(c *gin.Context) {
 	headers := prepareRequestHeaders(c)
 	authID, err := services.CheckRepoAuthorized(c.Request.Context(), formattedURL, headers)
 	if err != nil {
+		if HandleSSOExpired(c, err) {
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to check repository authorization: %v", err)})
 		return
 	}
@@ -143,6 +146,9 @@ func GetRepoBranches(c *gin.Context) {
 	}
 	branches, err := services.GetRepoBranchesRemote(c.Request.Context(), urlForBranches, authID, headers)
 	if err != nil {
+		if HandleSSOExpired(c, err) {
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to fetch branches from remote: %v", err)})
 		return
 	}
