@@ -1,4 +1,5 @@
 import React from 'react'
+import { Trash2 } from 'lucide-react'
 
 interface ExecutionPlanModalProps {
   visible: boolean
@@ -280,13 +281,13 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
               <div>
                 <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>生效分支 (多选)</label>
                 {loadingBranches ? (
-                  <div style={{ fontSize: 13, color: 'var(--text-muted)', height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', borderRadius: 6, background: 'rgba(255,255,255,0.01)' }}>正在加载分支...</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', height: 168, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', borderRadius: 6, background: 'rgba(255,255,255,0.01)' }}>正在加载分支...</div>
                 ) : (
                   <div style={{ 
                     border: '1px solid var(--border-color)', 
                     borderRadius: 6, 
                     padding: '10px 12px', 
-                    height: 120, 
+                    height: 168, 
                     overflowY: 'auto',
                     background: 'rgba(255,255,255,0.01)',
                     display: 'flex',
@@ -369,7 +370,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                   border: '1px solid var(--border-color)', 
                   borderRadius: 6, 
                   padding: '10px 12px', 
-                  height: 120, 
+                  height: 168, 
                   background: 'rgba(255,255,255,0.01)',
                   display: 'flex',
                   flexDirection: 'column',
@@ -404,7 +405,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
             </div>
 
             {/* 自定义属性表格 Key/Value */}
-            <div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 200 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>自定义属性</label>
                 <button
@@ -424,7 +425,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                 border: '1px solid var(--border-color)', 
                 borderRadius: 6, 
                 background: 'rgba(255,255,255,0.01)', 
-                maxHeight: 200,
+                flex: 1,
                 overflowY: 'auto'
               }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -479,17 +480,28 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                                 border: 'none',
                                 color: '#fda4af',
                                 cursor: 'pointer',
-                                fontSize: 12,
-                                padding: '6px'
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '6px',
+                                borderRadius: '4px',
+                                transition: 'all 0.2s'
                               }}
-                              onMouseEnter={(e) => e.currentTarget.style.color = '#fb7185'}
-                              onMouseLeave={(e) => e.currentTarget.style.color = '#fda4af'}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.color = '#fb7185';
+                                e.currentTarget.style.background = 'rgba(244, 63, 94, 0.1)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.color = '#fda4af';
+                                e.currentTarget.style.background = 'none';
+                              }}
                               onClick={() => {
                                 const newList = customAttrs.filter((_, i) => i !== index);
                                 updateCustomAttrs(newList);
                               }}
+                              title="删除"
                             >
-                              删除
+                              <Trash2 size={15} />
                             </button>
                           </td>
                         </tr>
