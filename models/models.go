@@ -23,6 +23,7 @@ type Repository struct {
 	OwnerID   uint      `json:"owner_id"`                                 // 负责人 ID
 	IsActive  bool      `gorm:"default:true" json:"is_active"`            // 是否在宿主端被冻结
 	ProjectID string    `gorm:"default:''" json:"project_id"`
+	HTTPURL   string    `gorm:"default:''" json:"http_url"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

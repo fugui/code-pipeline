@@ -389,6 +389,8 @@ func CheckRepoAuthorized(ctx context.Context, repository string, headers map[str
 		return "", fmt.Errorf("first entity does not contain id")
 	}
 
+	// TODO： firstEntity["repositoryUrl"] 是代码仓的真实URL， 后续考虑是否回填回去？
+
 	authID, ok := idVal.(string)
 	if !ok {
 		return "", fmt.Errorf("first entity id is not a string")
