@@ -53,9 +53,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
       const matchRepo = plan.repository?.name?.toLowerCase().includes(q) || plan.repository?.url?.toLowerCase().includes(q)
       const matchBranch = plan.branch?.toLowerCase().includes(q)
       const matchLang = plan.languages?.toLowerCase().includes(q)
-      const matchId = plan.execution_plan_id?.toLowerCase().includes(q)
-      const matchUser = plan.username?.toLowerCase().includes(q)
-      return matchRepo || matchBranch || matchLang || matchId || matchUser
+      return matchRepo || matchBranch || matchLang
     })
   }, [plans, planSearchQuery])
 
@@ -186,7 +184,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 <Search style={{ position: 'absolute', left: 18, top: 10, color: 'var(--text-muted)' }} size={14} />
                 <input 
                   type="text" 
-                  placeholder="在执行方案中检索仓库、分支、语言或三方 ID..." 
+                  placeholder="在执行方案中检索仓库、分支或语言..." 
                   style={{ paddingLeft: 34, height: 34, fontSize: 13, borderRadius: 6, width: '100%' }}
                   value={planSearchQuery}
                   onChange={(e) => {
@@ -203,7 +201,6 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                       <th style={{ padding: '12px 8px' }}>代码托管仓</th>
                       <th style={{ padding: '12px 8px' }}>生效分支</th>
                       <th style={{ padding: '12px 8px' }}>编程语言</th>
-                      <th style={{ padding: '12px 8px' }}>认证用户</th>
                       <th style={{ padding: '12px 8px', textAlign: 'right' }}>操作</th>
                     </tr>
                   </thead>
@@ -226,7 +223,6 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                               )) : <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>未选择</span>}
                             </div>
                           </td>
-                          <td style={{ padding: '12px 8px' }}>{plan.username || '-'}</td>
                           <td style={{ padding: '12px 8px', textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                               <button 

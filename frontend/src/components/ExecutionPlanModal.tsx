@@ -23,6 +23,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
   const [filterQuery, setFilterQuery] = React.useState('')
   const [branches, setBranches] = React.useState<string[]>([])
   const [loadingBranches, setLoadingBranches] = React.useState(false)
+  const [customAttrs, setCustomAttrs] = React.useState<{ key: string; value: string }[]>([]);
 
   React.useEffect(() => {
     if (activePlan) {
@@ -65,6 +66,21 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
     }
   }, [activePlan?.repository_id, apiBase])
 
+  React.useEffect(() => {
+    if (visible && activePlan) {
+      try {
+        const parsed = JSON.parse(activePlan.custom_attributes || '{}');
+        const list = Object.entries(parsed).map(([k, v]) => ({
+          key: k,
+          value: String(v)
+        }));
+        setCustomAttrs(list);
+      } catch (e) {
+        setCustomAttrs([]);
+      }
+    }
+  }, [visible, activePlan?.id]);
+
   if (!visible || !activePlan) return null
 
   const filteredRepos = repos.filter(r => 
@@ -74,14 +90,29 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
 
   const selectedRepo = repos.find(r => r.id === activePlan.repository_id)
 
+  const updateCustomAttrs = (newList: { key: string; value: string }[]) => {
+    setCustomAttrs(newList);
+    const obj: Record<string, string> = {};
+    newList.forEach(item => {
+      if (item.key.trim()) {
+        obj[item.key.trim()] = item.value;
+      }
+    });
+    onChange({
+      ...activePlan,
+      custom_attributes: JSON.stringify(obj)
+    });
+  };
+
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }}>
-      <div className="glass-card" style={{ width: '100%', maxWidth: 580, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="glass-card" style={{ width: '100%', maxWidth: 640, display: 'flex', flexDirection: 'column', gap: 20 }}>
         <h3 style={{ fontSize: 18, fontWeight: 700 }}>
           {activePlan.id ? '编辑仓库执行方案' : '新增仓库执行方案'}
         </h3>
 
         <form onSubmit={onSave} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* 代码仓 */}
           <div>
             <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>代码仓</label>
             {activePlan.id ? (
@@ -102,7 +133,6 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                   }}
                   onFocus={() => setIsOpen(true)}
                   onBlur={() => {
-                    // 稍作延时，确保点击项事件在失去焦点前完成触发
                     setTimeout(() => setIsOpen(false), 200);
                   }}
                   required
@@ -144,7 +174,8 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                             onChange({
                               ...activePlan,
                               repository_id: r.id,
-                              repository: r
+                              repository: r,
+                              branch: '' // 当代码仓发生变化时，清除内存中生效分支的值
                             });
                             setFilterQuery(r.name);
                             setIsOpen(false);
@@ -165,28 +196,30 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
             )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {/* 左右对称两列：分支与编程语言 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            {/* 生效分支 */}
             <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>代码分支</label>
+              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>生效分支 (多选)</label>
               {loadingBranches ? (
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', height: 38, display: 'flex', alignItems: 'center' }}>正在加载分支...</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', borderRadius: 6, background: 'rgba(255,255,255,0.01)' }}>正在加载分支...</div>
               ) : (
                 <div style={{ 
                   border: '1px solid var(--border-color)', 
                   borderRadius: 6, 
-                  padding: '8px 12px', 
-                  maxHeight: 120, 
+                  padding: '10px 12px', 
+                  height: 120, 
                   overflowY: 'auto',
-                  background: 'rgba(255,255,255,0.02)',
+                  background: 'rgba(255,255,255,0.01)',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 6
+                  gap: 8
                 }}>
                   {(() => {
                     const activeBranches = activePlan.branch ? activePlan.branch.split(',').filter(Boolean) : [];
                     const allOpts = Array.from(new Set([...branches, ...activeBranches])).filter(Boolean);
                     if (allOpts.length === 0) {
-                      return <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>暂无分支，请先选择代码仓</span>;
+                      return <span style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 32 }}>暂无分支，请先选择代码仓</span>;
                     }
                     return allOpts.map(branch => {
                       const checked = activeBranches.includes(branch);
@@ -216,149 +249,149 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                 </div>
               )}
             </div>
+
+            {/* 支持的编程语言 */}
             <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>三方方案唯一 ID (非必填，自动同步生成)</label>
-              <input 
-                type="text" 
-                placeholder="只读 (三方流水线ID)"
-                value={activePlan.execution_plan_id || ''} 
-                disabled 
-              />
+              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                支持的编程语言 (多选)
+              </label>
+              <div style={{ 
+                border: '1px solid var(--border-color)', 
+                borderRadius: 6, 
+                padding: '10px 12px', 
+                height: 120, 
+                background: 'rgba(255,255,255,0.01)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                justifyContent: 'center'
+              }}>
+                {['C/C++', 'Python', 'Java'].map((lang) => {
+                  const activeLangs = activePlan.languages ? activePlan.languages.split(',') : [];
+                  const checked = activeLangs.includes(lang);
+                  return (
+                    <label key={lang} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text-main)', userSelect: 'none' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={checked}
+                        style={{ width: 'auto', margin: 0 }}
+                        onChange={(e) => {
+                          let current = activePlan.languages ? activePlan.languages.split(',') : [];
+                          if (e.target.checked) {
+                            if (!current.includes(lang)) current.push(lang);
+                          } else {
+                            current = current.filter((x: string) => x !== lang);
+                          }
+                          onChange({ ...activePlan, languages: current.filter(Boolean).join(',') });
+                        }}
+                      />
+                      {lang}
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>访问用户名 (Username)</label>
-              <input 
-                type="text" 
-                placeholder="仓密码对应用户名"
-                value={activePlan.username || ''} 
-                onChange={(e) => onChange({ ...activePlan, username: e.target.value })}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>访问凭证/密码 (Password)</label>
-              <input 
-                type="password" 
-                placeholder="令牌或账户密码"
-                value={activePlan.password || ''} 
-                onChange={(e) => onChange({ ...activePlan, password: e.target.value })}
-              />
-            </div>
-          </div>
-
+          {/* 自定义属性表格 Key/Value */}
           <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>代码检查任务 ID (Code Checker Task ID)</label>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <input 
-                type="text" 
-                placeholder="请输入代码检查任务 ID"
-                style={{ flex: 1 }}
-                value={activePlan.code_checker_task_id || ''} 
-                onChange={(e) => onChange({ ...activePlan, code_checker_task_id: e.target.value })}
-              />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>自定义属性</label>
               <button
                 type="button"
                 className="btn btn-secondary"
-                style={{ whiteSpace: 'nowrap' }}
+                style={{ padding: '4px 10px', fontSize: 12, height: 'auto' }}
                 onClick={() => {
-                  const token = localStorage.getItem('code_shield_token') || localStorage.getItem('code_pipeline_token');
-                  fetch(`${apiBase}/execution-plans/update-checker-task`, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                    },
-                    body: JSON.stringify({
-                      pipeline_id: activePlan.pipeline_id,
-                      repository_id: activePlan.repository_id,
-                      branch: activePlan.branch || 'master',
-                      username: activePlan.username || '',
-                      password: activePlan.password || '',
-                      code_checker_task_id: activePlan.code_checker_task_id || '',
-                      languages: activePlan.languages || '',
-                      custom_attributes: activePlan.custom_attributes || '{}'
-                    })
-                  })
-                  .then(async (res) => {
-                    if (!res.ok) {
-                      const errData = await res.json();
-                      throw new Error(errData.error || '更新失败');
-                    }
-                    return res.json();
-                  })
-                  .then((data) => {
-                    onChange({
-                      ...activePlan,
-                      code_checker_task_id: data.code_checker_task_id,
-                      custom_attributes: data.custom_attributes
-                    });
-                    alert('更新配置成功！');
-                  })
-                  .catch((err) => {
-                    alert('更新失败: ' + err.message);
-                  });
+                  const newList = [...customAttrs, { key: '', value: '' }];
+                  updateCustomAttrs(newList);
                 }}
               >
-                更新
+                + 添加属性
               </button>
             </div>
-          </div>
 
-          {/* 多选编程语言 */}
-          <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-              支持的编程语言 (多选)
-            </label>
-            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-              {['C/C++', 'Python', 'Java'].map((lang) => {
-                const activeLangs = activePlan.languages ? activePlan.languages.split(',') : [];
-                const checked = activeLangs.includes(lang);
-                return (
-                  <label key={lang} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 14 }}>
-                    <input 
-                      type="checkbox" 
-                      checked={checked}
-                      style={{ width: 'auto' }}
-                      onChange={(e) => {
-                        let current = activePlan.languages ? activePlan.languages.split(',') : [];
-                        if (e.target.checked) {
-                          if (!current.includes(lang)) current.push(lang);
-                        } else {
-                          current = current.filter((x: string) => x !== lang);
-                        }
-                        onChange({ ...activePlan, languages: current.filter(Boolean).join(',') });
-                      }}
-                    />
-                    {lang}
-                  </label>
-                );
-              })}
+            <div style={{ 
+              border: '1px solid var(--border-color)', 
+              borderRadius: 6, 
+              background: 'rgba(255,255,255,0.01)', 
+              maxHeight: 160,
+              overflowY: 'auto'
+            }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', textAlign: 'left' }}>
+                    <th style={{ padding: '8px 12px', width: '45%' }}>键 (Key)</th>
+                    <th style={{ padding: '8px 12px', width: '45%' }}>值 (Value)</th>
+                    <th style={{ padding: '8px 12px', width: '10%', textAlign: 'center' }}>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {customAttrs.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+                        暂无自定义属性，点击右上角“添加属性”新增
+                      </td>
+                    </tr>
+                  ) : (
+                    customAttrs.map((item, index) => (
+                      <tr key={index} style={{ borderBottom: index === customAttrs.length - 1 ? 'none' : '1px solid rgba(255, 255, 255, 0.03)' }}>
+                        <td style={{ padding: '4px 8px' }}>
+                          <input
+                            type="text"
+                            placeholder="例如: timeout"
+                            value={item.key}
+                            style={{ width: '100%', padding: '6px 10px', fontSize: 13, height: 32 }}
+                            onChange={(e) => {
+                              const newList = [...customAttrs];
+                              newList[index] = { ...newList[index], key: e.target.value };
+                              updateCustomAttrs(newList);
+                            }}
+                          />
+                        </td>
+                        <td style={{ padding: '4px 8px' }}>
+                          <input
+                            type="text"
+                            placeholder="例如: 300"
+                            value={item.value}
+                            style={{ width: '100%', padding: '6px 10px', fontSize: 13, height: 32 }}
+                            onChange={(e) => {
+                              const newList = [...customAttrs];
+                              newList[index] = { ...newList[index], value: e.target.value };
+                              updateCustomAttrs(newList);
+                            }}
+                          />
+                        </td>
+                        <td style={{ padding: '4px 8px', textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#fda4af',
+                              cursor: 'pointer',
+                              fontSize: 12,
+                              padding: '6px'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#fb7185'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#fda4af'}
+                            onClick={() => {
+                              const newList = customAttrs.filter((_, i) => i !== index);
+                              updateCustomAttrs(newList);
+                            }}
+                          >
+                            删除
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>自定义属性 (JSON 格式)</label>
-            <textarea 
-              placeholder='例如: { "timeout": 300, "retry": 3 }'
-              rows={3}
-              value={activePlan.custom_attributes || ''} 
-              onChange={(e) => onChange({ ...activePlan, custom_attributes: e.target.value })}
-              onBlur={(e) => {
-                const val = e.target.value.trim();
-                if (val && val !== '') {
-                  try {
-                    JSON.parse(val);
-                  } catch (err) {
-                    alert('自定义属性非标准 JSON 格式，请检查修改。');
-                  }
-                }
-              }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
+          {/* 操作按钮 */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
             <button type="button" className="btn btn-secondary" onClick={onClose}>
               取消
             </button>
