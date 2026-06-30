@@ -70,14 +70,16 @@ func syncReposOnce() {
 		if err := db.First(&existing, repo.ID).Error; err != nil {
 			// 新增
 			newRepo := models.Repository{
-				ID:        repo.ID,
-				Name:      repo.Name,
-				URL:       repo.URL,
-				OwnerID:   repo.OwnerID,
-				IsActive:  repo.IsActive,
-				ProjectID: repo.ProjectID,
-				HTTPURL:   repo.HTTPURL,
-				CreatedAt: repo.CreatedAt,
+				ID:           repo.ID,
+				Name:         repo.Name,
+				URL:          repo.URL,
+				OwnerID:      repo.OwnerID,
+				IsActive:     repo.IsActive,
+				ProjectID:    repo.ProjectID,
+				HTTPURL:      repo.HTTPURL,
+				ServiceGroup: repo.ServiceGroup,
+				OwnerName:    repo.Owner.Name,
+				CreatedAt:    repo.CreatedAt,
 			}
 			if err := db.Create(&newRepo).Error; err != nil {
 				log.Printf("[RepoSync] Failed to create repo ID %d: %v", repo.ID, err)
@@ -85,12 +87,14 @@ func syncReposOnce() {
 		} else {
 			// 更新
 			if err := db.Model(&existing).Updates(map[string]interface{}{
-				"name":       repo.Name,
-				"url":        repo.URL,
-				"owner_id":   repo.OwnerID,
-				"is_active":  repo.IsActive,
-				"project_id": repo.ProjectID,
-				"http_url":   repo.HTTPURL,
+				"name":          repo.Name,
+				"url":           repo.URL,
+				"owner_id":      repo.OwnerID,
+				"is_active":     repo.IsActive,
+				"project_id":    repo.ProjectID,
+				"http_url":      repo.HTTPURL,
+				"service_group": repo.ServiceGroup,
+				"owner_name":    repo.Owner.Name,
 			}).Error; err != nil {
 				log.Printf("[RepoSync] Failed to update repo ID %d: %v", repo.ID, err)
 			}
@@ -146,14 +150,18 @@ func PullRepoDetails(repoID uint) (*models.Repository, error) {
 	}
 
 	var rawRepo struct {
-		ID        uint      `json:"id"`
-		Name      string    `json:"name"`
-		URL       string    `json:"url"`
-		OwnerID   uint      `json:"owner_id"`
-		IsActive  bool      `json:"is_active"`
-		ProjectID string    `json:"project_id"`
-		HTTPURL   string    `json:"http_url"`
-		CreatedAt time.Time `json:"created_at"`
+		ID           uint      `json:"id"`
+		Name         string    `json:"name"`
+		URL          string    `json:"url"`
+		OwnerID      uint      `json:"owner_id"`
+		IsActive     bool      `json:"is_active"`
+		ProjectID    string    `json:"project_id"`
+		HTTPURL      string    `json:"http_url"`
+		ServiceGroup string    `json:"service_group"`
+		Owner        struct {
+			Name string `json:"name"`
+		} `json:"owner"`
+		CreatedAt    time.Time `json:"created_at"`
 	}
 
 	if err := json.Unmarshal(body, &rawRepo); err != nil {
@@ -161,14 +169,16 @@ func PullRepoDetails(repoID uint) (*models.Repository, error) {
 	}
 
 	repo := models.Repository{
-		ID:        rawRepo.ID,
-		Name:      rawRepo.Name,
-		URL:       rawRepo.URL,
-		OwnerID:   rawRepo.OwnerID,
-		IsActive:  rawRepo.IsActive,
-		ProjectID: rawRepo.ProjectID,
-		HTTPURL:   rawRepo.HTTPURL,
-		CreatedAt: rawRepo.CreatedAt,
+		ID:           rawRepo.ID,
+		Name:         rawRepo.Name,
+		URL:          rawRepo.URL,
+		OwnerID:      rawRepo.OwnerID,
+		IsActive:     rawRepo.IsActive,
+		ProjectID:    rawRepo.ProjectID,
+		HTTPURL:      rawRepo.HTTPURL,
+		ServiceGroup: rawRepo.ServiceGroup,
+		OwnerName:    rawRepo.Owner.Name,
+		CreatedAt:    rawRepo.CreatedAt,
 	}
 
 	// 存入本地镜像
@@ -177,14 +187,18 @@ func PullRepoDetails(repoID uint) (*models.Repository, error) {
 }
 
 type remoteRepo struct {
-	ID        uint      `json:"id"`
-	Name      string    `json:"name"`
-	URL       string    `json:"url"`
-	OwnerID   uint      `json:"owner_id"`
-	IsActive  bool      `json:"is_active"`
-	ProjectID string    `json:"project_id"`
-	HTTPURL   string    `json:"http_url"`
-	CreatedAt time.Time `json:"created_at"`
+	ID           uint      `json:"id"`
+	Name         string    `json:"name"`
+	URL          string    `json:"url"`
+	OwnerID      uint      `json:"owner_id"`
+	IsActive     bool      `json:"is_active"`
+	ProjectID    string    `json:"project_id"`
+	HTTPURL      string    `json:"http_url"`
+	ServiceGroup string    `json:"service_group"`
+	Owner        struct {
+		Name string `json:"name"`
+	} `json:"owner"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 func fetchReposFromCodeBench() ([]remoteRepo, error) {

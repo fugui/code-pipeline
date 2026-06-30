@@ -12,6 +12,8 @@ export interface Repository {
   owner_id: number
   is_active: boolean
   created_at: string
+  service_group?: string
+  owner_name?: string
 }
 
 export interface ExecutionLog {
