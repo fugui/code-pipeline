@@ -28,6 +28,9 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 	// 2. 调用 service 获取数据
 	pipelineInfo, err := services.FetchRemotePipelineInfo(c.Request.Context(), pipelineID, headers)
 	if err != nil {
+		if HandleSSOExpired(c, err) {
+			return
+		}
 		if err.Error() == "get_pipeline_url not configured" {
 			// 未配置接口，返回 Mock 数据
 			c.JSON(http.StatusOK, gin.H{
@@ -86,6 +89,9 @@ func SyncExecutionPlans(c *gin.Context) {
 	//  } ]}
 	mrBindings, err := services.FetchRemoteMRBindings(c.Request.Context(), pipeline.PipelineID, headers)
 	if err != nil {
+		if HandleSSOExpired(c, err) {
+			return
+		}
 		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to fetch MR bindings: %v", err)})
 		return
 	}
@@ -94,6 +100,9 @@ func SyncExecutionPlans(c *gin.Context) {
 	// 2.2 调用 service 抓取执行方案列表
 	schemes, err := services.FetchRemoteExecutionPlans(c.Request.Context(), pipeline.PipelineID, headers)
 	if err != nil {
+		if HandleSSOExpired(c, err) {
+			return
+		}
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
@@ -240,6 +249,9 @@ func UpdateCheckerTask(c *gin.Context) {
 
 	taskID, updatedAttrs, err := services.UpdateCheckerTaskRemote(c.Request.Context(), repo.URL, req.Branch, req.Languages, req.CustomAttributes, headers)
 	if err != nil {
+		if HandleSSOExpired(c, err) {
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to update checker task: %v", err)})
 		return
 	}
