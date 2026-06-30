@@ -105,7 +105,9 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
 
   const filteredRepos = repos.filter(r => 
     r.name.toLowerCase().includes(filterQuery.toLowerCase()) || 
-    r.url.toLowerCase().includes(filterQuery.toLowerCase())
+    r.url.toLowerCase().includes(filterQuery.toLowerCase()) ||
+    (r.service_group && r.service_group.toLowerCase().includes(filterQuery.toLowerCase())) ||
+    (r.owner_name && r.owner_name.toLowerCase().includes(filterQuery.toLowerCase()))
   )
 
   const selectedRepo = repos.find(r => r.id === activePlan.repository_id)
@@ -224,7 +226,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                         left: 0, 
                         right: 0, 
                         zIndex: 1000, 
-                        maxHeight: 220, 
+                        maxHeight: 280, 
                         overflowY: 'auto', 
                         background: 'var(--bg-secondary)', 
                         backdropFilter: 'blur(12px)',
@@ -240,13 +242,13 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                           <div 
                             key={r.id} 
                             style={{ 
-                              padding: '10px 12px', 
+                              padding: '10px 14px', 
                               cursor: 'pointer', 
                               borderBottom: '1px solid rgba(255,255,255,0.03)',
                               transition: 'background 0.2s',
                               display: 'flex',
                               flexDirection: 'column',
-                              gap: 2
+                              gap: 4
                             }}
                             className="search-item"
                             onClick={() => {
@@ -261,7 +263,11 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                             }}
                           >
                             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)' }}>{r.name}</span>
-                            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{r.url}</span>
+                            <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)' }}>
+                              <span>子系统: {r.service_group || '未归属'}</span>
+                              <span style={{ color: 'rgba(255,255,255,0.12)' }}>|</span>
+                              <span>负责人: {r.owner_name || '未分配'}</span>
+                            </div>
                           </div>
                         ))
                       ) : (
