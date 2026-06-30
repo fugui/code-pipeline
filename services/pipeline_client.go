@@ -352,19 +352,7 @@ func CheckRepoAuthorized(ctx context.Context, repository string, headers map[str
 
 	var responseData map[string]interface{}
 	if err := json.Unmarshal(body, &responseData); err != nil {
-		req, _ := http.NewRequestWithContext(ctx, "GET", apiURLStr, nil)
-		if req != nil {
-			for k, v := range headers {
-				req.Header.Set(k, v)
-			}
-			q := req.URL.Query()
-			q.Set("fuzzyMatch", repository)
-			q.Set("filterType", "allTeam")
-			req.URL.RawQuery = q.Encode()
-			utils.LogHTTPErrorDetails("checkRepoAuthorized", req, http.StatusOK, body)
-		} else {
-			log.Printf("[checkRepoAuthorized] Failed to parse JSON: %v, Body: %s", err, string(body))
-		}
+		log.Printf("[checkRepoAuthorized] Failed to parse JSON: %v, Body: %s", err, string(body))
 		return "", fmt.Errorf("failed to parse auth check response JSON: %v", err)
 	}
 
