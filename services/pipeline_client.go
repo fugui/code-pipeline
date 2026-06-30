@@ -345,7 +345,7 @@ func CheckRepoAuthorized(ctx context.Context, repository string, headers map[str
 	body, err := utils.SendHTTPRequest(ctx, "GET", apiURLStr, nil, utils.HTTPOptions{
 		Headers: headers,
 		QueryParams: map[string]string{
-			"fuzzyMatch": repository,
+			"fuzzyMatch": utils.ExtractRepoPath(repository),
 			"filterType": "allTeam",
 			"page-size":  "10",
 			"page-no":    "1"},

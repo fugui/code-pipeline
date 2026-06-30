@@ -78,3 +78,27 @@ func TestNormalizeGitURL(t *testing.T) {
 		}
 	}
 }
+
+func TestExtractRepoPath(t *testing.T) {
+	testCases := []struct {
+		url      string
+		expected string
+	}{
+		{"git@github.com:my-org/my-target-repo.git", "my-org/my-target-repo"},
+		{"git@github.com:22/my-org/my-target-repo.git", "my-org/my-target-repo"},
+		{"ssh://git@github.com/my-org/my-target-repo.git", "my-org/my-target-repo"},
+		{"ssh://git@github.com:22/my-org/my-target-repo.git", "my-org/my-target-repo"},
+		{"https://github.com/my-org/my-target-repo.git", "my-org/my-target-repo"},
+		{"http://github.com/my-org/my-target-repo", "my-org/my-target-repo"},
+		{"git@my-git-server.example.com:foo/bar.git", "foo/bar"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.url, func(t *testing.T) {
+			result := ExtractRepoPath(tc.url)
+			if result != tc.expected {
+				t.Errorf("ExtractRepoPath(%q) = %q, expected %q", tc.url, result, tc.expected)
+			}
+		})
+	}
+}

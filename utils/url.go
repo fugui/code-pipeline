@@ -119,3 +119,21 @@ func NormalizeGitURL(u string) string {
 	}
 	return hostPart
 }
+
+// ExtractRepoPath 提取不含协议、host 与末尾 .git 的仓库路径，例如 https://host/foo/bar.git -> foo/bar
+func ExtractRepoPath(repoURL string) string {
+	httpsURL := SSHToHTTPS(repoURL)
+	if httpsURL == "" {
+		return ""
+	}
+
+	pathPart := strings.TrimPrefix(httpsURL, "https://")
+	pathPart = strings.TrimPrefix(pathPart, "http://")
+	firstSlash := strings.Index(pathPart, "/")
+	if firstSlash == -1 {
+		return ""
+	}
+	pathPart = pathPart[firstSlash+1:]
+	pathPart = strings.TrimSuffix(pathPart, ".git")
+	return strings.Trim(pathPart, "/")
+}

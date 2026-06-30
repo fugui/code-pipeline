@@ -109,7 +109,7 @@ func TestUpdateCheckerTaskRemote(t *testing.T) {
 	if checkAuthReceivedMethod != "GET" {
 		t.Errorf("Expected GET request for auth check, got %q", checkAuthReceivedMethod)
 	}
-	if !strings.Contains(checkAuthReceivedURL, "fuzzyMatch=git%40github.com%3Amy-org%2Fmy-target-repo.git") {
+	if !strings.Contains(checkAuthReceivedURL, "fuzzyMatch=my-org%2Fmy-target-repo") {
 		t.Errorf("Expected URL to contain fuzzyMatch param, got %q", checkAuthReceivedURL)
 	}
 
@@ -225,7 +225,7 @@ func TestCheckRepoAuthorized(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				// Verify query parameters
 				fuzzyMatch := r.URL.Query().Get("fuzzyMatch")
-				if fuzzyMatch != "git@github.com:my-org/my-target-repo.git" {
+				if fuzzyMatch != "my-org/my-target-repo" {
 					t.Errorf("Expected fuzzyMatch query param, got %q", fuzzyMatch)
 				}
 				w.WriteHeader(tc.mockStatus)
