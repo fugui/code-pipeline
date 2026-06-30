@@ -66,8 +66,7 @@ func main() {
 			api.GET("/repos/:id", handlers.GetRepoDetails)
 			api.POST("/repos/:id/trigger", handlers.TriggerRepo)
 			api.GET("/repos/:id/latest-log", handlers.GetRepoLatestLog)
-
-
+			api.GET("/repos/:id/branches", handlers.GetRepoBranches)
 
 			// 流水线配置相关接口
 			api.GET("/pipelines", handlers.GetPipelines)

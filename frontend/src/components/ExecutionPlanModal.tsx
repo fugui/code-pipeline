@@ -21,6 +21,8 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
 }) => {
   const [isOpen, setIsOpen] = React.useState(false)
   const [filterQuery, setFilterQuery] = React.useState('')
+  const [branches, setBranches] = React.useState<string[]>([])
+  const [loadingBranches, setLoadingBranches] = React.useState(false)
 
   React.useEffect(() => {
     if (activePlan) {
@@ -28,6 +30,40 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
       setFilterQuery(found ? found.name : '')
     }
   }, [activePlan, repos])
+
+  React.useEffect(() => {
+    if (activePlan && activePlan.repository_id) {
+      setLoadingBranches(true);
+      const token = localStorage.getItem('code_shield_token') || localStorage.getItem('code_pipeline_token');
+      fetch(`${apiBase}/repos/${activePlan.repository_id}/branches`, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error('Failed to fetch branches');
+        }
+        return res.json();
+      })
+      .then(data => {
+        if (Array.isArray(data)) {
+          setBranches(data);
+        } else {
+          setBranches([]);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to fetch branches', err);
+        setBranches([]);
+      })
+      .finally(() => {
+        setLoadingBranches(false);
+      });
+    } else {
+      setBranches([]);
+    }
+  }, [activePlan?.repository_id, apiBase])
 
   if (!visible || !activePlan) return null
 
@@ -131,14 +167,54 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>执行构建分支</label>
-              <input 
-                type="text" 
-                placeholder="master / main"
-                value={activePlan.branch || ''} 
-                onChange={(e) => onChange({ ...activePlan, branch: e.target.value })}
-                required 
-              />
+              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>代码分支</label>
+              {loadingBranches ? (
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', height: 38, display: 'flex', alignItems: 'center' }}>正在加载分支...</div>
+              ) : (
+                <div style={{ 
+                  border: '1px solid var(--border-color)', 
+                  borderRadius: 6, 
+                  padding: '8px 12px', 
+                  maxHeight: 120, 
+                  overflowY: 'auto',
+                  background: 'rgba(255,255,255,0.02)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6
+                }}>
+                  {(() => {
+                    const activeBranches = activePlan.branch ? activePlan.branch.split(',').filter(Boolean) : [];
+                    const allOpts = Array.from(new Set([...branches, ...activeBranches])).filter(Boolean);
+                    if (allOpts.length === 0) {
+                      return <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>暂无分支，请先选择代码仓</span>;
+                    }
+                    return allOpts.map(branch => {
+                      const checked = activeBranches.includes(branch);
+                      return (
+                        <label key={branch} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'var(--text-main)', userSelect: 'none' }}>
+                          <input 
+                            type="checkbox"
+                            checked={checked}
+                            style={{ width: 'auto', margin: 0 }}
+                            onChange={(e) => {
+                              let current = activePlan.branch ? activePlan.branch.split(',').filter(Boolean) : [];
+                              if (e.target.checked) {
+                                if (!current.includes(branch)) {
+                                  current.push(branch);
+                                }
+                              } else {
+                                current = current.filter((x: string) => x !== branch);
+                              }
+                              onChange({ ...activePlan, branch: current.join(',') });
+                            }}
+                          />
+                          {branch}
+                        </label>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>三方方案唯一 ID (非必填，自动同步生成)</label>

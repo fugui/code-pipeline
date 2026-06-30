@@ -159,7 +159,6 @@ func DeletePipeline(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Pipeline and associated execution plans deleted successfully"})
 }
 
-
 // GetExecutionPlans 获取指定流水线的执行方案
 func GetExecutionPlans(c *gin.Context) {
 	pipelineIDStr := c.Query("pipeline_id")
@@ -315,4 +314,3 @@ func DeleteExecutionPlan(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Execution plan deleted successfully"})
 }
-

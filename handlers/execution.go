@@ -13,20 +13,18 @@ import (
 
 // MockExecution 模拟的第三方执行数据结构
 type MockExecution struct {
-	ID           uint      `json:"id"`
-	PlanID       string    `json:"plan_id"`
-	PipelineID   string    `json:"pipeline_id"`
-	RepoID       uint      `json:"repo_id"`
-	RepoName     string    `json:"repo_name"`
-	Branch       string    `json:"branch"`
-	TriggerType  string    `json:"trigger_type"` // manual, schedule, webhook
-	Status       string    `json:"status"`       // success, failed, running
-	StartTime    time.Time `json:"start_time"`
-	DurationSec  int64     `json:"duration_sec"`
-	ErrorMsg     string    `json:"error_msg"`
+	ID          uint      `json:"id"`
+	PlanID      string    `json:"plan_id"`
+	PipelineID  string    `json:"pipeline_id"`
+	RepoID      uint      `json:"repo_id"`
+	RepoName    string    `json:"repo_name"`
+	Branch      string    `json:"branch"`
+	TriggerType string    `json:"trigger_type"` // manual, schedule, webhook
+	Status      string    `json:"status"`       // success, failed, running
+	StartTime   time.Time `json:"start_time"`
+	DurationSec int64     `json:"duration_sec"`
+	ErrorMsg    string    `json:"error_msg"`
 }
-
-
 
 func GetDashboardStats(c *gin.Context) {
 	var totalRepos int64

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -8,6 +9,8 @@ import (
 
 	"code-pipeline/database"
 	"code-pipeline/models"
+	"code-pipeline/services"
+	"code-pipeline/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -60,7 +63,7 @@ func TriggerRepo(c *gin.Context) {
 	}
 
 	// 模拟触发第三方系统
-	log.Printf("[ThirdPartyTrigger] Triggering pipeline plan %s (ID: %s) for repo %d branch %s...", 
+	log.Printf("[ThirdPartyTrigger] Triggering pipeline plan %s (ID: %s) for repo %d branch %s...",
 		plan.CodeCheckerTaskID, plan.ExecutionPlanID, repoID, branch)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -103,4 +106,40 @@ func GetRepoLatestLog(c *gin.Context) {
 		"checker_task_id":   plan.CodeCheckerTaskID,
 		"external_log_url":  "http://192.168.56.18:9080/pipelines/logs/" + plan.ExecutionPlanID, // 跳转三方系统的链接
 	})
+}
+
+// GetRepoBranches 获取仓库相关的分支列表
+func GetRepoBranches(c *gin.Context) {
+	id := c.Param("id")
+	// 验证仓库是否存在
+	var repo models.Repository
+	if err := database.DB.First(&repo, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Repository not found"})
+		return
+	}
+
+	// 1. 把 Repo 的 URL 格式化成为 https 格式
+	formattedURL := utils.SSHToHTTPS(repo.URL)
+
+	// 2. 获取代码仓的授权ID (调用 CheckRepoAuthorized)
+	headers := prepareRequestHeaders(c)
+	authID, err := services.CheckRepoAuthorized(c.Request.Context(), formattedURL, headers)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to check repository authorization: %v", err)})
+		return
+	}
+	if authID == "" {
+		c.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("Repository %s is not authorized", repo.Name)})
+		return
+	}
+
+	// 3. 调用 API 获取该代码仓的分支信息， 该API由三方流水线系统提供， 基于 URL 的GET请求的RESTful API
+	// 其返回格式为：{"status":"success", "result": [string]}
+	branches, err := services.GetRepoBranchesRemote(c.Request.Context(), formattedURL, authID, headers)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to fetch branches from remote: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, branches)
 }

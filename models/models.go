@@ -22,6 +22,7 @@ type Repository struct {
 	URL       string    `gorm:"default:''" json:"url"`                    // Git 克隆地址
 	OwnerID   uint      `json:"owner_id"`                                 // 负责人 ID
 	IsActive  bool      `gorm:"default:true" json:"is_active"`            // 是否在宿主端被冻结
+	ProjectID string    `gorm:"default:''" json:"project_id"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -41,20 +42,20 @@ type Pipeline struct {
 }
 
 type ExecutionPlan struct {
-	ID               uint       `gorm:"primaryKey" json:"id"`
-	ExecutionPlanID  string     `json:"execution_plan_id"`                  // 执行方案ID (从真正流水线系统同步回来)
-	PipelineID       uint       `gorm:"index;not null" json:"pipeline_id"`  // 关联的 Pipeline ID
-	RepositoryID     uint       `gorm:"index" json:"repository_id"`// 关联本地只读 Repository 镜像表 ID
-	Repository       Repository `gorm:"foreignKey:RepositoryID" json:"repository"`
-	Branch           string     `gorm:"not null" json:"branch"`             // 分支
-	Username         string     `json:"username"`                           // 用户名
-	Password         string     `json:"password"`                           // 密码
-	CodeCheckerTaskID string    `json:"code_checker_task_id"`               // 代码检查任务 ID
-	Languages        string     `json:"languages"`                          // 编程语言 (如: "C/C++,Python,Java")	
-	MRBindingID      string     `json:"mr_binding_id"`                      // 绑定的 MR 绑定 ID
-	CustomAttributes string     `gorm:"type:text" json:"custom_attributes"` // 自定义属性 (JSON)
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
+	ID                uint       `gorm:"primaryKey" json:"id"`
+	ExecutionPlanID   string     `json:"execution_plan_id"`                 // 执行方案ID (从真正流水线系统同步回来)
+	PipelineID        uint       `gorm:"index;not null" json:"pipeline_id"` // 关联的 Pipeline ID
+	RepositoryID      uint       `gorm:"index" json:"repository_id"`        // 关联本地只读 Repository 镜像表 ID
+	Repository        Repository `gorm:"foreignKey:RepositoryID" json:"repository"`
+	Branch            string     `gorm:"not null" json:"branch"`             // 分支
+	Username          string     `json:"username"`                           // 用户名
+	Password          string     `json:"password"`                           // 密码
+	CodeCheckerTaskID string     `json:"code_checker_task_id"`               // 代码检查任务 ID
+	Languages         string     `json:"languages"`                          // 编程语言 (如: "C/C++,Python,Java")
+	MRBindingID       string     `json:"mr_binding_id"`                      // 绑定的 MR 绑定 ID
+	CustomAttributes  string     `gorm:"type:text" json:"custom_attributes"` // 自定义属性 (JSON)
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
 type MRBinding struct {

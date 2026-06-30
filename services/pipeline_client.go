@@ -5,15 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
 	"code-pipeline/database"
 	"code-pipeline/models"
+	"code-pipeline/utils"
 )
 
 // FetchRemotePipelineInfo 调用远程接口获取三方流水线元数据
@@ -23,7 +22,7 @@ func FetchRemotePipelineInfo(ctx context.Context, pipelineID string, headers map
 		return nil, fmt.Errorf("get_pipeline_url not configured")
 	}
 
-	body, err := sendHTTPRequest(ctx, "GET", apiURLStr, nil, httpOptions{
+	body, err := utils.SendHTTPRequest(ctx, "GET", apiURLStr, nil, utils.HTTPOptions{
 		Headers:     headers,
 		QueryParams: map[string]string{"pipelineId": pipelineID},
 	}, []int{http.StatusOK}, "FetchPipelineInfo")
@@ -84,7 +83,7 @@ func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, h
 		return nil, fmt.Errorf("get_execution_plan_url not configured")
 	}
 
-	body, err := sendHTTPRequest(ctx, "GET", apiURLStr, nil, httpOptions{
+	body, err := utils.SendHTTPRequest(ctx, "GET", apiURLStr, nil, utils.HTTPOptions{
 		Headers:     headers,
 		QueryParams: map[string]string{"pipelineId": pipelineBusinessID},
 	}, []int{http.StatusOK}, "SyncExecutionPlans")
@@ -136,7 +135,7 @@ func SyncCreateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 		"custom_attributes":    plan.CustomAttributes,
 	}
 
-	body, err := sendHTTPRequest(context.Background(), "POST", apiURLStr, payload, httpOptions{}, []int{http.StatusOK, http.StatusCreated}, "SyncCreatePlan")
+	body, err := utils.SendHTTPRequest(context.Background(), "POST", apiURLStr, payload, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusCreated}, "SyncCreatePlan")
 	if err != nil {
 		return "", err
 	}
@@ -186,7 +185,7 @@ func SyncUpdateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 		"custom_attributes":    plan.CustomAttributes,
 	}
 
-	_, err := sendHTTPRequest(context.Background(), "PUT", targetURL, payload, httpOptions{}, []int{http.StatusOK, http.StatusNoContent}, "SyncUpdatePlan")
+	_, err := utils.SendHTTPRequest(context.Background(), "PUT", targetURL, payload, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent}, "SyncUpdatePlan")
 	return err
 }
 
@@ -199,23 +198,8 @@ func SyncDeleteExecutionPlanRemote(executionPlanID string) error {
 
 	targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), executionPlanID)
 
-	_, err := sendHTTPRequest(context.Background(), "DELETE", targetURL, nil, httpOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeletePlan")
+	_, err := utils.SendHTTPRequest(context.Background(), "DELETE", targetURL, nil, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeletePlan")
 	return err
-}
-
-// LogHTTPErrorDetails 打印详细的 HTTP 错误日志，包括等价的 curl 调试命令及三方返回的原始报文
-func LogHTTPErrorDetails(contextMsg string, req *http.Request, statusCode int, respBody []byte) {
-	var curlHeaders []string
-	for name, values := range req.Header {
-		for _, value := range values {
-			escapedValue := strings.ReplaceAll(value, "'", "'\\''")
-			curlHeaders = append(curlHeaders, fmt.Sprintf("-H '%s: %s'", name, escapedValue))
-		}
-	}
-	curlCmd := fmt.Sprintf("curl -X %s '%s' %s", req.Method, req.URL.String(), strings.Join(curlHeaders, " "))
-
-	log.Printf("[%s] Curl Command:\n%s\n", contextMsg, curlCmd)
-	log.Printf("[%s] Remote server returned status %d. Response Body: %s\n", contextMsg, statusCode, string(respBody))
 }
 
 // copyCheckerTask 复制三方检查任务
@@ -247,7 +231,7 @@ func copyCheckerTask(ctx context.Context, repository string, branch string, head
 
 	log.Printf("[UpdateCheckerTaskRemote_CopyTask] Request URL: %s, Headers: %v, Body: %v", apiURL, headers, postData)
 
-	respBody, err := sendHTTPRequest(ctx, "POST", apiURL, postData, httpOptions{
+	respBody, err := utils.SendHTTPRequest(ctx, "POST", apiURL, postData, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated}, "UpdateCheckerTaskRemote_CopyTask")
 	if err != nil {
@@ -262,7 +246,7 @@ func copyCheckerTask(ctx context.Context, repository string, branch string, head
 func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch string, languages string, customAttributes string, headers map[string]string) (string, string, error) {
 
 	//1. 检查代码仓授权（进行 MR 的 Webhook 的配置等）
-	authID, err := checkRepoAuthorized(ctx, repository, headers)
+	authID, err := CheckRepoAuthorized(ctx, repository, headers)
 	if err != nil {
 		return "", "", fmt.Errorf("repo auth check failed: %v", err)
 	}
@@ -349,16 +333,16 @@ func extractRepoName(repoURL string) string {
 	return u
 }
 
-// checkRepoAuthorized 检查代码仓是否授权
+// CheckRepoAuthorized 检查代码仓是否授权
 // 返回的数据结构： {"status":"success",  "count": 3, "entities": [ {"id"} ]}
 // 所以本函数会检查返回状态是否成功， count 是否大于0， 如果大于0， 则返回第一个 entity 的 id（授权ID）， 否则返回 ""， 表明未授权
-func checkRepoAuthorized(ctx context.Context, repository string, headers map[string]string) (string, error) {
+func CheckRepoAuthorized(ctx context.Context, repository string, headers map[string]string) (string, error) {
 	apiURLStr := models.AppConfig.PipelineSystem.RepoAuthCheckURL
 	if apiURLStr == "" {
 		return "", fmt.Errorf("repo_auth_check_url not configured")
 	}
 
-	body, err := sendHTTPRequest(ctx, "GET", apiURLStr, nil, httpOptions{
+	body, err := utils.SendHTTPRequest(ctx, "GET", apiURLStr, nil, utils.HTTPOptions{
 		Headers:     headers,
 		QueryParams: map[string]string{"fuzzyMatch": repository, "filterType": "allTeam"},
 	}, []int{http.StatusOK}, "checkRepoAuthorized")
@@ -416,7 +400,7 @@ func checkRepoCredentialAssociated(ctx context.Context, repository string, heade
 		return false, fmt.Errorf("repo_credential_check_url not configured")
 	}
 
-	body, err := sendHTTPRequest(ctx, "GET", apiURLStr, nil, httpOptions{
+	body, err := utils.SendHTTPRequest(ctx, "GET", apiURLStr, nil, utils.HTTPOptions{
 		Headers: headers,
 		QueryParams: map[string]string{
 			"authorized": "true",
@@ -447,143 +431,6 @@ func checkRepoCredentialAssociated(ctx context.Context, repository string, heade
 	return len(resp.Result.Content) > 0, nil
 }
 
-// httpOptions 定义 HTTP 请求的附加参数
-type httpOptions struct {
-	Headers     map[string]string
-	QueryParams map[string]string
-}
-
-// sendHTTPRequest 封装统一的 HTTP 请求发送与错误处理逻辑
-func sendHTTPRequest(ctx context.Context, method, rawURL string, payload interface{}, opt httpOptions, expectedStatuses []int, contextMsg string) ([]byte, error) {
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse URL %s: %v", rawURL, err)
-	}
-
-	if len(opt.QueryParams) > 0 {
-		q := u.Query()
-		for k, v := range opt.QueryParams {
-			q.Set(k, v)
-		}
-		u.RawQuery = q.Encode()
-	}
-
-	var bodyReader io.Reader
-	if payload != nil {
-		jsonBytes, err := json.Marshal(payload)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal request payload: %v", err)
-		}
-		bodyReader = bytes.NewBuffer(jsonBytes)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, method, u.String(), bodyReader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create HTTP request: %v", err)
-	}
-
-	if payload != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-
-	for k, v := range opt.Headers {
-		req.Header.Set(k, v)
-	}
-
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute remote request: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %v", err)
-	}
-
-	isExpected := false
-	for _, status := range expectedStatuses {
-		if resp.StatusCode == status {
-			isExpected = true
-			break
-		}
-	}
-
-	if !isExpected {
-		LogHTTPErrorDetails(contextMsg, req, resp.StatusCode, body)
-		return nil, fmt.Errorf("remote API returned status code %d", resp.StatusCode)
-	}
-
-	return body, nil
-}
-
-// NormalizeGitURL 规范化 Git 仓库地址，消除协议（ssh/http/https）、端口、用户名及 .git 后缀的差异，返回标准的 host/path
-func NormalizeGitURL(u string) string {
-	u = strings.TrimSpace(u)
-	u = strings.ToLower(u)
-
-	// 1. 去除协议前缀
-	if strings.HasPrefix(u, "ssh://") {
-		u = u[6:]
-	} else if strings.HasPrefix(u, "http://") {
-		u = u[7:]
-	} else if strings.HasPrefix(u, "https://") {
-		u = u[8:]
-	}
-
-	// 2. 去除用户名
-	if idx := strings.Index(u, "@"); idx != -1 {
-		u = u[idx+1:]
-	}
-
-	// 3. 去除末尾的 .git 和 /
-	u = strings.TrimSuffix(u, ".git")
-	u = strings.TrimSuffix(u, "/")
-
-	// 4. 分离 host 和 path
-	var hostPart, pathPart string
-	if idx := strings.Index(u, "/"); idx != -1 {
-		hostPart = u[:idx]
-		pathPart = u[idx+1:]
-	} else {
-		hostPart = u
-	}
-
-	// 5. 处理 hostPart 中的冒号端口与 SSH 路径区分
-	if idx := strings.Index(hostPart, ":"); idx != -1 {
-		portOrPath := hostPart[idx+1:]
-		hostOnly := hostPart[:idx]
-
-		isPort := true
-		if len(portOrPath) == 0 {
-			isPort = false
-		}
-		for _, r := range portOrPath {
-			if r < '0' || r > '9' {
-				isPort = false
-				break
-			}
-		}
-
-		if isPort {
-			hostPart = hostOnly
-		} else {
-			hostPart = hostOnly
-			if pathPart != "" {
-				pathPart = portOrPath + "/" + pathPart
-			} else {
-				pathPart = portOrPath
-			}
-		}
-	}
-
-	if pathPart != "" {
-		return hostPart + "/" + pathPart
-	}
-	return hostPart
-}
-
 // FetchRemoteMRBindings 从三方系统获取指定流水线的 MR 绑定列表
 func FetchRemoteMRBindings(ctx context.Context, pipelineBusinessID string, headers map[string]string) ([]models.MRBinding, error) {
 	apiURLStr := models.AppConfig.PipelineSystem.GetMRBindingsURL
@@ -591,7 +438,7 @@ func FetchRemoteMRBindings(ctx context.Context, pipelineBusinessID string, heade
 		return nil, fmt.Errorf("get_mr_bindings_url not configured")
 	}
 
-	body, err := sendHTTPRequest(ctx, "GET", apiURLStr, nil, httpOptions{
+	body, err := utils.SendHTTPRequest(ctx, "GET", apiURLStr, nil, utils.HTTPOptions{
 		Headers:     headers,
 		QueryParams: map[string]string{"pipelineId": pipelineBusinessID},
 	}, []int{http.StatusOK}, "FetchMRBindings")
@@ -614,4 +461,42 @@ func FetchRemoteMRBindings(ctx context.Context, pipelineBusinessID string, heade
 	}
 
 	return remoteResp.Result, nil
+}
+
+// GetRepoBranchesRemote 调用三方系统获取分支列表
+func GetRepoBranchesRemote(ctx context.Context, repository string, authID string, headers map[string]string) ([]string, error) {
+	apiURLStr := models.AppConfig.PipelineSystem.GetBranchesURL
+	if apiURLStr == "" {
+		return nil, fmt.Errorf("get_branches_url not configured")
+	}
+
+	queryParams := map[string]string{
+		"queryType":        "new",
+		"credentialId":     authID,
+		"codeUrl":          repository,
+		"repositorySystem": "CodeHubGreen",
+	}
+
+	body, err := utils.SendHTTPRequest(ctx, "GET", apiURLStr, nil, utils.HTTPOptions{
+		Headers:     headers,
+		QueryParams: queryParams,
+	}, []int{http.StatusOK}, "GetRepoBranchesRemote")
+	if err != nil {
+		return nil, err
+	}
+
+	var responseData struct {
+		Status string   `json:"status"`
+		Result []string `json:"result"`
+	}
+	if err := json.Unmarshal(body, &responseData); err != nil {
+		log.Printf("[GetRepoBranchesRemote] Failed to parse JSON: %v, Body: %s", err, string(body))
+		return nil, fmt.Errorf("failed to parse branches response JSON: %v", err)
+	}
+
+	if responseData.Status != "success" {
+		return nil, fmt.Errorf("fetch branches failed with status: %s", responseData.Status)
+	}
+
+	return responseData.Result, nil
 }

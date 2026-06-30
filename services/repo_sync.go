@@ -75,6 +75,7 @@ func syncReposOnce() {
 				URL:       repo.URL,
 				OwnerID:   repo.OwnerID,
 				IsActive:  repo.IsActive,
+				ProjectID: repo.ProjectID,
 				CreatedAt: repo.CreatedAt,
 			}
 			if err := db.Create(&newRepo).Error; err != nil {
@@ -83,10 +84,11 @@ func syncReposOnce() {
 		} else {
 			// 更新
 			if err := db.Model(&existing).Updates(map[string]interface{}{
-				"name":      repo.Name,
-				"url":       repo.URL,
-				"owner_id":  repo.OwnerID,
-				"is_active": repo.IsActive,
+				"name":       repo.Name,
+				"url":        repo.URL,
+				"owner_id":   repo.OwnerID,
+				"is_active":  repo.IsActive,
+				"project_id": repo.ProjectID,
 			}).Error; err != nil {
 				log.Printf("[RepoSync] Failed to update repo ID %d: %v", repo.ID, err)
 			}
@@ -147,6 +149,7 @@ func PullRepoDetails(repoID uint) (*models.Repository, error) {
 		URL       string    `json:"url"`
 		OwnerID   uint      `json:"owner_id"`
 		IsActive  bool      `json:"is_active"`
+		ProjectID string    `json:"project_id"`
 		CreatedAt time.Time `json:"created_at"`
 	}
 
@@ -160,6 +163,7 @@ func PullRepoDetails(repoID uint) (*models.Repository, error) {
 		URL:       rawRepo.URL,
 		OwnerID:   rawRepo.OwnerID,
 		IsActive:  rawRepo.IsActive,
+		ProjectID: rawRepo.ProjectID,
 		CreatedAt: rawRepo.CreatedAt,
 	}
 
@@ -174,6 +178,7 @@ type remoteRepo struct {
 	URL       string    `json:"url"`
 	OwnerID   uint      `json:"owner_id"`
 	IsActive  bool      `json:"is_active"`
+	ProjectID string    `json:"project_id"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

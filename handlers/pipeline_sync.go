@@ -9,6 +9,7 @@ import (
 	"code-pipeline/database"
 	"code-pipeline/models"
 	"code-pipeline/services"
+	"code-pipeline/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -105,7 +106,7 @@ func SyncExecutionPlans(c *gin.Context) {
 	repoMap := make(map[string]models.Repository)
 	if err := database.DB.Find(&allRepos).Error; err == nil {
 		for _, r := range allRepos {
-			normalizedURL := services.NormalizeGitURL(r.URL)
+			normalizedURL := utils.NormalizeGitURL(r.URL)
 			if normalizedURL != "" {
 				repoMap[normalizedURL] = r
 			}
@@ -163,7 +164,7 @@ func SyncExecutionPlans(c *gin.Context) {
 		}
 
 		// 合并代码仓数据，并利用规格化逻辑在本地仓库中重新匹配（用 MR 数据的 CodeURL 覆盖）
-		normalizedCodeURL := services.NormalizeGitURL(binding.CodeURL)
+		normalizedCodeURL := utils.NormalizeGitURL(binding.CodeURL)
 		if r, found := repoMap[normalizedCodeURL]; found {
 			plan.RepositoryID = r.ID
 			plan.Repository = r

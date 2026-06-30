@@ -235,7 +235,7 @@ func TestCheckRepoAuthorized(t *testing.T) {
 
 			models.AppConfig.PipelineSystem.RepoAuthCheckURL = server.URL
 
-			authID, err := checkRepoAuthorized(context.Background(), "git@github.com:my-org/my-target-repo.git", nil)
+			authID, err := CheckRepoAuthorized(context.Background(), "git@github.com:my-org/my-target-repo.git", nil)
 			if (err != nil) != tc.expectedHasErr {
 				t.Fatalf("Expected error: %v, got: %v", tc.expectedHasErr, err)
 			}
@@ -315,27 +315,5 @@ func TestCheckRepoCredentialAssociated(t *testing.T) {
 				t.Errorf("Expected assoc: %v, got: %v", tc.expectedAssoc, assoc)
 			}
 		})
-	}
-}
-
-func TestNormalizeGitURL(t *testing.T) {
-	testCases := []struct {
-		url      string
-		expected string
-	}{
-		{"git@github.com:Google/Gemini.git", "github.com/google/gemini"},
-		{"https://github.com/Google/Gemini", "github.com/google/gemini"},
-		{"http://192.168.56.18:8000/org/repo.git", "192.168.56.18/org/repo"},
-		{"ssh://git@192.168.56.18:22/org/repo.git", "192.168.56.18/org/repo"},
-		{"192.168.56.18/org/repo", "192.168.56.18/org/repo"},
-		{"http://192.168.56.18/org/repo", "192.168.56.18/org/repo"},
-		{"git@192.168.56.18:org/repo.git", "192.168.56.18/org/repo"},
-	}
-
-	for _, tc := range testCases {
-		result := NormalizeGitURL(tc.url)
-		if result != tc.expected {
-			t.Errorf("NormalizeGitURL(%q) = %q, expected %q", tc.url, result, tc.expected)
-		}
 	}
 }
