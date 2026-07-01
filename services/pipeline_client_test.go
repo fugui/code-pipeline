@@ -354,13 +354,15 @@ func TestCreateCheckerTaskStep(t *testing.T) {
 		}
 		if r.Method == "GET" {
 			receivedMethodQuery = r.Method
-			receivedQueryName = r.URL.Query().Get("name")
+			receivedQueryName = r.URL.Query().Get("search")
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`{
 				"status": "success",
-				"entities": [
-					{"id": "test-task-123", "name": "matching-task"}
-				]
+				"result": {
+					"info": [
+						{"id": "test-task-123", "name": "matching-task"}
+					]
+				}
 			}`))
 			return
 		}
