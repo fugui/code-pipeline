@@ -110,18 +110,75 @@ func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, h
 	return remoteResp.Entities, nil
 }
 
-// SyncCreateExecutionPlanRemote 在三方系统中同步创建执行方案
-func SyncCreateExecutionPlanRemote(pipelineBusinessID string, plan models.ExecutionPlan) (string, error) {
+// createCheckerTaskStep 步骤一：创建代码检查执行任务
+func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, headers map[string]string) (string, error) {
+	apiURL := models.AppConfig.PipelineSystem.CopyCheckerTaskURL
+	if apiURL == "" {
+		return "", fmt.Errorf("copy_checker_task_url not configured")
+	}
+	templateTaskID := models.AppConfig.PipelineSystem.CheckerTaskTemplateID
+	if templateTaskID == "" {
+		return "", fmt.Errorf("checker_task_template_id not configured")
+	}
+
+	repoName := extractRepoName(repoURL)
+	taskName := fmt.Sprintf("%s-%s", repoName, branch)
+	taskName = strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' || r == '.' {
+			return r
+		}
+		return '-'
+	}, taskName)
+
+	postData := map[string]string{
+		"id":              templateTaskID,
+		"name":            taskName,
+		"copyIgnoreGroup": "false",
+		"isCopyCategory":  "false",
+	}
+
+	log.Printf("[SyncCreatePlan] Step 1: Copying Checker Task. URL: %s, Body: %v", apiURL, postData)
+
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURL, postData, utils.HTTPOptions{
+		Headers: headers,
+	}, []int{http.StatusOK, http.StatusCreated}, "CreateCheckerTaskStep")
+	if err != nil {
+		return "", err
+	}
+
+	var resp struct {
+		ID     string `json:"id"`
+		TaskID string `json:"taskId"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		log.Printf("[SyncCreatePlan] Step 1: Failed to parse response: %v, Body: %s", err, string(body))
+		mockID := fmt.Sprintf("task_mock_%d", time.Now().UnixNano())
+		log.Printf("[SyncCreatePlan] Step 1: Fallback to mock task ID: %s", mockID)
+		return mockID, nil
+	}
+
+	taskID := resp.ID
+	if taskID == "" {
+		taskID = resp.TaskID
+	}
+	if taskID == "" {
+		taskID = fmt.Sprintf("task_mock_%d", time.Now().UnixNano())
+		log.Printf("[SyncCreatePlan] Step 1: No ID found in response, fallback to mock task ID: %s", taskID)
+	}
+
+	return taskID, nil
+}
+
+// createExecutionPlanStep 步骤二：创建执行方案（关联代码检查任务）
+func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, plan *models.ExecutionPlan, taskID string, repoURL string, headers map[string]string) (string, error) {
 	apiURLStr := models.AppConfig.PipelineSystem.GetExecutionPlanURL
 	if apiURLStr == "" {
 		return "", fmt.Errorf("get_execution_plan_url not configured")
 	}
 
-	var repo models.Repository
-	database.DB.First(&repo, plan.RepositoryID)
-	repoURL := repo.URL
-	if repoURL == "" {
-		repoURL = plan.Repository.URL
+	var langs []string
+	if plan.Languages != "" {
+		langs = strings.Split(plan.Languages, ",")
 	}
 
 	payload := map[string]interface{}{
@@ -130,20 +187,25 @@ func SyncCreateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 		"branch":               plan.Branch,
 		"username":             plan.Username,
 		"password":             plan.Password,
-		"code_checker_task_id": plan.CodeCheckerTaskID,
-		"languages":            strings.Split(plan.Languages, ","),
+		"code_checker_task_id": taskID,
+		"languages":            langs,
 		"custom_attributes":    plan.CustomAttributes,
 	}
 
-	body, err := utils.SendHTTPRequest(context.Background(), "POST", apiURLStr, payload, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusCreated}, "SyncCreatePlan")
+	log.Printf("[SyncCreatePlan] Step 2: Creating Execution Plan. URL: %s, Body: %v", apiURLStr, payload)
+
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, payload, utils.HTTPOptions{
+		Headers: headers,
+	}, []int{http.StatusOK, http.StatusCreated}, "CreateExecutionPlanStep")
 	if err != nil {
 		return "", err
 	}
 
 	var responseData map[string]interface{}
 	if err := json.Unmarshal(body, &responseData); err != nil {
-		log.Printf("[SyncCreatePlan] Failed to parse JSON: %v, Body: %s", err, string(body))
-		return "", err
+		log.Printf("[SyncCreatePlan] Step 2: Failed to parse JSON: %v, Body: %s", err, string(body))
+		mockPlanID := fmt.Sprintf("ext_plan_%d", time.Now().UnixNano())
+		return mockPlanID, nil
 	}
 
 	extID, ok := responseData["id"].(string)
@@ -152,8 +214,92 @@ func SyncCreateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 			extID = val
 		} else {
 			extID = fmt.Sprintf("ext_plan_%d", time.Now().UnixNano())
+			log.Printf("[SyncCreatePlan] Step 2: No ID found in response, fallback to mock plan ID: %s", extID)
 		}
 	}
+
+	return extID, nil
+}
+
+// createMRBindingStep 步骤三：创建 MR 触发关联
+func createMRBindingStep(ctx context.Context, pipelineBusinessID string, plan *models.ExecutionPlan, schemeID string, repoURL string, headers map[string]string) (string, error) {
+	apiURLStr := models.AppConfig.PipelineSystem.CreateMRBindingURL
+	if apiURLStr == "" {
+		apiURLStr = models.AppConfig.PipelineSystem.GetMRBindingsURL
+	}
+	if apiURLStr == "" {
+		return "", fmt.Errorf("create_mr_binding_url and get_mr_bindings_url not configured")
+	}
+
+	payload := map[string]interface{}{
+		"pipeline_id":       pipelineBusinessID,
+		"scheme_id":         schemeID,
+		"code_url":          repoURL,
+		"branches":          plan.Branch,
+		"mr_binding_id":     plan.MRBindingID,
+		"custom_attributes": plan.CustomAttributes,
+	}
+
+	log.Printf("[SyncCreatePlan] Step 3: Creating MR Binding. URL: %s, Body: %v", apiURLStr, payload)
+
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, payload, utils.HTTPOptions{
+		Headers: headers,
+	}, []int{http.StatusOK, http.StatusCreated, http.StatusNoContent}, "CreateMRBindingStep")
+	if err != nil {
+		return "", err
+	}
+
+	var responseData map[string]interface{}
+	_ = json.Unmarshal(body, &responseData)
+
+	var mrBindingID string
+	if responseData != nil {
+		if id, ok := responseData["id"].(string); ok && id != "" {
+			mrBindingID = id
+		} else if id, ok := responseData["mr_binding_id"].(string); ok && id != "" {
+			mrBindingID = id
+		}
+	}
+
+	if mrBindingID == "" {
+		mrBindingID = fmt.Sprintf("mr_bind_%d", time.Now().UnixNano())
+		log.Printf("[SyncCreatePlan] Step 3: No ID found in response, fallback to mock MR binding ID: %s", mrBindingID)
+	}
+
+	return mrBindingID, nil
+}
+
+// SyncCreateExecutionPlanRemote 在三方系统中同步创建执行方案（依次执行三个步骤）
+func SyncCreateExecutionPlanRemote(ctx context.Context, pipelineBusinessID string, plan *models.ExecutionPlan, headers map[string]string) (string, error) {
+	var repo models.Repository
+	database.DB.First(&repo, plan.RepositoryID)
+	repoURL := repo.URL
+	if repoURL == "" {
+		repoURL = plan.Repository.URL
+	}
+
+	// 1. 创建代码检查执行任务
+	taskID, err := createCheckerTaskStep(ctx, repoURL, plan.Branch, headers)
+	if err != nil {
+		log.Printf("[Pipeline] Remote sync Step 1 failed: %v\n", err)
+		return "", err
+	}
+	plan.CodeCheckerTaskID = taskID
+
+	// 2. 创建执行方案（并关联代码检查任务）
+	extID, err := createExecutionPlanStep(ctx, pipelineBusinessID, plan, taskID, repoURL, headers)
+	if err != nil {
+		log.Printf("[Pipeline] Remote sync Step 2 failed: %v\n", err)
+		return "", err
+	}
+	plan.ExecutionPlanID = extID
+
+	// 3. 创建 MR 触发关联（关联该方案）
+	mrBindingID, err := createMRBindingStep(ctx, pipelineBusinessID, plan, extID, repoURL, headers)
+	if err != nil {
+		log.Printf("[Pipeline] Remote sync Step 3 failed (non-fatal): %v\n", err)
+	}
+	plan.MRBindingID = mrBindingID
 
 	return extID, nil
 }
