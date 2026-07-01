@@ -18,6 +18,21 @@ pipeline_system:
   get_mr_bindings_url: "http://192.168.56.18:8080/api/external/mr-bindings"
   copy_checker_task_url: "http://192.168.56.18:8080/api/external/copy-checker-task"
   create_checker_task_url: "http://192.168.56.18:8080/api/external/create-checker-task"
+  create_checker_task_body: |
+    {
+      "id": "{TEMPLATE_ID}",
+      "name": "{NAME}",
+      "copyIgnoreGroup": "false",
+      "isCopyCategory": "false",
+      "languages": {LANGUAGES}
+    }
+  copy_checker_task_body: |
+    {
+      "id": "{TEMPLATE_ID}",
+      "name": "{NAME}",
+      "copyIgnoreGroup": "false",
+      "isCopyCategory": "false"
+    }
   checker_task_template_id: "template_task_id"
   repo_auth_check_url: "http://192.168.56.18:8080/api/external/repo-auth-check"
   repo_credential_check_url: "http://192.168.56.18:8080/api/external/repo-credential-check"
