@@ -154,13 +154,11 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 	var ruleSets []RuleSetParam
 	for _, lang := range langs {
 		langUpper := strings.ToUpper(strings.TrimSpace(lang))
-		if ids, ok := models.AppConfig.PipelineSystem.RuleSets[langUpper]; ok {
-			for _, id := range ids {
-				ruleSets = append(ruleSets, RuleSetParam{
-					Language:  langUpper,
-					RuleSetID: id,
-				})
-			}
+		if id, ok := models.AppConfig.PipelineSystem.RuleSets[langUpper]; ok {
+			ruleSets = append(ruleSets, RuleSetParam{
+				Language:  langUpper,
+				RuleSetID: id,
+			})
 		}
 	}
 	ruleSetsJSON, err := json.Marshal(ruleSets)
