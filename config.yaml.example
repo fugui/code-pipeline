@@ -24,7 +24,8 @@ pipeline_system:
       "name": "{NAME}",
       "copyIgnoreGroup": "false",
       "isCopyCategory": "false",
-      "languages": {LANGUAGES}
+      "languages": {LANGUAGES},
+      "ruleSets": {RULE_SETS}
     }
   copy_checker_task_body: |
     {
@@ -37,3 +38,9 @@ pipeline_system:
   repo_auth_check_url: "http://192.168.56.18:8080/api/external/repo-auth-check"
   repo_credential_check_url: "http://192.168.56.18:8080/api/external/repo-credential-check"
   get_branches_url: "http://192.168.56.18:8080/api/external/repo-branches"
+  rule_sets:
+    GO:
+      - "rule_id_go_1"
+      - "rule_id_go_2"
+    PYTHON:
+      - "rule_id_py_1"

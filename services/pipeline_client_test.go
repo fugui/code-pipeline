@@ -322,3 +322,85 @@ func TestCheckRepoCredentialAssociated(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateCheckerTaskStep(t *testing.T) {
+	// 备份原配置，以便测试结束后恢复
+	origURL := models.AppConfig.PipelineSystem.CreateCheckerTaskURL
+	origBody := models.AppConfig.PipelineSystem.CreateCheckerTaskBody
+	origRuleSets := models.AppConfig.PipelineSystem.RuleSets
+	defer func() {
+		models.AppConfig.PipelineSystem.CreateCheckerTaskURL = origURL
+		models.AppConfig.PipelineSystem.CreateCheckerTaskBody = origBody
+		models.AppConfig.PipelineSystem.RuleSets = origRuleSets
+	}()
+
+	var receivedBody []byte
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err == nil {
+			receivedBody = body
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"id": "test-task-123"}`))
+	}))
+	defer server.Close()
+
+	models.AppConfig.PipelineSystem.CreateCheckerTaskURL = server.URL
+	models.AppConfig.PipelineSystem.CreateCheckerTaskBody = `{
+		"languages": {LANGUAGES},
+		"ruleSets": {RULE_SETS}
+	}`
+	models.AppConfig.PipelineSystem.RuleSets = map[string][]string{
+		"GO":     {"go_rule_1", "go_rule_2"},
+		"PYTHON": {"py_rule_1"},
+	}
+
+	ctx := context.Background()
+	taskID, err := createCheckerTaskStep(ctx, "https://github.com/test/repo.git", "main", "Go,Python", nil)
+	if err != nil {
+		t.Fatalf("createCheckerTaskStep failed: %v", err)
+	}
+
+	if taskID != "test-task-123" {
+		t.Errorf("expected taskID 'test-task-123', got '%s'", taskID)
+	}
+
+	var reqPayload struct {
+		Languages []string `json:"languages"`
+		RuleSets  []struct {
+			Language  string `json:"language"`
+			RuleSetID string `json:"ruleSetId"`
+		} `json:"ruleSets"`
+	}
+
+	if err := json.Unmarshal(receivedBody, &reqPayload); err != nil {
+		t.Fatalf("failed to unmarshal request body: %v", err)
+	}
+
+	if len(reqPayload.Languages) != 2 || reqPayload.Languages[0] != "Go" || reqPayload.Languages[1] != "Python" {
+		t.Errorf("unexpected languages: %v", reqPayload.Languages)
+	}
+
+	if len(reqPayload.RuleSets) != 3 {
+		t.Errorf("expected 3 rule sets, got %d", len(reqPayload.RuleSets))
+	}
+
+	expectedRules := []struct {
+		Lang string
+		ID   string
+	}{
+		{"GO", "go_rule_1"},
+		{"GO", "go_rule_2"},
+		{"PYTHON", "py_rule_1"},
+	}
+
+	for i, r := range expectedRules {
+		if i >= len(reqPayload.RuleSets) {
+			break
+		}
+		if reqPayload.RuleSets[i].Language != r.Lang || reqPayload.RuleSets[i].RuleSetID != r.ID {
+			t.Errorf("at index %d: expected %s/%s, got %s/%s", i, r.Lang, r.ID, reqPayload.RuleSets[i].Language, reqPayload.RuleSets[i].RuleSetID)
+		}
+	}
+}
+

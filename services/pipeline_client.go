@@ -137,7 +137,33 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 	if languages != "" {
 		langs = strings.Split(languages, ",")
 	}
-	langsJSON, _ := json.Marshal(langs)
+	langsJSON, err := json.Marshal(langs)
+	if err != nil {
+		log.Printf("[SyncCreatePlan] Step 1: Failed to marshal languages: %v", err)
+		return "", fmt.Errorf("failed to marshal languages to JSON: %w", err)
+	}
+
+	type RuleSetParam struct {
+		Language  string `json:"language"`
+		RuleSetID string `json:"ruleSetId"`
+	}
+	var ruleSets []RuleSetParam
+	for _, lang := range langs {
+		langUpper := strings.ToUpper(strings.TrimSpace(lang))
+		if ids, ok := models.AppConfig.PipelineSystem.RuleSets[langUpper]; ok {
+			for _, id := range ids {
+				ruleSets = append(ruleSets, RuleSetParam{
+					Language:  langUpper,
+					RuleSetID: id,
+				})
+			}
+		}
+	}
+	ruleSetsJSON, err := json.Marshal(ruleSets)
+	if err != nil {
+		log.Printf("[SyncCreatePlan] Step 1: Failed to marshal ruleSets: %v", err)
+		return "", fmt.Errorf("failed to marshal ruleSets to JSON: %w", err)
+	}
 
 	tmpl := models.AppConfig.PipelineSystem.CreateCheckerTaskBody
 	if tmpl == "" {
@@ -148,6 +174,7 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 		"{REPO_URL}":  repoURL,
 		"{TASK_NAME}": taskName,
 		"{LANGUAGES}": string(langsJSON),
+		"{RULE_SETS}": string(ruleSetsJSON),
 	})
 
 	postData := json.RawMessage(bodyStr)
