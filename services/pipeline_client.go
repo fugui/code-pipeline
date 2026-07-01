@@ -3,6 +3,8 @@ package services
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -122,7 +124,12 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 	}
 
 	repoName := extractRepoName(repoURL)
-	taskName := fmt.Sprintf("%s-%s", repoName, branch)
+	randomSuffix := "0000"
+	randBytes := make([]byte, 2)
+	if _, err := rand.Read(randBytes); err == nil {
+		randomSuffix = hex.EncodeToString(randBytes)
+	}
+	taskName := fmt.Sprintf("%s-%s-CodeShield-%s", repoName, branch, randomSuffix)
 	taskName = strings.Map(func(r rune) rune {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' || r == '.' {
 			return r
@@ -366,7 +373,12 @@ func copyCheckerTask(ctx context.Context, repository string, branch string, head
 	}
 
 	repoName := extractRepoName(repository)
-	taskName := fmt.Sprintf("%s-%s", repoName, branch)
+	randomSuffix := "0000"
+	randBytes := make([]byte, 2)
+	if _, err := rand.Read(randBytes); err == nil {
+		randomSuffix = hex.EncodeToString(randBytes)
+	}
+	taskName := fmt.Sprintf("%s-%s-CodeShield-%s", repoName, branch, randomSuffix)
 	taskName = strings.Map(func(r rune) rune {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' || r == '.' {
 			return r

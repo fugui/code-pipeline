@@ -147,12 +147,16 @@ func TestUpdateCheckerTaskRemote(t *testing.T) {
 		t.Fatalf("Failed to parse request payload: %v", err)
 	}
 
-	expectedName := "my-target-repo-feature-cool-stuff"
 	if payload.ID != "template-12345" {
 		t.Errorf("Expected payload.id to be %q, got %q", "template-12345", payload.ID)
 	}
-	if payload.Name != expectedName {
-		t.Errorf("Expected payload.name to be %q, got %q", expectedName, payload.Name)
+	expectedPrefix := "my-target-repo-feature-cool-stuff-CodeShield-"
+	if !strings.HasPrefix(payload.Name, expectedPrefix) {
+		t.Errorf("Expected payload.name to start with %q, got %q", expectedPrefix, payload.Name)
+	}
+	suffix := strings.TrimPrefix(payload.Name, expectedPrefix)
+	if len(suffix) != 4 {
+		t.Errorf("Expected 4-character random suffix, got %q in %q", suffix, payload.Name)
 	}
 	if payload.CopyIgnoreGroup != "false" {
 		t.Errorf("Expected payload.copyIgnoreGroup to be %q, got %q", "false", payload.CopyIgnoreGroup)
