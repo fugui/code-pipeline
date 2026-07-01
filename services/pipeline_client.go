@@ -111,7 +111,7 @@ func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, h
 }
 
 // createCheckerTaskStep 步骤一：创建代码检查执行任务
-func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, headers map[string]string) (string, error) {
+func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, languages string, headers map[string]string) (string, error) {
 	apiURL := models.AppConfig.PipelineSystem.CopyCheckerTaskURL
 	if apiURL == "" {
 		return "", fmt.Errorf("copy_checker_task_url not configured")
@@ -130,11 +130,17 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, h
 		return '-'
 	}, taskName)
 
-	postData := map[string]string{
+	var langs []string
+	if languages != "" {
+		langs = strings.Split(languages, ",")
+	}
+
+	postData := map[string]interface{}{
 		"id":              templateTaskID,
 		"name":            taskName,
 		"copyIgnoreGroup": "false",
 		"isCopyCategory":  "false",
+		"languages":       langs,
 	}
 
 	log.Printf("[SyncCreatePlan] Step 1: Copying Checker Task. URL: %s, Body: %v", apiURL, postData)
@@ -279,7 +285,7 @@ func SyncCreateExecutionPlanRemote(ctx context.Context, pipelineBusinessID strin
 	}
 
 	// 1. 创建代码检查执行任务
-	taskID, err := createCheckerTaskStep(ctx, repoURL, plan.Branch, headers)
+	taskID, err := createCheckerTaskStep(ctx, repoURL, plan.Branch, plan.Languages, headers)
 	if err != nil {
 		log.Printf("[Pipeline] Remote sync Step 1 failed: %v\n", err)
 		return "", err
