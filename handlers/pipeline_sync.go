@@ -239,8 +239,8 @@ func UpdateCheckerTask(c *gin.Context) {
 		return
 	}
 
-	if req.RepositoryID == nil || *req.RepositoryID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "repository_id is required and must be non-zero"})
+	if req.RepositoryID == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "repository_id is required"})
 		return
 	}
 

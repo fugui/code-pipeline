@@ -203,12 +203,12 @@ func CreateExecutionPlan(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if req.PipelineID == nil || *req.PipelineID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "pipeline_id is required and must be non-zero"})
+	if req.PipelineID == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "pipeline_id is required"})
 		return
 	}
-	if req.RepositoryID == nil || *req.RepositoryID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "repository_id is required and must be non-zero"})
+	if req.RepositoryID == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "repository_id is required"})
 		return
 	}
 
@@ -267,12 +267,12 @@ func UpdateExecutionPlan(c *gin.Context) {
 		return
 	}
 
-	if req.PipelineID == nil || *req.PipelineID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "pipeline_id is required and must be non-zero"})
+	if req.PipelineID == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "pipeline_id is required"})
 		return
 	}
-	if req.RepositoryID == nil || *req.RepositoryID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "repository_id is required and must be non-zero"})
+	if req.RepositoryID == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "repository_id is required"})
 		return
 	}
 
