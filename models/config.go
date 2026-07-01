@@ -34,6 +34,7 @@ type Config struct {
 		RepoAuthCheckURL       string `yaml:"repo_auth_check_url"`
 		RepoCredentialCheckURL string `yaml:"repo_credential_check_url"`
 		GetBranchesURL         string `yaml:"get_branches_url"`
+		CreateMRBindingURL     string `yaml:"create_mr_binding_url"`
 	} `yaml:"pipeline_system"`
 }
 
@@ -81,5 +82,8 @@ func applyDefaults() {
 		}
 		AppConfig.Auth.JWTSecret = hex.EncodeToString(randomBytes)
 		log.Println("[Auth] WARNING: jwt_secret not configured. Using ephemeral random secret.")
+	}
+	if AppConfig.PipelineSystem.CreateMRBindingURL == "" {
+		AppConfig.PipelineSystem.CreateMRBindingURL = AppConfig.PipelineSystem.GetMRBindingsURL
 	}
 }

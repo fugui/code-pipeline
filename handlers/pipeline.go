@@ -218,8 +218,14 @@ func CreateExecutionPlan(c *gin.Context) {
 		CustomAttributes: req.CustomAttributes,
 	}
 
+	// 创建一个流水线执行方案， 需要多个步骤
+	// 1. 创建一个代码检查执行任务
+	// 2. 创建一个执行方案（关联到这个代码检查任务）
+	// 3. 创建一个 MR 触发关联（MR触发关联到这个方案）
+
+	headers := prepareRequestHeaders(c)
 	// 同步去三方流水线系统创建
-	extID, err := services.SyncCreateExecutionPlanRemote(pipeline.PipelineID, plan)
+	extID, err := services.SyncCreateExecutionPlanRemote(c.Request.Context(), pipeline.PipelineID, &plan, headers)
 	if err != nil {
 		log.Printf("[Pipeline] Remote sync failed for CreateExecutionPlan (using Mock ID): %v\n", err)
 		extID = fmt.Sprintf("ext_plan_%d", time.Now().UnixNano())
