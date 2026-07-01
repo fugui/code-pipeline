@@ -141,16 +141,28 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 	if languages != "" {
 		langs = strings.Split(languages, ",")
 	}
+	langsJSON, _ := json.Marshal(langs)
 
-	postData := map[string]interface{}{
-		"id":              templateTaskID,
-		"name":            taskName,
-		"copyIgnoreGroup": "false",
-		"isCopyCategory":  "false",
-		"languages":       langs,
+	tmpl := models.AppConfig.PipelineSystem.CreateCheckerTaskBody
+	if tmpl == "" {
+		tmpl = `{
+			"id": "{TEMPLATE_ID}",
+			"name": "{NAME}",
+			"copyIgnoreGroup": "false",
+			"isCopyCategory": "false",
+			"languages": {LANGUAGES}
+		}`
 	}
 
-	log.Printf("[SyncCreatePlan] Step 1: Creating Checker Task. URL: %s, Body: %v", apiURL, postData)
+	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
+		"{TEMPLATE_ID}": templateTaskID,
+		"{NAME}":        taskName,
+		"{LANGUAGES}":   string(langsJSON),
+	})
+
+	postData := json.RawMessage(bodyStr)
+
+	log.Printf("[SyncCreatePlan] Step 1: Creating Checker Task. URL: %s, Body: %s", apiURL, bodyStr)
 
 	body, err := utils.SendHTTPRequest(ctx, "POST", apiURL, postData, utils.HTTPOptions{
 		Headers: headers,
@@ -386,14 +398,24 @@ func copyCheckerTask(ctx context.Context, repository string, branch string, head
 		return '-'
 	}, taskName)
 
-	postData := map[string]string{
-		"id":              templateTaskID,
-		"name":            taskName,
-		"copyIgnoreGroup": "false",
-		"isCopyCategory":  "false",
+	tmpl := models.AppConfig.PipelineSystem.CopyCheckerTaskBody
+	if tmpl == "" {
+		tmpl = `{
+			"id": "{TEMPLATE_ID}",
+			"name": "{NAME}",
+			"copyIgnoreGroup": "false",
+			"isCopyCategory": "false"
+		}`
 	}
 
-	log.Printf("[UpdateCheckerTaskRemote_CopyTask] Request URL: %s, Headers: %v, Body: %v", apiURL, headers, postData)
+	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
+		"{TEMPLATE_ID}": templateTaskID,
+		"{NAME}":        taskName,
+	})
+
+	postData := json.RawMessage(bodyStr)
+
+	log.Printf("[UpdateCheckerTaskRemote_CopyTask] Request URL: %s, Headers: %v, Body: %s", apiURL, headers, bodyStr)
 
 	respBody, err := utils.SendHTTPRequest(ctx, "POST", apiURL, postData, utils.HTTPOptions{
 		Headers: headers,
