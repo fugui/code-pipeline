@@ -348,7 +348,8 @@ func TestCreateCheckerTaskStep(t *testing.T) {
 	models.AppConfig.PipelineSystem.CreateCheckerTaskURL = server.URL
 	models.AppConfig.PipelineSystem.CreateCheckerTaskBody = `{
 		"languages": {LANGUAGES},
-		"ruleSets": {RULE_SETS}
+		"ruleSets": {RULE_SETS},
+		"branch": "{REPO_BRANCH}"
 	}`
 	models.AppConfig.PipelineSystem.RuleSets = map[string][]string{
 		"GO":     {"go_rule_1", "go_rule_2"},
@@ -356,7 +357,7 @@ func TestCreateCheckerTaskStep(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	taskID, err := createCheckerTaskStep(ctx, "https://github.com/test/repo.git", "main", "Go,Python", nil)
+	taskID, err := createCheckerTaskStep(ctx, "https://github.com/test/repo.git", "main,develop", "Go,Python", nil)
 	if err != nil {
 		t.Fatalf("createCheckerTaskStep failed: %v", err)
 	}
@@ -367,6 +368,7 @@ func TestCreateCheckerTaskStep(t *testing.T) {
 
 	var reqPayload struct {
 		Languages []string `json:"languages"`
+		Branch    string   `json:"branch"`
 		RuleSets  []struct {
 			Language  string `json:"language"`
 			RuleSetID string `json:"ruleSetId"`
@@ -375,6 +377,10 @@ func TestCreateCheckerTaskStep(t *testing.T) {
 
 	if err := json.Unmarshal(receivedBody, &reqPayload); err != nil {
 		t.Fatalf("failed to unmarshal request body: %v", err)
+	}
+
+	if reqPayload.Branch != "main" {
+		t.Errorf("expected branch 'main', got '%s'", reqPayload.Branch)
 	}
 
 	if len(reqPayload.Languages) != 2 || reqPayload.Languages[0] != "Go" || reqPayload.Languages[1] != "Python" {

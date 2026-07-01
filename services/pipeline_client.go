@@ -119,13 +119,22 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 		return "", fmt.Errorf("create_checker_task_url not configured")
 	}
 
+	firstBranch := branch
+	if idx := strings.Index(branch, ","); idx != -1 {
+		firstBranch = strings.TrimSpace(branch[:idx])
+	} else if idx := strings.Index(branch, ";"); idx != -1 {
+		firstBranch = strings.TrimSpace(branch[:idx])
+	} else {
+		firstBranch = strings.TrimSpace(branch)
+	}
+
 	repoName := extractRepoName(repoURL)
 	randomSuffix := "0000"
 	randBytes := make([]byte, 2)
 	if _, err := rand.Read(randBytes); err == nil {
 		randomSuffix = hex.EncodeToString(randBytes)
 	}
-	taskName := fmt.Sprintf("%s-%s-CodeShield-%s", repoName, branch, randomSuffix)
+	taskName := fmt.Sprintf("%s-%s-CodeShield-%s", repoName, firstBranch, randomSuffix)
 	taskName = strings.Map(func(r rune) rune {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' || r == '.' {
 			return r
@@ -171,10 +180,11 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 	}
 
 	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
-		"{REPO_URL}":  repoURL,
-		"{TASK_NAME}": taskName,
-		"{LANGUAGES}": string(langsJSON),
-		"{RULE_SETS}": string(ruleSetsJSON),
+		"{REPO_URL}":    repoURL,
+		"{REPO_BRANCH}": firstBranch,
+		"{TASK_NAME}":   taskName,
+		"{LANGUAGES}":   string(langsJSON),
+		"{RULE_SETS}":   string(ruleSetsJSON),
 	})
 
 	postData := json.RawMessage(bodyStr)
