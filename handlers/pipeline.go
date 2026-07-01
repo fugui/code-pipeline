@@ -29,8 +29,8 @@ type PipelineRequest struct {
 
 // ExecutionPlanRequest 执行方案输入结构体
 type ExecutionPlanRequest struct {
-	PipelineID       uint   `json:"pipeline_id" binding:"required"`
-	RepositoryID     uint   `json:"repository_id" binding:"required"`
+	PipelineID       *uint  `json:"pipeline_id" binding:"required"`
+	RepositoryID     *uint  `json:"repository_id" binding:"required"`
 	Branchs          string `json:"branchs" binding:"required"`
 	Languages        string `json:"languages"` // 英文逗号分隔字符串
 	CustomAttributes string `json:"custom_attributes"`
@@ -199,20 +199,29 @@ func GetExecutionPlans(c *gin.Context) {
 func CreateExecutionPlan(c *gin.Context) {
 	var req ExecutionPlanRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[CreateExecutionPlan] Bind JSON failed: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if req.PipelineID == nil || *req.PipelineID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "pipeline_id is required and must be non-zero"})
+		return
+	}
+	if req.RepositoryID == nil || *req.RepositoryID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "repository_id is required and must be non-zero"})
 		return
 	}
 
 	// 检查 Pipeline 是否存在
 	var pipeline models.Pipeline
-	if err := database.DB.First(&pipeline, req.PipelineID).Error; err != nil {
+	if err := database.DB.First(&pipeline, *req.PipelineID).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Associated pipeline not found"})
 		return
 	}
 
 	plan := models.ExecutionPlan{
-		PipelineID:       req.PipelineID,
-		RepositoryID:     req.RepositoryID,
+		PipelineID:       *req.PipelineID,
+		RepositoryID:     *req.RepositoryID,
 		Branch:           req.Branchs,
 		Languages:        req.Languages,
 		CustomAttributes: req.CustomAttributes,
@@ -258,13 +267,23 @@ func UpdateExecutionPlan(c *gin.Context) {
 		return
 	}
 
+	if req.PipelineID == nil || *req.PipelineID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "pipeline_id is required and must be non-zero"})
+		return
+	}
+	if req.RepositoryID == nil || *req.RepositoryID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "repository_id is required and must be non-zero"})
+		return
+	}
+
 	var pipeline models.Pipeline
-	if err := database.DB.First(&pipeline, req.PipelineID).Error; err != nil {
+	if err := database.DB.First(&pipeline, *req.PipelineID).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Associated pipeline not found"})
 		return
 	}
 
-	plan.RepositoryID = req.RepositoryID
+	plan.PipelineID = *req.PipelineID
+	plan.RepositoryID = *req.RepositoryID
 	plan.Branch = req.Branchs
 	plan.Languages = req.Languages
 	plan.CustomAttributes = req.CustomAttributes
