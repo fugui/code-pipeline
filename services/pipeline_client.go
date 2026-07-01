@@ -145,13 +145,7 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 
 	tmpl := models.AppConfig.PipelineSystem.CreateCheckerTaskBody
 	if tmpl == "" {
-		tmpl = `{
-			"id": "{TEMPLATE_ID}",
-			"name": "{NAME}",
-			"copyIgnoreGroup": "false",
-			"isCopyCategory": "false",
-			"languages": {LANGUAGES}
-		}`
+		return "", fmt.Errorf("create_checker_task_body not configured")
 	}
 
 	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
