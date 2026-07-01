@@ -194,7 +194,7 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 
 	var statusResp struct {
 		Status  string `json:"status"`
-		Message string `json:"message"`
+		Message string `json:"result"`
 	}
 	if err := json.Unmarshal(body, &statusResp); err != nil {
 		log.Printf("[SyncCreatePlan] Step 1: Failed to parse response status: %v, Body: %s", err, string(body))
@@ -212,7 +212,7 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 	queryBody, err := utils.SendHTTPRequest(ctx, "GET", queryURL, nil, utils.HTTPOptions{
 		Headers: headers,
 		QueryParams: map[string]string{
-			"name": taskName,
+			"search": taskName,
 		},
 	}, []int{http.StatusOK}, "QueryCheckerTaskStep")
 	if err != nil {
@@ -220,11 +220,15 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 	}
 
 	var queryResp struct {
-		Status   string `json:"status"`
-		Entities []struct {
-			ID   string `json:"id"`
-			Name string `json:"name"`
-		} `json:"entities"`
+		Status string `json:"status"`
+		Result struct {
+			Info []struct {
+				ID         string `json:"id"`
+				Name       string `json:"name"`
+				RepoURL    string `json:"repoURL"`
+				BranchName string `json:"branchName"`
+			} `json:"info"`
+		} `json:"result"`
 	}
 	if err := json.Unmarshal(queryBody, &queryResp); err != nil {
 		log.Printf("[SyncCreatePlan] Step 1: Failed to parse query response: %v, Body: %s", err, string(queryBody))
@@ -233,11 +237,11 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 	if queryResp.Status != "success" {
 		return "", fmt.Errorf("failed to query checker task: status is %s", queryResp.Status)
 	}
-	if len(queryResp.Entities) == 0 {
+	if len(queryResp.Result.Info) == 0 {
 		return "", fmt.Errorf("no checker task found with name %s", taskName)
 	}
 
-	taskID := queryResp.Entities[0].ID
+	taskID := queryResp.Result.Info[0].ID
 	if taskID == "" {
 		return "", fmt.Errorf("checker task ID is empty for task name %s", taskName)
 	}
