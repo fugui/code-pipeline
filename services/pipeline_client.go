@@ -192,24 +192,54 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 		return "", err
 	}
 
-	var resp struct {
-		ID     string `json:"id"`
-		TaskID string `json:"taskId"`
+	var statusResp struct {
+		Status  string `json:"status"`
+		Message string `json:"message"`
 	}
-	if err := json.Unmarshal(body, &resp); err != nil {
-		log.Printf("[SyncCreatePlan] Step 1: Failed to parse response: %v, Body: %s", err, string(body))
-		mockID := fmt.Sprintf("task_mock_%d", time.Now().UnixNano())
-		log.Printf("[SyncCreatePlan] Step 1: Fallback to mock task ID: %s", mockID)
-		return mockID, nil
+	if err := json.Unmarshal(body, &statusResp); err != nil {
+		log.Printf("[SyncCreatePlan] Step 1: Failed to parse response status: %v, Body: %s", err, string(body))
+		return "", fmt.Errorf("failed to parse checker task status response JSON: %w", err)
+	}
+	if statusResp.Status != "success" {
+		return "", fmt.Errorf("failed to create checker task: status is %s, message: %s", statusResp.Status, statusResp.Message)
 	}
 
-	taskID := resp.ID
-	if taskID == "" {
-		taskID = resp.TaskID
+	queryURL := models.AppConfig.PipelineSystem.QueryCheckerTaskURL
+	if queryURL == "" {
+		return "", fmt.Errorf("query_checker_task_url not configured")
 	}
+
+	queryBody, err := utils.SendHTTPRequest(ctx, "GET", queryURL, nil, utils.HTTPOptions{
+		Headers: headers,
+		QueryParams: map[string]string{
+			"name": taskName,
+		},
+	}, []int{http.StatusOK}, "QueryCheckerTaskStep")
+	if err != nil {
+		return "", fmt.Errorf("failed to query checker task ID by name: %w", err)
+	}
+
+	var queryResp struct {
+		Status   string `json:"status"`
+		Entities []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"entities"`
+	}
+	if err := json.Unmarshal(queryBody, &queryResp); err != nil {
+		log.Printf("[SyncCreatePlan] Step 1: Failed to parse query response: %v, Body: %s", err, string(queryBody))
+		return "", fmt.Errorf("failed to parse query checker task response JSON: %w", err)
+	}
+	if queryResp.Status != "success" {
+		return "", fmt.Errorf("failed to query checker task: status is %s", queryResp.Status)
+	}
+	if len(queryResp.Entities) == 0 {
+		return "", fmt.Errorf("no checker task found with name %s", taskName)
+	}
+
+	taskID := queryResp.Entities[0].ID
 	if taskID == "" {
-		taskID = fmt.Sprintf("task_mock_%d", time.Now().UnixNano())
-		log.Printf("[SyncCreatePlan] Step 1: No ID found in response, fallback to mock task ID: %s", taskID)
+		return "", fmt.Errorf("checker task ID is empty for task name %s", taskName)
 	}
 
 	return taskID, nil
