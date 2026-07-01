@@ -118,10 +118,6 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 	if apiURL == "" {
 		return "", fmt.Errorf("create_checker_task_url not configured")
 	}
-	templateTaskID := models.AppConfig.PipelineSystem.CheckerTaskTemplateID
-	if templateTaskID == "" {
-		return "", fmt.Errorf("checker_task_template_id not configured")
-	}
 
 	repoName := extractRepoName(repoURL)
 	randomSuffix := "0000"
@@ -149,9 +145,9 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 	}
 
 	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
-		"{TEMPLATE_ID}": templateTaskID,
-		"{NAME}":        taskName,
-		"{LANGUAGES}":   string(langsJSON),
+		"{REPO_URL}":  repoURL,
+		"{TASK_NAME}": taskName,
+		"{LANGUAGES}": string(langsJSON),
 	})
 
 	postData := json.RawMessage(bodyStr)
