@@ -376,9 +376,9 @@ func TestCreateCheckerTaskStep(t *testing.T) {
 		"ruleSets": {RULE_SETS},
 		"branch": "{REPO_BRANCH}"
 	}`
-	models.AppConfig.PipelineSystem.RuleSets = map[string][]string{
-		"GO":     {"go_rule_1", "go_rule_2"},
-		"PYTHON": {"py_rule_1"},
+	models.AppConfig.PipelineSystem.RuleSets = map[string]string{
+		"GO":     "go_rule_1",
+		"PYTHON": "py_rule_1",
 	}
 
 	ctx := context.Background()
@@ -417,8 +417,8 @@ func TestCreateCheckerTaskStep(t *testing.T) {
 		t.Errorf("expected branch 'main', got '%s'", reqPayload.Branch)
 	}
 
-	if len(reqPayload.RuleSets) != 3 {
-		t.Errorf("expected 3 rule sets, got %d", len(reqPayload.RuleSets))
+	if len(reqPayload.RuleSets) != 2 {
+		t.Errorf("expected 2 rule sets, got %d", len(reqPayload.RuleSets))
 	}
 
 	expectedRules := []struct {
@@ -426,7 +426,6 @@ func TestCreateCheckerTaskStep(t *testing.T) {
 		ID   string
 	}{
 		{"GO", "go_rule_1"},
-		{"GO", "go_rule_2"},
 		{"PYTHON", "py_rule_1"},
 	}
 
