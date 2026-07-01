@@ -349,6 +349,7 @@ func createMRBindingStep(ctx context.Context, pipelineBusinessID string, plan *m
 
 // SyncCreateExecutionPlanRemote 在三方系统中同步创建执行方案（依次执行三个步骤）
 func SyncCreateExecutionPlanRemote(ctx context.Context, pipelineBusinessID string, plan *models.ExecutionPlan, headers map[string]string) (string, error) {
+	log.Printf("[SyncCreatePlan] Start remote sync execution plan. pipelineBusinessID: %s, RepositoryID: %d", pipelineBusinessID, plan.RepositoryID)
 	var repo models.Repository
 	database.DB.First(&repo, plan.RepositoryID)
 	repoURL := repo.URL
