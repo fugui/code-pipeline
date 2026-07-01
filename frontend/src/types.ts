@@ -63,7 +63,7 @@ export interface ExecutionPlan {
   pipeline_name?: string
   repository_id: number
   repository?: Repository
-  branch: string
+  branchs: string
   execution_plan_id?: string
   username?: string
   password?: string

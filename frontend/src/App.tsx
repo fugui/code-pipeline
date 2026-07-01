@@ -262,7 +262,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
 
   const handleSavePlan = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!activePlan || !activePlan.repository || !activePlan.branch) return
+    if (!activePlan || !activePlan.repository || !activePlan.branchs) return
 
     const method = activePlan.id ? 'PUT' : 'POST'
     const url = activePlan.id ? `${apiBase}/execution-plans/${activePlan.id}` : `${apiBase}/execution-plans`
@@ -534,7 +534,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             onTrigger={handleTriggerRepoPlan}
-            onAddPlan={(repoId) => { setActivePlan({ pipeline_id: pipelines[0]?.id || 0, repository_id: repoId, branch: 'master' }); setShowPlanModal(true); }}
+            onAddPlan={(repoId) => { setActivePlan({ pipeline_id: pipelines[0]?.id || 0, repository_id: repoId, branchs: 'master' }); setShowPlanModal(true); }}
             onEditPlan={(plan) => { setActivePlan(plan); setShowPlanModal(true); }}
             onDeletePlan={handleDeletePlan}
             token={token}
@@ -559,7 +559,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
             onDeletePipeline={handleDeletePipeline}
             onAddPlan={() => {
               if (selectedPipeline && selectedPipeline.id) {
-                setActivePlan({ pipeline_id: selectedPipeline.id, repository_id: repos[0]?.id || 0, branch: 'master', languages: '' });
+                setActivePlan({ pipeline_id: selectedPipeline.id, repository_id: repos[0]?.id || 0, branchs: 'master', languages: '' });
                 setShowPlanModal(true);
               }
             }}

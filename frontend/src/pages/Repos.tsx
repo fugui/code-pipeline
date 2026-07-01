@@ -68,17 +68,17 @@ export const Repos: React.FC<ReposProps> = ({
     if (plans.length === 0 || !selectedRepo || !token) return
 
     plans.forEach(plan => {
-      fetch(`${apiBase}/repos/${selectedRepo.id}/latest-log?branch=${encodeURIComponent(plan.branch)}`, {
+      fetch(`${apiBase}/repos/${selectedRepo.id}/latest-log?branch=${encodeURIComponent(plan.branchs)}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       .then(res => res.json())
       .then(data => {
         setBranchStatuses(prev => ({
           ...prev,
-          [plan.branch]: data
+          [plan.branchs]: data
         }))
       })
-      .catch(err => console.error(`Failed to fetch status for branch ${plan.branch}`, err))
+      .catch(err => console.error(`Failed to fetch status for branch ${plan.branchs}`, err))
     })
   }, [plans, selectedRepo, token])
 
@@ -184,13 +184,13 @@ export const Repos: React.FC<ReposProps> = ({
                     </thead>
                     <tbody>
                       {plans.map((plan) => {
-                        const statusInfo = branchStatuses[plan.branch] || { has_plan: true, status: 'loading...' }
+                        const statusInfo = branchStatuses[plan.branchs] || { has_plan: true, status: 'loading...' }
                         return (
                           <tr key={plan.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                             <td style={{ padding: '12px 8px', fontSize: 14, fontWeight: 500 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <GitBranch size={14} style={{ color: 'var(--primary-color)' }} />
-                                <span>{plan.branch}</span>
+                                <span>{plan.branchs}</span>
                               </div>
                             </td>
                             <td style={{ padding: '12px 8px', fontSize: 13, color: 'var(--text-secondary)' }}>
@@ -217,7 +217,7 @@ export const Repos: React.FC<ReposProps> = ({
                                   className="btn btn-primary btn-small"
                                   style={{ padding: '4px 8px' }}
                                   title="一键触发构建"
-                                  onClick={() => onTrigger(selectedRepo.id, plan.branch)}
+                                  onClick={() => onTrigger(selectedRepo.id, plan.branchs)}
                                   disabled={statusInfo.status === 'running'}
                                 >
                                   <Play size={10} />

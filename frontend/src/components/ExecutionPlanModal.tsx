@@ -86,7 +86,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
 
   React.useEffect(() => {
     if (activePlan) {
-      const activeBranches = activePlan.branch ? activePlan.branch.split(',').filter(Boolean) : [];
+      const activeBranches = activePlan.branchs ? activePlan.branchs.split(',').filter(Boolean) : [];
       const allOpts = Array.from(new Set([...branches, ...activeBranches])).filter(Boolean);
 
       const sortBranches = (a: string, b: string) => {
@@ -294,7 +294,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                                 ...activePlan,
                                 repository_id: r.id,
                                 repository: r,
-                                branch: ''
+                                branchs: ''
                               });
                               setFilterQuery(r.name);
                               setIsOpen(false);
@@ -339,7 +339,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                   }}>
                     <div style={{ direction: 'ltr', display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
                       {(() => {
-                        const activeBranches = activePlan.branch ? activePlan.branch.split(',').filter(Boolean) : [];
+                        const activeBranches = activePlan.branchs ? activePlan.branchs.split(',').filter(Boolean) : [];
                         if (orderedBranches.length === 0) {
                           return <span style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 32, display: 'block', width: '100%' }}>暂无分支，请先选择代码仓</span>;
                         }
@@ -352,7 +352,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                                 checked={checked}
                                 style={{ width: 'auto', margin: 0 }}
                                 onChange={(e) => {
-                                  let current = activePlan.branch ? activePlan.branch.split(',').filter(Boolean) : [];
+                                  let current = activePlan.branchs ? activePlan.branchs.split(',').filter(Boolean) : [];
                                   if (e.target.checked) {
                                     if (!current.includes(branch)) {
                                       current.push(branch);
@@ -360,7 +360,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                                   } else {
                                     current = current.filter((x: string) => x !== branch);
                                   }
-                                  onChange({ ...activePlan, branch: current.join(',') });
+                                  onChange({ ...activePlan, branchs: current.join(',') });
                                 }}
                               />
                               {branch}

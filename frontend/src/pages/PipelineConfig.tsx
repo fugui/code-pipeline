@@ -51,7 +51,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
     const q = planSearchQuery.toLowerCase()
     return plans.filter(plan => {
       const matchRepo = plan.repository?.name?.toLowerCase().includes(q) || plan.repository?.url?.toLowerCase().includes(q)
-      const matchBranch = plan.branch?.toLowerCase().includes(q)
+      const matchBranch = plan.branchs?.toLowerCase().includes(q)
       const matchLang = plan.languages?.toLowerCase().includes(q)
       return matchRepo || matchBranch || matchLang
     })
@@ -211,8 +211,8 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                           <td style={{ padding: '12px 8px', fontWeight: 500, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={plan.repository?.url}>
                             {plan.repository?.name || `ID: ${plan.repository_id}`}
                           </td>
-                          <td style={{ padding: '12px 8px' }} title={plan.branch}>
-                            {plan.branch && plan.branch.length > 20 ? plan.branch.substring(0, 20) + '...' : plan.branch}
+                          <td style={{ padding: '12px 8px' }} title={plan.branchs}>
+                            {plan.branchs && plan.branchs.length > 20 ? plan.branchs.substring(0, 20) + '...' : plan.branchs}
                           </td>
                           <td style={{ padding: '12px 8px' }}>
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
