@@ -146,11 +146,6 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 	if languages != "" {
 		langs = strings.Split(languages, ",")
 	}
-	langsJSON, err := json.Marshal(langs)
-	if err != nil {
-		log.Printf("[SyncCreatePlan] Step 1: Failed to marshal languages: %v", err)
-		return "", fmt.Errorf("failed to marshal languages to JSON: %w", err)
-	}
 
 	type RuleSetParam struct {
 		Language  string `json:"language"`
@@ -183,7 +178,6 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 		"{REPO_URL}":    repoURL,
 		"{REPO_BRANCH}": firstBranch,
 		"{TASK_NAME}":   taskName,
-		"{LANGUAGES}":   string(langsJSON),
 		"{RULE_SETS}":   string(ruleSetsJSON),
 	})
 

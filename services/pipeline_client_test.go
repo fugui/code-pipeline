@@ -347,7 +347,6 @@ func TestCreateCheckerTaskStep(t *testing.T) {
 
 	models.AppConfig.PipelineSystem.CreateCheckerTaskURL = server.URL
 	models.AppConfig.PipelineSystem.CreateCheckerTaskBody = `{
-		"languages": {LANGUAGES},
 		"ruleSets": {RULE_SETS},
 		"branch": "{REPO_BRANCH}"
 	}`
@@ -367,7 +366,6 @@ func TestCreateCheckerTaskStep(t *testing.T) {
 	}
 
 	var reqPayload struct {
-		Languages []string `json:"languages"`
 		Branch    string   `json:"branch"`
 		RuleSets  []struct {
 			Language  string `json:"language"`
@@ -381,10 +379,6 @@ func TestCreateCheckerTaskStep(t *testing.T) {
 
 	if reqPayload.Branch != "main" {
 		t.Errorf("expected branch 'main', got '%s'", reqPayload.Branch)
-	}
-
-	if len(reqPayload.Languages) != 2 || reqPayload.Languages[0] != "Go" || reqPayload.Languages[1] != "Python" {
-		t.Errorf("unexpected languages: %v", reqPayload.Languages)
 	}
 
 	if len(reqPayload.RuleSets) != 3 {
