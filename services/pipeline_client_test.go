@@ -83,6 +83,7 @@ func TestUpdateCheckerTaskRemote(t *testing.T) {
 	// Configure app config to use mock server
 	models.AppConfig.PipelineSystem.RepoAuthCheckURL = server.URL
 	models.AppConfig.PipelineSystem.RepoCredentialCheckURL = server.URL
+	models.AppConfig.PipelineSystem.CreateCheckerTaskURL = server.URL
 	models.AppConfig.PipelineSystem.CopyCheckerTaskURL = server.URL
 	models.AppConfig.PipelineSystem.CheckerTaskTemplateID = "template-12345"
 
@@ -121,7 +122,7 @@ func TestUpdateCheckerTaskRemote(t *testing.T) {
 		t.Errorf("Expected URL to contain authorized=true and uri param, got %q", checkCredReceivedURL)
 	}
 
-	// Verify Copy Task HTTP Request properties
+	// Verify Create Task HTTP Request properties
 	if copyReceivedMethod != "POST" {
 		t.Errorf("Expected POST request, got %q", copyReceivedMethod)
 	}
