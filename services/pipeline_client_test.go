@@ -328,24 +328,48 @@ func TestCreateCheckerTaskStep(t *testing.T) {
 	origURL := models.AppConfig.PipelineSystem.CreateCheckerTaskURL
 	origBody := models.AppConfig.PipelineSystem.CreateCheckerTaskBody
 	origRuleSets := models.AppConfig.PipelineSystem.RuleSets
+	origQueryURL := models.AppConfig.PipelineSystem.QueryCheckerTaskURL
 	defer func() {
 		models.AppConfig.PipelineSystem.CreateCheckerTaskURL = origURL
 		models.AppConfig.PipelineSystem.CreateCheckerTaskBody = origBody
 		models.AppConfig.PipelineSystem.RuleSets = origRuleSets
+		models.AppConfig.PipelineSystem.QueryCheckerTaskURL = origQueryURL
 	}()
 
 	var receivedBody []byte
+	var receivedMethodCreate string
+	var receivedMethodQuery string
+	var receivedQueryName string
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
-		if err == nil {
-			receivedBody = body
+		if r.Method == "POST" {
+			receivedMethodCreate = r.Method
+			body, err := io.ReadAll(r.Body)
+			if err == nil {
+				receivedBody = body
+			}
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status": "success"}`))
+			return
 		}
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"id": "test-task-123"}`))
+		if r.Method == "GET" {
+			receivedMethodQuery = r.Method
+			receivedQueryName = r.URL.Query().Get("name")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{
+				"status": "success",
+				"entities": [
+					{"id": "test-task-123", "name": "matching-task"}
+				]
+			}`))
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
 	}))
 	defer server.Close()
 
 	models.AppConfig.PipelineSystem.CreateCheckerTaskURL = server.URL
+	models.AppConfig.PipelineSystem.QueryCheckerTaskURL = server.URL
 	models.AppConfig.PipelineSystem.CreateCheckerTaskBody = `{
 		"ruleSets": {RULE_SETS},
 		"branch": "{REPO_BRANCH}"
@@ -363,6 +387,16 @@ func TestCreateCheckerTaskStep(t *testing.T) {
 
 	if taskID != "test-task-123" {
 		t.Errorf("expected taskID 'test-task-123', got '%s'", taskID)
+	}
+
+	if receivedMethodCreate != "POST" {
+		t.Errorf("expected POST method to create task, got %q", receivedMethodCreate)
+	}
+	if receivedMethodQuery != "GET" {
+		t.Errorf("expected GET method to query task, got %q", receivedMethodQuery)
+	}
+	if receivedQueryName == "" {
+		t.Error("expected query parameter 'name' to be non-empty")
 	}
 
 	var reqPayload struct {
