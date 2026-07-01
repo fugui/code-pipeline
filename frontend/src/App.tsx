@@ -262,7 +262,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
 
   const handleSavePlan = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!activePlan || !activePlan.repository || !activePlan.branchs) return
+    if (!activePlan || !activePlan.repository_id || !activePlan.branchs) return
 
     const method = activePlan.id ? 'PUT' : 'POST'
     const url = activePlan.id ? `${apiBase}/execution-plans/${activePlan.id}` : `${apiBase}/execution-plans`
