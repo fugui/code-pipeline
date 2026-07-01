@@ -388,7 +388,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                   gap: 10,
                   justifyContent: 'center'
                 }}>
-                  {['C/C++', 'Python', 'Java'].map((lang) => {
+                  {['C', 'C++', 'Python', 'Java'].map((lang) => {
                     const activeLangs = activePlan.languages ? activePlan.languages.split(',') : [];
                     const checked = activeLangs.includes(lang);
                     return (
