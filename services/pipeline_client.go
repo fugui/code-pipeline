@@ -112,9 +112,9 @@ func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, h
 
 // createCheckerTaskStep 步骤一：创建代码检查执行任务
 func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, languages string, headers map[string]string) (string, error) {
-	apiURL := models.AppConfig.PipelineSystem.CopyCheckerTaskURL
+	apiURL := models.AppConfig.PipelineSystem.CreateCheckerTaskURL
 	if apiURL == "" {
-		return "", fmt.Errorf("copy_checker_task_url not configured")
+		return "", fmt.Errorf("create_checker_task_url not configured")
 	}
 	templateTaskID := models.AppConfig.PipelineSystem.CheckerTaskTemplateID
 	if templateTaskID == "" {
@@ -143,7 +143,7 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 		"languages":       langs,
 	}
 
-	log.Printf("[SyncCreatePlan] Step 1: Copying Checker Task. URL: %s, Body: %v", apiURL, postData)
+	log.Printf("[SyncCreatePlan] Step 1: Creating Checker Task. URL: %s, Body: %v", apiURL, postData)
 
 	body, err := utils.SendHTTPRequest(ctx, "POST", apiURL, postData, utils.HTTPOptions{
 		Headers: headers,

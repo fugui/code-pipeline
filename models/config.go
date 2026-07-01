@@ -30,6 +30,7 @@ type Config struct {
 		GetExecutionPlanURL    string `yaml:"get_execution_plan_url"`
 		GetMRBindingsURL       string `yaml:"get_mr_bindings_url"`
 		CopyCheckerTaskURL     string `yaml:"copy_checker_task_url"`
+		CreateCheckerTaskURL   string `yaml:"create_checker_task_url"`
 		CheckerTaskTemplateID  string `yaml:"checker_task_template_id"`
 		RepoAuthCheckURL       string `yaml:"repo_auth_check_url"`
 		RepoCredentialCheckURL string `yaml:"repo_credential_check_url"`
