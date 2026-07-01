@@ -535,7 +535,7 @@ func UpdateCheckerTaskRemote(ctx context.Context, repository string, branch stri
 
 	checkerConfig := make(map[string]interface{})
 	for _, lang := range selectedLangs {
-		if lang == "C/C++" {
+		if lang == "C/C++" || lang == "C" || lang == "C++" {
 			checkerConfig["c_cpp_rules"] = []string{"memory_leak", "coredump_risk", "thread_create"}
 		}
 		if lang == "Python" {
