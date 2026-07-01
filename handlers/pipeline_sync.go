@@ -239,8 +239,13 @@ func UpdateCheckerTask(c *gin.Context) {
 		return
 	}
 
+	if req.RepositoryID == nil || *req.RepositoryID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "repository_id is required and must be non-zero"})
+		return
+	}
+
 	var repo models.Repository
-	if err := database.DB.First(&repo, req.RepositoryID).Error; err != nil {
+	if err := database.DB.First(&repo, *req.RepositoryID).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Associated repository not found"})
 		return
 	}
