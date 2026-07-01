@@ -36,8 +36,9 @@ type Config struct {
 		CheckerTaskTemplateID  string `yaml:"checker_task_template_id"`
 		RepoAuthCheckURL       string `yaml:"repo_auth_check_url"`
 		RepoCredentialCheckURL string `yaml:"repo_credential_check_url"`
-		GetBranchesURL         string `yaml:"get_branches_url"`
-		CreateMRBindingURL     string `yaml:"create_mr_binding_url"`
+		GetBranchesURL         string              `yaml:"get_branches_url"`
+		CreateMRBindingURL     string              `yaml:"create_mr_binding_url"`
+		RuleSets               map[string][]string `yaml:"rule_sets"`
 	} `yaml:"pipeline_system"`
 }
 
