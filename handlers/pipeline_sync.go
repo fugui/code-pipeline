@@ -247,7 +247,7 @@ func UpdateCheckerTask(c *gin.Context) {
 
 	headers := prepareRequestHeaders(c)
 
-	taskID, updatedAttrs, err := services.UpdateCheckerTaskRemote(c.Request.Context(), repo.URL, req.Branch, req.Languages, req.CustomAttributes, headers)
+	taskID, updatedAttrs, err := services.UpdateCheckerTaskRemote(c.Request.Context(), repo.URL, req.Branchs, req.Languages, req.CustomAttributes, headers)
 	if err != nil {
 		if HandleSSOExpired(c, err) {
 			return

@@ -50,7 +50,7 @@ type ExecutionPlan struct {
 	PipelineID        uint       `gorm:"index;not null" json:"pipeline_id"` // 关联的 Pipeline ID
 	RepositoryID      uint       `gorm:"index" json:"repository_id"`        // 关联本地只读 Repository 镜像表 ID
 	Repository        Repository `gorm:"foreignKey:RepositoryID" json:"repository"`
-	Branch            string     `gorm:"not null" json:"branch"`             // 分支
+	Branch            string     `gorm:"not null" json:"branchs"`             // 分支
 	Username          string     `json:"username"`                           // 用户名
 	Password          string     `json:"password"`                           // 密码
 	CodeCheckerTaskID string     `json:"code_checker_task_id"`               // 代码检查任务 ID
