@@ -259,16 +259,6 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 		return "", fmt.Errorf("create_execution_plan_body not configured")
 	}
 
-	var langs []string
-	if plan.Languages != "" {
-		langs = strings.Split(plan.Languages, ",")
-	}
-	langsJSON, err := json.Marshal(langs)
-	if err != nil {
-		log.Printf("[SyncCreatePlan] Step 2: Failed to marshal langs: %v", err)
-		return "", fmt.Errorf("failed to marshal langs to JSON: %w", err)
-	}
-
 	customAttributesJSON, err := json.Marshal(plan.CustomAttributes)
 	if err != nil {
 		log.Printf("[SyncCreatePlan] Step 2: Failed to marshal custom_attributes: %v", err)
@@ -282,7 +272,6 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 		"{USERNAME}":             plan.Username,
 		"{PASSWORD}":             plan.Password,
 		"{CODE_CHECKER_TASK_ID}": taskID,
-		"{LANGUAGES}":            string(langsJSON),
 		"{CUSTOM_ATTRIBUTES}":    string(customAttributesJSON),
 	})
 
