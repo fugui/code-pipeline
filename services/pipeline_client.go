@@ -336,22 +336,12 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 	}
 	if err := json.Unmarshal(body, &createResp); err != nil {
 		log.Printf("[SyncCreatePlan] Step 2: Failed to parse create response: %v, Body: %s", err, string(body))
-		var oldResp map[string]interface{}
-		if errOld := json.Unmarshal(body, &oldResp); errOld == nil {
-			if id, ok := oldResp["id"].(string); ok && id != "" {
-				return id, nil
-			}
-			if id, ok := oldResp["execution_plan_id"].(string); ok && id != "" {
-				return id, nil
-			}
-		}
-		mockPlanID := fmt.Sprintf("ext_plan_%d", time.Now().UnixNano())
-		return mockPlanID, nil
+		return "", fmt.Errorf("failed to parse create execution plan response: %w", err)
 	}
 
-	if createResp.Result != "success" && createResp.Result != "" {
+	if createResp.Result != "success" {
 		log.Printf("[SyncCreatePlan] Step 2: Create response result is not success: %s, Message: %s", createResp.Result, createResp.Message)
-		return "", fmt.Errorf("failed to create execution plan: %s", createResp.Message)
+		return "", fmt.Errorf("failed to create execution plan: status %s, message %s", createResp.Result, createResp.Message)
 	}
 
 	log.Printf("[SyncCreatePlan] Step 2: Create success. Fetching plan ID for name: %s", planName)
@@ -381,8 +371,8 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 	}
 
 	if extID == "" {
-		extID = fmt.Sprintf("ext_plan_%d", time.Now().UnixNano())
-		log.Printf("[SyncCreatePlan] Step 2: Failed to retrieve plan ID by name %s, fallback to mock plan ID: %s", planName, extID)
+		log.Printf("[SyncCreatePlan] Step 2: Failed to retrieve plan ID by name %s after retries", planName)
+		return "", fmt.Errorf("failed to retrieve plan ID by name %s", planName)
 	}
 
 	return extID, nil
