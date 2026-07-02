@@ -273,10 +273,31 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 		return '_'
 	}, planName)
 
-	customAttributesJSON, err := json.Marshal(plan.CustomAttributes)
+	var customAttrMap map[string]interface{}
+	if plan.CustomAttributes != "" {
+		if err := json.Unmarshal([]byte(plan.CustomAttributes), &customAttrMap); err != nil {
+			log.Printf("[SyncCreatePlan] Step 2: Failed to unmarshal custom_attributes: %v", err)
+			return "", fmt.Errorf("failed to parse custom_attributes JSON: %w", err)
+		}
+	}
+	if customAttrMap == nil {
+		customAttrMap = make(map[string]interface{})
+	}
+
+	customAttrMap["username"] = plan.Username
+	customAttrMap["password"] = plan.Password
+	customAttrMap["code_checker_task_id"] = taskID
+
+	mergedBytes, err := json.Marshal(customAttrMap)
 	if err != nil {
-		log.Printf("[SyncCreatePlan] Step 2: Failed to marshal custom_attributes: %v", err)
+		log.Printf("[SyncCreatePlan] Step 2: Failed to marshal merged custom_attributes: %v", err)
 		return "", fmt.Errorf("failed to marshal custom_attributes to JSON: %w", err)
+	}
+
+	customAttributesJSON, err := json.Marshal(string(mergedBytes))
+	if err != nil {
+		log.Printf("[SyncCreatePlan] Step 2: Failed to escape custom_attributes: %v", err)
+		return "", fmt.Errorf("failed to escape custom_attributes to JSON: %w", err)
 	}
 
 	escapedCustomAttributes := string(customAttributesJSON)
@@ -294,9 +315,6 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 		"{PIPELINE_ID}":          pipelineBusinessID,
 		"{REPO_URL}":             repoURL,
 		"{BRANCH}":               plan.Branch,
-		"{USERNAME}":             plan.Username,
-		"{PASSWORD}":             plan.Password,
-		"{CODE_CHECKER_TASK_ID}": taskID,
 		"{USER_EMAIL}":           userEmail,
 		"{CUSTOM_ATTRIBUTES}":    escapedCustomAttributes,
 	})
