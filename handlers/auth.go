@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -140,6 +141,10 @@ func AuthMiddleware() gin.HandlerFunc {
 		c.Set("userID", user.ID)
 		c.Set("email", user.Email)
 		c.Set("isAdmin", user.IsAdmin)
+
+		ctx := context.WithValue(c.Request.Context(), "userName", user.Name)
+		c.Request = c.Request.WithContext(ctx)
+
 		c.Next()
 	}
 }
