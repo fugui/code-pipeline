@@ -249,9 +249,9 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 
 // createExecutionPlanStep 步骤二：创建执行方案（关联代码检查任务）
 func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, plan *models.ExecutionPlan, taskID string, repoURL string, headers map[string]string) (string, error) {
-	apiURLStr := models.AppConfig.PipelineSystem.GetExecutionPlanURL
+	apiURLStr := models.AppConfig.PipelineSystem.CreateExecutionPlanURL
 	if apiURLStr == "" {
-		return "", fmt.Errorf("get_execution_plan_url not configured")
+		return "", fmt.Errorf("create_execution_plan_url not configured")
 	}
 
 	var langs []string
