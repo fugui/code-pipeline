@@ -287,6 +287,8 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 	customAttrMap["cmc_username"] = plan.Username
 	customAttrMap["cmc_password"] = plan.Password
 	customAttrMap["code_checker_task_id"] = taskID
+	customAttrMap["repository"] = repoURL
+	customAttrMap["branch"] = plan.Branch
 
 	mergedBytes, err := json.Marshal(customAttrMap)
 	if err != nil {
@@ -313,8 +315,6 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
 		"{PLAN_NAME}":            planName,
 		"{PIPELINE_ID}":          pipelineBusinessID,
-		"{REPO_URL}":             repoURL,
-		"{BRANCH}":               plan.Branch,
 		"{USER_EMAIL}":           userEmail,
 		"{CUSTOM_ATTRIBUTES}":    escapedCustomAttributes,
 	})

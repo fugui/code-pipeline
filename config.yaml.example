@@ -20,8 +20,6 @@ pipeline_system:
     {
       "pipeline_id": "{PIPELINE_ID}",
       "name": "{PLAN_NAME}",
-      "repository": "{REPO_URL}",
-      "branch": "{BRANCH}",
       "creator": "{USER_EMAIL}",
       "custom_attributes": "{CUSTOM_ATTRIBUTES}"
     }
