@@ -330,21 +330,59 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 		return "", err
 	}
 
-	var responseData map[string]interface{}
-	if err := json.Unmarshal(body, &responseData); err != nil {
-		log.Printf("[SyncCreatePlan] Step 2: Failed to parse JSON: %v, Body: %s", err, string(body))
+	var createResp struct {
+		Result  string `json:"result"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &createResp); err != nil {
+		log.Printf("[SyncCreatePlan] Step 2: Failed to parse create response: %v, Body: %s", err, string(body))
+		var oldResp map[string]interface{}
+		if errOld := json.Unmarshal(body, &oldResp); errOld == nil {
+			if id, ok := oldResp["id"].(string); ok && id != "" {
+				return id, nil
+			}
+			if id, ok := oldResp["execution_plan_id"].(string); ok && id != "" {
+				return id, nil
+			}
+		}
 		mockPlanID := fmt.Sprintf("ext_plan_%d", time.Now().UnixNano())
 		return mockPlanID, nil
 	}
 
-	extID, ok := responseData["id"].(string)
-	if !ok || extID == "" {
-		if val, exist := responseData["execution_plan_id"].(string); exist && val != "" {
-			extID = val
-		} else {
-			extID = fmt.Sprintf("ext_plan_%d", time.Now().UnixNano())
-			log.Printf("[SyncCreatePlan] Step 2: No ID found in response, fallback to mock plan ID: %s", extID)
+	if createResp.Result != "success" && createResp.Result != "" {
+		log.Printf("[SyncCreatePlan] Step 2: Create response result is not success: %s, Message: %s", createResp.Result, createResp.Message)
+		return "", fmt.Errorf("failed to create execution plan: %s", createResp.Message)
+	}
+
+	log.Printf("[SyncCreatePlan] Step 2: Create success. Fetching plan ID for name: %s", planName)
+
+	var extID string
+	for retry := 0; retry < 3; retry++ {
+		if retry > 0 {
+			time.Sleep(500 * time.Millisecond)
 		}
+
+		entities, err := FetchRemoteExecutionPlans(ctx, pipelineBusinessID, headers)
+		if err != nil {
+			log.Printf("[SyncCreatePlan] Step 2: Failed to fetch execution plans (retry %d): %v", retry, err)
+			continue
+		}
+
+		for _, entity := range entities {
+			if entity.Name == planName {
+				extID = entity.ID
+				break
+			}
+		}
+
+		if extID != "" {
+			break
+		}
+	}
+
+	if extID == "" {
+		extID = fmt.Sprintf("ext_plan_%d", time.Now().UnixNano())
+		log.Printf("[SyncCreatePlan] Step 2: Failed to retrieve plan ID by name %s, fallback to mock plan ID: %s", planName, extID)
 	}
 
 	return extID, nil
