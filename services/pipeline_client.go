@@ -284,9 +284,9 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 		customAttrMap = make(map[string]interface{})
 	}
 
-	customAttrMap["username"] = plan.Username
-	customAttrMap["password"] = plan.Password
-	customAttrMap["code_checker_task_id"] = taskID
+	customAttrMap["cmc_username"] = plan.Username
+	customAttrMap["cmc_password"] = plan.Password
+	customAttrMap["cmc_code_checker_task_id"] = taskID
 
 	mergedBytes, err := json.Marshal(customAttrMap)
 	if err != nil {
