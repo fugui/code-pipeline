@@ -92,11 +92,18 @@ func AuthMiddleware() gin.HandlerFunc {
 		var user models.User
 		var findErr error
 
-		// 如果是从 SSO 传入的字符串唯一 ID，尝试按 Email 关联定位真正的自增 uint ID
-		if claims.SSOUserID != "" && claims.UserID == 0 && claims.Email != "" {
+		// 只要有 Email，就应该优先在 code-pipeline 数据库中按 Email 定位本地自增 uint ID。
+		// 这是因为不同微服务系统的自增 ID 是独立的，需要通过全局唯一的 Email 字段来进行分布式映射。
+		if claims.Email != "" {
 			_ = database.DB.Where("email = ?", claims.Email).First(&user).Error
 			if user.ID != 0 {
 				claims.UserID = user.ID
+				// 同步更新本地用户角色和姓名等，以保证与 SSO 端保持最新状态同步
+				if user.IsAdmin != claims.IsAdmin || user.Name != claims.Name {
+					user.IsAdmin = claims.IsAdmin
+					user.Name = claims.Name
+					_ = database.DB.Save(&user).Error
+				}
 			}
 		}
 

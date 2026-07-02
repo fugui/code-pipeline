@@ -24,8 +24,8 @@ type Repository struct {
 	IsActive     bool      `gorm:"default:true" json:"is_active"`            // 是否在宿主端被冻结
 	ProjectID    string    `gorm:"default:''" json:"project_id"`
 	HTTPURL      string    `gorm:"default:''" json:"http_url"`
-	ServiceGroup string    `gorm:"default:''" json:"service_group"`          // 归属子系统
-	OwnerName    string    `gorm:"default:''" json:"owner_name"`             // 负责人姓名
+	ServiceGroup string    `gorm:"default:''" json:"service_group"` // 归属子系统
+	OwnerName    string    `gorm:"default:''" json:"owner_name"`    // 负责人姓名
 	CreatedAt    time.Time `json:"created_at"`
 }
 
@@ -50,7 +50,7 @@ type ExecutionPlan struct {
 	PipelineID        uint       `gorm:"index;not null" json:"pipeline_id"` // 关联的 Pipeline ID
 	RepositoryID      uint       `gorm:"index" json:"repository_id"`        // 关联本地只读 Repository 镜像表 ID
 	Repository        Repository `gorm:"foreignKey:RepositoryID" json:"repository"`
-	Branch            string     `gorm:"not null" json:"branchs"`             // 分支
+	Branch            string     `gorm:"not null" json:"branchs"`            // 分支
 	Username          string     `json:"username"`                           // 用户名
 	Password          string     `json:"password"`                           // 密码
 	CodeCheckerTaskID string     `json:"code_checker_task_id"`               // 代码检查任务 ID
