@@ -279,6 +279,11 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 		return "", fmt.Errorf("failed to marshal custom_attributes to JSON: %w", err)
 	}
 
+	escapedCustomAttributes := string(customAttributesJSON)
+	if len(escapedCustomAttributes) >= 2 && escapedCustomAttributes[0] == '"' && escapedCustomAttributes[len(escapedCustomAttributes)-1] == '"' {
+		escapedCustomAttributes = escapedCustomAttributes[1 : len(escapedCustomAttributes)-1]
+	}
+
 	userEmail, _ := ctx.Value("userEmail").(string)
 	if userEmail == "" {
 		userEmail = "system"
@@ -293,7 +298,7 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 		"{PASSWORD}":             plan.Password,
 		"{CODE_CHECKER_TASK_ID}": taskID,
 		"{USER_EMAIL}":           userEmail,
-		"{CUSTOM_ATTRIBUTES}":    string(customAttributesJSON),
+		"{CUSTOM_ATTRIBUTES}":    escapedCustomAttributes,
 	})
 
 	postData := json.RawMessage(bodyStr)

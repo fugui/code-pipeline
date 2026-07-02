@@ -26,7 +26,7 @@ pipeline_system:
       "password": "{PASSWORD}",
       "code_checker_task_id": "{CODE_CHECKER_TASK_ID}",
       "creator": "{USER_EMAIL}",
-      "custom_attributes": {CUSTOM_ATTRIBUTES}
+      "custom_attributes": "{CUSTOM_ATTRIBUTES}"
     }
   get_mr_bindings_url: "http://192.168.56.18:8080/api/external/mr-bindings"
   create_mr_binding_url: "http://192.168.56.18:8080/api/external/mr-bindings"
