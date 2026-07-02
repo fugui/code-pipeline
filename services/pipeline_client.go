@@ -279,14 +279,20 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 		return "", fmt.Errorf("failed to marshal custom_attributes to JSON: %w", err)
 	}
 
+	userName, _ := ctx.Value("userName").(string)
+	if userName == "" {
+		userName = "system"
+	}
+
 	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
+		"{PLAN_NAME}":            planName,
 		"{PIPELINE_ID}":          pipelineBusinessID,
 		"{REPO_URL}":             repoURL,
 		"{BRANCH}":               plan.Branch,
 		"{USERNAME}":             plan.Username,
 		"{PASSWORD}":             plan.Password,
 		"{CODE_CHECKER_TASK_ID}": taskID,
-		"{PLAN_NAME}":            planName,
+		"{USER_NAME}":            userName,
 		"{CUSTOM_ATTRIBUTES}":    string(customAttributesJSON),
 	})
 
