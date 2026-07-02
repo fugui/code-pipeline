@@ -16,6 +16,17 @@ pipeline_system:
   get_pipeline_url: "http://192.168.56.18:8080/api/external/pipeline"
   get_execution_plan_url: "http://192.168.56.18:8080/api/external/execution-plans"
   create_execution_plan_url: "http://192.168.56.18:8080/api/external/execution-plans"
+  create_execution_plan_body: |
+    {
+      "pipeline_id": "{PIPELINE_ID}",
+      "repository": "{REPO_URL}",
+      "branch": "{BRANCH}",
+      "username": "{USERNAME}",
+      "password": "{PASSWORD}",
+      "code_checker_task_id": "{CODE_CHECKER_TASK_ID}",
+      "languages": {LANGUAGES},
+      "custom_attributes": {CUSTOM_ATTRIBUTES}
+    }
   get_mr_bindings_url: "http://192.168.56.18:8080/api/external/mr-bindings"
   copy_checker_task_url: "http://192.168.56.18:8080/api/external/copy-checker-task"
   create_checker_task_url: "http://192.168.56.18:8080/api/external/create-checker-task"

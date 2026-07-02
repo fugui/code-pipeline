@@ -254,25 +254,43 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 		return "", fmt.Errorf("create_execution_plan_url not configured")
 	}
 
+	tmpl := models.AppConfig.PipelineSystem.CreateExecutionPlanBody
+	if tmpl == "" {
+		return "", fmt.Errorf("create_execution_plan_body not configured")
+	}
+
 	var langs []string
 	if plan.Languages != "" {
 		langs = strings.Split(plan.Languages, ",")
 	}
-
-	payload := map[string]interface{}{
-		"pipeline_id":          pipelineBusinessID,
-		"repository":           repoURL,
-		"branch":               plan.Branch,
-		"username":             plan.Username,
-		"password":             plan.Password,
-		"code_checker_task_id": taskID,
-		"languages":            langs,
-		"custom_attributes":    plan.CustomAttributes,
+	langsJSON, err := json.Marshal(langs)
+	if err != nil {
+		log.Printf("[SyncCreatePlan] Step 2: Failed to marshal langs: %v", err)
+		return "", fmt.Errorf("failed to marshal langs to JSON: %w", err)
 	}
 
-	log.Printf("[SyncCreatePlan] Step 2: Creating Execution Plan. URL: %s, Body: %v", apiURLStr, payload)
+	customAttributesJSON, err := json.Marshal(plan.CustomAttributes)
+	if err != nil {
+		log.Printf("[SyncCreatePlan] Step 2: Failed to marshal custom_attributes: %v", err)
+		return "", fmt.Errorf("failed to marshal custom_attributes to JSON: %w", err)
+	}
 
-	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, payload, utils.HTTPOptions{
+	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
+		"{PIPELINE_ID}":          pipelineBusinessID,
+		"{REPO_URL}":             repoURL,
+		"{BRANCH}":               plan.Branch,
+		"{USERNAME}":             plan.Username,
+		"{PASSWORD}":             plan.Password,
+		"{CODE_CHECKER_TASK_ID}": taskID,
+		"{LANGUAGES}":            string(langsJSON),
+		"{CUSTOM_ATTRIBUTES}":    string(customAttributesJSON),
+	})
+
+	postData := json.RawMessage(bodyStr)
+
+	log.Printf("[SyncCreatePlan] Step 2: Creating Execution Plan. URL: %s, Body: %s", apiURLStr, bodyStr)
+
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated}, "CreateExecutionPlanStep")
 	if err != nil {

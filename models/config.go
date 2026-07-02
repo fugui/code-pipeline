@@ -29,6 +29,7 @@ type Config struct {
 		GetPipelineURL         string            `yaml:"get_pipeline_url"`
 		GetExecutionPlanURL    string            `yaml:"get_execution_plan_url"`
 		CreateExecutionPlanURL string            `yaml:"create_execution_plan_url"`
+		CreateExecutionPlanBody string           `yaml:"create_execution_plan_body"`
 		GetMRBindingsURL       string            `yaml:"get_mr_bindings_url"`
 		CopyCheckerTaskURL     string            `yaml:"copy_checker_task_url"`
 		CreateCheckerTaskURL   string            `yaml:"create_checker_task_url"`
@@ -94,5 +95,17 @@ func applyDefaults() {
 	}
 	if AppConfig.PipelineSystem.CreateExecutionPlanURL == "" {
 		AppConfig.PipelineSystem.CreateExecutionPlanURL = AppConfig.PipelineSystem.GetExecutionPlanURL
+	}
+	if AppConfig.PipelineSystem.CreateExecutionPlanBody == "" {
+		AppConfig.PipelineSystem.CreateExecutionPlanBody = `{
+  "pipeline_id": "{PIPELINE_ID}",
+  "repository": "{REPO_URL}",
+  "branch": "{BRANCH}",
+  "username": "{USERNAME}",
+  "password": "{PASSWORD}",
+  "code_checker_task_id": "{CODE_CHECKER_TASK_ID}",
+  "languages": {LANGUAGES},
+  "custom_attributes": {CUSTOM_ATTRIBUTES}
+}`
 	}
 }
