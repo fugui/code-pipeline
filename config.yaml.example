@@ -27,6 +27,7 @@ pipeline_system:
       "custom_attributes": {CUSTOM_ATTRIBUTES}
     }
   get_mr_bindings_url: "http://192.168.56.18:8080/api/external/mr-bindings"
+  create_mr_binding_url: "http://192.168.56.18:8080/api/external/mr-bindings"
   copy_checker_task_url: "http://192.168.56.18:8080/api/external/copy-checker-task"
   create_checker_task_url: "http://192.168.56.18:8080/api/external/create-checker-task"
   create_checker_task_body: |
