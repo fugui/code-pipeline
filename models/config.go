@@ -3,6 +3,7 @@ package models
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -57,6 +58,17 @@ func LoadConfig(filename string) error {
 	}
 
 	applyDefaults()
+
+	if AppConfig.PipelineSystem.CreateMRBindingURL == "" {
+		return fmt.Errorf("pipeline_system.create_mr_binding_url is required")
+	}
+	if AppConfig.PipelineSystem.CreateExecutionPlanURL == "" {
+		return fmt.Errorf("pipeline_system.create_execution_plan_url is required")
+	}
+	if AppConfig.PipelineSystem.CreateExecutionPlanBody == "" {
+		return fmt.Errorf("pipeline_system.create_execution_plan_body is required")
+	}
+
 	return nil
 }
 
@@ -89,22 +101,5 @@ func applyDefaults() {
 		}
 		AppConfig.Auth.JWTSecret = hex.EncodeToString(randomBytes)
 		log.Println("[Auth] WARNING: jwt_secret not configured. Using ephemeral random secret.")
-	}
-	if AppConfig.PipelineSystem.CreateMRBindingURL == "" {
-		AppConfig.PipelineSystem.CreateMRBindingURL = AppConfig.PipelineSystem.GetMRBindingsURL
-	}
-	if AppConfig.PipelineSystem.CreateExecutionPlanURL == "" {
-		AppConfig.PipelineSystem.CreateExecutionPlanURL = AppConfig.PipelineSystem.GetExecutionPlanURL
-	}
-	if AppConfig.PipelineSystem.CreateExecutionPlanBody == "" {
-		AppConfig.PipelineSystem.CreateExecutionPlanBody = `{
-  "pipeline_id": "{PIPELINE_ID}",
-  "repository": "{REPO_URL}",
-  "branch": "{BRANCH}",
-  "username": "{USERNAME}",
-  "password": "{PASSWORD}",
-  "code_checker_task_id": "{CODE_CHECKER_TASK_ID}",
-  "custom_attributes": {CUSTOM_ATTRIBUTES}
-}`
 	}
 }
