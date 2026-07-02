@@ -150,18 +150,18 @@ func PullRepoDetails(repoID uint) (*models.Repository, error) {
 	}
 
 	var rawRepo struct {
-		ID           uint      `json:"id"`
-		Name         string    `json:"name"`
-		URL          string    `json:"url"`
-		OwnerID      uint      `json:"owner_id"`
-		IsActive     bool      `json:"is_active"`
-		ProjectID    string    `json:"project_id"`
-		HTTPURL      string    `json:"http_url"`
-		ServiceGroup string    `json:"service_group"`
+		ID           uint   `json:"id"`
+		Name         string `json:"name"`
+		URL          string `json:"url"`
+		OwnerID      uint   `json:"owner_id"`
+		IsActive     bool   `json:"is_active"`
+		ProjectID    string `json:"project_id"`
+		HTTPURL      string `json:"http_url"`
+		ServiceGroup string `json:"service_group"`
 		Owner        struct {
 			Name string `json:"name"`
 		} `json:"owner"`
-		CreatedAt    time.Time `json:"created_at"`
+		CreatedAt time.Time `json:"created_at"`
 	}
 
 	if err := json.Unmarshal(body, &rawRepo); err != nil {
@@ -187,18 +187,18 @@ func PullRepoDetails(repoID uint) (*models.Repository, error) {
 }
 
 type remoteRepo struct {
-	ID           uint      `json:"id"`
-	Name         string    `json:"name"`
-	URL          string    `json:"url"`
-	OwnerID      uint      `json:"owner_id"`
-	IsActive     bool      `json:"is_active"`
-	ProjectID    string    `json:"project_id"`
-	HTTPURL      string    `json:"http_url"`
-	ServiceGroup string    `json:"service_group"`
+	ID           uint   `json:"id"`
+	Name         string `json:"name"`
+	URL          string `json:"url"`
+	OwnerID      uint   `json:"owner_id"`
+	IsActive     bool   `json:"is_active"`
+	ProjectID    string `json:"project_id"`
+	HTTPURL      string `json:"http_url"`
+	ServiceGroup string `json:"service_group"`
 	Owner        struct {
 		Name string `json:"name"`
 	} `json:"owner"`
-	CreatedAt    time.Time `json:"created_at"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func fetchReposFromCodeBench() ([]remoteRepo, error) {

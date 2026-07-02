@@ -402,8 +402,8 @@ func TestCreateCheckerTaskStep(t *testing.T) {
 	}
 
 	var reqPayload struct {
-		Branch    string   `json:"branch"`
-		RuleSets  []struct {
+		Branch   string `json:"branch"`
+		RuleSets []struct {
 			Language  string `json:"language"`
 			RuleSetID string `json:"ruleSetId"`
 		} `json:"ruleSets"`
@@ -438,4 +438,3 @@ func TestCreateCheckerTaskStep(t *testing.T) {
 		}
 	}
 }
-
