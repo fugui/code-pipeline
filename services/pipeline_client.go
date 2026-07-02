@@ -259,6 +259,20 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 		return "", fmt.Errorf("create_execution_plan_body not configured")
 	}
 
+	randomSuffix := "0000"
+	randBytes := make([]byte, 2)
+	if _, err := rand.Read(randBytes); err == nil {
+		randomSuffix = hex.EncodeToString(randBytes)
+	}
+	repoName := extractRepoName(repoURL)
+	planName := fmt.Sprintf("%s_%s_CodeShield_%s", repoName, plan.Branch, randomSuffix)
+	planName = strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
+			return r
+		}
+		return '_'
+	}, planName)
+
 	customAttributesJSON, err := json.Marshal(plan.CustomAttributes)
 	if err != nil {
 		log.Printf("[SyncCreatePlan] Step 2: Failed to marshal custom_attributes: %v", err)
@@ -272,6 +286,7 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 		"{USERNAME}":             plan.Username,
 		"{PASSWORD}":             plan.Password,
 		"{CODE_CHECKER_TASK_ID}": taskID,
+		"{PLAN_NAME}":            planName,
 		"{CUSTOM_ATTRIBUTES}":    string(customAttributesJSON),
 	})
 

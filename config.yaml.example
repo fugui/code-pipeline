@@ -19,6 +19,7 @@ pipeline_system:
   create_execution_plan_body: |
     {
       "pipeline_id": "{PIPELINE_ID}",
+      "name": "{PLAN_NAME}",
       "repository": "{REPO_URL}",
       "branch": "{BRANCH}",
       "username": "{USERNAME}",
