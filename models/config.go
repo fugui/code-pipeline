@@ -104,7 +104,6 @@ func applyDefaults() {
   "username": "{USERNAME}",
   "password": "{PASSWORD}",
   "code_checker_task_id": "{CODE_CHECKER_TASK_ID}",
-  "languages": {LANGUAGES},
   "custom_attributes": {CUSTOM_ATTRIBUTES}
 }`
 	}
