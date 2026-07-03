@@ -113,6 +113,33 @@ func FetchRemoteExecutionSchemes(ctx context.Context, pipelineBusinessID string,
 	return remoteResp.Entities, nil
 }
 
+// FetchRemoteExecutionPlans 从三方系统获取指定流水线的执行计划（定时任务）原始数据列表
+func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, headers map[string]string) ([]models.RemoteExecutionPlan, error) {
+	apiURLStr := models.AppConfig.PipelineSystem.GetExecutionPlanURL
+	if apiURLStr == "" {
+		return nil, fmt.Errorf("get_execution_plan_url not configured")
+	}
+
+	body, err := utils.SendHTTPRequest(ctx, "GET", apiURLStr, nil, utils.HTTPOptions{
+		Headers:     headers,
+		QueryParams: map[string]string{"pipelineId": pipelineBusinessID},
+	}, []int{http.StatusOK}, "SyncExecutionPlans")
+	if err != nil {
+		return nil, err
+	}
+
+	var remoteResp struct {
+		Entities []models.RemoteExecutionPlan `json:"entities"`
+	}
+
+	if err := json.Unmarshal(body, &remoteResp); err != nil {
+		log.Printf("[SyncExecutionPlans] Failed to parse JSON: %v, Body: %s", err, string(body))
+		return nil, fmt.Errorf("failed to parse remote response JSON: %v", err)
+	}
+
+	return remoteResp.Entities, nil
+}
+
 // createCheckerTaskStep 步骤一：创建代码检查执行任务
 func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, languages string, taskName string, headers map[string]string) (string, error) {
 	apiURL := models.AppConfig.PipelineSystem.CreateCheckerTaskURL
@@ -485,31 +512,40 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, sch
 
 	log.Printf("[SyncCreateScheme] Step 4: Creating Execution Plan. URL: %s, Body: %s", apiURLStr, bodyStr)
 
-	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
+	_, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated}, "CreateExecutionPlanStep")
 	if err != nil {
 		return "", err
 	}
 
-	var responseData struct {
-		ID     string `json:"id"`
-		Result []struct {
-			ID string `json:"id"`
-		} `json:"entities"`
-	}
-	_ = json.Unmarshal(body, &responseData)
-
+	// 创建成功后，通过查询和名字匹配，获得刚刚创建的 PlanID
 	var executionPlanID string
-	if responseData.ID != "" {
-		executionPlanID = responseData.ID
-	} else if len(responseData.Result) > 0 {
-		executionPlanID = responseData.Result[0].ID
+	for retry := 0; retry < 3; retry++ {
+		if retry > 0 {
+			time.Sleep(500 * time.Millisecond)
+		}
+
+		entities, err := FetchRemoteExecutionPlans(ctx, pipelineBusinessID, headers)
+		if err != nil {
+			log.Printf("[SyncCreateScheme] Step 4: Failed to fetch remote execution plans (retry %d): %v", retry, err)
+			continue
+		}
+
+		for _, entity := range entities {
+			if entity.Name == scheme.Name {
+				executionPlanID = entity.ID
+				break
+			}
+		}
+
+		if executionPlanID != "" {
+			break
+		}
 	}
 
 	if executionPlanID == "" {
-		executionPlanID = fmt.Sprintf("plan_bind_%d", time.Now().UnixNano())
-		log.Printf("[SyncCreateScheme] Step 4: No ID found in response, fallback to mock Execution Plan ID: %s", executionPlanID)
+		return "", fmt.Errorf("failed to fetch created execution plan ID for name: %s", scheme.Name)
 	}
 
 	return executionPlanID, nil
