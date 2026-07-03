@@ -76,20 +76,20 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
 
   React.useEffect(() => {
     if (visible && activePlan) {
+      const hasMrTrigger = activePlan.hasOwnProperty('mr_trigger') && activePlan.mr_trigger !== null ? (String(activePlan.mr_trigger) === 'true') : true;
+      const hasDailyBuild = activePlan.hasOwnProperty('daily_build') && activePlan.daily_build !== null ? (String(activePlan.daily_build) === 'true') : true;
+      const hasDailyBuildTime = activePlan.daily_build_time || '00:30';
+
+      setMrTrigger(hasMrTrigger);
+      setDailyBuild(hasDailyBuild);
+      setDailyBuildTime(hasDailyBuildTime);
+
       if (activePlan.custom_attributes === lastCustomAttrsRef.current) {
         return;
       }
       lastCustomAttrsRef.current = activePlan.custom_attributes || '';
       try {
         const parsed = JSON.parse(activePlan.custom_attributes || '{}');
-        const hasMrTrigger = parsed.hasOwnProperty('mr_trigger') ? (String(parsed.mr_trigger) === 'true') : true;
-        const hasDailyBuild = parsed.hasOwnProperty('daily_build') ? (String(parsed.daily_build) === 'true') : true;
-        const hasDailyBuildTime = parsed.daily_build_time || '00:30';
-
-        setMrTrigger(hasMrTrigger);
-        setDailyBuild(hasDailyBuild);
-        setDailyBuildTime(hasDailyBuildTime);
-
         const list = Object.entries(parsed)
           .filter(([k]) => k !== 'mr_trigger' && k !== 'daily_build' && k !== 'daily_build_time')
           .map(([k, v]) => ({
@@ -97,38 +97,20 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
             value: String(v)
           }));
         setCustomAttrs(list);
-
-        if (!parsed.hasOwnProperty('mr_trigger') || !parsed.hasOwnProperty('daily_build') || !parsed.hasOwnProperty('daily_build_time')) {
-          parsed.mr_trigger = hasMrTrigger;
-          parsed.daily_build = hasDailyBuild;
-          parsed.daily_build_time = hasDailyBuildTime;
-          const serialized = JSON.stringify(parsed);
-          lastCustomAttrsRef.current = serialized;
-          onChange({
-            ...activePlan,
-            custom_attributes: serialized
-          });
-        }
       } catch (e) {
-        setMrTrigger(true);
-        setDailyBuild(true);
-        setDailyBuildTime('00:30');
         setCustomAttrs([]);
+      }
 
-        const defaultObj = {
-          mr_trigger: true,
-          daily_build: true,
-          daily_build_time: '00:30'
-        };
-        const serialized = JSON.stringify(defaultObj);
-        lastCustomAttrsRef.current = serialized;
+      if (activePlan.mr_trigger === undefined || activePlan.daily_build === undefined || activePlan.daily_build_time === undefined) {
         onChange({
           ...activePlan,
-          custom_attributes: serialized
+          mr_trigger: hasMrTrigger,
+          daily_build: hasDailyBuild,
+          daily_build_time: hasDailyBuildTime
         });
       }
     }
-  }, [visible, activePlan?.id, activePlan?.custom_attributes]);
+  }, [visible, activePlan?.id, activePlan?.custom_attributes, activePlan?.mr_trigger, activePlan?.daily_build, activePlan?.daily_build_time]);
 
   React.useEffect(() => {
     if (activePlan) {
@@ -199,7 +181,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
 
   const selectedRepo = repos.find(r => r.id === activePlan.repository_id)
 
-  const updateCustomAttrs = (newList: { key: string; value: string }[], currentMrTrigger = mrTrigger, currentDailyBuild = dailyBuild, currentTime = dailyBuildTime) => {
+  const updateCustomAttrs = (newList: { key: string; value: string }[]) => {
     setCustomAttrs(newList);
     const obj: Record<string, any> = {};
     newList.forEach(item => {
@@ -207,15 +189,15 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
         obj[item.key.trim()] = item.value;
       }
     });
-    obj['mr_trigger'] = currentMrTrigger;
-    obj['daily_build'] = currentDailyBuild;
-    obj['daily_build_time'] = currentTime;
 
     const serialized = JSON.stringify(obj);
     lastCustomAttrsRef.current = serialized;
     onChange({
       ...activePlan,
-      custom_attributes: serialized
+      custom_attributes: serialized,
+      mr_trigger: mrTrigger,
+      daily_build: dailyBuild,
+      daily_build_time: dailyBuildTime
     });
   };
 
@@ -223,7 +205,13 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
     setMrTrigger(newMrTrigger);
     setDailyBuild(newDailyBuild);
     setDailyBuildTime(newTime);
-    updateCustomAttrs(customAttrs, newMrTrigger, newDailyBuild, newTime);
+    
+    onChange({
+      ...activePlan,
+      mr_trigger: newMrTrigger,
+      daily_build: newDailyBuild,
+      daily_build_time: newTime
+    });
   };
 
   return (

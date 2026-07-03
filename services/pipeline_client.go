@@ -290,6 +290,9 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 	customAttrMap["code_checker_task_id"] = taskID
 	customAttrMap["repository"] = repoURL
 	customAttrMap["branch"] = plan.Branch
+	customAttrMap["mr_trigger"] = plan.MRTrigger
+	customAttrMap["daily_build"] = plan.DailyBuild
+	customAttrMap["daily_build_time"] = plan.DailyBuildTime
 
 	type CustomAttr struct {
 		Name  string      `json:"name"`
@@ -525,6 +528,42 @@ func SyncUpdateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 
 	targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), plan.ExecutionPlanID)
 
+	var customAttrMap map[string]interface{}
+	if plan.CustomAttributes != "" {
+		_ = json.Unmarshal([]byte(plan.CustomAttributes), &customAttrMap)
+	}
+	if customAttrMap == nil {
+		customAttrMap = make(map[string]interface{})
+	}
+
+	customAttrMap["mr_trigger"] = plan.MRTrigger
+	customAttrMap["daily_build"] = plan.DailyBuild
+	customAttrMap["daily_build_time"] = plan.DailyBuildTime
+
+	type CustomAttr struct {
+		Name  string      `json:"name"`
+		Value interface{} `json:"value"`
+	}
+
+	var keys []string
+	for k := range customAttrMap {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	customAttrList := make([]CustomAttr, 0, len(keys))
+	for _, k := range keys {
+		customAttrList = append(customAttrList, CustomAttr{
+			Name:  k,
+			Value: customAttrMap[k],
+		})
+	}
+
+	mergedBytes, err := json.Marshal(customAttrList)
+	if err != nil {
+		return fmt.Errorf("failed to marshal custom attributes: %w", err)
+	}
+
 	payload := map[string]interface{}{
 		"pipeline_id":          pipelineBusinessID,
 		"repository":           repoURL,
@@ -533,10 +572,10 @@ func SyncUpdateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 		"password":             plan.Password,
 		"code_checker_task_id": plan.CodeCheckerTaskID,
 		"languages":            strings.Split(plan.Languages, ","),
-		"custom_attributes":    plan.CustomAttributes,
+		"custom_attributes":    string(mergedBytes),
 	}
 
-	_, err := utils.SendHTTPRequest(context.Background(), "PUT", targetURL, payload, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent}, "SyncUpdatePlan")
+	_, err = utils.SendHTTPRequest(context.Background(), "PUT", targetURL, payload, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent}, "SyncUpdatePlan")
 	return err
 }
 
