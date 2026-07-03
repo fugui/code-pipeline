@@ -292,7 +292,7 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 	customAttrMap["branch"] = plan.Branch
 
 	type CustomAttr struct {
-		Key   string      `json:"key"`
+		Name  string      `json:"name"`
 		Value interface{} `json:"value"`
 	}
 
@@ -305,7 +305,7 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 	customAttrList := make([]CustomAttr, 0, len(keys))
 	for _, k := range keys {
 		customAttrList = append(customAttrList, CustomAttr{
-			Key:   k,
+			Name:  k,
 			Value: customAttrMap[k],
 		})
 	}
