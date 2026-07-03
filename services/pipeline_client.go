@@ -380,6 +380,7 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 
 // createMRBindingStep 步骤三：创建 MR 触发关联
 func createMRBindingStep(ctx context.Context, pipelineBusinessID string, plan *models.ExecutionPlan, schemeID string, repoURL string, headers map[string]string) (string, error) {
+	log.Printf("[SyncCreatePlan] Enter createMRBindingStep: pipelineBusinessID=%s, plan=%+v, schemeID=%s, repoURL=%s, headers=%v", pipelineBusinessID, plan, schemeID, repoURL, headers)
 	apiURLStr := models.AppConfig.PipelineSystem.CreateMRBindingURL
 	if apiURLStr == "" {
 		apiURLStr = models.AppConfig.PipelineSystem.GetMRBindingsURL
