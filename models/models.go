@@ -56,6 +56,7 @@ type ExecutionScheme struct {
 	CodeCheckerTaskID string     `json:"code_checker_task_id"`    // 代码检查任务 ID
 	Languages         string     `json:"languages"`               // 编程语言 (如: "C/C++,Python,Java")
 	MRBindingID       string     `json:"mr_binding_id"`           // 绑定的 MR 绑定 ID
+	ExecutionPlanID   string     `json:"execution_plan_id"`       // 绑定的每日构建/定时执行计划 ID
 	MRTrigger         bool       `gorm:"default:true" json:"mr_trigger"`
 	DailyBuild        bool       `gorm:"default:true" json:"daily_build"`
 	DailyBuildTime    string     `gorm:"type:varchar(50);default:'00:30'" json:"daily_build_time"`
