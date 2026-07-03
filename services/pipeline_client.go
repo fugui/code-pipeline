@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -290,7 +291,26 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 	customAttrMap["repository"] = repoURL
 	customAttrMap["branch"] = plan.Branch
 
-	mergedBytes, err := json.Marshal(customAttrMap)
+	type CustomAttr struct {
+		Key   string      `json:"key"`
+		Value interface{} `json:"value"`
+	}
+
+	var keys []string
+	for k := range customAttrMap {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	customAttrList := make([]CustomAttr, 0, len(keys))
+	for _, k := range keys {
+		customAttrList = append(customAttrList, CustomAttr{
+			Key:   k,
+			Value: customAttrMap[k],
+		})
+	}
+
+	mergedBytes, err := json.Marshal(customAttrList)
 	if err != nil {
 		log.Printf("[SyncCreatePlan] Step 2: Failed to marshal merged custom_attributes: %v", err)
 		return "", fmt.Errorf("failed to marshal custom_attributes to JSON: %w", err)
