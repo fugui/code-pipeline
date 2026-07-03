@@ -33,7 +33,24 @@ func LogHTTPErrorDetails(contextMsg string, req *http.Request, statusCode int, r
 			curlHeaders = append(curlHeaders, fmt.Sprintf("-H '%s: %s'", name, escapedValue))
 		}
 	}
+
+	var bodyStr string
+	if req.GetBody != nil {
+		bodyReadCloser, err := req.GetBody()
+		if err == nil {
+			bodyBytes, err := io.ReadAll(bodyReadCloser)
+			if err == nil {
+				bodyStr = string(bodyBytes)
+			}
+			bodyReadCloser.Close()
+		}
+	}
+
 	curlCmd := fmt.Sprintf("curl -X %s '%s' %s", req.Method, req.URL.String(), strings.Join(curlHeaders, " "))
+	if bodyStr != "" {
+		escapedBody := strings.ReplaceAll(bodyStr, "'", "'\\''")
+		curlCmd = fmt.Sprintf("%s -d '%s'", curlCmd, escapedBody)
+	}
 
 	log.Printf("[%s] Curl Command:\n%s\n", contextMsg, curlCmd)
 	log.Printf("[%s] Remote server returned status %d. Response Body: %s\n", contextMsg, statusCode, string(respBody))
