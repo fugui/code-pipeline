@@ -47,6 +47,13 @@ pipeline_system:
   repo_auth_check_url: "http://192.168.56.18:8080/api/external/repo-auth-check"
   get_branches_url: "http://192.168.56.18:8080/api/external/repo-branches"
   query_checker_task_url: "http://192.168.56.18:8080/api/external/query-checker-task"
+  create_daily_build_url: "http://192.168.56.18:8080/api/external/daily-builds"
+  create_daily_build_body: |
+    {
+      "pipeline_id": "{PIPELINE_ID}",
+      "scheme_id": "{SCHEME_ID}",
+      "time": "{DAILY_BUILD_TIME}"
+    }
   rule_sets:
     GO: "rule_id_go_1"
     PYTHON: "rule_id_py_1"

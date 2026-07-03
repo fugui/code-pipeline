@@ -64,6 +64,7 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 		"is_mock":      false,
 	})
 }
+
 // SyncExecutionSchemes 从三方系统同步指定流水线的执行方案，并保存至本地数据库
 func SyncExecutionSchemes(c *gin.Context) {
 	pipelineIDStr := c.Query("pipeline_id")
@@ -141,10 +142,10 @@ func SyncExecutionSchemes(c *gin.Context) {
 		// 根据 Scheme 的原始数据组装 ExecutionScheme 实例
 		scheme := models.ExecutionScheme{
 			ExecutionSchemeID: matchedScheme.ID,
-			PipelineID:         pipeline.ID,
-			Branch:             binding.Branches, // 用 MR 数据的分支信息覆盖
-			MRBindingID:        binding.ID,       // 记录绑定的 MR 绑定 ID
-			CustomAttributes:   matchedScheme.CustomParameter,
+			PipelineID:        pipeline.ID,
+			Branch:            binding.Branches, // 用 MR 数据的分支信息覆盖
+			MRBindingID:       binding.ID,       // 记录绑定的 MR 绑定 ID
+			CustomAttributes:  matchedScheme.CustomParameter,
 		}
 
 		// 从 Scheme 中解析 Username, Password 和 CodeCheckerTaskID 等基础属性
