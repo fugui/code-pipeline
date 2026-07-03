@@ -25,6 +25,15 @@ pipeline_system:
     }
   get_mr_bindings_url: "http://192.168.56.18:8080/api/external/mr-bindings"
   create_mr_binding_url: "http://192.168.56.18:8080/api/external/mr-bindings"
+  create_mr_binding_body: |
+     {
+       "pipeline_id": "{PIPELINE_ID}",
+       "scheme_id": "{SCHEME_ID}",
+       "code_url": "{CODE_URL}",
+       "branches": "{BRANCHES}",
+       "mr_binding_id": "{MR_BINDING_ID}",
+       "custom_attributes": "{CUSTOM_ATTRIBUTES}"
+     }
   create_checker_task_url: "http://192.168.56.18:8080/api/external/create-checker-task"
   create_checker_task_body: |
     {

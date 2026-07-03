@@ -37,6 +37,7 @@ type Config struct {
 		RepoAuthCheckURL        string            `yaml:"repo_auth_check_url"`
 		GetBranchesURL          string            `yaml:"get_branches_url"`
 		CreateMRBindingURL      string            `yaml:"create_mr_binding_url"`
+		CreateMRBindingBody     string            `yaml:"create_mr_binding_body"`
 		QueryCheckerTaskURL     string            `yaml:"query_checker_task_url"`
 		RuleSets                map[string]string `yaml:"rule_sets"`
 	} `yaml:"pipeline_system"`
@@ -57,6 +58,9 @@ func LoadConfig(filename string) error {
 
 	if AppConfig.PipelineSystem.CreateMRBindingURL == "" {
 		return fmt.Errorf("pipeline_system.create_mr_binding_url is required")
+	}
+	if AppConfig.PipelineSystem.CreateMRBindingBody == "" {
+		return fmt.Errorf("pipeline_system.create_mr_binding_body is required")
 	}
 	if AppConfig.PipelineSystem.CreateExecutionPlanURL == "" {
 		return fmt.Errorf("pipeline_system.create_execution_plan_url is required")
