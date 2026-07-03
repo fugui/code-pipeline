@@ -473,6 +473,35 @@ func createMRBindingStep(ctx context.Context, pipelineBusinessID string, scheme 
 	return mrBindingID, nil
 }
 
+// createDailyBuildStep 步骤四：创建每日构建的执行计划
+func createDailyBuildStep(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, schemeID string, headers map[string]string) error {
+	log.Printf("[SyncCreateScheme] Enter createDailyBuildStep: pipelineBusinessID=%s, scheme=%+v, schemeID=%s, headers=%v", pipelineBusinessID, scheme, schemeID, headers)
+	apiURLStr := models.AppConfig.PipelineSystem.CreateDailyBuildURL
+	if apiURLStr == "" {
+		return fmt.Errorf("create_daily_build_url not configured")
+	}
+
+	tmpl := models.AppConfig.PipelineSystem.CreateDailyBuildBody
+	if tmpl == "" {
+		return fmt.Errorf("create_daily_build_body not configured")
+	}
+
+	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
+		"{PIPELINE_ID}":      pipelineBusinessID,
+		"{SCHEME_ID}":        schemeID,
+		"{DAILY_BUILD_TIME}": scheme.DailyBuildTime,
+	})
+
+	postData := json.RawMessage(bodyStr)
+
+	log.Printf("[SyncCreateScheme] Step 4: Creating Daily Build. URL: %s, Body: %s", apiURLStr, bodyStr)
+
+	_, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
+		Headers: headers,
+	}, []int{http.StatusOK, http.StatusCreated}, "CreateDailyBuildStep")
+	return err
+}
+
 // SyncCreateExecutionSchemeRemote 在三方系统中同步创建执行方案（依次执行三个步骤）
 func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, headers map[string]string) (string, error) {
 	log.Printf("[SyncCreateScheme] Start remote sync execution scheme. pipelineBusinessID: %s, RepositoryID: %d", pipelineBusinessID, scheme.RepositoryID)
@@ -506,6 +535,15 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 			log.Printf("[Pipeline] Remote sync Step 3 failed (non-fatal): %v\n", err)
 		}
 		scheme.MRBindingID = mrBindingID
+	}
+
+	// 4. 创建每日构建的执行计划
+	if scheme.DailyBuild {
+		err := createDailyBuildStep(ctx, pipelineBusinessID, scheme, extID, headers)
+		if err != nil {
+			log.Printf("[Pipeline] Remote sync Step 4 failed: %v\n", err)
+			return "", err
+		}
 	}
 
 	return extID, nil
