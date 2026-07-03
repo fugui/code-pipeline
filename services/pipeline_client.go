@@ -512,11 +512,21 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, sch
 
 	log.Printf("[SyncCreateScheme] Step 4: Creating Execution Plan. URL: %s, Body: %s", apiURLStr, bodyStr)
 
-	_, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated}, "CreateExecutionPlanStep")
 	if err != nil {
 		return "", err
+	}
+
+	var createResp struct {
+		Result string `json:"result"`
+	}
+	if err := json.Unmarshal(body, &createResp); err != nil {
+		return "", fmt.Errorf("failed to parse create execution plan response JSON: %w, response: %s", err, string(body))
+	}
+	if createResp.Result != "success" {
+		return "", fmt.Errorf("create execution plan failed: expected result='success', got result='%s', response: %s", createResp.Result, string(body))
 	}
 
 	// 创建成功后，通过查询和名字匹配，获得刚刚创建的 PlanID
