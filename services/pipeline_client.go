@@ -473,17 +473,17 @@ func createMRBindingStep(ctx context.Context, pipelineBusinessID string, scheme 
 	return mrBindingID, nil
 }
 
-// createDailyBuildStep 步骤四：创建每日构建的执行计划
-func createDailyBuildStep(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, schemeID string, headers map[string]string) error {
-	log.Printf("[SyncCreateScheme] Enter createDailyBuildStep: pipelineBusinessID=%s, scheme=%+v, schemeID=%s, headers=%v", pipelineBusinessID, scheme, schemeID, headers)
-	apiURLStr := models.AppConfig.PipelineSystem.CreateDailyBuildURL
+// createExecutionPlanStep 步骤四：创建每日构建的执行计划
+func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, schemeID string, headers map[string]string) error {
+	log.Printf("[SyncCreateScheme] Enter createExecutionPlanStep: pipelineBusinessID=%s, scheme=%+v, schemeID=%s, headers=%v", pipelineBusinessID, scheme, schemeID, headers)
+	apiURLStr := models.AppConfig.PipelineSystem.CreateExecutionPlanURL
 	if apiURLStr == "" {
-		return fmt.Errorf("create_daily_build_url not configured")
+		return fmt.Errorf("create_execution_plan_url not configured")
 	}
 
-	tmpl := models.AppConfig.PipelineSystem.CreateDailyBuildBody
+	tmpl := models.AppConfig.PipelineSystem.CreateExecutionPlanBody
 	if tmpl == "" {
-		return fmt.Errorf("create_daily_build_body not configured")
+		return fmt.Errorf("create_execution_plan_body not configured")
 	}
 
 	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
@@ -494,11 +494,11 @@ func createDailyBuildStep(ctx context.Context, pipelineBusinessID string, scheme
 
 	postData := json.RawMessage(bodyStr)
 
-	log.Printf("[SyncCreateScheme] Step 4: Creating Daily Build. URL: %s, Body: %s", apiURLStr, bodyStr)
+	log.Printf("[SyncCreateScheme] Step 4: Creating Execution Plan. URL: %s, Body: %s", apiURLStr, bodyStr)
 
 	_, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
 		Headers: headers,
-	}, []int{http.StatusOK, http.StatusCreated}, "CreateDailyBuildStep")
+	}, []int{http.StatusOK, http.StatusCreated}, "CreateExecutionPlanStep")
 	return err
 }
 
@@ -539,7 +539,7 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 
 	// 4. 创建每日构建的执行计划
 	if scheme.DailyBuild {
-		err := createDailyBuildStep(ctx, pipelineBusinessID, scheme, extID, headers)
+		err := createExecutionPlanStep(ctx, pipelineBusinessID, scheme, extID, headers)
 		if err != nil {
 			log.Printf("[Pipeline] Remote sync Step 4 failed: %v\n", err)
 			return "", err
