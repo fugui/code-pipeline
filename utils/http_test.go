@@ -1,10 +1,14 @@
 package utils
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -82,5 +86,26 @@ func TestSendHTTPRequest_SSOExpiration(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestLogHTTPErrorDetails(t *testing.T) {
+	var logBuf bytes.Buffer
+	log.SetOutput(&logBuf)
+	defer func() {
+		log.SetOutput(os.Stderr)
+	}()
+
+	bodyBytes := []byte(`{"hello":"world"}`)
+	req, err := http.NewRequest("POST", "http://example.com/api", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+
+	LogHTTPErrorDetails("TestContext", req, http.StatusInternalServerError, []byte(`{"error":"internal"}`))
+
+	output := logBuf.String()
+	if !strings.Contains(output, "-d '{\"hello\":\"world\"}'") {
+		t.Errorf("expected log output to contain request body in curl command, got: %s", output)
 	}
 }
