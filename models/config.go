@@ -27,22 +27,18 @@ type Config struct {
 		SystemUserID         uint   `yaml:"system_user_id"`
 	} `yaml:"auth"`
 	PipelineSystem struct {
-		GetPipelineURL         string            `yaml:"get_pipeline_url"`
-		GetExecutionPlanURL    string            `yaml:"get_execution_plan_url"`
-		CreateExecutionPlanURL string            `yaml:"create_execution_plan_url"`
-		CreateExecutionPlanBody string           `yaml:"create_execution_plan_body"`
-		GetMRBindingsURL       string            `yaml:"get_mr_bindings_url"`
-		CopyCheckerTaskURL     string            `yaml:"copy_checker_task_url"`
-		CreateCheckerTaskURL   string            `yaml:"create_checker_task_url"`
-		CreateCheckerTaskBody  string            `yaml:"create_checker_task_body"`
-		CopyCheckerTaskBody    string            `yaml:"copy_checker_task_body"`
-		CheckerTaskTemplateID  string            `yaml:"checker_task_template_id"`
-		RepoAuthCheckURL       string            `yaml:"repo_auth_check_url"`
-		RepoCredentialCheckURL string            `yaml:"repo_credential_check_url"`
-		GetBranchesURL         string            `yaml:"get_branches_url"`
-		CreateMRBindingURL     string            `yaml:"create_mr_binding_url"`
-		QueryCheckerTaskURL    string            `yaml:"query_checker_task_url"`
-		RuleSets               map[string]string `yaml:"rule_sets"`
+		GetPipelineURL          string            `yaml:"get_pipeline_url"`
+		GetExecutionPlanURL     string            `yaml:"get_execution_plan_url"`
+		CreateExecutionPlanURL  string            `yaml:"create_execution_plan_url"`
+		CreateExecutionPlanBody string            `yaml:"create_execution_plan_body"`
+		GetMRBindingsURL        string            `yaml:"get_mr_bindings_url"`
+		CreateCheckerTaskURL    string            `yaml:"create_checker_task_url"`
+		CreateCheckerTaskBody   string            `yaml:"create_checker_task_body"`
+		RepoAuthCheckURL        string            `yaml:"repo_auth_check_url"`
+		GetBranchesURL          string            `yaml:"get_branches_url"`
+		CreateMRBindingURL      string            `yaml:"create_mr_binding_url"`
+		QueryCheckerTaskURL     string            `yaml:"query_checker_task_url"`
+		RuleSets                map[string]string `yaml:"rule_sets"`
 	} `yaml:"pipeline_system"`
 }
 

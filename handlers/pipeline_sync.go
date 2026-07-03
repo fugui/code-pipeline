@@ -230,39 +230,3 @@ func prepareRequestHeaders(c *gin.Context) map[string]string {
 	headers["x-requested-with"] = "XMLHttpRequest"
 	return headers
 }
-
-// UpdateCheckerTask 为执行方案创建并更新三方代码检查任务
-func UpdateCheckerTask(c *gin.Context) {
-	var req ExecutionPlanRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if req.RepositoryID == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "repository_id is required"})
-		return
-	}
-
-	var repo models.Repository
-	if err := database.DB.First(&repo, *req.RepositoryID).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Associated repository not found"})
-		return
-	}
-
-	headers := prepareRequestHeaders(c)
-
-	taskID, updatedAttrs, err := services.UpdateCheckerTaskRemote(c.Request.Context(), repo.URL, req.Branchs, req.Languages, req.CustomAttributes, headers)
-	if err != nil {
-		if HandleSSOExpired(c, err) {
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to update checker task: %v", err)})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"code_checker_task_id": taskID,
-		"custom_attributes":    updatedAttrs,
-	})
-}

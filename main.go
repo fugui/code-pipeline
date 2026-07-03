@@ -81,7 +81,6 @@ func main() {
 			api.PUT("/execution-plans/:id", handlers.UpdateExecutionPlan)
 			api.DELETE("/execution-plans/:id", handlers.DeleteExecutionPlan)
 			api.POST("/execution-plans/sync", handlers.SyncExecutionPlans)
-			api.POST("/execution-plans/update-checker-task", handlers.UpdateCheckerTask)
 
 			// 看板状态大屏接口
 			api.GET("/dashboard/stats", handlers.GetDashboardStats)
