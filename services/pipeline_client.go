@@ -313,10 +313,10 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 	}
 
 	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
-		"{PLAN_NAME}":            planName,
-		"{PIPELINE_ID}":          pipelineBusinessID,
-		"{USER_EMAIL}":           userEmail,
-		"{CUSTOM_ATTRIBUTES}":    escapedCustomAttributes,
+		"{PLAN_NAME}":         planName,
+		"{PIPELINE_ID}":       pipelineBusinessID,
+		"{USER_EMAIL}":        userEmail,
+		"{CUSTOM_ATTRIBUTES}": escapedCustomAttributes,
 	})
 
 	postData := json.RawMessage(bodyStr)
@@ -389,18 +389,36 @@ func createMRBindingStep(ctx context.Context, pipelineBusinessID string, plan *m
 		return "", fmt.Errorf("create_mr_binding_url and get_mr_bindings_url not configured")
 	}
 
-	payload := map[string]interface{}{
-		"pipeline_id":       pipelineBusinessID,
-		"scheme_id":         schemeID,
-		"code_url":          repoURL,
-		"branches":          plan.Branch,
-		"mr_binding_id":     plan.MRBindingID,
-		"custom_attributes": plan.CustomAttributes,
+	tmpl := models.AppConfig.PipelineSystem.CreateMRBindingBody
+	if tmpl == "" {
+		return "", fmt.Errorf("create_mr_binding_body not configured")
 	}
 
-	log.Printf("[SyncCreatePlan] Step 3: Creating MR Binding. URL: %s, Body: %v", apiURLStr, payload)
+	customAttributesJSON, err := json.Marshal(plan.CustomAttributes)
+	if err != nil {
+		log.Printf("[SyncCreatePlan] Step 3: Failed to escape custom_attributes: %v", err)
+		return "", fmt.Errorf("failed to escape custom_attributes to JSON: %w", err)
+	}
 
-	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, payload, utils.HTTPOptions{
+	escapedCustomAttributes := string(customAttributesJSON)
+	if len(escapedCustomAttributes) >= 2 && escapedCustomAttributes[0] == '"' && escapedCustomAttributes[len(escapedCustomAttributes)-1] == '"' {
+		escapedCustomAttributes = escapedCustomAttributes[1 : len(escapedCustomAttributes)-1]
+	}
+
+	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
+		"{PIPELINE_ID}":       pipelineBusinessID,
+		"{SCHEME_ID}":         schemeID,
+		"{CODE_URL}":          repoURL,
+		"{BRANCHES}":          plan.Branch,
+		"{MR_BINDING_ID}":     plan.MRBindingID,
+		"{CUSTOM_ATTRIBUTES}": escapedCustomAttributes,
+	})
+
+	postData := json.RawMessage(bodyStr)
+
+	log.Printf("[SyncCreatePlan] Step 3: Creating MR Binding. URL: %s, Body: %s", apiURLStr, bodyStr)
+
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated, http.StatusNoContent}, "CreateMRBindingStep")
 	if err != nil {
@@ -507,8 +525,6 @@ func SyncDeleteExecutionPlanRemote(executionPlanID string) error {
 	return err
 }
 
-
-
 // extractRepoName 从 Git 仓库 URL 或路径中提取代码仓的 basename 名称
 func extractRepoName(repoURL string) string {
 	u := strings.TrimSuffix(repoURL, "/")
@@ -594,8 +610,6 @@ func CheckRepoAuthorized(ctx context.Context, repository string, headers map[str
 
 	return authID, nil
 }
-
-
 
 // FetchRemoteMRBindings 从三方系统获取指定流水线的 MR 绑定列表
 func FetchRemoteMRBindings(ctx context.Context, pipelineBusinessID string, headers map[string]string) ([]models.MRBinding, error) {
