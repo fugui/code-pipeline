@@ -290,9 +290,6 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 	customAttrMap["code_checker_task_id"] = taskID
 	customAttrMap["repository"] = repoURL
 	customAttrMap["branch"] = plan.Branch
-	customAttrMap["mr_trigger"] = plan.MRTrigger
-	customAttrMap["daily_build"] = plan.DailyBuild
-	customAttrMap["daily_build_time"] = plan.DailyBuildTime
 
 	type CustomAttr struct {
 		Name  string      `json:"name"`
@@ -535,10 +532,6 @@ func SyncUpdateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 	if customAttrMap == nil {
 		customAttrMap = make(map[string]interface{})
 	}
-
-	customAttrMap["mr_trigger"] = plan.MRTrigger
-	customAttrMap["daily_build"] = plan.DailyBuild
-	customAttrMap["daily_build_time"] = plan.DailyBuildTime
 
 	type CustomAttr struct {
 		Name  string      `json:"name"`
