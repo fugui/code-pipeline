@@ -431,36 +431,18 @@ func createMRBindingStep(ctx context.Context, pipelineBusinessID string, plan *m
 		return "", err
 	}
 
-	var responseData map[string]interface{}
+	var responseData struct {
+		Status string `json:"status"`
+		Result []struct {
+			ID      string `json:"id"`
+			Creator string `json:"creator"`
+		} `json:"result"`
+	}
 	_ = json.Unmarshal(body, &responseData)
 
 	var mrBindingID string
-	if responseData != nil {
-		var targetMap map[string]interface{}
-		if resultList, ok := responseData["result"].([]interface{}); ok && len(resultList) > 0 {
-			if firstItem, ok := resultList[0].(map[string]interface{}); ok {
-				targetMap = firstItem
-			}
-		}
-		if targetMap == nil {
-			targetMap = responseData
-		}
-
-		for _, key := range []string{"id", "mr_binding_id"} {
-			if val, ok := targetMap[key]; ok && val != nil {
-				switch v := val.(type) {
-				case string:
-					if v != "" {
-						mrBindingID = v
-					}
-				case float64:
-					mrBindingID = fmt.Sprintf("%.0f", v)
-				}
-				if mrBindingID != "" {
-					break
-				}
-			}
-		}
+	if len(responseData.Result) > 0 {
+		mrBindingID = responseData.Result[0].ID
 	}
 
 	if mrBindingID == "" {
