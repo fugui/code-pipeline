@@ -46,6 +46,7 @@ type Pipeline struct {
 
 type ExecutionScheme struct {
 	ID                uint       `gorm:"primaryKey" json:"id"`
+	Name              string     `json:"name"`                              // 统一关联对象的全局唯一名称
 	ExecutionSchemeID string     `json:"execution_scheme_id"`               // 执行方案ID (从真正流水线系统同步回来)
 	PipelineID        uint       `gorm:"index;not null" json:"pipeline_id"` // 关联的 Pipeline ID
 	RepositoryID      uint       `gorm:"index" json:"repository_id"`        // 关联本地只读 Repository 镜像表 ID
