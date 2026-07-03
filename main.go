@@ -76,11 +76,11 @@ func main() {
 			api.GET("/pipelines/fetch-info", handlers.FetchPipelineInfoFromRemote)
 
 			// 执行方案相关接口
-			api.GET("/execution-plans", handlers.GetExecutionPlans)
-			api.POST("/execution-plans", handlers.CreateExecutionPlan)
-			api.PUT("/execution-plans/:id", handlers.UpdateExecutionPlan)
-			api.DELETE("/execution-plans/:id", handlers.DeleteExecutionPlan)
-			api.POST("/execution-plans/sync", handlers.SyncExecutionPlans)
+			api.GET("/execution-schemes", handlers.GetExecutionSchemes)
+			api.POST("/execution-schemes", handlers.CreateExecutionScheme)
+			api.PUT("/execution-schemes/:id", handlers.UpdateExecutionScheme)
+			api.DELETE("/execution-schemes/:id", handlers.DeleteExecutionScheme)
+			api.POST("/execution-schemes/sync", handlers.SyncExecutionSchemes)
 
 			// 看板状态大屏接口
 			api.GET("/dashboard/stats", handlers.GetDashboardStats)

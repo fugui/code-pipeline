@@ -57,14 +57,14 @@ export interface Pipeline {
   service_name?: string
 }
 
-export interface ExecutionPlan {
+export interface ExecutionScheme {
   id?: number
   pipeline_id: number
   pipeline_name?: string
   repository_id: number
   repository?: Repository
   branchs: string
-  execution_plan_id?: string
+  execution_scheme_id?: string
   username?: string
   password?: string
   code_checker_task_id?: string

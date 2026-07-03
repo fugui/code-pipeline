@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 
 // Import types
-import { User, Repository, ExecutionLog, DashboardStats, Pipeline, ExecutionPlan } from './types'
+import { User, Repository, ExecutionLog, DashboardStats, Pipeline, ExecutionScheme } from './types'
 
 // Import page components
 import { Dashboard } from './pages/Dashboard'
@@ -14,7 +14,7 @@ import { PipelineConfig } from './pages/PipelineConfig'
 
 // Import modals
 import { PipelineModal } from './components/PipelineModal'
-import { ExecutionPlanModal } from './components/ExecutionPlanModal'
+import { ExecutionSchemeModal } from './components/ExecutionSchemeModal'
 import { ExecutionLogModal } from './components/ExecutionLogModal'
 
 const AUTH_TOKEN_KEY = 'code_pipeline_token'
@@ -57,9 +57,9 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
   const [pipelineFetchError, setPipelineFetchError] = useState('')
   const [isFetchingPipeline, setIsFetchingPipeline] = useState(false)
   const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null)
-  const [plans, setPlans] = useState<ExecutionPlan[]>([])
-  const [showPlanModal, setShowPlanModal] = useState(false)
-  const [activePlan, setActivePlan] = useState<ExecutionPlan | null>(null)
+  const [schemes, setSchemes] = useState<ExecutionScheme[]>([])
+  const [showSchemeModal, setShowSchemeModal] = useState(false)
+  const [activeScheme, setActiveScheme] = useState<ExecutionScheme | null>(null)
 
   const [stats, setStats] = useState<DashboardStats | null>(null)
   
@@ -203,20 +203,20 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
           setSelectedPipeline(updated)
         } else {
           setSelectedPipeline(null)
-          setPlans([])
+          setSchemes([])
         }
       }
     })
     .catch(err => console.error('Failed to fetch pipelines', err))
   }
 
-  const fetchPlans = (pipelineId: number) => {
-    fetch(`${apiBase}/execution-plans?pipeline_id=${pipelineId}`, {
+  const fetchSchemes = (pipelineId: number) => {
+    fetch(`${apiBase}/execution-schemes?pipeline_id=${pipelineId}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())
-    .then(data => setPlans(data || []))
-    .catch(err => console.error('Failed to fetch execution plans', err))
+    .then(data => setSchemes(data || []))
+    .catch(err => console.error('Failed to fetch execution schemes', err))
   }
 
   const handleSavePipeline = (e: React.FormEvent) => {
@@ -260,12 +260,12 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     .catch(err => alert(err.message))
   }
 
-  const handleSavePlan = (e: React.FormEvent) => {
+  const handleSaveScheme = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!activePlan || !activePlan.repository_id || !activePlan.branchs) return
+    if (!activeScheme || !activeScheme.repository_id || !activeScheme.branchs) return
 
-    const method = activePlan.id ? 'PUT' : 'POST'
-    const url = activePlan.id ? `${apiBase}/execution-plans/${activePlan.id}` : `${apiBase}/execution-plans`
+    const method = activeScheme.id ? 'PUT' : 'POST'
+    const url = activeScheme.id ? `${apiBase}/execution-schemes/${activeScheme.id}` : `${apiBase}/execution-schemes`
 
     fetch(url, {
       method,
@@ -273,33 +273,33 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify(activePlan)
+      body: JSON.stringify(activeScheme)
     })
     .then(res => {
       if (!res.ok) throw new Error('保存执行方案失败')
       return res.json()
     })
     .then(() => {
-      setShowPlanModal(false)
-      setActivePlan(null)
+      setShowSchemeModal(false)
+      setActiveScheme(null)
       if (selectedPipeline && selectedPipeline.id) {
-        fetchPlans(selectedPipeline.id)
+        fetchSchemes(selectedPipeline.id)
       }
     })
     .catch(err => alert(err.message))
   }
 
-  const handleDeletePlan = (id: number) => {
+  const handleDeleteScheme = (id: number) => {
     if (!window.confirm('您确定要删除此执行方案吗？将同步通知外部系统进行删除。')) return
 
-    fetch(`${apiBase}/execution-plans/${id}`, {
+    fetch(`${apiBase}/execution-schemes/${id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => {
       if (!res.ok) throw new Error('删除执行方案失败')
       if (selectedPipeline && selectedPipeline.id) {
-        fetchPlans(selectedPipeline.id)
+        fetchSchemes(selectedPipeline.id)
       }
     })
     .catch(err => alert(err.message))
@@ -308,7 +308,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
   const handleSelectPipeline = (pipeline: Pipeline) => {
     setSelectedPipeline(pipeline)
     if (pipeline.id) {
-      fetchPlans(pipeline.id)
+      fetchSchemes(pipeline.id)
     }
   }
 
@@ -363,7 +363,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
   const handleSyncPipeline = (pipeline: Pipeline) => {
     if (!pipeline || !pipeline.pipeline_id) return
     setLoading(true)
-    fetch(`${apiBase}/execution-plans/sync?pipeline_id=${encodeURIComponent(pipeline.pipeline_id)}`, {
+    fetch(`${apiBase}/execution-schemes/sync?pipeline_id=${encodeURIComponent(pipeline.pipeline_id)}`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     })
@@ -380,7 +380,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     })
     .then(() => {
       if (pipeline.id) {
-        fetchPlans(pipeline.id)
+        fetchSchemes(pipeline.id)
       }
       alert('执行方案同步成功！')
     })
@@ -402,7 +402,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     setRepos([])
   }
 
-  const handleTriggerRepoPlan = (id: number, branch: string) => {
+  const handleTriggerRepoScheme = (id: number, branch: string) => {
     fetch(`${apiBase}/repos/${id}/trigger?branch=${encodeURIComponent(branch)}`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
@@ -533,10 +533,10 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
             loading={loading}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
-            onTrigger={handleTriggerRepoPlan}
-            onAddPlan={(repoId) => { setActivePlan({ pipeline_id: pipelines[0]?.id || 0, repository_id: repoId, branchs: 'master' }); setShowPlanModal(true); }}
-            onEditPlan={(plan) => { setActivePlan(plan); setShowPlanModal(true); }}
-            onDeletePlan={handleDeletePlan}
+            onTrigger={handleTriggerRepoScheme}
+            onAddScheme={(repoId) => { setActiveScheme({ pipeline_id: pipelines[0]?.id || 0, repository_id: repoId, branchs: 'master' }); setShowSchemeModal(true); }}
+            onEditScheme={(scheme) => { setActiveScheme(scheme); setShowSchemeModal(true); }}
+            onDeleteScheme={handleDeleteScheme}
             token={token}
             apiBase={apiBase}
           />
@@ -549,7 +549,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
           <PipelineConfig 
             pipelines={pipelines}
             selectedPipeline={selectedPipeline}
-            plans={plans}
+            schemes={schemes}
             loading={loading}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
@@ -557,14 +557,14 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
             onAddPipeline={() => { setActivePipeline({ pipeline_id: '', name: '', type: '每日构建' }); setShowPipelineModal(true); setPipelineFetchError(''); }}
             onEditPipeline={(p) => { setActivePipeline(p); setShowPipelineModal(true); setPipelineFetchError(''); }}
             onDeletePipeline={handleDeletePipeline}
-            onAddPlan={() => {
+            onAddScheme={() => {
               if (selectedPipeline && selectedPipeline.id) {
-                setActivePlan({ pipeline_id: selectedPipeline.id, repository_id: repos[0]?.id || 0, branchs: 'master', languages: '' });
-                setShowPlanModal(true);
+                setActiveScheme({ pipeline_id: selectedPipeline.id, repository_id: repos[0]?.id || 0, branchs: 'master', languages: '' });
+                setShowSchemeModal(true);
               }
             }}
-            onEditPlan={(plan) => { setActivePlan(plan); setShowPlanModal(true); }}
-            onDeletePlan={handleDeletePlan}
+            onEditScheme={(scheme) => { setActiveScheme(scheme); setShowSchemeModal(true); }}
+            onDeleteScheme={handleDeleteScheme}
             onSyncPipeline={handleSyncPipeline}
           />
         )}
@@ -583,13 +583,13 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         onFetchRemoteInfo={handleFetchRemotePipelineInfo}
       />
 
-      {/* Execution Plan Modal */}
-      <ExecutionPlanModal 
-        visible={showPlanModal}
-        activePlan={activePlan}
-        onChange={setActivePlan}
-        onSave={handleSavePlan}
-        onClose={() => { setShowPlanModal(false); setActivePlan(null); }}
+      {/* Execution Scheme Modal */}
+      <ExecutionSchemeModal 
+        visible={showSchemeModal}
+        activeScheme={activeScheme}
+        onChange={setActiveScheme}
+        onSave={handleSaveScheme}
+        onClose={() => { setShowSchemeModal(false); setActiveScheme(null); }}
         apiBase={apiBase}
         repos={repos}
       />

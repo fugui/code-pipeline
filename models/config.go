@@ -27,19 +27,19 @@ type Config struct {
 		SystemUserID         uint   `yaml:"system_user_id"`
 	} `yaml:"auth"`
 	PipelineSystem struct {
-		GetPipelineURL          string            `yaml:"get_pipeline_url"`
-		GetExecutionPlanURL     string            `yaml:"get_execution_plan_url"`
-		CreateExecutionPlanURL  string            `yaml:"create_execution_plan_url"`
-		CreateExecutionPlanBody string            `yaml:"create_execution_plan_body"`
-		GetMRBindingsURL        string            `yaml:"get_mr_bindings_url"`
-		CreateCheckerTaskURL    string            `yaml:"create_checker_task_url"`
-		CreateCheckerTaskBody   string            `yaml:"create_checker_task_body"`
-		RepoAuthCheckURL        string            `yaml:"repo_auth_check_url"`
-		GetBranchesURL          string            `yaml:"get_branches_url"`
-		CreateMRBindingURL      string            `yaml:"create_mr_binding_url"`
-		CreateMRBindingBody     string            `yaml:"create_mr_binding_body"`
-		QueryCheckerTaskURL     string            `yaml:"query_checker_task_url"`
-		RuleSets                map[string]string `yaml:"rule_sets"`
+		GetPipelineURL           string            `yaml:"get_pipeline_url"`
+		GetExecutionSchemeURL    string            `yaml:"get_execution_scheme_url"`
+		CreateExecutionSchemeURL string            `yaml:"create_execution_scheme_url"`
+		CreateExecutionSchemeBody string           `yaml:"create_execution_scheme_body"`
+		GetMRBindingsURL         string            `yaml:"get_mr_bindings_url"`
+		CreateCheckerTaskURL     string            `yaml:"create_checker_task_url"`
+		CreateCheckerTaskBody    string            `yaml:"create_checker_task_body"`
+		RepoAuthCheckURL         string            `yaml:"repo_auth_check_url"`
+		GetBranchesURL           string            `yaml:"get_branches_url"`
+		CreateMRBindingURL       string            `yaml:"create_mr_binding_url"`
+		CreateMRBindingBody      string            `yaml:"create_mr_binding_body"`
+		QueryCheckerTaskURL      string            `yaml:"query_checker_task_url"`
+		RuleSets                 map[string]string `yaml:"rule_sets"`
 	} `yaml:"pipeline_system"`
 }
 
@@ -62,11 +62,11 @@ func LoadConfig(filename string) error {
 	if AppConfig.PipelineSystem.CreateMRBindingBody == "" {
 		return fmt.Errorf("pipeline_system.create_mr_binding_body is required")
 	}
-	if AppConfig.PipelineSystem.CreateExecutionPlanURL == "" {
-		return fmt.Errorf("pipeline_system.create_execution_plan_url is required")
+	if AppConfig.PipelineSystem.CreateExecutionSchemeURL == "" {
+		return fmt.Errorf("pipeline_system.create_execution_scheme_url is required")
 	}
-	if AppConfig.PipelineSystem.CreateExecutionPlanBody == "" {
-		return fmt.Errorf("pipeline_system.create_execution_plan_body is required")
+	if AppConfig.PipelineSystem.CreateExecutionSchemeBody == "" {
+		return fmt.Errorf("pipeline_system.create_execution_scheme_body is required")
 	}
 
 	return nil

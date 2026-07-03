@@ -27,8 +27,8 @@ type PipelineRequest struct {
 	ServiceName string `json:"service_name"`
 }
 
-// ExecutionPlanRequest 执行方案输入结构体
-type ExecutionPlanRequest struct {
+// ExecutionSchemeRequest 执行方案输入结构体
+type ExecutionSchemeRequest struct {
 	PipelineID       *uint  `json:"pipeline_id" binding:"required"`
 	RepositoryID     *uint  `json:"repository_id" binding:"required"`
 	Branchs          string `json:"branchs" binding:"required"`
@@ -129,23 +129,23 @@ func DeletePipeline(c *gin.Context) {
 
 	// 事务删除关联的执行方案
 	tx := database.DB.Begin()
-	var plans []models.ExecutionPlan
-	if err := tx.Where("pipeline_id = ?", pipeline.ID).Find(&plans).Error; err != nil {
+	var schemes []models.ExecutionScheme
+	if err := tx.Where("pipeline_id = ?", pipeline.ID).Find(&schemes).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query associated execution plans"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query associated execution schemes"})
 		return
 	}
 
 	// 同步从三方系统删除方案
-	for _, plan := range plans {
-		if plan.ExecutionPlanID != "" {
-			go services.SyncDeleteExecutionPlanRemote(plan.ExecutionPlanID)
+	for _, scheme := range schemes {
+		if scheme.ExecutionSchemeID != "" {
+			go services.SyncDeleteExecutionSchemeRemote(scheme.ExecutionSchemeID)
 		}
 	}
 
-	if err := tx.Where("pipeline_id = ?", pipeline.ID).Delete(&models.ExecutionPlan{}).Error; err != nil {
+	if err := tx.Where("pipeline_id = ?", pipeline.ID).Delete(&models.ExecutionScheme{}).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete associated execution plans"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete associated execution schemes"})
 		return
 	}
 
@@ -156,11 +156,11 @@ func DeletePipeline(c *gin.Context) {
 	}
 
 	tx.Commit()
-	c.JSON(http.StatusOK, gin.H{"message": "Pipeline and associated execution plans deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Pipeline and associated execution schemes deleted successfully"})
 }
 
-// GetExecutionPlans 获取指定流水线的执行方案
-func GetExecutionPlans(c *gin.Context) {
+// GetExecutionSchemes 获取指定流水线的执行方案
+func GetExecutionSchemes(c *gin.Context) {
 	pipelineIDStr := c.Query("pipeline_id")
 	repoIDStr := c.Query("repository_id")
 
@@ -189,20 +189,20 @@ func GetExecutionPlans(c *gin.Context) {
 		query = query.Where("repository_id = ?", uint(repoID))
 	}
 
-	var plans []models.ExecutionPlan
-	if err := query.Find(&plans).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch execution plans"})
+	var schemes []models.ExecutionScheme
+	if err := query.Find(&schemes).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch execution schemes"})
 		return
 	}
 
-	c.JSON(http.StatusOK, plans)
+	c.JSON(http.StatusOK, schemes)
 }
 
-// CreateExecutionPlan 创建执行方案，并同步到三方流水线系统
-func CreateExecutionPlan(c *gin.Context) {
-	var req ExecutionPlanRequest
+// CreateExecutionScheme 创建执行方案，并同步到三方流水线系统
+func CreateExecutionScheme(c *gin.Context) {
+	var req ExecutionSchemeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("[CreateExecutionPlan] Bind JSON failed: %v", err)
+		log.Printf("[CreateExecutionScheme] Bind JSON failed: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -222,7 +222,7 @@ func CreateExecutionPlan(c *gin.Context) {
 		return
 	}
 
-	plan := models.ExecutionPlan{
+	scheme := models.ExecutionScheme{
 		PipelineID:       *req.PipelineID,
 		RepositoryID:     *req.RepositoryID,
 		Branch:           req.Branchs,
@@ -230,19 +230,19 @@ func CreateExecutionPlan(c *gin.Context) {
 		CustomAttributes: req.CustomAttributes,
 	}
 	if req.MRTrigger != nil {
-		plan.MRTrigger = *req.MRTrigger
+		scheme.MRTrigger = *req.MRTrigger
 	} else {
-		plan.MRTrigger = true
+		scheme.MRTrigger = true
 	}
 	if req.DailyBuild != nil {
-		plan.DailyBuild = *req.DailyBuild
+		scheme.DailyBuild = *req.DailyBuild
 	} else {
-		plan.DailyBuild = true
+		scheme.DailyBuild = true
 	}
 	if req.DailyBuildTime != "" {
-		plan.DailyBuildTime = req.DailyBuildTime
+		scheme.DailyBuildTime = req.DailyBuildTime
 	} else {
-		plan.DailyBuildTime = "00:30"
+		scheme.DailyBuildTime = "00:30"
 	}
 
 	// 创建一个流水线执行方案， 需要多个步骤
@@ -252,34 +252,34 @@ func CreateExecutionPlan(c *gin.Context) {
 
 	headers := prepareRequestHeaders(c)
 	// 同步去三方流水线系统创建
-	extID, err := services.SyncCreateExecutionPlanRemote(c.Request.Context(), pipeline.PipelineID, &plan, headers)
+	extID, err := services.SyncCreateExecutionSchemeRemote(c.Request.Context(), pipeline.PipelineID, &scheme, headers)
 	if err != nil {
-		log.Printf("[Pipeline] Remote sync failed for CreateExecutionPlan (using Mock ID): %v\n", err)
-		extID = fmt.Sprintf("ext_plan_%d", time.Now().UnixNano())
+		log.Printf("[Pipeline] Remote sync failed for CreateExecutionScheme (using Mock ID): %v\n", err)
+		extID = fmt.Sprintf("ext_scheme_%d", time.Now().UnixNano())
 	}
-	plan.ExecutionPlanID = extID
+	scheme.ExecutionSchemeID = extID
 
-	if err := database.DB.Create(&plan).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create execution plan in local DB"})
+	if err := database.DB.Create(&scheme).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create execution scheme in local DB"})
 		return
 	}
 
 	// 加载 repository
-	database.DB.Preload("Repository").First(&plan, plan.ID)
+	database.DB.Preload("Repository").First(&scheme, scheme.ID)
 
-	c.JSON(http.StatusCreated, plan)
+	c.JSON(http.StatusCreated, scheme)
 }
 
-// UpdateExecutionPlan 修改执行方案，并同步更新至三方流水线系统
-func UpdateExecutionPlan(c *gin.Context) {
+// UpdateExecutionScheme 修改执行方案，并同步更新至三方流水线系统
+func UpdateExecutionScheme(c *gin.Context) {
 	id := c.Param("id")
-	var plan models.ExecutionPlan
-	if err := database.DB.First(&plan, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Execution plan not found"})
+	var scheme models.ExecutionScheme
+	if err := database.DB.First(&scheme, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Execution scheme not found"})
 		return
 	}
 
-	var req ExecutionPlanRequest
+	var req ExecutionSchemeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -300,60 +300,60 @@ func UpdateExecutionPlan(c *gin.Context) {
 		return
 	}
 
-	plan.PipelineID = *req.PipelineID
-	plan.RepositoryID = *req.RepositoryID
-	plan.Branch = req.Branchs
-	plan.Languages = req.Languages
-	plan.CustomAttributes = req.CustomAttributes
+	scheme.PipelineID = *req.PipelineID
+	scheme.RepositoryID = *req.RepositoryID
+	scheme.Branch = req.Branchs
+	scheme.Languages = req.Languages
+	scheme.CustomAttributes = req.CustomAttributes
 	if req.MRTrigger != nil {
-		plan.MRTrigger = *req.MRTrigger
+		scheme.MRTrigger = *req.MRTrigger
 	}
 	if req.DailyBuild != nil {
-		plan.DailyBuild = *req.DailyBuild
+		scheme.DailyBuild = *req.DailyBuild
 	}
 	if req.DailyBuildTime != "" {
-		plan.DailyBuildTime = req.DailyBuildTime
+		scheme.DailyBuildTime = req.DailyBuildTime
 	}
 
 	// 如果原来没有 ext ID，则生成一个
-	if plan.ExecutionPlanID == "" {
-		plan.ExecutionPlanID = fmt.Sprintf("ext_plan_%d", time.Now().UnixNano())
+	if scheme.ExecutionSchemeID == "" {
+		scheme.ExecutionSchemeID = fmt.Sprintf("ext_scheme_%d", time.Now().UnixNano())
 	}
 
 	// 同步修改至三方系统
-	if err := services.SyncUpdateExecutionPlanRemote(pipeline.PipelineID, plan); err != nil {
-		log.Printf("[Pipeline] Remote sync failed for UpdateExecutionPlan: %v\n", err)
+	if err := services.SyncUpdateExecutionSchemeRemote(pipeline.PipelineID, scheme); err != nil {
+		log.Printf("[Pipeline] Remote sync failed for UpdateExecutionScheme: %v\n", err)
 	}
 
-	if err := database.DB.Save(&plan).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update execution plan locally"})
+	if err := database.DB.Save(&scheme).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update execution scheme locally"})
 		return
 	}
 
 	// 加载 repository
-	database.DB.Preload("Repository").First(&plan, plan.ID)
+	database.DB.Preload("Repository").First(&scheme, scheme.ID)
 
-	c.JSON(http.StatusOK, plan)
+	c.JSON(http.StatusOK, scheme)
 }
 
-// DeleteExecutionPlan 删除执行方案，并从三方流水线系统删除
-func DeleteExecutionPlan(c *gin.Context) {
+// DeleteExecutionScheme 删除执行方案，并从三方流水线系统删除
+func DeleteExecutionScheme(c *gin.Context) {
 	id := c.Param("id")
-	var plan models.ExecutionPlan
-	if err := database.DB.First(&plan, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Execution plan not found"})
+	var scheme models.ExecutionScheme
+	if err := database.DB.First(&scheme, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Execution scheme not found"})
 		return
 	}
 
-	if plan.ExecutionPlanID != "" {
+	if scheme.ExecutionSchemeID != "" {
 		// 异步或同步删除远程系统中的方案
-		go services.SyncDeleteExecutionPlanRemote(plan.ExecutionPlanID)
+		go services.SyncDeleteExecutionSchemeRemote(scheme.ExecutionSchemeID)
 	}
 
-	if err := database.DB.Delete(&plan).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete execution plan locally"})
+	if err := database.DB.Delete(&scheme).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete execution scheme locally"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Execution plan deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Execution scheme deleted successfully"})
 }
