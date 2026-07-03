@@ -14,12 +14,12 @@ auth:
 
 pipeline_system:
   get_pipeline_url: "http://192.168.56.18:8080/api/external/pipeline"
-  get_execution_plan_url: "http://192.168.56.18:8080/api/external/execution-plans"
-  create_execution_plan_url: "http://192.168.56.18:8080/api/external/execution-plans"
-  create_execution_plan_body: |
+  get_execution_scheme_url: "http://192.168.56.18:8080/api/external/execution-plans"
+  create_execution_scheme_url: "http://192.168.56.18:8080/api/external/execution-plans"
+  create_execution_scheme_body: |
     {
       "pipeline_id": "{PIPELINE_ID}",
-      "name": "{PLAN_NAME}",
+      "name": "{SCHEME_NAME}",
       "creator": "{USER_EMAIL}",
       "custom_attributes": "{CUSTOM_ATTRIBUTES}"
     }

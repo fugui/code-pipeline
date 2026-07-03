@@ -79,26 +79,26 @@ func FetchRemotePipelineInfo(ctx context.Context, pipelineID string, headers map
 	}, nil
 }
 
-// FetchRemoteExecutionPlans 从三方系统获取指定流水线的执行方案原始数据列表
-func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, headers map[string]string) ([]models.RemoteExecutionScheme, error) {
-	apiURLStr := models.AppConfig.PipelineSystem.GetExecutionPlanURL
+// FetchRemoteExecutionSchemes 从三方系统获取指定流水线的执行方案原始数据列表
+func FetchRemoteExecutionSchemes(ctx context.Context, pipelineBusinessID string, headers map[string]string) ([]models.RemoteExecutionScheme, error) {
+	apiURLStr := models.AppConfig.PipelineSystem.GetExecutionSchemeURL
 	if apiURLStr == "" {
-		return nil, fmt.Errorf("get_execution_plan_url not configured")
+		return nil, fmt.Errorf("get_execution_scheme_url not configured")
 	}
 
 	body, err := utils.SendHTTPRequest(ctx, "GET", apiURLStr, nil, utils.HTTPOptions{
 		Headers:     headers,
 		QueryParams: map[string]string{"pipelineId": pipelineBusinessID},
-	}, []int{http.StatusOK}, "SyncExecutionPlans")
+	}, []int{http.StatusOK}, "SyncExecutionSchemes")
 	if err != nil {
 		return nil, err
 	}
 
 	var prettyJSON bytes.Buffer
 	if err := json.Indent(&prettyJSON, body, "", "  "); err == nil {
-		log.Printf("[PipelineClient] SyncExecutionPlans remote response:\n%s\n", prettyJSON.String())
+		log.Printf("[PipelineClient] SyncExecutionSchemes remote response:\n%s\n", prettyJSON.String())
 	} else {
-		log.Printf("[PipelineClient] SyncExecutionPlans remote response: %s\n", string(body))
+		log.Printf("[PipelineClient] SyncExecutionSchemes remote response: %s\n", string(body))
 	}
 
 	var remoteResp struct {
@@ -106,7 +106,7 @@ func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, h
 	}
 
 	if err := json.Unmarshal(body, &remoteResp); err != nil {
-		log.Printf("[SyncExecutionPlans] Failed to parse JSON: %v, Body: %s", err, string(body))
+		log.Printf("[SyncExecutionSchemes] Failed to parse JSON: %v, Body: %s", err, string(body))
 		return nil, fmt.Errorf("failed to parse remote response JSON: %v", err)
 	}
 
@@ -248,16 +248,16 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 	return taskID, nil
 }
 
-// createExecutionPlanStep 步骤二：创建执行方案（关联代码检查任务）
-func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, plan *models.ExecutionPlan, taskID string, repoURL string, headers map[string]string) (string, error) {
-	apiURLStr := models.AppConfig.PipelineSystem.CreateExecutionPlanURL
+// createExecutionSchemeStep 步骤二：创建执行方案（关联代码检查任务）
+func createExecutionSchemeStep(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, taskID string, repoURL string, headers map[string]string) (string, error) {
+	apiURLStr := models.AppConfig.PipelineSystem.CreateExecutionSchemeURL
 	if apiURLStr == "" {
-		return "", fmt.Errorf("create_execution_plan_url not configured")
+		return "", fmt.Errorf("create_execution_scheme_url not configured")
 	}
 
-	tmpl := models.AppConfig.PipelineSystem.CreateExecutionPlanBody
+	tmpl := models.AppConfig.PipelineSystem.CreateExecutionSchemeBody
 	if tmpl == "" {
-		return "", fmt.Errorf("create_execution_plan_body not configured")
+		return "", fmt.Errorf("create_execution_scheme_body not configured")
 	}
 
 	randomSuffix := "0000"
@@ -266,18 +266,18 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 		randomSuffix = hex.EncodeToString(randBytes)
 	}
 	repoName := extractRepoName(repoURL)
-	planName := fmt.Sprintf("%s_%s_CodeShield_%s", repoName, plan.Branch, randomSuffix)
-	planName = strings.Map(func(r rune) rune {
+	schemeName := fmt.Sprintf("%s_%s_CodeShield_%s", repoName, scheme.Branch, randomSuffix)
+	schemeName = strings.Map(func(r rune) rune {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
 			return r
 		}
 		return '_'
-	}, planName)
+	}, schemeName)
 
 	var customAttrMap map[string]interface{}
-	if plan.CustomAttributes != "" {
-		if err := json.Unmarshal([]byte(plan.CustomAttributes), &customAttrMap); err != nil {
-			log.Printf("[SyncCreatePlan] Step 2: Failed to unmarshal custom_attributes: %v", err)
+	if scheme.CustomAttributes != "" {
+		if err := json.Unmarshal([]byte(scheme.CustomAttributes), &customAttrMap); err != nil {
+			log.Printf("[SyncCreateScheme] Step 2: Failed to unmarshal custom_attributes: %v", err)
 			return "", fmt.Errorf("failed to parse custom_attributes JSON: %w", err)
 		}
 	}
@@ -285,11 +285,11 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 		customAttrMap = make(map[string]interface{})
 	}
 
-	customAttrMap["cmc_username"] = plan.Username
-	customAttrMap["cmc_password"] = plan.Password
+	customAttrMap["cmc_username"] = scheme.Username
+	customAttrMap["cmc_password"] = scheme.Password
 	customAttrMap["code_checker_task_id"] = taskID
 	customAttrMap["repository"] = repoURL
-	customAttrMap["branch"] = plan.Branch
+	customAttrMap["branch"] = scheme.Branch
 
 	type CustomAttr struct {
 		Name  string      `json:"name"`
@@ -312,13 +312,13 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 
 	mergedBytes, err := json.Marshal(customAttrList)
 	if err != nil {
-		log.Printf("[SyncCreatePlan] Step 2: Failed to marshal merged custom_attributes: %v", err)
+		log.Printf("[SyncCreateScheme] Step 2: Failed to marshal merged custom_attributes: %v", err)
 		return "", fmt.Errorf("failed to marshal custom_attributes to JSON: %w", err)
 	}
 
 	customAttributesJSON, err := json.Marshal(string(mergedBytes))
 	if err != nil {
-		log.Printf("[SyncCreatePlan] Step 2: Failed to escape custom_attributes: %v", err)
+		log.Printf("[SyncCreateScheme] Step 2: Failed to escape custom_attributes: %v", err)
 		return "", fmt.Errorf("failed to escape custom_attributes to JSON: %w", err)
 	}
 
@@ -333,7 +333,7 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 	}
 
 	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
-		"{PLAN_NAME}":         planName,
+		"{SCHEME_NAME}":       schemeName,
 		"{PIPELINE_ID}":       pipelineBusinessID,
 		"{USER_EMAIL}":        userEmail,
 		"{CUSTOM_ATTRIBUTES}": escapedCustomAttributes,
@@ -341,11 +341,11 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 
 	postData := json.RawMessage(bodyStr)
 
-	log.Printf("[SyncCreatePlan] Step 2: Creating Execution Plan. URL: %s, Body: %s", apiURLStr, bodyStr)
+	log.Printf("[SyncCreateScheme] Step 2: Creating Execution Scheme. URL: %s, Body: %s", apiURLStr, bodyStr)
 
 	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
 		Headers: headers,
-	}, []int{http.StatusOK, http.StatusCreated}, "CreateExecutionPlanStep")
+	}, []int{http.StatusOK, http.StatusCreated}, "CreateExecutionSchemeStep")
 	if err != nil {
 		return "", err
 	}
@@ -355,16 +355,16 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 		Message string `json:"message"`
 	}
 	if err := json.Unmarshal(body, &createResp); err != nil {
-		log.Printf("[SyncCreatePlan] Step 2: Failed to parse create response: %v, Body: %s", err, string(body))
-		return "", fmt.Errorf("failed to parse create execution plan response: %w", err)
+		log.Printf("[SyncCreateScheme] Step 2: Failed to parse create response: %v, Body: %s", err, string(body))
+		return "", fmt.Errorf("failed to parse create execution scheme response: %w", err)
 	}
 
 	if createResp.Result != "success" {
-		log.Printf("[SyncCreatePlan] Step 2: Create response result is not success: %s, Message: %s", createResp.Result, createResp.Message)
-		return "", fmt.Errorf("failed to create execution plan: status %s, message %s", createResp.Result, createResp.Message)
+		log.Printf("[SyncCreateScheme] Step 2: Create response result is not success: %s, Message: %s", createResp.Result, createResp.Message)
+		return "", fmt.Errorf("failed to create execution scheme: status %s, message %s", createResp.Result, createResp.Message)
 	}
 
-	log.Printf("[SyncCreatePlan] Step 2: Create success. Fetching plan ID for name: %s", planName)
+	log.Printf("[SyncCreateScheme] Step 2: Create success. Fetching scheme ID for name: %s", schemeName)
 
 	var extID string
 	for retry := 0; retry < 3; retry++ {
@@ -372,14 +372,14 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 			time.Sleep(500 * time.Millisecond)
 		}
 
-		entities, err := FetchRemoteExecutionPlans(ctx, pipelineBusinessID, headers)
+		entities, err := FetchRemoteExecutionSchemes(ctx, pipelineBusinessID, headers)
 		if err != nil {
-			log.Printf("[SyncCreatePlan] Step 2: Failed to fetch execution plans (retry %d): %v", retry, err)
+			log.Printf("[SyncCreateScheme] Step 2: Failed to fetch remote execution schemes (retry %d): %v", retry, err)
 			continue
 		}
 
 		for _, entity := range entities {
-			if entity.Name == planName {
+			if entity.Name == schemeName {
 				extID = entity.ID
 				break
 			}
@@ -391,16 +391,16 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, pla
 	}
 
 	if extID == "" {
-		log.Printf("[SyncCreatePlan] Step 2: Failed to retrieve plan ID by name %s after retries", planName)
-		return "", fmt.Errorf("failed to retrieve plan ID by name %s", planName)
+		log.Printf("[SyncCreateScheme] Step 2: Failed to retrieve scheme ID by name %s after retries", schemeName)
+		return "", fmt.Errorf("failed to retrieve scheme ID by name %s", schemeName)
 	}
 
 	return extID, nil
 }
 
 // createMRBindingStep 步骤三：创建 MR 触发关联
-func createMRBindingStep(ctx context.Context, pipelineBusinessID string, plan *models.ExecutionPlan, schemeID string, repoURL string, headers map[string]string) (string, error) {
-	log.Printf("[SyncCreatePlan] Enter createMRBindingStep: pipelineBusinessID=%s, plan=%+v, schemeID=%s, repoURL=%s, headers=%v", pipelineBusinessID, plan, schemeID, repoURL, headers)
+func createMRBindingStep(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, schemeID string, repoURL string, headers map[string]string) (string, error) {
+	log.Printf("[SyncCreateScheme] Enter createMRBindingStep: pipelineBusinessID=%s, scheme=%+v, schemeID=%s, repoURL=%s, headers=%v", pipelineBusinessID, scheme, schemeID, repoURL, headers)
 	apiURLStr := models.AppConfig.PipelineSystem.CreateMRBindingURL
 	if apiURLStr == "" {
 		apiURLStr = models.AppConfig.PipelineSystem.GetMRBindingsURL
@@ -416,13 +416,13 @@ func createMRBindingStep(ctx context.Context, pipelineBusinessID string, plan *m
 
 	credentialID, err := CheckRepoAuthorized(ctx, repoURL, headers)
 	if err != nil {
-		log.Printf("[SyncCreatePlan] Step 3: Failed to check repo authorized: %v", err)
+		log.Printf("[SyncCreateScheme] Step 3: Failed to check repo authorized: %v", err)
 		return "", fmt.Errorf("failed to check repo authorized: %w", err)
 	}
 
-	customAttributesJSON, err := json.Marshal(plan.CustomAttributes)
+	customAttributesJSON, err := json.Marshal(scheme.CustomAttributes)
 	if err != nil {
-		log.Printf("[SyncCreatePlan] Step 3: Failed to escape custom_attributes: %v", err)
+		log.Printf("[SyncCreateScheme] Step 3: Failed to escape custom_attributes: %v", err)
 		return "", fmt.Errorf("failed to escape custom_attributes to JSON: %w", err)
 	}
 
@@ -433,7 +433,7 @@ func createMRBindingStep(ctx context.Context, pipelineBusinessID string, plan *m
 
 	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
 		"{REPO_URL}":          repoURL,
-		"{BRANCHES}":          plan.Branch,
+		"{BRANCHES}":          scheme.Branch,
 		"{PIPELINE_ID}":       pipelineBusinessID,
 		"{SCHEME_ID}":         schemeID,
 		"{CREDENTIAL_ID}":     credentialID,
@@ -442,7 +442,7 @@ func createMRBindingStep(ctx context.Context, pipelineBusinessID string, plan *m
 
 	postData := json.RawMessage(bodyStr)
 
-	log.Printf("[SyncCreatePlan] Step 3: Creating MR Binding. URL: %s, Body: %s", apiURLStr, bodyStr)
+	log.Printf("[SyncCreateScheme] Step 3: Creating MR Binding. URL: %s, Body: %s", apiURLStr, bodyStr)
 
 	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
 		Headers: headers,
@@ -467,69 +467,69 @@ func createMRBindingStep(ctx context.Context, pipelineBusinessID string, plan *m
 
 	if mrBindingID == "" {
 		mrBindingID = fmt.Sprintf("mr_bind_%d", time.Now().UnixNano())
-		log.Printf("[SyncCreatePlan] Step 3: No ID found in response, fallback to mock MR binding ID: %s", mrBindingID)
+		log.Printf("[SyncCreateScheme] Step 3: No ID found in response, fallback to mock MR binding ID: %s", mrBindingID)
 	}
 
 	return mrBindingID, nil
 }
 
-// SyncCreateExecutionPlanRemote 在三方系统中同步创建执行方案（依次执行三个步骤）
-func SyncCreateExecutionPlanRemote(ctx context.Context, pipelineBusinessID string, plan *models.ExecutionPlan, headers map[string]string) (string, error) {
-	log.Printf("[SyncCreatePlan] Start remote sync execution plan. pipelineBusinessID: %s, RepositoryID: %d", pipelineBusinessID, plan.RepositoryID)
+// SyncCreateExecutionSchemeRemote 在三方系统中同步创建执行方案（依次执行三个步骤）
+func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, headers map[string]string) (string, error) {
+	log.Printf("[SyncCreateScheme] Start remote sync execution scheme. pipelineBusinessID: %s, RepositoryID: %d", pipelineBusinessID, scheme.RepositoryID)
 	var repo models.Repository
-	database.DB.First(&repo, plan.RepositoryID)
+	database.DB.First(&repo, scheme.RepositoryID)
 	repoURL := repo.URL
 	if repoURL == "" {
-		repoURL = plan.Repository.URL
+		repoURL = scheme.Repository.URL
 	}
 
 	// 1. 创建代码检查执行任务
-	taskID, err := createCheckerTaskStep(ctx, repoURL, plan.Branch, plan.Languages, headers)
+	taskID, err := createCheckerTaskStep(ctx, repoURL, scheme.Branch, scheme.Languages, headers)
 	if err != nil {
 		log.Printf("[Pipeline] Remote sync Step 1 failed: %v\n", err)
 		return "", err
 	}
-	plan.CodeCheckerTaskID = taskID
+	scheme.CodeCheckerTaskID = taskID
 
 	// 2. 创建执行方案（并关联代码检查任务）
-	extID, err := createExecutionPlanStep(ctx, pipelineBusinessID, plan, taskID, repoURL, headers)
+	extID, err := createExecutionSchemeStep(ctx, pipelineBusinessID, scheme, taskID, repoURL, headers)
 	if err != nil {
 		log.Printf("[Pipeline] Remote sync Step 2 failed: %v\n", err)
 		return "", err
 	}
-	plan.ExecutionPlanID = extID
+	scheme.ExecutionSchemeID = extID
 
 	// 3. 创建 MR 触发关联（关联该方案）
-	if plan.MRTrigger {
-		mrBindingID, err := createMRBindingStep(ctx, pipelineBusinessID, plan, extID, repoURL, headers)
+	if scheme.MRTrigger {
+		mrBindingID, err := createMRBindingStep(ctx, pipelineBusinessID, scheme, extID, repoURL, headers)
 		if err != nil {
 			log.Printf("[Pipeline] Remote sync Step 3 failed (non-fatal): %v\n", err)
 		}
-		plan.MRBindingID = mrBindingID
+		scheme.MRBindingID = mrBindingID
 	}
 
 	return extID, nil
 }
 
-// SyncUpdateExecutionPlanRemote 在三方系统中同步修改执行方案
-func SyncUpdateExecutionPlanRemote(pipelineBusinessID string, plan models.ExecutionPlan) error {
-	apiURLStr := models.AppConfig.PipelineSystem.GetExecutionPlanURL
+// SyncUpdateExecutionSchemeRemote 在三方系统中同步修改执行方案
+func SyncUpdateExecutionSchemeRemote(pipelineBusinessID string, scheme models.ExecutionScheme) error {
+	apiURLStr := models.AppConfig.PipelineSystem.GetExecutionSchemeURL
 	if apiURLStr == "" {
-		return fmt.Errorf("get_execution_plan_url not configured")
+		return fmt.Errorf("get_execution_scheme_url not configured")
 	}
 
 	var repo models.Repository
-	database.DB.First(&repo, plan.RepositoryID)
+	database.DB.First(&repo, scheme.RepositoryID)
 	repoURL := repo.URL
 	if repoURL == "" {
-		repoURL = plan.Repository.URL
+		repoURL = scheme.Repository.URL
 	}
 
-	targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), plan.ExecutionPlanID)
+	targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), scheme.ExecutionSchemeID)
 
 	var customAttrMap map[string]interface{}
-	if plan.CustomAttributes != "" {
-		_ = json.Unmarshal([]byte(plan.CustomAttributes), &customAttrMap)
+	if scheme.CustomAttributes != "" {
+		_ = json.Unmarshal([]byte(scheme.CustomAttributes), &customAttrMap)
 	}
 	if customAttrMap == nil {
 		customAttrMap = make(map[string]interface{})
@@ -562,28 +562,28 @@ func SyncUpdateExecutionPlanRemote(pipelineBusinessID string, plan models.Execut
 	payload := map[string]interface{}{
 		"pipeline_id":          pipelineBusinessID,
 		"repository":           repoURL,
-		"branch":               plan.Branch,
-		"username":             plan.Username,
-		"password":             plan.Password,
-		"code_checker_task_id": plan.CodeCheckerTaskID,
-		"languages":            strings.Split(plan.Languages, ","),
+		"branch":               scheme.Branch,
+		"username":             scheme.Username,
+		"password":             scheme.Password,
+		"code_checker_task_id": scheme.CodeCheckerTaskID,
+		"languages":            strings.Split(scheme.Languages, ","),
 		"custom_attributes":    string(mergedBytes),
 	}
 
-	_, err = utils.SendHTTPRequest(context.Background(), "PUT", targetURL, payload, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent}, "SyncUpdatePlan")
+	_, err = utils.SendHTTPRequest(context.Background(), "PUT", targetURL, payload, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent}, "SyncUpdateScheme")
 	return err
 }
 
-// SyncDeleteExecutionPlanRemote 在三方系统中删除执行方案
-func SyncDeleteExecutionPlanRemote(executionPlanID string) error {
-	apiURLStr := models.AppConfig.PipelineSystem.GetExecutionPlanURL
+// SyncDeleteExecutionSchemeRemote 在三方系统中删除执行方案
+func SyncDeleteExecutionSchemeRemote(executionSchemeID string) error {
+	apiURLStr := models.AppConfig.PipelineSystem.GetExecutionSchemeURL
 	if apiURLStr == "" {
-		return fmt.Errorf("get_execution_plan_url not configured")
+		return fmt.Errorf("get_execution_scheme_url not configured")
 	}
 
-	targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), executionPlanID)
+	targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), executionSchemeID)
 
-	_, err := utils.SendHTTPRequest(context.Background(), "DELETE", targetURL, nil, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeletePlan")
+	_, err := utils.SendHTTPRequest(context.Background(), "DELETE", targetURL, nil, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteScheme")
 	return err
 }
 

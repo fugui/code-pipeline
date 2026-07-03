@@ -56,21 +56,21 @@ func TriggerRepo(c *gin.Context) {
 		return
 	}
 
-	// 查找该分支所绑定的执行方案 (ExecutionPlan)
-	var plan models.ExecutionPlan
-	if err := database.DB.Where("repository_id = ? AND branch = ?", repoID, branch).First(&plan).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "No execution plan configured for this branch"})
+	// 查找该分支所绑定的执行方案 (ExecutionScheme)
+	var scheme models.ExecutionScheme
+	if err := database.DB.Where("repository_id = ? AND branch = ?", repoID, branch).First(&scheme).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "No execution scheme configured for this branch"})
 		return
 	}
 
 	// 模拟触发第三方系统
-	log.Printf("[ThirdPartyTrigger] Triggering pipeline plan %s (ID: %s) for repo %d branch %s...",
-		plan.CodeCheckerTaskID, plan.ExecutionPlanID, repoID, branch)
+	log.Printf("[ThirdPartyTrigger] Triggering pipeline scheme %s (ID: %s) for repo %d branch %s...",
+		scheme.CodeCheckerTaskID, scheme.ExecutionSchemeID, repoID, branch)
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":           "Third-party pipeline triggered successfully",
-		"execution_plan_id": plan.ExecutionPlanID,
-		"status":            "running",
+		"message":             "Third-party pipeline triggered successfully",
+		"execution_scheme_id": scheme.ExecutionSchemeID,
+		"status":              "running",
 	})
 }
 
@@ -88,24 +88,24 @@ func GetRepoLatestLog(c *gin.Context) {
 		return
 	}
 
-	var plan models.ExecutionPlan
-	if err := database.DB.Where("repository_id = ? AND branch = ?", repoID, branch).First(&plan).Error; err != nil {
+	var scheme models.ExecutionScheme
+	if err := database.DB.Where("repository_id = ? AND branch = ?", repoID, branch).First(&scheme).Error; err != nil {
 		c.JSON(http.StatusOK, gin.H{
-			"has_plan": false,
-			"message":  "No execution plan bound",
+			"has_scheme": false,
+			"message":    "No execution scheme bound",
 		})
 		return
 	}
 
 	// 实时代理拉取第三方系统的最后执行状态与日志 URL (此处提供高保真模拟)
 	c.JSON(http.StatusOK, gin.H{
-		"has_plan":          true,
-		"execution_plan_id": plan.ExecutionPlanID,
-		"status":            "success", // 模拟状态: success, failed, running
-		"duration_sec":      128,
-		"start_time":        time.Now().Add(-1 * time.Hour).Format(time.RFC3339),
-		"checker_task_id":   plan.CodeCheckerTaskID,
-		"external_log_url":  "http://192.168.56.18:9080/pipelines/logs/" + plan.ExecutionPlanID, // 跳转三方系统的链接
+		"has_scheme":          true,
+		"execution_scheme_id": scheme.ExecutionSchemeID,
+		"status":              "success", // 模拟状态: success, failed, running
+		"duration_sec":        128,
+		"start_time":          time.Now().Add(-1 * time.Hour).Format(time.RFC3339),
+		"checker_task_id":     scheme.CodeCheckerTaskID,
+		"external_log_url":    "http://192.168.56.18:9080/pipelines/logs/" + scheme.ExecutionSchemeID, // 跳转三方系统的链接
 	})
 }
 

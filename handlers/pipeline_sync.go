@@ -64,9 +64,8 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 		"is_mock":      false,
 	})
 }
-
-// SyncExecutionPlans 从三方系统同步指定流水线的执行方案，并保存至本地数据库
-func SyncExecutionPlans(c *gin.Context) {
+// SyncExecutionSchemes 从三方系统同步指定流水线的执行方案，并保存至本地数据库
+func SyncExecutionSchemes(c *gin.Context) {
 	pipelineIDStr := c.Query("pipeline_id")
 	if pipelineIDStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "pipeline_id is required"})
@@ -95,10 +94,10 @@ func SyncExecutionPlans(c *gin.Context) {
 		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to fetch MR bindings: %v", err)})
 		return
 	}
-	log.Printf("[SyncExecutionPlans] Fetched %d MR bindings from remote\n", len(mrBindings))
+	log.Printf("[SyncExecutionSchemes] Fetched %d MR bindings from remote\n", len(mrBindings))
 
 	// 2.2 调用 service 抓取执行方案列表
-	schemes, err := services.FetchRemoteExecutionPlans(c.Request.Context(), pipeline.PipelineID, headers)
+	schemes, err := services.FetchRemoteExecutionSchemes(c.Request.Context(), pipeline.PipelineID, headers)
 	if err != nil {
 		if HandleSSOExpired(c, err) {
 			return
@@ -108,9 +107,9 @@ func SyncExecutionPlans(c *gin.Context) {
 	}
 
 	// 3.1 事务更新本地数据库：先删后加
-	// 3.2 根据获取的 MR 数据和 执行计划数据， 更新本地数据
-	// 以 MR 数据为准， 根据 MR 数据中的 SchemeID 匹配 fetchedPlans 中的 ExecutionPlanID， 进行信息合并（把MR中的 CodeURL 和 Branches 覆盖 fetchedPlans 中的信息）
-	// 最终生成完整的 执行计划：
+	// 3.2 根据获取 of MR 数据和 执行方案数据， 更新本地数据
+	// 以 MR 数据为准， 根据 MR 数据中的 SchemeID 匹配 fetchedPlans 中的 ExecutionSchemeID， 进行信息合并（把MR中的 CodeURL 和 Branches 覆盖 fetchedPlans 中的信息）
+	// 最终生成完整的 执行方案：
 	var allRepos []models.Repository
 	repoMap := make(map[string]models.Repository)
 	if err := database.DB.Find(&allRepos).Error; err == nil {
@@ -121,10 +120,10 @@ func SyncExecutionPlans(c *gin.Context) {
 			}
 		}
 	} else {
-		log.Printf("[SyncExecutionPlans] Error pre-loading repositories from DB: %v\n", err)
+		log.Printf("[SyncExecutionSchemes] Error pre-loading repositories from DB: %v\n", err)
 	}
 
-	var finalPlans []models.ExecutionPlan
+	var finalSchemes []models.ExecutionScheme
 	for _, binding := range mrBindings {
 		var matchedScheme *models.RemoteExecutionScheme
 		for i := range schemes {
@@ -135,17 +134,17 @@ func SyncExecutionPlans(c *gin.Context) {
 		}
 
 		if matchedScheme == nil {
-			log.Printf("[SyncExecutionPlans] Warning: MR binding SchemeID %s not found in remote execution schemes\n", binding.SchemeID)
+			log.Printf("[SyncExecutionSchemes] Warning: MR binding SchemeID %s not found in remote execution schemes\n", binding.SchemeID)
 			continue
 		}
 
-		// 根据 Scheme 的原始数据组装 ExecutionPlan 实例
-		plan := models.ExecutionPlan{
-			ExecutionPlanID:  matchedScheme.ID,
-			PipelineID:       pipeline.ID,
-			Branch:           binding.Branches, // 用 MR 数据的分支信息覆盖
-			MRBindingID:      binding.ID,       // 记录绑定的 MR 绑定 ID
-			CustomAttributes: matchedScheme.CustomParameter,
+		// 根据 Scheme 的原始数据组装 ExecutionScheme 实例
+		scheme := models.ExecutionScheme{
+			ExecutionSchemeID: matchedScheme.ID,
+			PipelineID:         pipeline.ID,
+			Branch:             binding.Branches, // 用 MR 数据的分支信息覆盖
+			MRBindingID:        binding.ID,       // 记录绑定的 MR 绑定 ID
+			CustomAttributes:   matchedScheme.CustomParameter,
 		}
 
 		// 从 Scheme 中解析 Username, Password 和 CodeCheckerTaskID 等基础属性
@@ -160,48 +159,48 @@ func SyncExecutionPlans(c *gin.Context) {
 				for _, param := range cp.BuildParameters {
 					switch param.Name {
 					case "cmc_username":
-						plan.Username = param.Value
+						scheme.Username = param.Value
 					case "cmc_password":
-						plan.Password = param.Value
+						scheme.Password = param.Value
 					case "code_checker_task_id":
-						plan.CodeCheckerTaskID = param.Value
+						scheme.CodeCheckerTaskID = param.Value
 					}
 				}
 			} else {
-				log.Printf("[SyncExecutionPlans] Warning: failed to parse customParameter JSON for scheme %s: %v\n", matchedScheme.ID, err)
+				log.Printf("[SyncExecutionSchemes] Warning: failed to parse customParameter JSON for scheme %s: %v\n", matchedScheme.ID, err)
 			}
 		}
 
 		// 合并代码仓数据，并利用规格化逻辑在本地仓库中重新匹配（用 MR 数据的 CodeURL 覆盖）
 		normalizedCodeURL := utils.NormalizeGitURL(binding.CodeURL)
 		if r, found := repoMap[normalizedCodeURL]; found {
-			plan.RepositoryID = r.ID
-			plan.Repository = r
+			scheme.RepositoryID = r.ID
+			scheme.Repository = r
 		} else {
-			log.Printf("[SyncExecutionPlans] Warning: MR binding CodeURL %s (normalized: %s) not found in local mirrors\n", binding.CodeURL, normalizedCodeURL)
-			plan.RepositoryID = 0
+			log.Printf("[SyncExecutionSchemes] Warning: MR binding CodeURL %s (normalized: %s) not found in local mirrors\n", binding.CodeURL, normalizedCodeURL)
+			scheme.RepositoryID = 0
 		}
 
 		// 如果 RepositoryID 是 0（没有在本地同步此镜像），则跳过该执行方案以保证运行安全性
-		if plan.RepositoryID == 0 {
-			log.Printf("[SyncExecutionPlans] Warning: skipped execution plan %s because repository ID is 0\n", plan.ExecutionPlanID)
+		if scheme.RepositoryID == 0 {
+			log.Printf("[SyncExecutionSchemes] Warning: skipped execution scheme %s because repository ID is 0\n", scheme.ExecutionSchemeID)
 			continue
 		}
 
-		finalPlans = append(finalPlans, plan)
+		finalSchemes = append(finalSchemes, scheme)
 	}
 
 	tx := database.DB.Begin()
-	if err := tx.Where("pipeline_id = ?", pipeline.ID).Delete(&models.ExecutionPlan{}).Error; err != nil {
+	if err := tx.Where("pipeline_id = ?", pipeline.ID).Delete(&models.ExecutionScheme{}).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to clear old execution plans"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to clear old execution schemes"})
 		return
 	}
 
-	for i := range finalPlans {
-		if err := tx.Omit("Repository").Create(&finalPlans[i]).Error; err != nil {
+	for i := range finalSchemes {
+		if err := tx.Omit("Repository").Create(&finalSchemes[i]).Error; err != nil {
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save synced execution plans"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save synced execution schemes"})
 			return
 		}
 	}
@@ -211,7 +210,7 @@ func SyncExecutionPlans(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully synced %d execution plans", len(finalPlans))})
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully synced %d execution schemes", len(finalSchemes))})
 }
 
 // prepareRequestHeaders 透传 Cookie, cftk 和 x-requested-with Header

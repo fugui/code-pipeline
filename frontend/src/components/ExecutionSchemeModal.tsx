@@ -1,19 +1,19 @@
 import React from 'react'
 import { Trash2 } from 'lucide-react'
 
-interface ExecutionPlanModalProps {
+interface ExecutionSchemeModalProps {
   visible: boolean
-  activePlan: any | null
-  onChange: (plan: any) => void
+  activeScheme: any | null
+  onChange: (scheme: any) => void
   onSave: (e: React.FormEvent) => void
   onClose: () => void
   apiBase: string
   repos: any[]
 }
 
-export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
+export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   visible,
-  activePlan,
+  activeScheme,
   onChange,
   onSave,
   onClose,
@@ -34,17 +34,17 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
   const lastCustomAttrsRef = React.useRef('');
 
   React.useEffect(() => {
-    if (activePlan) {
-      const found = repos.find(r => r.id === activePlan.repository_id)
+    if (activeScheme) {
+      const found = repos.find(r => r.id === activeScheme.repository_id)
       setFilterQuery(found ? found.name : '')
     }
-  }, [activePlan, repos])
+  }, [activeScheme, repos])
 
   React.useEffect(() => {
-    if (activePlan && activePlan.repository_id) {
+    if (activeScheme && activeScheme.repository_id) {
       setLoadingBranches(true);
       const token = localStorage.getItem('code_shield_token') || localStorage.getItem('code_pipeline_token');
-      fetch(`${apiBase}/repos/${activePlan.repository_id}/branches`, {
+      fetch(`${apiBase}/repos/${activeScheme.repository_id}/branches`, {
         headers: {
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         }
@@ -72,24 +72,24 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
     } else {
       setBranches([]);
     }
-  }, [activePlan?.repository_id, apiBase])
+  }, [activeScheme?.repository_id, apiBase])
 
   React.useEffect(() => {
-    if (visible && activePlan) {
-      const hasMrTrigger = activePlan.hasOwnProperty('mr_trigger') && activePlan.mr_trigger !== null ? (String(activePlan.mr_trigger) === 'true') : true;
-      const hasDailyBuild = activePlan.hasOwnProperty('daily_build') && activePlan.daily_build !== null ? (String(activePlan.daily_build) === 'true') : true;
-      const hasDailyBuildTime = activePlan.daily_build_time || '00:30';
+    if (visible && activeScheme) {
+      const hasMrTrigger = activeScheme.hasOwnProperty('mr_trigger') && activeScheme.mr_trigger !== null ? (String(activeScheme.mr_trigger) === 'true') : true;
+      const hasDailyBuild = activeScheme.hasOwnProperty('daily_build') && activeScheme.daily_build !== null ? (String(activeScheme.daily_build) === 'true') : true;
+      const hasDailyBuildTime = activeScheme.daily_build_time || '00:30';
 
       setMrTrigger(hasMrTrigger);
       setDailyBuild(hasDailyBuild);
       setDailyBuildTime(hasDailyBuildTime);
 
-      if (activePlan.custom_attributes === lastCustomAttrsRef.current) {
+      if (activeScheme.custom_attributes === lastCustomAttrsRef.current) {
         return;
       }
-      lastCustomAttrsRef.current = activePlan.custom_attributes || '';
+      lastCustomAttrsRef.current = activeScheme.custom_attributes || '';
       try {
-        const parsed = JSON.parse(activePlan.custom_attributes || '{}');
+        const parsed = JSON.parse(activeScheme.custom_attributes || '{}');
         const list = Object.entries(parsed)
           .filter(([k]) => k !== 'mr_trigger' && k !== 'daily_build' && k !== 'daily_build_time')
           .map(([k, v]) => ({
@@ -101,20 +101,20 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
         setCustomAttrs([]);
       }
 
-      if (activePlan.mr_trigger === undefined || activePlan.daily_build === undefined || activePlan.daily_build_time === undefined) {
+      if (activeScheme.mr_trigger === undefined || activeScheme.daily_build === undefined || activeScheme.daily_build_time === undefined) {
         onChange({
-          ...activePlan,
+          ...activeScheme,
           mr_trigger: hasMrTrigger,
           daily_build: hasDailyBuild,
           daily_build_time: hasDailyBuildTime
         });
       }
     }
-  }, [visible, activePlan?.id, activePlan?.custom_attributes, activePlan?.mr_trigger, activePlan?.daily_build, activePlan?.daily_build_time]);
+  }, [visible, activeScheme?.id, activeScheme?.custom_attributes, activeScheme?.mr_trigger, activeScheme?.daily_build, activeScheme?.daily_build_time]);
 
   React.useEffect(() => {
-    if (activePlan) {
-      const activeBranches = activePlan.branchs ? activePlan.branchs.split(',').filter(Boolean) : [];
+    if (activeScheme) {
+      const activeBranches = activeScheme.branchs ? activeScheme.branchs.split(',').filter(Boolean) : [];
       const allOpts = Array.from(new Set([...branches, ...activeBranches])).filter(Boolean);
 
       const sortBranches = (a: string, b: string) => {
@@ -150,7 +150,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
     } else {
       setOrderedBranches([]);
     }
-  }, [branches, visible, activePlan?.id]);
+  }, [branches, visible, activeScheme?.id]);
 
   React.useEffect(() => {
     if (visible) {
@@ -163,7 +163,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
     }
   }, [visible]);
 
-  if (!visible || !activePlan) return null
+  if (!visible || !activeScheme) return null
 
   const handleCloseWithAnimation = () => {
     setAnimateVisible(false);
@@ -179,7 +179,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
     (r.owner_name && r.owner_name.toLowerCase().includes(filterQuery.toLowerCase()))
   )
 
-  const selectedRepo = repos.find(r => r.id === activePlan.repository_id)
+  const selectedRepo = repos.find(r => r.id === activeScheme.repository_id)
 
   const updateCustomAttrs = (newList: { key: string; value: string }[]) => {
     setCustomAttrs(newList);
@@ -193,7 +193,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
     const serialized = JSON.stringify(obj);
     lastCustomAttrsRef.current = serialized;
     onChange({
-      ...activePlan,
+      ...activeScheme,
       custom_attributes: serialized,
       mr_trigger: mrTrigger,
       daily_build: dailyBuild,
@@ -207,7 +207,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
     setDailyBuildTime(newTime);
     
     onChange({
-      ...activePlan,
+      ...activeScheme,
       mr_trigger: newMrTrigger,
       daily_build: newDailyBuild,
       daily_build_time: newTime
@@ -258,7 +258,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
           borderBottom: '1px solid var(--border-color, rgba(255,255,255,0.08))' 
         }}>
           <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
-            {activePlan.id ? '编辑仓库执行方案' : '新增仓库执行方案'}
+            {activeScheme.id ? '编辑仓库执行方案' : '新增仓库执行方案'}
           </h3>
           <button 
             type="button" 
@@ -281,7 +281,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div>
               <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>代码仓</label>
-              {activePlan.id ? (
+              {activeScheme.id ? (
                 <input 
                   type="text" 
                   value={selectedRepo ? `${selectedRepo.name} (${selectedRepo.url})` : '未绑定仓库'} 
@@ -338,7 +338,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                             className="search-item"
                             onClick={() => {
                               onChange({
-                                ...activePlan,
+                                ...activeScheme,
                                 repository_id: r.id,
                                 repository: r,
                                 branchs: ''
@@ -386,7 +386,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                   }}>
                     <div style={{ direction: 'ltr', display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
                       {(() => {
-                        const activeBranches = activePlan.branchs ? activePlan.branchs.split(',').filter(Boolean) : [];
+                        const activeBranches = activeScheme.branchs ? activeScheme.branchs.split(',').filter(Boolean) : [];
                         if (orderedBranches.length === 0) {
                           return <span style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 32, display: 'block', width: '100%' }}>暂无分支，请先选择代码仓</span>;
                         }
@@ -399,7 +399,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                                 checked={checked}
                                 style={{ width: 'auto', margin: 0 }}
                                 onChange={(e) => {
-                                  let current = activePlan.branchs ? activePlan.branchs.split(',').filter(Boolean) : [];
+                                  let current = activeScheme.branchs ? activeScheme.branchs.split(',').filter(Boolean) : [];
                                   if (e.target.checked) {
                                     if (!current.includes(branch)) {
                                       current.push(branch);
@@ -407,7 +407,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                                   } else {
                                     current = current.filter((x: string) => x !== branch);
                                   }
-                                  onChange({ ...activePlan, branchs: current.join(',') });
+                                  onChange({ ...activeScheme, branchs: current.join(',') });
                                 }}
                               />
                               {branch}
@@ -436,7 +436,7 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                   justifyContent: 'center'
                 }}>
                   {['C', 'C++', 'Python', 'Java'].map((lang) => {
-                    const activeLangs = activePlan.languages ? activePlan.languages.split(',') : [];
+                    const activeLangs = activeScheme.languages ? activeScheme.languages.split(',') : [];
                     const checked = activeLangs.includes(lang);
                     return (
                       <label key={lang} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text-main)', userSelect: 'none' }}>
@@ -445,13 +445,13 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                           checked={checked}
                           style={{ width: 'auto', margin: 0 }}
                           onChange={(e) => {
-                            let current = activePlan.languages ? activePlan.languages.split(',') : [];
+                            let current = activeScheme.languages ? activeScheme.languages.split(',') : [];
                             if (e.target.checked) {
                               if (!current.includes(lang)) current.push(lang);
                             } else {
                               current = current.filter((x: string) => x !== lang);
                             }
-                            onChange({ ...activePlan, languages: current.filter(Boolean).join(',') });
+                            onChange({ ...activeScheme, languages: current.filter(Boolean).join(',') });
                           }}
                         />
                         {lang}

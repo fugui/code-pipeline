@@ -8,7 +8,7 @@
 
 ## 🎯 核心设计目标
 
-1. **内聚的流水线配置管理**：面向多分支研发场景，将流水线执行方案（Execution Plan）与代码仓多分支进行精细化绑定，消除各独立子系统重复录入仓库数据的冗余。
+1. **内聚的流水线配置管理**：面向多分支研发场景，将流水线执行方案（Execution Scheme）与代码仓多分支进行精细化绑定，消除各独立子系统重复录入仓库数据的冗余。
 2. **轻量与高响应度**：本地不存储海量的执行日志，通过高性能 API 代理机制实时穿透查询第三方 CI/CD 系统的实际运行日志和输出流，极大地减轻本地数据库的存储负担。
 3. **数据一致性保护**：采用只读镜像同步机制。代码仓的主配置完全托管在 Portal 主应用中，子系统采用单向 Pull（拉取）缓存模式，确保全局主数据权威源唯一。
 
@@ -20,8 +20,8 @@
 graph TD
     CB[CodeBench Portal 主应用] -- "GET /api/repos (SSO 授信)" --> CP[code-pipeline 子系统]
     CP -- "后台定时同步 (5 min)" --> CP_DB[(本地 SQLite 镜像)]
-    EP[Execution Plan] -->|物理外键| CP_DB
-    EP -->|物理外键| PL[(Pipeline 实体)]
+    ES[Execution Scheme] -->|物理外键| CP_DB
+    ES -->|物理外键| PL[(Pipeline 实体)]
     CP_Web[前端 Repos.tsx/Dashboard.tsx] -- "最新日志请求" --> CP_API[后端代理 Handler]
     CP_API -- "实时透传 API" --> Remote_CI[第三方 CI/CD 引擎]
 ```
@@ -64,13 +64,13 @@ graph TD
 | **Owner** | String | 负责人 |
 | **ServiceName** | String | 服务名称 |
 
-### 3. 执行方案 (ExecutionPlan)
+### 3. 执行方案 (ExecutionScheme)
 定义代码仓特定分支与流水线之间的具体绑定策略。
 
 | 字段名称 | 类型 | 描述 |
 | :--- | :--- | :--- |
 | **ID** | Integer | 数据库物理自增主键 |
-| **ExecutionPlanID** | String | 对应的三方系统执行方案 ID 标识 |
+| **ExecutionSchemeID** | String | 对应的三方系统执行方案 ID 标识 |
 | **PipelineID** | Integer | 关联的 Pipeline ID (物理外键) |
 | **RepositoryID** | Integer | 关联的只读镜像 Repository ID (物理外键) |
 | **Branch** | String | 绑定的代码构建/检查分支 |

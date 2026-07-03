@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Search, GitBranch, Play, Edit, Trash2, ExternalLink, Plus } from 'lucide-react'
-import { Repository, ExecutionPlan } from '../types'
+import { Repository, ExecutionScheme } from '../types'
 
 interface ReposProps {
   repos: Repository[]
@@ -8,15 +8,15 @@ interface ReposProps {
   searchQuery: string
   setSearchQuery: (query: string) => void
   onTrigger: (id: number, branch: string) => void
-  onAddPlan: (repoId: number) => void
-  onEditPlan: (plan: any) => void
-  onDeletePlan: (id: number) => void
+  onAddScheme: (repoId: number) => void
+  onEditScheme: (scheme: any) => void
+  onDeleteScheme: (id: number) => void
   token: string | null
   apiBase: string
 }
 
 interface BranchStatus {
-  has_plan: boolean
+  has_scheme: boolean
   status?: string
   duration_sec?: number
   start_time?: string
@@ -29,15 +29,15 @@ export const Repos: React.FC<ReposProps> = ({
   searchQuery,
   setSearchQuery,
   onTrigger,
-  onAddPlan,
-  onEditPlan,
-  onDeletePlan,
+  onAddScheme,
+  onEditScheme,
+  onDeleteScheme,
   token,
   apiBase
 }) => {
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null)
-  const [plans, setPlans] = useState<ExecutionPlan[]>([])
-  const [plansLoading, setPlansLoading] = useState(false)
+  const [schemes, setSchemes] = useState<ExecutionScheme[]>([])
+  const [schemesLoading, setSchemesLoading] = useState(false)
   const [branchStatuses, setBranchStatuses] = useState<Record<string, BranchStatus>>({})
 
   // 当 repos 列表加载完成且未选中 repo 时，默认选中第一个
@@ -50,37 +50,37 @@ export const Repos: React.FC<ReposProps> = ({
   // 当选中的 repo 改变时，拉取该 repo 的执行方案列表
   useEffect(() => {
     if (!selectedRepo || !token) return
-    setPlansLoading(true)
-    fetch(`${apiBase}/execution-plans?repository_id=${selectedRepo.id}`, {
+    setSchemesLoading(true)
+    fetch(`${apiBase}/execution-schemes?repository_id=${selectedRepo.id}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())
     .then(data => {
-      setPlans(data || [])
+      setSchemes(data || [])
       setBranchStatuses({}) // 清空旧状态
     })
-    .catch(err => console.error('Failed to fetch repo plans', err))
-    .finally(() => setPlansLoading(false))
+    .catch(err => console.error('Failed to fetch repo schemes', err))
+    .finally(() => setSchemesLoading(false))
   }, [selectedRepo, token])
 
   // 针对每一个绑定的方案，拉取最新运行状态
   useEffect(() => {
-    if (plans.length === 0 || !selectedRepo || !token) return
+    if (schemes.length === 0 || !selectedRepo || !token) return
 
-    plans.forEach(plan => {
-      fetch(`${apiBase}/repos/${selectedRepo.id}/latest-log?branch=${encodeURIComponent(plan.branchs)}`, {
+    schemes.forEach(scheme => {
+      fetch(`${apiBase}/repos/${selectedRepo.id}/latest-log?branch=${encodeURIComponent(scheme.branchs)}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       .then(res => res.json())
       .then(data => {
         setBranchStatuses(prev => ({
           ...prev,
-          [plan.branchs]: data
+          [scheme.branchs]: data
         }))
       })
-      .catch(err => console.error(`Failed to fetch status for branch ${plan.branchs}`, err))
+      .catch(err => console.error(`Failed to fetch status for branch ${scheme.branchs}`, err))
     })
-  }, [plans, selectedRepo, token])
+  }, [schemes, selectedRepo, token])
 
   const formatTime = (isoString?: string) => {
     if (!isoString) return '-'
@@ -157,7 +157,7 @@ export const Repos: React.FC<ReposProps> = ({
               </div>
               <button 
                 className="btn btn-primary btn-small"
-                onClick={() => onAddPlan(selectedRepo.id)}
+                onClick={() => onAddScheme(selectedRepo.id)}
               >
                 <Plus size={14} /> 绑定新分支流水线
               </button>
@@ -167,9 +167,9 @@ export const Repos: React.FC<ReposProps> = ({
             <div style={{ flex: 1 }}>
               <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>分支流水线状态看板</h3>
 
-              {plansLoading ? (
+              {schemesLoading ? (
                 <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>正在加载分支方案...</div>
-              ) : plans.length > 0 ? (
+              ) : schemes.length > 0 ? (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
@@ -183,18 +183,18 @@ export const Repos: React.FC<ReposProps> = ({
                       </tr>
                     </thead>
                     <tbody>
-                      {plans.map((plan) => {
-                        const statusInfo = branchStatuses[plan.branchs] || { has_plan: true, status: 'loading...' }
+                      {schemes.map((scheme) => {
+                        const statusInfo = branchStatuses[scheme.branchs] || { has_scheme: true, status: 'loading...' }
                         return (
-                          <tr key={plan.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                          <tr key={scheme.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                             <td style={{ padding: '12px 8px', fontSize: 14, fontWeight: 500 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <GitBranch size={14} style={{ color: 'var(--primary-color)' }} />
-                                <span>{plan.branchs}</span>
+                                <span>{scheme.branchs}</span>
                               </div>
                             </td>
                             <td style={{ padding: '12px 8px', fontSize: 13, color: 'var(--text-secondary)' }}>
-                              {plan.languages || '-'}
+                              {scheme.languages || '-'}
                             </td>
                             <td style={{ padding: '12px 8px' }}>
                               {statusInfo.status === 'loading...' ? (
@@ -217,7 +217,7 @@ export const Repos: React.FC<ReposProps> = ({
                                   className="btn btn-primary btn-small"
                                   style={{ padding: '4px 8px' }}
                                   title="一键触发构建"
-                                  onClick={() => onTrigger(selectedRepo.id, plan.branchs)}
+                                  onClick={() => onTrigger(selectedRepo.id, scheme.branchs)}
                                   disabled={statusInfo.status === 'running'}
                                 >
                                   <Play size={10} />
@@ -226,7 +226,7 @@ export const Repos: React.FC<ReposProps> = ({
                                   className="btn btn-secondary btn-small"
                                   style={{ padding: '4px 8px' }}
                                   title="修改绑定配置"
-                                  onClick={() => onEditPlan(plan)}
+                                  onClick={() => onEditScheme(scheme)}
                                 >
                                   <Edit size={10} />
                                 </button>
@@ -246,7 +246,7 @@ export const Repos: React.FC<ReposProps> = ({
                                   className="btn btn-secondary btn-small"
                                   style={{ padding: '4px 8px', color: '#fb7185' }}
                                   title="物理删除绑定"
-                                  onClick={() => plan.id && onDeletePlan(plan.id)}
+                                  onClick={() => scheme.id && onDeleteScheme(scheme.id)}
                                 >
                                   <Trash2 size={10} />
                                 </button>

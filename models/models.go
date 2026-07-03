@@ -44,9 +44,9 @@ type Pipeline struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-type ExecutionPlan struct {
+type ExecutionScheme struct {
 	ID                uint       `gorm:"primaryKey" json:"id"`
-	ExecutionPlanID   string     `json:"execution_plan_id"`                 // 执行方案ID (从真正流水线系统同步回来)
+	ExecutionSchemeID string     `json:"execution_scheme_id"`               // 执行方案ID (从真正流水线系统同步回来)
 	PipelineID        uint       `gorm:"index;not null" json:"pipeline_id"` // 关联的 Pipeline ID
 	RepositoryID      uint       `gorm:"index" json:"repository_id"`        // 关联本地只读 Repository 镜像表 ID
 	Repository        Repository `gorm:"foreignKey:RepositoryID" json:"repository"`

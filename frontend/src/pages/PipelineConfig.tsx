@@ -1,11 +1,11 @@
 import React from 'react'
 import { Plus, Search, Edit, Trash2, Activity, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
-import { Pipeline, ExecutionPlan } from '../types'
+import { Pipeline, ExecutionScheme } from '../types'
 
 interface PipelineConfigProps {
   pipelines: Pipeline[]
   selectedPipeline: Pipeline | null
-  plans: ExecutionPlan[]
+  schemes: ExecutionScheme[]
   loading: boolean
   searchQuery: string
   setSearchQuery: (query: string) => void
@@ -13,16 +13,16 @@ interface PipelineConfigProps {
   onAddPipeline: () => void
   onEditPipeline: (pipeline: Pipeline) => void
   onDeletePipeline: (id: number) => void
-  onAddPlan: () => void
-  onEditPlan: (plan: ExecutionPlan) => void
-  onDeletePlan: (id: number) => void
+  onAddScheme: () => void
+  onEditScheme: (scheme: ExecutionScheme) => void
+  onDeleteScheme: (id: number) => void
   onSyncPipeline?: (pipeline: Pipeline) => void
 }
 
 export const PipelineConfig: React.FC<PipelineConfigProps> = ({
   pipelines,
   selectedPipeline,
-  plans,
+  schemes,
   loading,
   searchQuery,
   setSearchQuery,
@@ -30,40 +30,40 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
   onAddPipeline,
   onEditPipeline,
   onDeletePipeline,
-  onAddPlan,
-  onEditPlan,
-  onDeletePlan,
+  onAddScheme,
+  onEditScheme,
+  onDeleteScheme,
   onSyncPipeline
 }) => {
-  const [planSearchQuery, setPlanSearchQuery] = React.useState('')
-  const [currentPlanPage, setCurrentPlanPage] = React.useState(1)
-  const planPageSize = 20
+  const [schemeSearchQuery, setSchemeSearchQuery] = React.useState('')
+  const [currentSchemePage, setCurrentSchemePage] = React.useState(1)
+  const schemePageSize = 20
 
   // Reset page & search on pipeline change
   React.useEffect(() => {
-    setPlanSearchQuery('')
-    setCurrentPlanPage(1)
+    setSchemeSearchQuery('')
+    setCurrentSchemePage(1)
   }, [selectedPipeline])
 
-  // Filter plans
-  const filteredPlans = React.useMemo(() => {
-    if (!planSearchQuery.trim()) return plans
-    const q = planSearchQuery.toLowerCase()
-    return plans.filter(plan => {
-      const matchRepo = plan.repository?.name?.toLowerCase().includes(q) || plan.repository?.url?.toLowerCase().includes(q)
-      const matchBranch = plan.branchs?.toLowerCase().includes(q)
-      const matchLang = plan.languages?.toLowerCase().includes(q)
+  // Filter schemes
+  const filteredSchemes = React.useMemo(() => {
+    if (!schemeSearchQuery.trim()) return schemes
+    const q = schemeSearchQuery.toLowerCase()
+    return schemes.filter(scheme => {
+      const matchRepo = scheme.repository?.name?.toLowerCase().includes(q) || scheme.repository?.url?.toLowerCase().includes(q)
+      const matchBranch = scheme.branchs?.toLowerCase().includes(q)
+      const matchLang = scheme.languages?.toLowerCase().includes(q)
       return matchRepo || matchBranch || matchLang
     })
-  }, [plans, planSearchQuery])
+  }, [schemes, schemeSearchQuery])
 
-  // Paginated plans
-  const paginatedPlans = React.useMemo(() => {
-    const startIndex = (currentPlanPage - 1) * planPageSize
-    return filteredPlans.slice(startIndex, startIndex + planPageSize)
-  }, [filteredPlans, currentPlanPage])
+  // Paginated schemes
+  const paginatedSchemes = React.useMemo(() => {
+    const startIndex = (currentSchemePage - 1) * schemePageSize
+    return filteredSchemes.slice(startIndex, startIndex + schemePageSize)
+  }, [filteredSchemes, currentSchemePage])
 
-  const totalPages = Math.ceil(filteredPlans.length / planPageSize)
+  const totalPages = Math.ceil(filteredSchemes.length / schemePageSize)
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 20, height: '100%' }}>
@@ -159,7 +159,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
           </div>
         </div>
 
-        {/* Right Column: Execution Plans Detail Board */}
+        {/* Right Column: Execution Schemes Detail Board */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           {selectedPipeline ? (
             <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%', minHeight: 450 }}>
@@ -173,7 +173,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                       <RefreshCw size={13} style={{ marginRight: 4 }} /> 同步
                     </button>
                   )}
-                  <button className="btn btn-primary btn-small" onClick={onAddPlan}>
+                  <button className="btn btn-primary btn-small" onClick={onAddScheme}>
                     <Plus size={13} style={{ marginRight: 4 }} /> 新增
                   </button>
                 </div>
@@ -186,10 +186,10 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                   type="text" 
                   placeholder="在执行方案中检索仓库、分支或语言..." 
                   style={{ paddingLeft: 34, height: 34, fontSize: 13, borderRadius: 6, width: '100%' }}
-                  value={planSearchQuery}
+                  value={schemeSearchQuery}
                   onChange={(e) => {
-                    setPlanSearchQuery(e.target.value);
-                    setCurrentPlanPage(1);
+                    setSchemeSearchQuery(e.target.value);
+                    setCurrentSchemePage(1);
                   }}
                 />
               </div>
@@ -205,18 +205,18 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedPlans.length > 0 ? (
-                      paginatedPlans.map((plan) => (
-                        <tr key={plan.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)' }}>
-                          <td style={{ padding: '12px 8px', fontWeight: 500, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={plan.repository?.url}>
-                            {plan.repository?.name || `ID: ${plan.repository_id}`}
+                    {paginatedSchemes.length > 0 ? (
+                      paginatedSchemes.map((scheme) => (
+                        <tr key={scheme.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)' }}>
+                          <td style={{ padding: '12px 8px', fontWeight: 500, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={scheme.repository?.url}>
+                            {scheme.repository?.name || `ID: ${scheme.repository_id}`}
                           </td>
-                          <td style={{ padding: '12px 8px' }} title={plan.branchs}>
-                            {plan.branchs && plan.branchs.length > 20 ? plan.branchs.substring(0, 20) + '...' : plan.branchs}
+                          <td style={{ padding: '12px 8px' }} title={scheme.branchs}>
+                            {scheme.branchs && scheme.branchs.length > 20 ? scheme.branchs.substring(0, 20) + '...' : scheme.branchs}
                           </td>
                           <td style={{ padding: '12px 8px' }}>
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                              {plan.languages ? plan.languages.split(',').map((l: string) => (
+                              {scheme.languages ? scheme.languages.split(',').map((l: string) => (
                                 <span key={l} style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', fontSize: 10, padding: '1px 5px', borderRadius: 4 }}>
                                   {l}
                                 </span>
@@ -229,7 +229,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                                 style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', padding: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', transition: 'color 0.2s' }} 
                                 onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-main)'}
                                 onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
-                                onClick={() => onEditPlan(plan)}
+                                onClick={() => onEditScheme(scheme)}
                                 title="编辑"
                               >
                                 <Edit size={14} />
@@ -238,7 +238,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                                 style={{ background: 'none', border: 'none', color: '#fda4af', padding: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', transition: 'color 0.2s' }} 
                                 onMouseEnter={(e) => e.currentTarget.style.color = '#fb7185'}
                                 onMouseLeave={(e) => e.currentTarget.style.color = '#fda4af'}
-                                onClick={() => plan.id && onDeletePlan(plan.id)}
+                                onClick={() => scheme.id && onDeleteScheme(scheme.id)}
                                 title="删除"
                               >
                                 <Trash2 size={14} />
@@ -250,7 +250,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                     ) : (
                       <tr>
                         <td colSpan={5} style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)' }}>
-                          {plans.length > 0 ? '未匹配到符合检索条件的执行方案' : '暂无仓库绑定的执行方案，请点击右上角新增代码仓配置'}
+                          {schemes.length > 0 ? '未匹配到符合检索条件的执行方案' : '暂无仓库绑定的执行方案，请点击右上角新增代码仓配置'}
                         </td>
                       </tr>
                     )}
@@ -262,22 +262,22 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
               {totalPages > 1 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: 12, paddingBottom: 4, paddingLeft: 8, paddingRight: 8 }}>
                   <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                    共 {filteredPlans.length} 条记录，当前第 {currentPlanPage} / {totalPages} 页
+                    共 {filteredSchemes.length} 条记录，当前第 {currentSchemePage} / {totalPages} 页
                   </span>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button 
                       className="btn btn-secondary btn-small"
-                      disabled={currentPlanPage === 1}
-                      onClick={() => setCurrentPlanPage(prev => Math.max(1, prev - 1))}
-                      style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4, cursor: currentPlanPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPlanPage === 1 ? 0.5 : 1 }}
+                      disabled={currentSchemePage === 1}
+                      onClick={() => setCurrentSchemePage(prev => Math.max(1, prev - 1))}
+                      style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4, cursor: currentSchemePage === 1 ? 'not-allowed' : 'pointer', opacity: currentSchemePage === 1 ? 0.5 : 1 }}
                     >
                       <ChevronLeft size={14} /> 上一页
                     </button>
                     <button 
                       className="btn btn-secondary btn-small"
-                      disabled={currentPlanPage === totalPages}
-                      onClick={() => setCurrentPlanPage(prev => Math.min(totalPages, prev + 1))}
-                      style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4, cursor: currentPlanPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPlanPage === totalPages ? 0.5 : 1 }}
+                      disabled={currentSchemePage === totalPages}
+                      onClick={() => setCurrentSchemePage(prev => Math.min(totalPages, prev + 1))}
+                      style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4, cursor: currentSchemePage === totalPages ? 'not-allowed' : 'pointer', opacity: currentSchemePage === totalPages ? 0.5 : 1 }}
                     >
                       下一页 <ChevronRight size={14} />
                     </button>
