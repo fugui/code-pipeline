@@ -464,14 +464,11 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, sch
 	}
 
 	var pipeline models.Pipeline
-	if database.DB != nil {
-		if err := database.DB.First(&pipeline, scheme.PipelineID).Error; err != nil {
-			return "", fmt.Errorf("failed to fetch pipeline with ID %d: %w", scheme.PipelineID, err)
-		}
-	} else {
-		pipeline.Name = "mock-pipeline"
-		pipeline.ServiceID = "mock-service-id"
-		pipeline.WorkspaceID = "mock-workspace-id"
+	if database.DB == nil {
+		return "", fmt.Errorf("database connection is nil")
+	}
+	if err := database.DB.First(&pipeline, scheme.PipelineID).Error; err != nil {
+		return "", fmt.Errorf("failed to fetch pipeline with ID %d: %w", scheme.PipelineID, err)
 	}
 
 	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
