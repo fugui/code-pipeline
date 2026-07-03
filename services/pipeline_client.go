@@ -394,6 +394,12 @@ func createMRBindingStep(ctx context.Context, pipelineBusinessID string, plan *m
 		return "", fmt.Errorf("create_mr_binding_body not configured")
 	}
 
+	credentialID, err := CheckRepoAuthorized(ctx, repoURL, headers)
+	if err != nil {
+		log.Printf("[SyncCreatePlan] Step 3: Failed to check repo authorized: %v", err)
+		return "", fmt.Errorf("failed to check repo authorized: %w", err)
+	}
+
 	customAttributesJSON, err := json.Marshal(plan.CustomAttributes)
 	if err != nil {
 		log.Printf("[SyncCreatePlan] Step 3: Failed to escape custom_attributes: %v", err)
@@ -406,11 +412,11 @@ func createMRBindingStep(ctx context.Context, pipelineBusinessID string, plan *m
 	}
 
 	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
+		"{REPO_URL}":          repoURL,
+		"{BRANCHES}":          plan.Branch,
 		"{PIPELINE_ID}":       pipelineBusinessID,
 		"{SCHEME_ID}":         schemeID,
-		"{CODE_URL}":          repoURL,
-		"{BRANCHES}":          plan.Branch,
-		"{MR_BINDING_ID}":     plan.MRBindingID,
+		"{CREDENTIAL_ID}":     credentialID,
 		"{CUSTOM_ATTRIBUTES}": escapedCustomAttributes,
 	})
 
@@ -430,10 +436,30 @@ func createMRBindingStep(ctx context.Context, pipelineBusinessID string, plan *m
 
 	var mrBindingID string
 	if responseData != nil {
-		if id, ok := responseData["id"].(string); ok && id != "" {
-			mrBindingID = id
-		} else if id, ok := responseData["mr_binding_id"].(string); ok && id != "" {
-			mrBindingID = id
+		var targetMap map[string]interface{}
+		if resultList, ok := responseData["result"].([]interface{}); ok && len(resultList) > 0 {
+			if firstItem, ok := resultList[0].(map[string]interface{}); ok {
+				targetMap = firstItem
+			}
+		}
+		if targetMap == nil {
+			targetMap = responseData
+		}
+
+		for _, key := range []string{"id", "mr_binding_id"} {
+			if val, ok := targetMap[key]; ok && val != nil {
+				switch v := val.(type) {
+				case string:
+					if v != "" {
+						mrBindingID = v
+					}
+				case float64:
+					mrBindingID = fmt.Sprintf("%.0f", v)
+				}
+				if mrBindingID != "" {
+					break
+				}
+			}
 		}
 	}
 

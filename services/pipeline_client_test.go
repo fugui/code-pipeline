@@ -35,8 +35,6 @@ func TestExtractRepoName(t *testing.T) {
 	}
 }
 
-
-
 func TestCheckRepoAuthorized(t *testing.T) {
 	testCases := []struct {
 		name           string
@@ -107,8 +105,6 @@ func TestCheckRepoAuthorized(t *testing.T) {
 		})
 	}
 }
-
-
 
 func TestCreateCheckerTaskStep(t *testing.T) {
 	// 备份原配置，以便测试结束后恢复
