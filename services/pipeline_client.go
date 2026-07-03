@@ -500,11 +500,13 @@ func SyncCreateExecutionPlanRemote(ctx context.Context, pipelineBusinessID strin
 	plan.ExecutionPlanID = extID
 
 	// 3. 创建 MR 触发关联（关联该方案）
-	mrBindingID, err := createMRBindingStep(ctx, pipelineBusinessID, plan, extID, repoURL, headers)
-	if err != nil {
-		log.Printf("[Pipeline] Remote sync Step 3 failed (non-fatal): %v\n", err)
+	if plan.MRTrigger {
+		mrBindingID, err := createMRBindingStep(ctx, pipelineBusinessID, plan, extID, repoURL, headers)
+		if err != nil {
+			log.Printf("[Pipeline] Remote sync Step 3 failed (non-fatal): %v\n", err)
+		}
+		plan.MRBindingID = mrBindingID
 	}
-	plan.MRBindingID = mrBindingID
 
 	return extID, nil
 }
