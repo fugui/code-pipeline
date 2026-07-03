@@ -28,6 +28,11 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
   const [animateVisible, setAnimateVisible] = React.useState(false);
   const [orderedBranches, setOrderedBranches] = React.useState<string[]>([]);
 
+  const [mrTrigger, setMrTrigger] = React.useState(true);
+  const [dailyBuild, setDailyBuild] = React.useState(true);
+  const [dailyBuildTime, setDailyBuildTime] = React.useState('00:30');
+  const lastCustomAttrsRef = React.useRef('');
+
   React.useEffect(() => {
     if (activePlan) {
       const found = repos.find(r => r.id === activePlan.repository_id)
@@ -71,18 +76,59 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
 
   React.useEffect(() => {
     if (visible && activePlan) {
+      if (activePlan.custom_attributes === lastCustomAttrsRef.current) {
+        return;
+      }
+      lastCustomAttrsRef.current = activePlan.custom_attributes || '';
       try {
         const parsed = JSON.parse(activePlan.custom_attributes || '{}');
-        const list = Object.entries(parsed).map(([k, v]) => ({
-          key: k,
-          value: String(v)
-        }));
+        const hasMrTrigger = parsed.hasOwnProperty('mr_trigger') ? (String(parsed.mr_trigger) === 'true') : true;
+        const hasDailyBuild = parsed.hasOwnProperty('daily_build') ? (String(parsed.daily_build) === 'true') : true;
+        const hasDailyBuildTime = parsed.daily_build_time || '00:30';
+
+        setMrTrigger(hasMrTrigger);
+        setDailyBuild(hasDailyBuild);
+        setDailyBuildTime(hasDailyBuildTime);
+
+        const list = Object.entries(parsed)
+          .filter(([k]) => k !== 'mr_trigger' && k !== 'daily_build' && k !== 'daily_build_time')
+          .map(([k, v]) => ({
+            key: k,
+            value: String(v)
+          }));
         setCustomAttrs(list);
+
+        if (!parsed.hasOwnProperty('mr_trigger') || !parsed.hasOwnProperty('daily_build') || !parsed.hasOwnProperty('daily_build_time')) {
+          parsed.mr_trigger = hasMrTrigger;
+          parsed.daily_build = hasDailyBuild;
+          parsed.daily_build_time = hasDailyBuildTime;
+          const serialized = JSON.stringify(parsed);
+          lastCustomAttrsRef.current = serialized;
+          onChange({
+            ...activePlan,
+            custom_attributes: serialized
+          });
+        }
       } catch (e) {
+        setMrTrigger(true);
+        setDailyBuild(true);
+        setDailyBuildTime('00:30');
         setCustomAttrs([]);
+
+        const defaultObj = {
+          mr_trigger: true,
+          daily_build: true,
+          daily_build_time: '00:30'
+        };
+        const serialized = JSON.stringify(defaultObj);
+        lastCustomAttrsRef.current = serialized;
+        onChange({
+          ...activePlan,
+          custom_attributes: serialized
+        });
       }
     }
-  }, [visible, activePlan?.id]);
+  }, [visible, activePlan?.id, activePlan?.custom_attributes]);
 
   React.useEffect(() => {
     if (activePlan) {
@@ -153,18 +199,31 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
 
   const selectedRepo = repos.find(r => r.id === activePlan.repository_id)
 
-  const updateCustomAttrs = (newList: { key: string; value: string }[]) => {
+  const updateCustomAttrs = (newList: { key: string; value: string }[], currentMrTrigger = mrTrigger, currentDailyBuild = dailyBuild, currentTime = dailyBuildTime) => {
     setCustomAttrs(newList);
-    const obj: Record<string, string> = {};
+    const obj: Record<string, any> = {};
     newList.forEach(item => {
       if (item.key.trim()) {
         obj[item.key.trim()] = item.value;
       }
     });
+    obj['mr_trigger'] = currentMrTrigger;
+    obj['daily_build'] = currentDailyBuild;
+    obj['daily_build_time'] = currentTime;
+
+    const serialized = JSON.stringify(obj);
+    lastCustomAttrsRef.current = serialized;
     onChange({
       ...activePlan,
-      custom_attributes: JSON.stringify(obj)
+      custom_attributes: serialized
     });
+  };
+
+  const handleTriggerOrTimeChange = (newMrTrigger: boolean, newDailyBuild: boolean, newTime: string) => {
+    setMrTrigger(newMrTrigger);
+    setDailyBuild(newDailyBuild);
+    setDailyBuildTime(newTime);
+    updateCustomAttrs(customAttrs, newMrTrigger, newDailyBuild, newTime);
   };
 
   return (
@@ -411,6 +470,58 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                       </label>
                     );
                   })}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>触发配置</label>
+              <div style={{ 
+                border: '1px solid var(--border-color)', 
+                borderRadius: 6, 
+                padding: '14px 16px', 
+                background: 'rgba(255,255,255,0.01)', 
+                display: 'flex',
+                alignItems: 'center',
+                gap: 32
+              }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text-main)', userSelect: 'none', margin: 0 }}>
+                  <input 
+                    type="checkbox" 
+                    checked={mrTrigger}
+                    style={{ width: 'auto', margin: 0 }}
+                    onChange={(e) => handleTriggerOrTimeChange(e.target.checked, dailyBuild, dailyBuildTime)}
+                  />
+                  MR触发
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-main)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none', margin: 0 }}>
+                    <input 
+                      type="checkbox" 
+                      checked={dailyBuild}
+                      style={{ width: 'auto', margin: 0 }}
+                      onChange={(e) => handleTriggerOrTimeChange(mrTrigger, e.target.checked, dailyBuildTime)}
+                    />
+                    每日构建
+                  </label>
+                  {dailyBuild && (
+                    <input 
+                      type="time" 
+                      value={dailyBuildTime}
+                      style={{ 
+                        width: 100, 
+                        padding: '4px 8px', 
+                        fontSize: 13, 
+                        height: 32, 
+                        background: 'var(--bg-secondary, #111827)', 
+                        border: '1px solid var(--border-color, rgba(255,255,255,0.08))',
+                        borderRadius: 4,
+                        color: 'var(--text-main)',
+                        marginLeft: 4
+                      }}
+                      onChange={(e) => handleTriggerOrTimeChange(mrTrigger, dailyBuild, e.target.value)}
+                    />
+                  )}
                 </div>
               </div>
             </div>
