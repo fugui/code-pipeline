@@ -70,4 +70,7 @@ export interface ExecutionPlan {
   code_checker_task_id?: string
   languages?: string
   custom_attributes?: string
+  mr_trigger?: boolean
+  daily_build?: boolean
+  daily_build_time?: string
 }

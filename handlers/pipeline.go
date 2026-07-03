@@ -33,6 +33,9 @@ type ExecutionPlanRequest struct {
 	RepositoryID     *uint  `json:"repository_id" binding:"required"`
 	Branchs          string `json:"branchs" binding:"required"`
 	Languages        string `json:"languages"` // 英文逗号分隔字符串
+	MRTrigger        *bool  `json:"mr_trigger"`
+	DailyBuild       *bool  `json:"daily_build"`
+	DailyBuildTime   string `json:"daily_build_time"`
 	CustomAttributes string `json:"custom_attributes"`
 }
 
@@ -226,6 +229,21 @@ func CreateExecutionPlan(c *gin.Context) {
 		Languages:        req.Languages,
 		CustomAttributes: req.CustomAttributes,
 	}
+	if req.MRTrigger != nil {
+		plan.MRTrigger = *req.MRTrigger
+	} else {
+		plan.MRTrigger = true
+	}
+	if req.DailyBuild != nil {
+		plan.DailyBuild = *req.DailyBuild
+	} else {
+		plan.DailyBuild = true
+	}
+	if req.DailyBuildTime != "" {
+		plan.DailyBuildTime = req.DailyBuildTime
+	} else {
+		plan.DailyBuildTime = "00:30"
+	}
 
 	// 创建一个流水线执行方案， 需要多个步骤
 	// 1. 创建一个代码检查执行任务
@@ -287,6 +305,15 @@ func UpdateExecutionPlan(c *gin.Context) {
 	plan.Branch = req.Branchs
 	plan.Languages = req.Languages
 	plan.CustomAttributes = req.CustomAttributes
+	if req.MRTrigger != nil {
+		plan.MRTrigger = *req.MRTrigger
+	}
+	if req.DailyBuild != nil {
+		plan.DailyBuild = *req.DailyBuild
+	}
+	if req.DailyBuildTime != "" {
+		plan.DailyBuildTime = req.DailyBuildTime
+	}
 
 	// 如果原来没有 ext ID，则生成一个
 	if plan.ExecutionPlanID == "" {
