@@ -52,7 +52,10 @@ pipeline_system:
     {
       "pipeline_id": "{PIPELINE_ID}",
       "scheme_id": "{SCHEME_ID}",
-      "time": "{DAILY_BUILD_TIME}"
+      "time": "{DAILY_BUILD_TIME}",
+      "name": "{PIPELINE_NAME}",
+      "service_id": "{SERVICE_ID}",
+      "workspace_id": "{WORKSPACE_ID}"
     }
   rule_sets:
     GO: "rule_id_go_1"
