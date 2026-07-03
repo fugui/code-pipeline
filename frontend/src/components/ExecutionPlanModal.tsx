@@ -481,9 +481,10 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                 borderRadius: 6, 
                 padding: '14px 16px', 
                 background: 'rgba(255,255,255,0.01)', 
-                display: 'flex',
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
                 alignItems: 'center',
-                gap: 32
+                gap: 16
               }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text-main)', userSelect: 'none', margin: 0 }}>
                   <input 
