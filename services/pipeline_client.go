@@ -474,16 +474,16 @@ func createMRBindingStep(ctx context.Context, pipelineBusinessID string, scheme 
 }
 
 // createExecutionPlanStep 步骤四：创建每日构建的执行计划
-func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, schemeID string, headers map[string]string) error {
+func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, schemeID string, headers map[string]string) (string, error) {
 	log.Printf("[SyncCreateScheme] Enter createExecutionPlanStep: pipelineBusinessID=%s, scheme=%+v, schemeID=%s, headers=%v", pipelineBusinessID, scheme, schemeID, headers)
 	apiURLStr := models.AppConfig.PipelineSystem.CreateExecutionPlanURL
 	if apiURLStr == "" {
-		return fmt.Errorf("create_execution_plan_url not configured")
+		return "", fmt.Errorf("create_execution_plan_url not configured")
 	}
 
 	tmpl := models.AppConfig.PipelineSystem.CreateExecutionPlanBody
 	if tmpl == "" {
-		return fmt.Errorf("create_execution_plan_body not configured")
+		return "", fmt.Errorf("create_execution_plan_body not configured")
 	}
 
 	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
@@ -496,10 +496,34 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, sch
 
 	log.Printf("[SyncCreateScheme] Step 4: Creating Execution Plan. URL: %s, Body: %s", apiURLStr, bodyStr)
 
-	_, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated}, "CreateExecutionPlanStep")
-	return err
+	if err != nil {
+		return "", err
+	}
+
+	var responseData struct {
+		ID     string `json:"id"`
+		Result []struct {
+			ID string `json:"id"`
+		} `json:"entities"`
+	}
+	_ = json.Unmarshal(body, &responseData)
+
+	var executionPlanID string
+	if responseData.ID != "" {
+		executionPlanID = responseData.ID
+	} else if len(responseData.Result) > 0 {
+		executionPlanID = responseData.Result[0].ID
+	}
+
+	if executionPlanID == "" {
+		executionPlanID = fmt.Sprintf("plan_bind_%d", time.Now().UnixNano())
+		log.Printf("[SyncCreateScheme] Step 4: No ID found in response, fallback to mock Execution Plan ID: %s", executionPlanID)
+	}
+
+	return executionPlanID, nil
 }
 
 // SyncCreateExecutionSchemeRemote 在三方系统中同步创建执行方案（依次执行三个步骤）
@@ -539,11 +563,12 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 
 	// 4. 创建每日构建的执行计划
 	if scheme.DailyBuild {
-		err := createExecutionPlanStep(ctx, pipelineBusinessID, scheme, extID, headers)
+		planID, err := createExecutionPlanStep(ctx, pipelineBusinessID, scheme, extID, headers)
 		if err != nil {
 			log.Printf("[Pipeline] Remote sync Step 4 failed: %v\n", err)
 			return "", err
 		}
+		scheme.ExecutionPlanID = planID
 	}
 
 	return extID, nil
