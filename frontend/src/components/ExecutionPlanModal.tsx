@@ -505,24 +505,26 @@ export const ExecutionPlanModal: React.FC<ExecutionPlanModalProps> = ({
                     />
                     每日构建
                   </label>
-                  {dailyBuild && (
-                    <input 
-                      type="time" 
-                      value={dailyBuildTime}
-                      style={{ 
-                        width: 100, 
-                        padding: '4px 8px', 
-                        fontSize: 13, 
-                        height: 32, 
-                        background: 'var(--bg-secondary, #111827)', 
-                        border: '1px solid var(--border-color, rgba(255,255,255,0.08))',
-                        borderRadius: 4,
-                        color: 'var(--text-main)',
-                        marginLeft: 4
-                      }}
-                      onChange={(e) => handleTriggerOrTimeChange(mrTrigger, dailyBuild, e.target.value)}
-                    />
-                  )}
+                  <input 
+                    type="time" 
+                    value={dailyBuildTime}
+                    disabled={!dailyBuild}
+                    style={{ 
+                      width: 100, 
+                      padding: '4px 8px', 
+                      fontSize: 13, 
+                      height: 32, 
+                      background: 'var(--bg-secondary, #111827)', 
+                      border: '1px solid var(--border-color, rgba(255,255,255,0.08))',
+                      borderRadius: 4,
+                      color: 'var(--text-main)',
+                      marginLeft: 4,
+                      opacity: dailyBuild ? 1 : 0.4,
+                      cursor: dailyBuild ? 'text' : 'not-allowed',
+                      transition: 'opacity 0.2s ease, border-color 0.2s ease'
+                    }}
+                    onChange={(e) => handleTriggerOrTimeChange(mrTrigger, dailyBuild, e.target.value)}
+                  />
                 </div>
               </div>
             </div>
