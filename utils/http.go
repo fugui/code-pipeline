@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 )
@@ -84,7 +85,7 @@ func SendHTTPRequest(ctx context.Context, method, rawURL string, payload interfa
 
 	// 检查是否返回了 set-cookie: uid/prod_cftk/prod_J_SESSION_ID 为空; 代表 SSO 过期
 	for _, cookie := range resp.Cookies() {
-		if (cookie.Name == "uid" || cookie.Name == "prod_cftk" || cookie.Name == "prod_J_SESSION_ID") && cookie.Value == "" {
+		if slices.Contains([]string{"uid", "prod_cftk", "prod_J_SESSION_ID"}, cookie.Name) && cookie.Value == "" {
 			return nil, ErrSSOExpired
 		}
 	}
