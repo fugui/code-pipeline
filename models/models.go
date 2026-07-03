@@ -81,6 +81,7 @@ type RemoteExecutionScheme struct {
 }
 
 type RemoteExecutionPlan struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID           string `json:"id"`
+	ScheduleName string `json:"scheduleName"`
+	PfkSchemeID  string `json:"pfkSchemeId"`
 }

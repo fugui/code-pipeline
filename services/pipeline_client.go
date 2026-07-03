@@ -543,7 +543,7 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, sch
 		}
 
 		for _, entity := range entities {
-			if entity.Name == scheme.Name {
+			if entity.ScheduleName == scheme.Name {
 				executionPlanID = entity.ID
 				break
 			}
