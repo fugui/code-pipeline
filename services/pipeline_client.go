@@ -114,7 +114,7 @@ func FetchRemoteExecutionSchemes(ctx context.Context, pipelineBusinessID string,
 }
 
 // createCheckerTaskStep 步骤一：创建代码检查执行任务
-func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, languages string, headers map[string]string) (string, error) {
+func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, languages string, taskName string, headers map[string]string) (string, error) {
 	apiURL := models.AppConfig.PipelineSystem.CreateCheckerTaskURL
 	if apiURL == "" {
 		return "", fmt.Errorf("create_checker_task_url not configured")
@@ -128,20 +128,6 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 	} else {
 		firstBranch = strings.TrimSpace(branch)
 	}
-
-	repoName := extractRepoName(repoURL)
-	randomSuffix := "0000"
-	randBytes := make([]byte, 2)
-	if _, err := rand.Read(randBytes); err == nil {
-		randomSuffix = hex.EncodeToString(randBytes)
-	}
-	taskName := fmt.Sprintf("%s-%s-CodeShield-%s", repoName, firstBranch, randomSuffix)
-	taskName = strings.Map(func(r rune) rune {
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' || r == '.' {
-			return r
-		}
-		return '-'
-	}, taskName)
 
 	var langs []string
 	if languages != "" {
@@ -177,6 +163,7 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 		"{REPO_URL}":    repoURL,
 		"{REPO_BRANCH}": firstBranch,
 		"{TASK_NAME}":   taskName,
+		"{NAME}":        taskName,
 		"{RULE_SETS}":   string(ruleSetsJSON),
 	})
 
@@ -260,19 +247,7 @@ func createExecutionSchemeStep(ctx context.Context, pipelineBusinessID string, s
 		return "", fmt.Errorf("create_execution_scheme_body not configured")
 	}
 
-	randomSuffix := "0000"
-	randBytes := make([]byte, 2)
-	if _, err := rand.Read(randBytes); err == nil {
-		randomSuffix = hex.EncodeToString(randBytes)
-	}
-	repoName := extractRepoName(repoURL)
-	schemeName := fmt.Sprintf("%s_%s_CodeShield_%s", repoName, scheme.Branch, randomSuffix)
-	schemeName = strings.Map(func(r rune) rune {
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
-			return r
-		}
-		return '_'
-	}, schemeName)
+	schemeName := scheme.Name
 
 	var customAttrMap map[string]interface{}
 	if scheme.CustomAttributes != "" {
@@ -334,6 +309,7 @@ func createExecutionSchemeStep(ctx context.Context, pipelineBusinessID string, s
 
 	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
 		"{SCHEME_NAME}":       schemeName,
+		"{NAME}":              schemeName,
 		"{PIPELINE_ID}":       pipelineBusinessID,
 		"{USER_EMAIL}":        userEmail,
 		"{CUSTOM_ATTRIBUTES}": escapedCustomAttributes,
@@ -432,6 +408,7 @@ func createMRBindingStep(ctx context.Context, pipelineBusinessID string, scheme 
 	}
 
 	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
+		"{NAME}":              scheme.Name,
 		"{REPO_URL}":          repoURL,
 		"{BRANCHES}":          scheme.Branch,
 		"{PIPELINE_ID}":       pipelineBusinessID,
@@ -487,6 +464,7 @@ func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, sch
 	}
 
 	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
+		"{NAME}":             scheme.Name,
 		"{PIPELINE_ID}":      pipelineBusinessID,
 		"{SCHEME_ID}":        schemeID,
 		"{DAILY_BUILD_TIME}": scheme.DailyBuildTime,
@@ -536,8 +514,24 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 		repoURL = scheme.Repository.URL
 	}
 
+	// 产生全局唯一且一致的 Name 并回填
+	repoName := extractRepoName(repoURL)
+	randomSuffix := "0000"
+	randBytes := make([]byte, 2)
+	if _, err := rand.Read(randBytes); err == nil {
+		randomSuffix = hex.EncodeToString(randBytes)
+	}
+	unifiedName := fmt.Sprintf("%s_%s_CodeShield_%s", repoName, scheme.Branch, randomSuffix)
+	unifiedName = strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' {
+			return r
+		}
+		return '_'
+	}, unifiedName)
+	scheme.Name = unifiedName
+
 	// 1. 创建代码检查执行任务
-	taskID, err := createCheckerTaskStep(ctx, repoURL, scheme.Branch, scheme.Languages, headers)
+	taskID, err := createCheckerTaskStep(ctx, repoURL, scheme.Branch, scheme.Languages, scheme.Name, headers)
 	if err != nil {
 		log.Printf("[Pipeline] Remote sync Step 1 failed: %v\n", err)
 		return "", err

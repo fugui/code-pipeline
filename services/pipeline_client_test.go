@@ -165,7 +165,7 @@ func TestCreateCheckerTaskStep(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	taskID, err := createCheckerTaskStep(ctx, "https://github.com/test/repo.git", "main,develop", "Go,Python", nil)
+	taskID, err := createCheckerTaskStep(ctx, "https://github.com/test/repo.git", "main,develop", "Go,Python", "mock-task-name", nil)
 	if err != nil {
 		t.Fatalf("createCheckerTaskStep failed: %v", err)
 	}
