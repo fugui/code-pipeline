@@ -41,6 +41,7 @@ type Config struct {
 		QueryCheckerTaskURL       string            `yaml:"query_checker_task_url"`
 		CreateExecutionPlanURL    string            `yaml:"create_execution_plan_url"`
 		CreateExecutionPlanBody   string            `yaml:"create_execution_plan_body"`
+		GetExecutionPlanURL       string            `yaml:"get_execution_plan_url"`
 		RuleSets                  map[string]string `yaml:"rule_sets"`
 	} `yaml:"pipeline_system"`
 }
@@ -75,6 +76,9 @@ func LoadConfig(filename string) error {
 	}
 	if AppConfig.PipelineSystem.CreateExecutionPlanBody == "" {
 		return fmt.Errorf("pipeline_system.create_execution_plan_body is required")
+	}
+	if AppConfig.PipelineSystem.GetExecutionPlanURL == "" {
+		return fmt.Errorf("pipeline_system.get_execution_plan_url is required")
 	}
 
 	return nil
