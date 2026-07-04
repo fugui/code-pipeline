@@ -249,20 +249,3 @@ func SyncExecutionSchemes(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully synced %d execution schemes", len(finalSchemes))})
 }
-
-// prepareRequestHeaders 透传 Cookie, cftk 和 x-requested-with Header
-func prepareRequestHeaders(c *gin.Context) map[string]string {
-	headers := make(map[string]string)
-	if cookie := c.GetHeader("Cookie"); cookie != "" {
-		headers["Cookie"] = cookie
-	}
-	cftk := c.GetHeader("cftk")
-	if cftk == "" {
-		cftk, _ = c.Cookie("prod_cftk")
-	}
-	if cftk != "" {
-		headers["cftk"] = cftk
-	}
-	headers["x-requested-with"] = "XMLHttpRequest"
-	return headers
-}
