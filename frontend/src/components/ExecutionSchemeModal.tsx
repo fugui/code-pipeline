@@ -9,6 +9,7 @@ interface ExecutionSchemeModalProps {
   onClose: () => void
   apiBase: string
   repos: any[]
+  pipelines: any[]
   saving?: boolean
   saveError?: string | null
   saveSuccess?: boolean
@@ -23,6 +24,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   onClose,
   apiBase,
   repos,
+  pipelines = [],
   saving = false,
   saveError = null,
   saveSuccess = false,
@@ -292,6 +294,42 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
 
         <form onSubmit={onSave} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>关联流水线</label>
+              {activeScheme.id ? (
+                <input 
+                  type="text" 
+                  value={(() => {
+                    const matched = pipelines.find(p => p.id === activeScheme.pipeline_id);
+                    if (matched) {
+                      return `${matched.name} (ID: ${matched.pipeline_id}) - 负责人: ${matched.owner || '未分配'}`;
+                    }
+                    return `流水线 ID: ${activeScheme.pipeline_id}`;
+                  })()}
+                  disabled 
+                />
+              ) : (
+                <select
+                  value={activeScheme.pipeline_id || ''}
+                  onChange={(e) => {
+                    const val = e.target.value ? Number(e.target.value) : 0;
+                    onChange({
+                      ...activeScheme,
+                      pipeline_id: val
+                    });
+                  }}
+                  required
+                >
+                  <option value="" disabled>-- 请选择关联的流水线 --</option>
+                  {pipelines.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} (ID: {p.pipeline_id}) - 负责人: {p.owner || '未分配'}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
             <div>
               <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>代码仓</label>
               {activeScheme.id ? (
