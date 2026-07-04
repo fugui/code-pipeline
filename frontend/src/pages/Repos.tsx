@@ -478,14 +478,16 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
   }
 
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+    <div style={{ overflowX: 'auto' }}>
+    <table style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse', fontSize: 12 }}>
       <thead>
         <tr style={{ background: 'rgba(99,102,241,0.06)', borderBottom: '1px solid rgba(99,102,241,0.12)' }}>
           <th style={subThStyle({ width: 40 })}></th>
-          <th style={subThStyle({})}>分支</th>
-          <th style={subThStyle({ width: 200 })}>所属流水线</th>
-          <th style={subThStyle({ width: 150 })}>语言</th>
-          <th style={subThStyle({ width: 180 })}>触发配置</th>
+          <th style={subThStyle({ minWidth: 140 })}>分支 / 触发</th>
+          <th style={subThStyle({ width: 180 })}>所属流水线</th>
+          <th style={subThStyle({ width: 120 })}>语言</th>
+          <th style={subThStyle({ width: 130 })}>检查任务ID</th>
+          <th style={subThStyle({ width: 130 })}>执行方案ID</th>
           <th style={subThStyle({ width: 100, textAlign: 'right' })}>操作</th>
         </tr>
       </thead>
@@ -505,9 +507,15 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
               <GitBranch size={12} style={{ color: '#6366f1', opacity: 0.6 }} />
             </td>
 
-            {/* 分支 */}
-            <td style={{ padding: '10px 8px', color: 'var(--text-main)', fontFamily: 'var(--font-mono)', fontWeight: 500 }}>
-              {scheme.branchs || '-'}
+            {/* 分支 + 触发配置（合并显示） */}
+            <td style={{ padding: '10px 8px' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-main)', marginBottom: 5 }}>
+                {scheme.branchs || '-'}
+              </div>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <TriggerTag active={!!scheme.mr_trigger} label="MR触发" />
+                <TriggerTag active={!!scheme.daily_build} label={`每日 ${scheme.daily_build_time || '00:30'}`} />
+              </div>
             </td>
 
             {/* 流水线名 */}
@@ -538,6 +546,16 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
               </div>
             </td>
 
+            {/* 检查任务ID */}
+            <td style={{ padding: '10px 8px' }}>
+              <IdCell value={scheme.code_checker_task_id} />
+            </td>
+
+            {/* 执行方案ID */}
+            <td style={{ padding: '10px 8px' }}>
+              <IdCell value={scheme.execution_scheme_id} />
+            </td>
+
             {/* 操作 */}
             <td style={{ padding: '10px 16px 10px 8px', textAlign: 'right' }}>
               <div style={{ display: 'inline-flex', gap: 6 }}>
@@ -563,6 +581,30 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
         ))}
       </tbody>
     </table>
+    </div>
+  )
+}
+
+// ---- ID 单元格：截断展示，hover title 显示完整值 ----
+const IdCell: React.FC<{ value?: string }> = ({ value }) => {
+  if (!value) return <span style={{ color: 'var(--text-muted)' }}>-</span>
+  return (
+    <span
+      title={value}
+      style={{
+        fontFamily: 'var(--font-mono)',
+        fontSize: 10,
+        color: 'var(--text-secondary)',
+        display: 'block',
+        maxWidth: 120,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        cursor: 'default',
+      }}
+    >
+      {value}
+    </span>
   )
 }
 
