@@ -572,7 +572,7 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 	}
 
 	// 产生全局唯一且一致的 Name 并回填
-	repoName := extractRepoName(repoURL)
+	repoName := utils.ExtractRepoName(repoURL)
 	randomSuffix := "0000"
 	randBytes := make([]byte, 2)
 	if _, err := rand.Read(randBytes); err == nil {
@@ -699,26 +699,6 @@ func SyncDeleteExecutionSchemeRemote(executionSchemeID string) error {
 
 	_, err := utils.SendHTTPRequest(context.Background(), "DELETE", targetURL, nil, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteScheme")
 	return err
-}
-
-// extractRepoName 从 Git 仓库 URL 或路径中提取代码仓的 basename 名称
-func extractRepoName(repoURL string) string {
-	u := strings.TrimSuffix(repoURL, "/")
-	u = strings.TrimSuffix(u, ".git")
-
-	// 取最后一个 "/" 后面的部分
-	if idx := strings.LastIndex(u, "/"); idx != -1 {
-		u = u[idx+1:]
-	}
-	// 如果是 ssh 格式类似 git@github.com:org/repo.git ，且刚才没找到 "/" 时只剩下 git@github.com:repo
-	if idx := strings.LastIndex(u, ":"); idx != -1 {
-		u = u[idx+1:]
-	}
-
-	if u == "" {
-		return "repo"
-	}
-	return u
 }
 
 // CheckRepoAuthorized 检查代码仓是否授权

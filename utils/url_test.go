@@ -102,3 +102,27 @@ func TestExtractRepoPath(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractRepoName(t *testing.T) {
+	testCases := []struct {
+		url      string
+		expected string
+	}{
+		{"https://github.com/username/project.git", "project"},
+		{"git@github.com:username/project.git", "project"},
+		{"/path/to/local/project.git", "project"},
+		{"/path/to/local/project", "project"},
+		{"git@github.com:project", "project"},
+		{"https://github.com/username/project", "project"},
+		{"project.git", "project"},
+		{"project", "project"},
+		{"", "repo"},
+	}
+
+	for _, tc := range testCases {
+		result := ExtractRepoName(tc.url)
+		if result != tc.expected {
+			t.Errorf("ExtractRepoName(%q) = %q, expected %q", tc.url, result, tc.expected)
+		}
+	}
+}
