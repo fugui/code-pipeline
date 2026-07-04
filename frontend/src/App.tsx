@@ -60,6 +60,9 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
   const [schemes, setSchemes] = useState<ExecutionScheme[]>([])
   const [showSchemeModal, setShowSchemeModal] = useState(false)
   const [activeScheme, setActiveScheme] = useState<ExecutionScheme | null>(null)
+  const [isSavingScheme, setIsSavingScheme] = useState(false)
+  const [schemeError, setSchemeError] = useState<string | null>(null)
+  const [schemeSaveSuccess, setSchemeSaveSuccess] = useState(false)
 
   const [stats, setStats] = useState<DashboardStats | null>(null)
   
@@ -264,6 +267,9 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     e.preventDefault()
     if (!activeScheme || !activeScheme.repository_id || !activeScheme.branchs) return
 
+    setIsSavingScheme(true)
+    setSchemeError(null)
+
     const method = activeScheme.id ? 'PUT' : 'POST'
     const url = activeScheme.id ? `${apiBase}/execution-schemes/${activeScheme.id}` : `${apiBase}/execution-schemes`
 
@@ -276,17 +282,21 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
       body: JSON.stringify(activeScheme)
     })
     .then(res => {
-      if (!res.ok) throw new Error('保存执行方案失败')
+      if (!res.ok) throw new Error('保存执行方案失败，请检查配置后重试')
       return res.json()
     })
     .then(() => {
-      setShowSchemeModal(false)
-      setActiveScheme(null)
+      // 成功：由 modal 内展示成功动画后再关闭
+      setIsSavingScheme(false)
+      setSchemeSaveSuccess(true)
       if (selectedPipeline && selectedPipeline.id) {
         fetchSchemes(selectedPipeline.id)
       }
     })
-    .catch(err => alert(err.message))
+    .catch(err => {
+      setIsSavingScheme(false)
+      setSchemeError(err.message)
+    })
   }
 
   const handleDeleteScheme = (id: number) => {
@@ -589,9 +599,13 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         activeScheme={activeScheme}
         onChange={setActiveScheme}
         onSave={handleSaveScheme}
-        onClose={() => { setShowSchemeModal(false); setActiveScheme(null); }}
+        onClose={() => { setShowSchemeModal(false); setActiveScheme(null); setSchemeError(null); setSchemeSaveSuccess(false); }}
         apiBase={apiBase}
         repos={repos}
+        saving={isSavingScheme}
+        saveError={schemeError}
+        saveSuccess={schemeSaveSuccess}
+        onSuccessClose={() => { setShowSchemeModal(false); setActiveScheme(null); setSchemeSaveSuccess(false); }}
       />
 
       {/* Terminal log Console Drawer */}
