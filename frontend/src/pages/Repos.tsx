@@ -509,7 +509,20 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
 
             {/* 分支 + 触发配置（合并显示） */}
             <td style={{ padding: '10px 8px' }}>
-              <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-main)', marginBottom: 5 }}>
+              <div
+                title={scheme.branchs || undefined}
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 600,
+                  color: 'var(--text-main)',
+                  marginBottom: 5,
+                  maxWidth: 160,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  cursor: 'default',
+                }}
+              >
                 {scheme.branchs || '-'}
               </div>
               <div style={{ display: 'flex', gap: 4 }}>
