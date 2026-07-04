@@ -83,10 +83,6 @@ func SyncExecutionSchemes(c *gin.Context) {
 	headers := prepareRequestHeaders(c)
 
 	// 2.1 先获取 MR 绑定的列表
-	//  根据配置的 MR绑定列表API， 使用查询参数 pipelineId 查询获得全部的MR绑定列表
-	//  返回的对象格式为： { "status":"success",  "result": [ {
-	//  "id", "codeUrl", "branches" (使用逗号分开),  schemeId, schemeName
-	//  } ]}
 	mrBindings, err := services.FetchRemoteMRBindings(c.Request.Context(), pipeline.PipelineID, headers)
 	if err != nil {
 		if HandleSSOExpired(c, err) {
@@ -107,10 +103,18 @@ func SyncExecutionSchemes(c *gin.Context) {
 		return
 	}
 
-	// 3.1 事务更新本地数据库：先删后加
-	// 3.2 根据获取 of MR 数据和 执行方案数据， 更新本地数据
-	// 以 MR 数据为准， 根据 MR 数据中的 SchemeID 匹配 fetchedPlans 中的 ExecutionSchemeID， 进行信息合并（把MR中的 CodeURL 和 Branches 覆盖 fetchedPlans 中的信息）
-	// 最终生成完整的 执行方案：
+	// 2.3 调用 service 抓取执行计划列表
+	plans, err := services.FetchRemoteExecutionPlans(c.Request.Context(), pipeline.PipelineID, headers)
+	if err != nil {
+		if HandleSSOExpired(c, err) {
+			return
+		}
+		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to fetch execution plans: %v", err)})
+		return
+	}
+	log.Printf("[SyncExecutionSchemes] Fetched %d execution plans from remote\n", len(plans))
+
+	// 3.1 根据获取的方案数据、MR 绑定数据、执行计划数据，更新本地数据
 	var allRepos []models.Repository
 	repoMap := make(map[string]models.Repository)
 	if err := database.DB.Find(&allRepos).Error; err == nil {
@@ -125,38 +129,29 @@ func SyncExecutionSchemes(c *gin.Context) {
 	}
 
 	var finalSchemes []models.ExecutionScheme
-	for _, binding := range mrBindings {
-		var matchedScheme *models.RemoteExecutionScheme
-		for i := range schemes {
-			if schemes[i].ID == binding.SchemeID {
-				matchedScheme = &schemes[i]
-				break
-			}
-		}
-
-		if matchedScheme == nil {
-			log.Printf("[SyncExecutionSchemes] Warning: MR binding SchemeID %s not found in remote execution schemes\n", binding.SchemeID)
-			continue
-		}
-
+	for _, remoteScheme := range schemes {
 		// 根据 Scheme 的原始数据组装 ExecutionScheme 实例
 		scheme := models.ExecutionScheme{
-			ExecutionSchemeID: matchedScheme.ID,
+			ExecutionSchemeID: remoteScheme.ID,
+			Name:              remoteScheme.Name,
 			PipelineID:        pipeline.ID,
-			Branch:            binding.Branches, // 用 MR 数据的分支信息覆盖
-			MRBindingID:       binding.ID,       // 记录绑定的 MR 绑定 ID
-			CustomAttributes:  matchedScheme.CustomParameter,
+			CustomAttributes:  remoteScheme.CustomParameter,
+			MRTrigger:         false,
+			DailyBuild:        false,
 		}
 
-		// 从 Scheme 中解析 Username, Password 和 CodeCheckerTaskID 等基础属性
-		if matchedScheme.CustomParameter != "" {
+		var codeURL string
+		var branch string
+
+		// 从 Scheme 的 CustomParameter 中解析 Username, Password, CodeCheckerTaskID 极其代码仓与分支属性
+		if remoteScheme.CustomParameter != "" {
 			var cp struct {
 				BuildParameters []struct {
 					Name  string `json:"name"`
 					Value string `json:"value"`
 				} `json:"buildParameters"`
 			}
-			if err := json.Unmarshal([]byte(matchedScheme.CustomParameter), &cp); err == nil {
+			if err := json.Unmarshal([]byte(remoteScheme.CustomParameter), &cp); err == nil {
 				for _, param := range cp.BuildParameters {
 					switch param.Name {
 					case "cmc_username":
@@ -165,21 +160,62 @@ func SyncExecutionSchemes(c *gin.Context) {
 						scheme.Password = param.Value
 					case "code_checker_task_id":
 						scheme.CodeCheckerTaskID = param.Value
+					case "repository":
+						codeURL = param.Value
+					case "branch":
+						branch = param.Value
 					}
 				}
 			} else {
-				log.Printf("[SyncExecutionSchemes] Warning: failed to parse customParameter JSON for scheme %s: %v\n", matchedScheme.ID, err)
+				log.Printf("[SyncExecutionSchemes] Warning: failed to parse customParameter JSON for scheme %s: %v\n", remoteScheme.ID, err)
 			}
 		}
 
-		// 合并代码仓数据，并利用规格化逻辑在本地仓库中重新匹配（用 MR 数据的 CodeURL 覆盖）
-		normalizedCodeURL := utils.NormalizeGitURL(binding.CodeURL)
-		if r, found := repoMap[normalizedCodeURL]; found {
-			scheme.RepositoryID = r.ID
-			scheme.Repository = r
-		} else {
-			log.Printf("[SyncExecutionSchemes] Warning: MR binding CodeURL %s (normalized: %s) not found in local mirrors\n", binding.CodeURL, normalizedCodeURL)
-			scheme.RepositoryID = 0
+		// 匹配 MR 绑定
+		var matchedMRBinding *models.MRBinding
+		for i := range mrBindings {
+			if mrBindings[i].SchemeID == remoteScheme.ID {
+				matchedMRBinding = &mrBindings[i]
+				break
+			}
+		}
+
+		if matchedMRBinding != nil {
+			scheme.MRBindingID = matchedMRBinding.ID
+			scheme.MRTrigger = true
+			if matchedMRBinding.Branches != "" {
+				branch = matchedMRBinding.Branches
+			}
+			if matchedMRBinding.CodeURL != "" {
+				codeURL = matchedMRBinding.CodeURL
+			}
+		}
+
+		// 匹配执行计划
+		var matchedPlan *models.RemoteExecutionPlan
+		for i := range plans {
+			if plans[i].PfkSchemeID == remoteScheme.ID {
+				matchedPlan = &plans[i]
+				break
+			}
+		}
+
+		if matchedPlan != nil {
+			scheme.ExecutionPlanID = matchedPlan.ID
+			scheme.DailyBuild = true
+		}
+
+		scheme.Branch = branch
+
+		// 合并代码仓数据，并利用规格化逻辑在本地仓库中匹配关联
+		if codeURL != "" {
+			normalizedCodeURL := utils.NormalizeGitURL(codeURL)
+			if r, found := repoMap[normalizedCodeURL]; found {
+				scheme.RepositoryID = r.ID
+				scheme.Repository = r
+			} else {
+				log.Printf("[SyncExecutionSchemes] Warning: CodeURL %s (normalized: %s) not found in local mirrors\n", codeURL, normalizedCodeURL)
+			}
 		}
 
 		// 如果 RepositoryID 是 0（没有在本地同步此镜像），则跳过该执行方案以保证运行安全性
