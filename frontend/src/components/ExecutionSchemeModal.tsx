@@ -1,5 +1,5 @@
 import React from 'react'
-import { Trash2 } from 'lucide-react'
+import { Trash2, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 
 interface ExecutionSchemeModalProps {
   visible: boolean
@@ -9,6 +9,10 @@ interface ExecutionSchemeModalProps {
   onClose: () => void
   apiBase: string
   repos: any[]
+  saving?: boolean
+  saveError?: string | null
+  saveSuccess?: boolean
+  onSuccessClose?: () => void
 }
 
 export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
@@ -18,7 +22,11 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   onSave,
   onClose,
   apiBase,
-  repos
+  repos,
+  saving = false,
+  saveError = null,
+  saveSuccess = false,
+  onSuccessClose
 }) => {
   const [isOpen, setIsOpen] = React.useState(false)
   const [filterQuery, setFilterQuery] = React.useState('')
@@ -277,7 +285,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={onSave} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <form onSubmit={onSave} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div>
               <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>代码仓</label>
@@ -628,6 +636,27 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
             </div>
           </div>
 
+          {/* 错误提示条 */}
+          {saveError && (
+            <div style={{
+              margin: '0 24px 0 24px',
+              padding: '12px 16px',
+              borderRadius: 8,
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              animation: 'fadeSlideIn 0.25s ease-out'
+            }}>
+              <XCircle size={16} style={{ color: '#f87171', flexShrink: 0, marginTop: 1 }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#fca5a5', marginBottom: 2 }}>保存失败</div>
+                <div style={{ fontSize: 12, color: '#fca5a5', opacity: 0.85, lineHeight: 1.5 }}>{saveError}</div>
+              </div>
+            </div>
+          )}
+
           <div style={{ 
             display: 'flex', 
             justifyContent: 'flex-end', 
@@ -636,14 +665,124 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
             borderTop: '1px solid var(--border-color, rgba(255,255,255,0.08))',
             background: 'rgba(255, 255, 255, 0.01)'
           }}>
-            <button type="button" className="btn btn-secondary" onClick={handleCloseWithAnimation}>
+            <button type="button" className="btn btn-secondary" onClick={handleCloseWithAnimation} disabled={saving}>
               取消
             </button>
-            <button type="submit" className="btn btn-primary">
-              保存方案
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={saving}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                opacity: saving ? 0.75 : 1,
+                cursor: saving ? 'not-allowed' : 'pointer',
+                transition: 'opacity 0.2s'
+              }}
+            >
+              {saving ? (
+                <>
+                  <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                  保存中...
+                </>
+              ) : '保存方案'}
             </button>
           </div>
+
+          {/* 成功浮层横幅 */}
+          {saveSuccess && (
+            <SuccessBanner
+              isNew={!activeScheme?.id}
+              onDone={onSuccessClose}
+            />
+          )}
         </form>
+      </div>
+    </div>
+  )
+}
+
+// 成功提示横幅组件
+const SuccessBanner: React.FC<{ isNew: boolean; onDone?: () => void }> = ({ isNew, onDone }) => {
+  const [progress, setProgress] = React.useState(100)
+  const [visible, setVisible] = React.useState(true)
+  const duration = 2200
+
+  React.useEffect(() => {
+    const startTime = performance.now()
+    let rafId: number
+
+    const tick = (now: number) => {
+      const elapsed = now - startTime
+      const pct = Math.max(0, 100 - (elapsed / duration) * 100)
+      setProgress(pct)
+      if (elapsed < duration) {
+        rafId = requestAnimationFrame(tick)
+      } else {
+        setVisible(false)
+        setTimeout(() => onDone?.(), 350)
+      }
+    }
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
+  }, [])
+
+  return (
+    <div style={{
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(5, 150, 105, 0.12) 100%)',
+      backdropFilter: 'blur(8px)',
+      borderTop: '1px solid rgba(16, 185, 129, 0.35)',
+      padding: '20px 24px 22px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 14,
+      opacity: visible ? 1 : 0,
+      transform: visible ? 'translateY(0)' : 'translateY(8px)',
+      transition: 'opacity 0.35s ease, transform 0.35s ease',
+      animation: 'fadeSlideUp 0.3s ease-out'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{
+          width: 36,
+          height: 36,
+          borderRadius: '50%',
+          background: 'rgba(16, 185, 129, 0.2)',
+          border: '1.5px solid rgba(16, 185, 129, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0
+        }}>
+          <CheckCircle2 size={18} style={{ color: '#34d399' }} />
+        </div>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#6ee7b7' }}>
+            {isNew ? '执行方案已成功创建 🎉' : '执行方案已更新'}
+          </div>
+          <div style={{ fontSize: 12, color: 'rgba(110, 231, 183, 0.7)', marginTop: 2 }}>
+            即将自动关闭...
+          </div>
+        </div>
+      </div>
+      {/* 进度条 */}
+      <div style={{
+        height: 3,
+        borderRadius: 2,
+        background: 'rgba(255,255,255,0.08)',
+        overflow: 'hidden'
+      }}>
+        <div style={{
+          height: '100%',
+          width: `${progress}%`,
+          background: 'linear-gradient(90deg, #10b981, #34d399)',
+          borderRadius: 2,
+          transition: 'width 0.1s linear'
+        }} />
       </div>
     </div>
   )
