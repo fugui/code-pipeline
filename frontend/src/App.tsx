@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 
 // Import types
-import { User, Repository, ExecutionLog, DashboardStats, Pipeline, ExecutionScheme } from './types'
+import { User, ExecutionLog, DashboardStats, Pipeline, ExecutionScheme } from './types'
 
 // Import page components
 import { Dashboard } from './pages/Dashboard'
@@ -47,8 +47,8 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
   const [user, setUser] = useState<User | null>(null)
   const [currentView, setCurrentView] = useState<'dashboard' | 'repos' | 'pipeline-config'>('dashboard')
   
-  // Data lists
-  const [repos, setRepos] = useState<Repository[]>([])
+  // Data lists — repos 仅用于 ExecutionSchemeModal 的候选项
+  const [repos, setRepos] = useState<{ id: number; name: string; url: string; service_group?: string; owner_name?: string }[]>([])
   
   // Pipelines and plans states
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
@@ -63,6 +63,8 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
   const [isSavingScheme, setIsSavingScheme] = useState(false)
   const [schemeError, setSchemeError] = useState<string | null>(null)
   const [schemeSaveSuccess, setSchemeSaveSuccess] = useState(false)
+  // schemeUpdateKey 递增时，Repos 页面的展开行会自动刷新 schemes
+  const [schemeUpdateKey, setSchemeUpdateKey] = useState(0)
 
   const [stats, setStats] = useState<DashboardStats | null>(null)
   
@@ -127,7 +129,8 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     if (currentView === 'dashboard') {
       fetchStats()
     } else if (currentView === 'repos') {
-      fetchRepos()
+      // 预加载流水线列表，以便"新增方案"时能取到默认 pipeline_id
+      if (pipelines.length === 0) fetchPipelines()
     } else if (currentView === 'pipeline-config') {
       fetchPipelines()
       fetchRepos("")
@@ -181,13 +184,14 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     .catch(err => console.error('Failed to fetch stats', err))
   }
 
+  // fetchRepos 仅用于为 ExecutionSchemeModal 的仓库下拉提供全量候选项
   const fetchRepos = (search?: string) => {
-    const q = search !== undefined ? search : searchQuery
-    fetch(`${apiBase}/repos?search=${encodeURIComponent(q)}`, {
+    const q = search !== undefined ? search : ''
+    fetch(`${apiBase}/repos?search=${encodeURIComponent(q)}&page_size=500`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())
-    .then(data => setRepos(data || []))
+    .then(data => setRepos(data?.items || []))
     .catch(err => console.error('Failed to fetch repos', err))
   }
 
@@ -289,6 +293,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
       // 成功：由 modal 内展示成功动画后再关闭
       setIsSavingScheme(false)
       setSchemeSaveSuccess(true)
+      setSchemeUpdateKey(k => k + 1)
       if (selectedPipeline && selectedPipeline.id) {
         fetchSchemes(selectedPipeline.id)
       }
@@ -308,6 +313,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     })
     .then(res => {
       if (!res.ok) throw new Error('删除执行方案失败')
+      setSchemeUpdateKey(k => k + 1)
       if (selectedPipeline && selectedPipeline.id) {
         fetchSchemes(selectedPipeline.id)
       }
@@ -412,21 +418,6 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     setRepos([])
   }
 
-  const handleTriggerRepoScheme = (id: number, branch: string) => {
-    fetch(`${apiBase}/repos/${id}/trigger?branch=${encodeURIComponent(branch)}`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    .then(res => {
-      if (!res.ok) throw new Error('一键构建触发失败')
-      return res.json()
-    })
-    .then(() => {
-      alert('一键构建已成功向第三方系统触发！')
-    })
-    .catch(err => alert(err.message))
-  }
-
   const handleCancelExecution = (id: number) => {
     if (!window.confirm('确定要取消此流水线的执行任务吗？')) return
 
@@ -440,7 +431,6 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     })
     .then(() => {
       if (activeExec && activeExec.id === id) {
-        // 刷新当前查看的日志状态
         fetch(`${apiBase}/executions/${id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
@@ -536,19 +526,24 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
           />
         )}
 
-        {/* VIEW 2: REPOS LIST */}
+        {/* VIEW 2: REPOS 代码仓全览 */}
         {currentView === 'repos' && (
-          <Repos 
-            repos={repos}
-            loading={loading}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            onTrigger={handleTriggerRepoScheme}
-            onAddScheme={(repoId) => { setActiveScheme({ pipeline_id: pipelines[0]?.id || 0, repository_id: repoId, branchs: 'master' }); setShowSchemeModal(true); }}
-            onEditScheme={(scheme) => { setActiveScheme(scheme); setShowSchemeModal(true); }}
+          <Repos
+            onAddScheme={(repoId) => {
+              const firstPipeline = pipelines[0]
+              setActiveScheme({
+                pipeline_id: firstPipeline?.id || 0,
+                repository_id: repoId,
+                branchs: 'master',
+                languages: ''
+              })
+              setShowSchemeModal(true)
+            }}
+            onEditScheme={(scheme) => { setActiveScheme(scheme); setShowSchemeModal(true) }}
             onDeleteScheme={handleDeleteScheme}
             token={token}
             apiBase={apiBase}
+            schemeUpdateKey={schemeUpdateKey}
           />
         )}
 

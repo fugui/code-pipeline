@@ -16,21 +16,84 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetRepos 获取代码仓列表，支持分页和多维过滤
 func GetRepos(c *gin.Context) {
-	var repos []models.Repository
-	query := database.DB.Model(&models.Repository{})
-
+	pageStr := c.DefaultQuery("page", "1")
+	pageSizeStr := c.DefaultQuery("page_size", "20")
 	search := c.Query("search")
-	if search != "" {
-		query = query.Where("name LIKE ?", "%"+search+"%")
+	serviceGroup := c.Query("service_group")
+	ownerName := c.Query("owner_name")
+	hasScheme := c.Query("has_scheme") // "all"(默认) | "yes" | "no"
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+	pageSize, err := strconv.Atoi(pageSizeStr)
+	if err != nil || pageSize < 1 || pageSize > 200 {
+		pageSize = 20
 	}
 
-	if err := query.Find(&repos).Error; err != nil {
+	query := database.DB.Model(&models.Repository{})
+
+	if search != "" {
+		like := "%" + search + "%"
+		query = query.Where("name LIKE ? OR service_group LIKE ? OR owner_name LIKE ?", like, like, like)
+	}
+	if serviceGroup != "" {
+		query = query.Where("service_group = ?", serviceGroup)
+	}
+	if ownerName != "" {
+		query = query.Where("owner_name = ?", ownerName)
+	}
+	switch hasScheme {
+	case "yes":
+		query = query.Where("id IN (SELECT repository_id FROM execution_schemes)")
+	case "no":
+		query = query.Where("id NOT IN (SELECT repository_id FROM execution_schemes)")
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count repositories"})
+		return
+	}
+
+	var repos []models.Repository
+	offset := (page - 1) * pageSize
+	if err := query.Order("name ASC").Offset(offset).Limit(pageSize).Find(&repos).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch repositories"})
 		return
 	}
 
-	c.JSON(http.StatusOK, repos)
+	c.JSON(http.StatusOK, gin.H{
+		"items":     repos,
+		"total":     total,
+		"page":      page,
+		"page_size": pageSize,
+	})
+}
+
+// GetRepoFilterOptions 返回用于前端下拉过滤的候选项
+func GetRepoFilterOptions(c *gin.Context) {
+	var serviceGroups []string
+	database.DB.Model(&models.Repository{}).
+		Distinct("service_group").
+		Where("service_group != ''").
+		Order("service_group ASC").
+		Pluck("service_group", &serviceGroups)
+
+	var ownerNames []string
+	database.DB.Model(&models.Repository{}).
+		Distinct("owner_name").
+		Where("owner_name != ''").
+		Order("owner_name ASC").
+		Pluck("owner_name", &ownerNames)
+
+	c.JSON(http.StatusOK, gin.H{
+		"service_groups": serviceGroups,
+		"owner_names":    ownerNames,
+	})
 }
 
 func GetRepoDetails(c *gin.Context) {
@@ -63,7 +126,6 @@ func TriggerRepo(c *gin.Context) {
 		return
 	}
 
-	// 模拟触发第三方系统
 	log.Printf("[ThirdPartyTrigger] Triggering pipeline scheme %s (ID: %s) for repo %d branch %s...",
 		scheme.CodeCheckerTaskID, scheme.ExecutionSchemeID, repoID, branch)
 
@@ -97,32 +159,28 @@ func GetRepoLatestLog(c *gin.Context) {
 		return
 	}
 
-	// 实时代理拉取第三方系统的最后执行状态与日志 URL (此处提供高保真模拟)
 	c.JSON(http.StatusOK, gin.H{
 		"has_scheme":          true,
 		"execution_scheme_id": scheme.ExecutionSchemeID,
-		"status":              "success", // 模拟状态: success, failed, running
+		"status":              "success",
 		"duration_sec":        128,
 		"start_time":          time.Now().Add(-1 * time.Hour).Format(time.RFC3339),
 		"checker_task_id":     scheme.CodeCheckerTaskID,
-		"external_log_url":    "http://192.168.56.18:9080/pipelines/logs/" + scheme.ExecutionSchemeID, // 跳转三方系统的链接
+		"external_log_url":    "http://192.168.56.18:9080/pipelines/logs/" + scheme.ExecutionSchemeID,
 	})
 }
 
 // GetRepoBranches 获取仓库相关的分支列表
 func GetRepoBranches(c *gin.Context) {
 	id := c.Param("id")
-	// 验证仓库是否存在
 	var repo models.Repository
 	if err := database.DB.First(&repo, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Repository not found"})
 		return
 	}
 
-	// 1. 把 Repo 的 URL 格式化成为 https 格式
 	formattedURL := utils.SSHToHTTPS(repo.URL)
 
-	// 2. 获取代码仓的授权ID (调用 CheckRepoAuthorized)
 	headers := prepareRequestHeaders(c)
 	authID, err := services.CheckRepoAuthorized(c.Request.Context(), formattedURL, headers)
 	if err != nil {
@@ -137,9 +195,6 @@ func GetRepoBranches(c *gin.Context) {
 		return
 	}
 
-	// 3. 调用 API 获取该代码仓的分支信息， 该API由三方流水线系统提供， 基于 URL 的GET请求的RESTful API
-	// 其返回格式为：{"status":"success", "result": [string]}
-	// 查询分支时， 代码仓必须有 .git 结尾
 	urlForBranches := formattedURL
 	if !strings.HasSuffix(urlForBranches, ".git") {
 		urlForBranches = urlForBranches + ".git"
