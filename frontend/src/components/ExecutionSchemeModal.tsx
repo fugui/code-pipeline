@@ -42,9 +42,14 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   const lastCustomAttrsRef = React.useRef('');
 
   React.useEffect(() => {
-    if (activeScheme) {
+    if (activeScheme && activeScheme.repository_id) {
       const found = repos.find(r => r.id === activeScheme.repository_id)
-      setFilterQuery(found ? found.name : '')
+      // 只有找到对应仓库才更新显示名，避免 repos 尚未加载时将输入框错误清空
+      if (found) {
+        setFilterQuery(found.name)
+      }
+    } else if (!activeScheme) {
+      setFilterQuery('')
     }
   }, [activeScheme, repos])
 
