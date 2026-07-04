@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,7 +10,6 @@ import (
 
 	"code-pipeline/database"
 	"code-pipeline/models"
-	"code-pipeline/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -240,19 +238,4 @@ func GetMe(c *gin.Context) {
 		"name":     user.Name,
 		"is_admin": user.IsAdmin,
 	})
-}
-
-// HandleSSOExpired 统一拦截底层返回的 SSO 过期错误，若为过期则向浏览器清除 uid、prod_cftk 与 prod_J_SESSION_ID Cookie 并返回 401 响应
-func HandleSSOExpired(c *gin.Context, err error) bool {
-	if errors.Is(err, utils.ErrSSOExpired) {
-		c.Writer.Header().Add("Set-Cookie", "uid=; Path=/; Max-Age=0")
-		c.Writer.Header().Add("Set-Cookie", "prod_cftk=; Path=/; Max-Age=0")
-		c.Writer.Header().Add("Set-Cookie", "prod_J_SESSION_ID=; Path=/; Max-Age=0")
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "SSO session expired, please login again",
-			"code":  "SSO_EXPIRED",
-		})
-		return true
-	}
-	return false
 }
