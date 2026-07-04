@@ -416,11 +416,11 @@ const RepoRow: React.FC<RepoRowProps> = ({
         <td style={{ padding: '12px 16px 12px 8px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
           <button
             className="btn btn-primary btn-small"
-            style={{ fontSize: 12, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            style={{ padding: '6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4 }}
             onClick={onAddScheme}
             title="为该仓库新增执行方案"
           >
-            <Plus size={11} /> 新增方案
+            <Plus size={14} />
           </button>
         </td>
       </tr>
@@ -570,19 +570,19 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
               <div style={{ display: 'inline-flex', gap: 6 }}>
                 <button
                   className="btn btn-secondary btn-small"
-                  style={{ padding: '3px 8px', fontSize: 11 }}
+                  style={{ padding: '6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4 }}
                   title="编辑执行方案"
                   onClick={() => onEditScheme(scheme)}
                 >
-                  <Edit2 size={10} /> 编辑
+                  <Edit2 size={12} />
                 </button>
                 <button
                   className="btn btn-secondary btn-small"
-                  style={{ padding: '3px 8px', fontSize: 11, color: '#fb7185' }}
+                  style={{ padding: '6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, color: '#fb7185' }}
                   title="删除执行方案"
                   onClick={() => scheme.id && onDeleteScheme(scheme.id)}
                 >
-                  <Trash2 size={10} /> 删除
+                  <Trash2 size={12} />
                 </button>
               </div>
             </td>
