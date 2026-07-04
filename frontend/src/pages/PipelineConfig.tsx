@@ -13,7 +13,6 @@ interface PipelineConfigProps {
   onAddPipeline: () => void
   onEditPipeline: (pipeline: Pipeline) => void
   onDeletePipeline: (id: number) => void
-  onAddScheme: () => void
   onEditScheme: (scheme: ExecutionScheme) => void
   onDeleteScheme: (id: number) => void
   onSyncPipeline?: (pipeline: Pipeline) => void
@@ -30,7 +29,6 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
   onAddPipeline,
   onEditPipeline,
   onDeletePipeline,
-  onAddScheme,
   onEditScheme,
   onDeleteScheme,
   onSyncPipeline
@@ -173,9 +171,6 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                       <RefreshCw size={13} style={{ marginRight: 4 }} /> 同步
                     </button>
                   )}
-                  <button className="btn btn-primary btn-small" onClick={onAddScheme}>
-                    <Plus size={13} style={{ marginRight: 4 }} /> 新增
-                  </button>
                 </div>
               </div>
 
