@@ -63,6 +63,7 @@ func main() {
 
 			// 仓库配置路由
 			api.GET("/repos", handlers.GetRepos)
+			api.GET("/repos/filter-options", handlers.GetRepoFilterOptions)
 			api.GET("/repos/:id", handlers.GetRepoDetails)
 			api.POST("/repos/:id/trigger", handlers.TriggerRepo)
 			api.GET("/repos/:id/latest-log", handlers.GetRepoLatestLog)
