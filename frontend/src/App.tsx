@@ -597,6 +597,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         onClose={() => { setShowSchemeModal(false); setActiveScheme(null); setSchemeError(null); setSchemeSaveSuccess(false); }}
         apiBase={apiBase}
         repos={repos}
+        pipelines={pipelines}
         saving={isSavingScheme}
         saveError={schemeError}
         saveSuccess={schemeSaveSuccess}
