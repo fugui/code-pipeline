@@ -551,14 +551,6 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
               }
             </td>
 
-            {/* 触发配置 */}
-            <td style={{ padding: '10px 8px' }}>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <TriggerTag active={!!scheme.mr_trigger} label="MR触发" />
-                <TriggerTag active={!!scheme.daily_build} label={`每日 ${scheme.daily_build_time || '00:30'}`} />
-              </div>
-            </td>
-
             {/* 检查任务ID */}
             <td style={{ padding: '10px 8px' }}>
               <IdCell value={scheme.code_checker_task_id} />
