@@ -65,6 +65,8 @@ export interface ExecutionScheme {
   repository?: Repository
   branchs: string
   execution_scheme_id?: string
+  execution_plan_id?: string
+  mr_binding_id?: string
   username?: string
   password?: string
   code_checker_task_id?: string
