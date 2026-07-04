@@ -562,12 +562,6 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
             onAddPipeline={() => { setActivePipeline({ pipeline_id: '', name: '', type: '每日构建' }); setShowPipelineModal(true); setPipelineFetchError(''); }}
             onEditPipeline={(p) => { setActivePipeline(p); setShowPipelineModal(true); setPipelineFetchError(''); }}
             onDeletePipeline={handleDeletePipeline}
-            onAddScheme={() => {
-              if (selectedPipeline && selectedPipeline.id) {
-                setActiveScheme({ pipeline_id: selectedPipeline.id, repository_id: repos[0]?.id || 0, branchs: 'master', languages: '' });
-                setShowSchemeModal(true);
-              }
-            }}
             onEditScheme={(scheme) => { setActiveScheme(scheme); setShowSchemeModal(true); }}
             onDeleteScheme={handleDeleteScheme}
             onSyncPipeline={handleSyncPipeline}
