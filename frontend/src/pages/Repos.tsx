@@ -483,11 +483,12 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
       <thead>
         <tr style={{ background: 'rgba(99,102,241,0.06)', borderBottom: '1px solid rgba(99,102,241,0.12)' }}>
           <th style={subThStyle({ width: 40 })}></th>
-          <th style={subThStyle({ minWidth: 140 })}>分支 / 触发</th>
-          <th style={subThStyle({ width: 180 })}>所属流水线</th>
-          <th style={subThStyle({ width: 120 })}>语言</th>
-          <th style={subThStyle({ width: 130 })}>检查任务ID</th>
-          <th style={subThStyle({ width: 130 })}>执行方案ID</th>
+          <th style={subThStyle({ width: 120 })}>分支</th>
+          <th style={subThStyle({ width: 160 })}>所属流水线</th>
+          <th style={subThStyle({ width: 100 })}>语言</th>
+          <th style={subThStyle({ width: 160 })}>触发配置</th>
+          <th style={subThStyle({ width: 120 })}>检查任务ID</th>
+          <th style={subThStyle({ width: 120 })}>执行方案ID</th>
           <th style={subThStyle({ width: 100, textAlign: 'right' })}>操作</th>
         </tr>
       </thead>
@@ -507,7 +508,7 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
               <GitBranch size={12} style={{ color: '#6366f1', opacity: 0.6 }} />
             </td>
 
-            {/* 分支 + 触发配置（合并显示） */}
+            {/* 分支 */}
             <td style={{ padding: '10px 8px' }}>
               <div
                 title={scheme.branchs || undefined}
@@ -515,8 +516,7 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
                   fontFamily: 'var(--font-mono)',
                   fontWeight: 600,
                   color: 'var(--text-main)',
-                  marginBottom: 5,
-                  maxWidth: 160,
+                  maxWidth: 110,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
@@ -524,10 +524,6 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
                 }}
               >
                 {scheme.branchs || '-'}
-              </div>
-              <div style={{ display: 'flex', gap: 4 }}>
-                <TriggerTag active={!!scheme.mr_trigger} label="MR触发" />
-                <TriggerTag active={!!scheme.daily_build} label={`每日 ${scheme.daily_build_time || '00:30'}`} />
               </div>
             </td>
 
@@ -549,6 +545,14 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
                 ))
                 : <span style={{ color: 'var(--text-muted)' }}>-</span>
               }
+            </td>
+
+            {/* 触发配置 */}
+            <td style={{ padding: '10px 8px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                <TriggerTag active={!!scheme.mr_trigger} label="MR触发" />
+                <TriggerTag active={!!scheme.daily_build} label={`每日 ${scheme.daily_build_time || '00:30'}`} />
+              </div>
             </td>
 
             {/* 检查任务ID */}
