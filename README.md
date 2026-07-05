@@ -107,3 +107,17 @@ npm run dev
 code_bench:
   api_url: "http://192.168.56.18:8000"  # Portal 宿主主应用的访问基准地址
 ```
+
+---
+
+## 🏷️ 版本历史 (Release History)
+
+### v0.3.0 (2026-07-05)
+*   **以执行方案为主导的同步逻辑重构**：将原有的以 MR 绑定为主导重构为以远端执行方案（Execution Schemes）为主导，确保未绑定 MR 的方案也被完整同步。
+*   **执行计划（Execution Plans / 每日构建）集成**：增加了从三方系统同步执行计划的接口调用，并与执行方案做匹配关联，实现定时/每日构建流水线的自动覆盖设置。
+*   **多源代码仓/分支数据合并与匹配**：解析 `CustomParameter` 中存储的自定义参数的高级属性（如 `repository` 和 `branch`），结合 MR 绑定的 `CodeURL` 和 `Branches` 信息动态合并出最终的代码仓和分支，并据此规格化匹配本地 `RepositoryID`，找不到则安全跳过。
+*   **代码结构优化**：新建了公共辅助模块 [helpers.go](file:///home/fugui/codes/code-pipeline/handlers/helpers.go)，将原分散各处的 `prepareRequestHeaders` 和 `HandleSSOExpired` 等公共辅助方法统一收拢，优化了 Handler 层的包内结构和对底层的解耦。
+
+### v0.2.0 (2026-06-08)
+*   **微前端集成与日志透传**：支持 Module Federation 嵌入 Host 宿主，并实现无本地日志存储的高性能日志实时代理查询。
+
