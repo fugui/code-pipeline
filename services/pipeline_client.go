@@ -45,12 +45,12 @@ func FetchRemotePipelineInfo(ctx context.Context, pipelineID string, headers map
 		Entity struct {
 			Result struct {
 				ID           string `json:"id"`
+				PipelineName string `json:"pipelineName"`
 				ServiceID    string `json:"serviceId"`
+				ServiceName  string `json:"serviceName"`
 				WorkspaceID  string `json:"workspaceId"`
 				OwnerID      string `json:"ownerId"`
 				OwnerName    string `json:"ownerName"`
-				ServiceName  string `json:"serviceName"`
-				PipelineName string `json:"pipelineName"`
 			} `json:"result"`
 		} `json:"entity"`
 	}
