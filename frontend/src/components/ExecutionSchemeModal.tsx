@@ -41,7 +41,56 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   const [mrTrigger, setMrTrigger] = React.useState(true);
   const [dailyBuild, setDailyBuild] = React.useState(true);
   const [dailyBuildTime, setDailyBuildTime] = React.useState('00:30');
-  const lastCustomAttrsRef = React.useRef('');
+  const lastCustomAttrsRef = React.useRef('');  const [searchedRepos, setSearchedRepos] = React.useState<any[]>(repos)
+  const [searching, setSearching] = React.useState(false)
+
+  React.useEffect(() => {
+    if (visible) {
+      setSearchedRepos(repos);
+    }
+  }, [visible, repos]);
+
+  React.useEffect(() => {
+    if (!visible) return;
+    
+    // 如果 filterQuery 为空，使用全量候选
+    if (!filterQuery.trim()) {
+      setSearchedRepos(repos);
+      return;
+    }
+
+    // 如果正好匹配当前选中的仓库名，不触发查询
+    const selectedRepo = repos.find(r => r.id === activeScheme?.repository_id) || activeScheme?.repository;
+    if (selectedRepo && selectedRepo.name === filterQuery) {
+      setSearchedRepos(repos.find(r => r.id === activeScheme?.repository_id) ? repos : [selectedRepo, ...repos]);
+      return;
+    }
+
+    const delayDebounce = setTimeout(() => {
+      setSearching(true);
+      const token = localStorage.getItem('code_shield_token') || localStorage.getItem('code_pipeline_token');
+      fetch(`${apiBase}/repos?search=${encodeURIComponent(filterQuery)}&page_size=50`, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      })
+      .then(res => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then(data => {
+        setSearchedRepos(data?.items || []);
+      })
+      .catch(err => {
+        console.error('search repos from backend failed', err);
+      })
+      .finally(() => {
+        setSearching(false);
+      });
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [filterQuery, visible, repos, apiBase, activeScheme?.repository_id, activeScheme?.repository]);
 
   React.useEffect(() => {
     if (activeScheme && activeScheme.repository_id) {
@@ -187,14 +236,9 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
     }, 300);
   };
 
-  const filteredRepos = repos.filter(r => 
-    r.name.toLowerCase().includes(filterQuery.toLowerCase()) || 
-    r.url.toLowerCase().includes(filterQuery.toLowerCase()) ||
-    (r.service_group && r.service_group.toLowerCase().includes(filterQuery.toLowerCase())) ||
-    (r.owner_name && r.owner_name.toLowerCase().includes(filterQuery.toLowerCase()))
-  )
+  const filteredRepos = searchedRepos
 
-  const selectedRepo = repos.find(r => r.id === activeScheme.repository_id) || activeScheme.repository
+  const selectedRepo = searchedRepos.find(r => r.id === activeScheme.repository_id) || activeScheme.repository
 
   const updateCustomAttrs = (newList: { key: string; value: string }[]) => {
     setCustomAttrs(newList);
@@ -373,7 +417,12 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                       }}
                       onMouseDown={(e) => e.preventDefault()}
                     >
-                      {filteredRepos.length > 0 ? (
+                      {searching ? (
+                        <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                          <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                          正在检索代码仓...
+                        </div>
+                      ) : filteredRepos.length > 0 ? (
                         filteredRepos.map(r => (
                           <div 
                             key={r.id} 
