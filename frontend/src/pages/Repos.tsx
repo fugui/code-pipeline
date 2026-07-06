@@ -538,8 +538,8 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
           <th style={subThStyle({ width: 160 })}>所属流水线</th>
           <th style={subThStyle({ width: 100 })}>语言</th>
           <th style={subThStyle({ width: 160 })}>触发配置</th>
-          <th style={subThStyle({ width: 120 })}>检查任务ID</th>
-          <th style={subThStyle({ width: 120 })}>执行方案ID</th>
+          <th style={subThStyle({ width: 140 })}>检查任务</th>
+          <th style={subThStyle({ width: 140 })}>执行方案</th>
           <th style={subThStyle({ width: 100, textAlign: 'right' })}>操作</th>
         </tr>
       </thead>
@@ -624,10 +624,18 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
             <td style={{ padding: '10px 8px' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {scheme.mr_binding_id && (
-                  <TriggerTag active={!!scheme.mr_trigger} label="MR触发" />
+                  <TriggerTag 
+                    active={!!scheme.mr_trigger} 
+                    label="MR触发" 
+                    title={scheme.mr_binding_name ? `绑定名称: ${scheme.mr_binding_name}\nID: ${scheme.mr_binding_id}` : `ID: ${scheme.mr_binding_id}`} 
+                  />
                 )}
                 {scheme.execution_plan_id && (
-                  <TriggerTag active={!!scheme.daily_build} label={`每日 ${scheme.daily_build_time || '00:30'}`} />
+                  <TriggerTag 
+                    active={!!scheme.daily_build} 
+                    label={`每日 ${scheme.daily_build_time || '00:30'}`} 
+                    title={scheme.execution_plan_name ? `计划名称: ${scheme.execution_plan_name}\nID: ${scheme.execution_plan_id}` : `ID: ${scheme.execution_plan_id}`} 
+                  />
                 )}
                 {!scheme.mr_binding_id && !scheme.execution_plan_id && (
                   <span style={{ color: 'var(--text-muted)' }}>-</span>
@@ -635,14 +643,14 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
               </div>
             </td>
 
-            {/* 检查任务ID */}
+            {/* 检查任务 */}
             <td style={{ padding: '10px 8px' }}>
-              <IdCell value={scheme.code_checker_task_id} />
+              <NameCell name={scheme.code_checker_task_name} id={scheme.code_checker_task_id} />
             </td>
 
-            {/* 执行方案ID */}
+            {/* 执行方案 */}
             <td style={{ padding: '10px 8px' }}>
-              <IdCell value={scheme.execution_scheme_id} />
+              <NameCell name={scheme.execution_scheme_name} id={scheme.execution_scheme_id} />
             </td>
 
             {/* 操作 */}
@@ -674,38 +682,44 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
   )
 }
 
-// ---- ID 单元格：截断展示，hover title 显示完整值 ----
-const IdCell: React.FC<{ value?: string }> = ({ value }) => {
-  if (!value) return <span style={{ color: 'var(--text-muted)' }}>-</span>
+
+// ---- Name 单元格：优先显示 Name，hover 提示 ID ----
+const NameCell: React.FC<{ name?: string; id?: string }> = ({ name, id }) => {
+  if (!name && !id) return <span style={{ color: 'var(--text-muted)' }}>-</span>
+  const displayName = name || id || '-';
+  const tooltip = id ? `ID: ${id}` : '';
   return (
     <span
-      title={value}
+      title={tooltip}
       style={{
-        fontFamily: 'var(--font-mono)',
-        fontSize: 10,
+        fontSize: 12,
         color: 'var(--text-secondary)',
         display: 'block',
-        maxWidth: 120,
+        maxWidth: 130,
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
-        cursor: 'default',
+        cursor: tooltip ? 'help' : 'default',
       }}
     >
-      {value}
+      {displayName}
     </span>
   )
 }
 
 // ---- 触发配置标签 ----
-const TriggerTag: React.FC<{ active: boolean; label: string }> = ({ active, label }) => (
-  <span style={{
-    fontSize: 10, padding: '2px 6px', borderRadius: 8,
-    background: active ? 'rgba(16,185,129,0.1)' : 'rgba(107,114,128,0.1)',
-    color: active ? '#34d399' : '#6b7280',
-    border: `1px solid ${active ? 'rgba(16,185,129,0.2)' : 'rgba(107,114,128,0.15)'}`,
-    whiteSpace: 'nowrap',
-  }}>
+const TriggerTag: React.FC<{ active: boolean; label: string; title?: string }> = ({ active, label, title }) => (
+  <span
+    title={title}
+    style={{
+      fontSize: 10, padding: '2px 6px', borderRadius: 8,
+      background: active ? 'rgba(16,185,129,0.1)' : 'rgba(107,114,128,0.1)',
+      color: active ? '#34d399' : '#6b7280',
+      border: `1px solid ${active ? 'rgba(16,185,129,0.2)' : 'rgba(107,114,128,0.15)'}`,
+      whiteSpace: 'nowrap',
+      cursor: title ? 'help' : 'default',
+    }}
+  >
     {label}
   </span>
 )

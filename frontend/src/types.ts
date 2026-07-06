@@ -69,11 +69,15 @@ export interface ExecutionScheme {
   repository?: Repository
   branchs: string
   execution_scheme_id?: string
+  execution_scheme_name?: string
   execution_plan_id?: string
+  execution_plan_name?: string
   mr_binding_id?: string
+  mr_binding_name?: string
   username?: string
   password?: string
   code_checker_task_id?: string
+  code_checker_task_name?: string
   languages?: string
   custom_attributes?: string
   mr_trigger?: boolean
