@@ -365,7 +365,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         description: data.description || '',
         service_id: data.service_id || '',
         workspace_id: data.workspace_id || '',
-        owner: data.owner || '',
+        owner_id: data.owner_id || '',
         service_name: data.service_name || '',
       }))
     })
