@@ -9,6 +9,7 @@ export interface Repository {
   id: number
   name: string
   url: string
+  http_url?: string
   owner_id: number
   is_active: boolean
   created_at: string
