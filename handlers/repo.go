@@ -61,7 +61,7 @@ func GetRepos(c *gin.Context) {
 
 	var repos []models.Repository
 	offset := (page - 1) * pageSize
-	if err := query.Preload("Schemes").Preload("Schemes.Pipeline").Order("name ASC").Offset(offset).Limit(pageSize).Find(&repos).Error; err != nil {
+	if err := query.Preload("Schemes").Preload("Schemes.PipelineInfo").Order("name ASC").Offset(offset).Limit(pageSize).Find(&repos).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch repositories"})
 		return
 	}

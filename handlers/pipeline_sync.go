@@ -235,7 +235,7 @@ func SyncExecutionSchemes(c *gin.Context) {
 	}
 
 	for i := range finalSchemes {
-		if err := tx.Omit("Repository", "Pipeline").Create(&finalSchemes[i]).Error; err != nil {
+		if err := tx.Omit("Repository", "PipelineInfo").Create(&finalSchemes[i]).Error; err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save synced execution schemes"})
 			return
