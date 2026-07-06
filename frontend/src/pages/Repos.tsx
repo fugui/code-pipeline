@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   Search, ChevronDown, ChevronRight, Plus, Edit2, Trash2,
-  GitBranch, AlertCircle, CheckCircle2, Loader2, RefreshCw
+  GitBranch, AlertCircle, CheckCircle2, Loader2, RefreshCw,
+  ExternalLink
 } from 'lucide-react'
 import { ExecutionScheme } from '../types'
 
@@ -429,12 +430,16 @@ const RepoRow: React.FC<RepoRowProps> = ({
               style={{ 
                 color: 'var(--text-main)', 
                 textDecoration: 'none',
-                transition: 'color 0.2s'
+                transition: 'color 0.2s',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4
               }}
               onMouseEnter={e => e.currentTarget.style.color = '#6366f1'}
               onMouseLeave={e => e.currentTarget.style.color = 'var(--text-main)'}
             >
               {repo.name}
+              <ExternalLink size={12} style={{ opacity: 0.6 }} />
             </a>
           ) : (
             repo.name
