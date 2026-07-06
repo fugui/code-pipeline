@@ -66,6 +66,17 @@ func GetRepos(c *gin.Context) {
 		return
 	}
 
+	template := models.AppConfig.PipelineSystem.PipelineLinkTemplate
+	if template != "" {
+		for i := range repos {
+			for j := range repos[i].Schemes {
+				if repos[i].Schemes[j].PipelineInfo != nil {
+					repos[i].Schemes[j].PipelineInfo.GenerateWebURL(template)
+				}
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"items":     repos,
 		"total":     total,

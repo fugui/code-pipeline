@@ -198,6 +198,15 @@ func GetExecutionSchemes(c *gin.Context) {
 		return
 	}
 
+	template := models.AppConfig.PipelineSystem.PipelineLinkTemplate
+	if template != "" {
+		for i := range schemes {
+			if schemes[i].PipelineInfo != nil {
+				schemes[i].PipelineInfo.GenerateWebURL(template)
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, schemes)
 }
 
