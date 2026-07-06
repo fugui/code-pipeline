@@ -56,6 +56,7 @@ export interface Pipeline {
   workspace_id?: string
   owner?: string
   service_name?: string
+  web_url?: string
 }
 
 export interface ExecutionScheme {
