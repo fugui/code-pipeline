@@ -43,6 +43,7 @@ type Pipeline struct {
 	ServiceID   string    `json:"service_id"`                              // 第三方服务 ID
 	WorkspaceID string    `json:"workspace_id"`                            // 第三方工作区 ID
 	OwnerID     string    `json:"owner_id"`                                // 三方项目 ID
+	OwnerName   string    `json:"owner_name"`                              // 三方项目名称
 	ServiceName string    `json:"service_name"`                            // 第三方服务名称
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`

@@ -42,6 +42,7 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 				"service_id":   "mock_svc_1001",
 				"workspace_id": "mock_ws_2002",
 				"owner_id":     "MockOwner",
+				"owner_name":   "Mock项目空间名称",
 				"service_name": "MockService",
 				"is_mock":      true,
 			})
@@ -60,6 +61,7 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 		"service_id":   pipelineInfo.ServiceID,
 		"workspace_id": pipelineInfo.WorkspaceID,
 		"owner_id":     pipelineInfo.OwnerID,
+		"owner_name":   pipelineInfo.OwnerName,
 		"service_name": pipelineInfo.ServiceName,
 		"is_mock":      false,
 	})

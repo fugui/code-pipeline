@@ -152,20 +152,29 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
             </div>
           </div>
 
+          <div>
+            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>微服务名称 (Service Name - 只读)</label>
+            <input 
+              type="text" 
+              value={activePipeline.service_name || '未拉取'} 
+              disabled 
+            />
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>微服务名称 (Service Name - 只读)</label>
-              <input 
-                type="text" 
-                value={activePipeline.service_name || '未拉取'} 
-                disabled 
-              />
-            </div>
             <div>
               <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>三方项目 (OwnerID - 只读)</label>
               <input 
                 type="text" 
                 value={activePipeline.owner_id || '未拉取'} 
+                disabled 
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>三方项目名称 (OwnerName - 只读)</label>
+              <input 
+                type="text" 
+                value={activePipeline.owner_name || '未拉取'} 
                 disabled 
               />
             </div>
