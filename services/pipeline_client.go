@@ -47,7 +47,7 @@ func FetchRemotePipelineInfo(ctx context.Context, pipelineID string, headers map
 				ID           string `json:"id"`
 				ServiceID    string `json:"serviceId"`
 				WorkspaceID  string `json:"workspaceId"`
-				Owner        string `json:"owner"`
+				OwnerID      string `json:"ownerId"`
 				ServiceName  string `json:"serviceName"`
 				PipelineName string `json:"pipelineName"`
 			} `json:"result"`
@@ -74,7 +74,7 @@ func FetchRemotePipelineInfo(ctx context.Context, pipelineID string, headers map
 		Description: fmt.Sprintf("三方服务 %s (%s) 自动同步录入", res.ServiceName, res.ServiceID),
 		ServiceID:   res.ServiceID,
 		WorkspaceID: res.WorkspaceID,
-		OwnerID:     res.Owner,
+		OwnerID:     res.OwnerID,
 		ServiceName: res.ServiceName,
 	}, nil
 }
