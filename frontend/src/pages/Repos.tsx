@@ -580,7 +580,29 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
 
             {/* 流水线名 */}
             <td style={{ padding: '10px 8px', color: 'var(--text-secondary)' }}>
-              {scheme.pipeline?.name || scheme.pipeline_name || <span style={{ color: 'var(--text-muted)' }}>ID #{scheme.pipeline_id}</span>}
+              {scheme.pipeline?.web_url ? (
+                <a
+                  href={scheme.pipeline.web_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  style={{
+                    color: 'var(--text-secondary)',
+                    textDecoration: 'none',
+                    transition: 'color 0.2s',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#6366f1'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+                >
+                  {scheme.pipeline.name}
+                  <ExternalLink size={12} style={{ opacity: 0.6 }} />
+                </a>
+              ) : (
+                scheme.pipeline?.name || scheme.pipeline_name || <span style={{ color: 'var(--text-muted)' }}>ID #{scheme.pipeline_id}</span>
+              )}
             </td>
 
             {/* 语言 */}

@@ -43,6 +43,7 @@ type Config struct {
 		CreateExecutionPlanBody   string            `yaml:"create_execution_plan_body"`
 		GetExecutionPlanURL       string            `yaml:"get_execution_plan_url"`
 		RuleSets                  map[string]string `yaml:"rule_sets"`
+		PipelineLinkTemplate      string            `yaml:"pipeline_link_template"`
 	} `yaml:"pipeline_system"`
 }
 

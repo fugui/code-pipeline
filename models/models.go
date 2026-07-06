@@ -1,7 +1,10 @@
 package models
 
 import (
+	"strings"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type User struct {
@@ -43,6 +46,33 @@ type Pipeline struct {
 	ServiceName string    `json:"service_name"`                            // 第三方服务名称
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+	WebURL      string    `gorm:"-" json:"web_url"` // 排除字段，仅在 JSON 序列化中返回
+}
+
+func (p *Pipeline) AfterFind(tx *gorm.DB) (err error) {
+	tmpl := AppConfig.PipelineSystem.PipelineLinkTemplate
+	if tmpl == "" {
+		return nil
+	}
+
+	// 变量替换
+	res := tmpl
+	res = strings.ReplaceAll(res, "{workspaceId}", p.WorkspaceID)
+	res = strings.ReplaceAll(res, "{WORKSPACE_ID}", p.WorkspaceID)
+	res = strings.ReplaceAll(res, "{workspace_id}", p.WorkspaceID)
+
+	res = strings.ReplaceAll(res, "{ServiceID}", p.ServiceID)
+	res = strings.ReplaceAll(res, "{SERVICE_ID}", p.ServiceID)
+	res = strings.ReplaceAll(res, "{serviceId}", p.ServiceID)
+	res = strings.ReplaceAll(res, "{service_id}", p.ServiceID)
+
+	res = strings.ReplaceAll(res, "{PipelineID}", p.PipelineID)
+	res = strings.ReplaceAll(res, "{PIPELINE_ID}", p.PipelineID)
+	res = strings.ReplaceAll(res, "{pipelineId}", p.PipelineID)
+	res = strings.ReplaceAll(res, "{pipeline_id}", p.PipelineID)
+
+	p.WebURL = res
+	return nil
 }
 
 type ExecutionScheme struct {
