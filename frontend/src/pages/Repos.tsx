@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Search, ChevronDown, ChevronRight, Plus, Edit2, Trash2,
   GitBranch, AlertCircle, CheckCircle2, Loader2, RefreshCw
@@ -45,12 +46,35 @@ export const Repos: React.FC<ReposProps> = ({
   apiBase,
   schemeUpdateKey = 0,
 }) => {
-  // 过滤条件
-  const [search, setSearch] = useState('')
-  const [serviceGroup, setServiceGroup] = useState('')
-  const [ownerName, setOwnerName] = useState('')
-  const [hasScheme, setHasScheme] = useState('all')
-  const [page, setPage] = useState(1)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // 局部搜索输入状态，用于防抖
+  const [search, setSearch] = useState(() => searchParams.get('search') || '')
+
+  // 从 URL query 中直接读取其他过滤状态
+  const serviceGroup = searchParams.get('service_group') || ''
+  const ownerName = searchParams.get('owner_name') || ''
+  const hasScheme = searchParams.get('has_scheme') || 'all'
+  const page = parseInt(searchParams.get('page') || '1', 10)
+
+  // 当 URL params 变化时，同步局部搜索输入框内容
+  useEffect(() => {
+    setSearch(searchParams.get('search') || '')
+  }, [searchParams])
+
+  const updateQueryParams = (newParams: Record<string, string | number>) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      Object.entries(newParams).forEach(([key, val]) => {
+        if (val === '' || val === undefined || val === null) {
+          next.delete(key)
+        } else {
+          next.set(key, String(val))
+        }
+      })
+      return next
+    })
+  }
 
   // 数据
   const [result, setResult] = useState<PagedResult | null>(null)
@@ -80,10 +104,11 @@ export const Repos: React.FC<ReposProps> = ({
   const fetchRepos = useCallback(() => {
     if (!token) return
     setLoading(true)
+    const finalSearch = searchParams.get('search') || ''
     const params = new URLSearchParams({
       page: String(page),
       page_size: String(PAGE_SIZE),
-      search,
+      search: finalSearch,
       service_group: serviceGroup,
       owner_name: ownerName,
       has_scheme: hasScheme,
@@ -95,23 +120,24 @@ export const Repos: React.FC<ReposProps> = ({
       .then((data: PagedResult) => setResult(data))
       .catch(err => console.error('fetch repos failed', err))
       .finally(() => setLoading(false))
-  }, [token, apiBase, page, search, serviceGroup, ownerName, hasScheme])
+  }, [token, apiBase, page, searchParams, serviceGroup, ownerName, hasScheme])
 
   useEffect(() => {
     fetchRepos()
   }, [fetchRepos])
 
   // ---- 切换过滤条件时重置到第 1 页 ----
-  const resetAndFilter = (setter: (v: string) => void) => (v: string) => {
-    setter(v)
-    setPage(1)
+  const resetAndFilter = (key: string) => (v: string) => {
+    updateQueryParams({ [key]: v, page: 1 })
   }
 
   // ---- 搜索防抖 ----
   const handleSearchChange = (v: string) => {
     setSearch(v)
     if (searchTimer.current) clearTimeout(searchTimer.current)
-    searchTimer.current = setTimeout(() => setPage(1), 400)
+    searchTimer.current = setTimeout(() => {
+      updateQueryParams({ search: v, page: 1 })
+    }, 400)
   }
 
   // ---- 拉取某仓库的方案 ----
@@ -169,7 +195,7 @@ export const Repos: React.FC<ReposProps> = ({
         <div style={{ position: 'relative' }}>
           <select
             value={serviceGroup}
-            onChange={e => resetAndFilter(setServiceGroup)(e.target.value)}
+            onChange={e => resetAndFilter('service_group')(e.target.value)}
             style={selectStyle}
           >
             <option value="">全部子系统</option>
@@ -183,7 +209,7 @@ export const Repos: React.FC<ReposProps> = ({
         <div>
           <select
             value={ownerName}
-            onChange={e => resetAndFilter(setOwnerName)(e.target.value)}
+            onChange={e => resetAndFilter('owner_name')(e.target.value)}
             style={selectStyle}
           >
             <option value="">全部负责人</option>
@@ -197,7 +223,7 @@ export const Repos: React.FC<ReposProps> = ({
         <div>
           <select
             value={hasScheme}
-            onChange={e => resetAndFilter(setHasScheme)(e.target.value)}
+            onChange={e => resetAndFilter('has_scheme')(e.target.value)}
             style={selectStyle}
           >
             <option value="all">全部状态</option>
@@ -297,7 +323,7 @@ export const Repos: React.FC<ReposProps> = ({
               className="btn btn-secondary"
               style={{ padding: '4px 12px', fontSize: 12 }}
               disabled={page <= 1 || loading}
-              onClick={() => setPage(p => p - 1)}
+              onClick={() => updateQueryParams({ page: page - 1 })}
             >
               上一页
             </button>
@@ -308,7 +334,7 @@ export const Repos: React.FC<ReposProps> = ({
               className="btn btn-secondary"
               style={{ padding: '4px 12px', fontSize: 12 }}
               disabled={page >= totalPages || loading}
-              onClick={() => setPage(p => p + 1)}
+              onClick={() => updateQueryParams({ page: page + 1 })}
             >
               下一页
             </button>
