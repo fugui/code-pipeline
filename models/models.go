@@ -50,7 +50,8 @@ type ExecutionScheme struct {
 	Name              string      `json:"name"`                              // 统一关联对象的全局唯一名称
 	ExecutionSchemeID string      `json:"execution_scheme_id"`               // 执行方案ID (从真正流水线系统同步回来)
 	PipelineID        uint        `gorm:"index;not null" json:"pipeline_id"` // 关联的 Pipeline ID
-	RepositoryID      uint        `gorm:"index" json:"repository_id"`        // 关联本地只读 Repository 镜像表 ID
+	Pipeline          *Pipeline   `gorm:"foreignKey:PipelineID" json:"pipeline,omitempty"`
+	RepositoryID      uint        `gorm:"index" json:"repository_id"` // 关联本地只读 Repository 镜像表 ID
 	Repository        *Repository `gorm:"foreignKey:RepositoryID" json:"repository,omitempty"`
 	Branch            string      `gorm:"not null" json:"branchs"` // 分支
 	Username          string      `json:"username"`                // 用户名

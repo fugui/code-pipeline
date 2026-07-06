@@ -531,7 +531,7 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
 
             {/* 流水线名 */}
             <td style={{ padding: '10px 8px', color: 'var(--text-secondary)' }}>
-              {scheme.pipeline_name || <span style={{ color: 'var(--text-muted)' }}>ID #{scheme.pipeline_id}</span>}
+              {scheme.pipeline?.name || scheme.pipeline_name || <span style={{ color: 'var(--text-muted)' }}>ID #{scheme.pipeline_id}</span>}
             </td>
 
             {/* 语言 */}
