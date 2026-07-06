@@ -55,6 +55,7 @@ export interface Pipeline {
   service_id?: string
   workspace_id?: string
   owner_id?: string
+  owner_name?: string
   service_name?: string
   web_url?: string
 }
