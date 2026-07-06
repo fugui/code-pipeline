@@ -61,6 +61,7 @@ export interface ExecutionScheme {
   id?: number
   pipeline_id: number
   pipeline_name?: string
+  pipeline?: Pipeline
   repository_id: number
   repository?: Repository
   branchs: string

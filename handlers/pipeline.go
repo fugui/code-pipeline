@@ -169,7 +169,7 @@ func GetExecutionSchemes(c *gin.Context) {
 		return
 	}
 
-	query := database.DB.Preload("Repository")
+	query := database.DB.Preload("Repository").Preload("Pipeline")
 
 	if pipelineIDStr != "" {
 		pipelineID, err := strconv.ParseUint(pipelineIDStr, 10, 32)
