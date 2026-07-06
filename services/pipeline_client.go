@@ -567,7 +567,7 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 	var repo models.Repository
 	database.DB.First(&repo, scheme.RepositoryID)
 	repoURL := repo.URL
-	if repoURL == "" {
+	if repoURL == "" && scheme.Repository != nil {
 		repoURL = scheme.Repository.URL
 	}
 
@@ -635,7 +635,7 @@ func SyncUpdateExecutionSchemeRemote(pipelineBusinessID string, scheme models.Ex
 	var repo models.Repository
 	database.DB.First(&repo, scheme.RepositoryID)
 	repoURL := repo.URL
-	if repoURL == "" {
+	if repoURL == "" && scheme.Repository != nil {
 		repoURL = scheme.Repository.URL
 	}
 

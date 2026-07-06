@@ -20,6 +20,7 @@ interface Repo {
   service_group: string
   owner_name: string
   is_active: boolean
+  schemes?: ExecutionScheme[]
 }
 
 interface PagedResult {
@@ -128,9 +129,10 @@ export const Repos: React.FC<ReposProps> = ({
       .finally(() => setSchemesLoading(prev => ({ ...prev, [repoId]: false })))
   }, [token, apiBase])
 
-  // ---- schemeUpdateKey 变化时刷新已展开的行 ----
+  // ---- schemeUpdateKey 变化时刷新已展开的行和列表 ----
   useEffect(() => {
     if (schemeUpdateKey === 0) return
+    fetchRepos()
     expandedIds.forEach(id => fetchSchemesForRepo(id))
   }, [schemeUpdateKey])  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -265,7 +267,7 @@ export const Repos: React.FC<ReposProps> = ({
                   key={repo.id}
                   repo={repo}
                   isExpanded={expandedIds.has(repo.id)}
-                  schemes={repoSchemes[repo.id]}
+                  schemes={repoSchemes[repo.id] !== undefined ? repoSchemes[repo.id] : repo.schemes}
                   schemesLoading={!!schemesLoading[repo.id]}
                   onToggle={() => toggleExpand(repo.id)}
                   onAddScheme={() => onAddScheme(repo.id)}

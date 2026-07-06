@@ -212,7 +212,7 @@ func SyncExecutionSchemes(c *gin.Context) {
 			normalizedCodeURL := utils.NormalizeGitURL(codeURL)
 			if r, found := repoMap[normalizedCodeURL]; found {
 				scheme.RepositoryID = r.ID
-				scheme.Repository = r
+				scheme.Repository = &r
 			} else {
 				log.Printf("[SyncExecutionSchemes] Warning: CodeURL %s (normalized: %s) not found in local mirrors\n", codeURL, normalizedCodeURL)
 			}

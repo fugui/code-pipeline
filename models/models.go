@@ -17,16 +17,17 @@ type User struct {
 }
 
 type Repository struct {
-	ID           uint      `gorm:"primaryKey;autoIncrement:false" json:"id"` // 对应 code-bench 中的仓库 ID
-	Name         string    `gorm:"uniqueIndex;not null" json:"name"`         // 仓库名称
-	URL          string    `gorm:"default:''" json:"url"`                    // Git 克隆地址
-	OwnerID      uint      `json:"owner_id"`                                 // 负责人 ID
-	IsActive     bool      `gorm:"default:true" json:"is_active"`            // 是否在宿主端被冻结
-	ProjectID    string    `gorm:"default:''" json:"project_id"`
-	HTTPURL      string    `gorm:"default:''" json:"http_url"`
-	ServiceGroup string    `gorm:"default:''" json:"service_group"` // 归属子系统
-	OwnerName    string    `gorm:"default:''" json:"owner_name"`    // 负责人姓名
-	CreatedAt    time.Time `json:"created_at"`
+	ID           uint              `gorm:"primaryKey;autoIncrement:false" json:"id"` // 对应 code-bench 中的仓库 ID
+	Name         string            `gorm:"uniqueIndex;not null" json:"name"`         // 仓库名称
+	URL          string            `gorm:"default:''" json:"url"`                    // Git 克隆地址
+	OwnerID      uint              `json:"owner_id"`                                 // 负责人 ID
+	IsActive     bool              `gorm:"default:true" json:"is_active"`            // 是否在宿主端被冻结
+	ProjectID    string            `gorm:"default:''" json:"project_id"`
+	HTTPURL      string            `gorm:"default:''" json:"http_url"`
+	ServiceGroup string            `gorm:"default:''" json:"service_group"` // 归属子系统
+	OwnerName    string            `gorm:"default:''" json:"owner_name"`    // 负责人姓名
+	CreatedAt    time.Time         `json:"created_at"`
+	Schemes      []ExecutionScheme `gorm:"foreignKey:RepositoryID" json:"schemes"`
 }
 
 type Pipeline struct {
@@ -45,25 +46,25 @@ type Pipeline struct {
 }
 
 type ExecutionScheme struct {
-	ID                uint       `gorm:"primaryKey" json:"id"`
-	Name              string     `json:"name"`                              // 统一关联对象的全局唯一名称
-	ExecutionSchemeID string     `json:"execution_scheme_id"`               // 执行方案ID (从真正流水线系统同步回来)
-	PipelineID        uint       `gorm:"index;not null" json:"pipeline_id"` // 关联的 Pipeline ID
-	RepositoryID      uint       `gorm:"index" json:"repository_id"`        // 关联本地只读 Repository 镜像表 ID
-	Repository        Repository `gorm:"foreignKey:RepositoryID" json:"repository"`
-	Branch            string     `gorm:"not null" json:"branchs"` // 分支
-	Username          string     `json:"username"`                // 用户名
-	Password          string     `json:"password"`                // 密码
-	CodeCheckerTaskID string     `json:"code_checker_task_id"`    // 代码检查任务 ID
-	Languages         string     `json:"languages"`               // 编程语言 (如: "C/C++,Python,Java")
-	MRBindingID       string     `json:"mr_binding_id"`           // 绑定的 MR 绑定 ID
-	ExecutionPlanID   string     `json:"execution_plan_id"`       // 绑定的每日构建/定时执行计划 ID
-	MRTrigger         bool       `gorm:"default:true" json:"mr_trigger"`
-	DailyBuild        bool       `gorm:"default:true" json:"daily_build"`
-	DailyBuildTime    string     `gorm:"type:varchar(50);default:'00:30'" json:"daily_build_time"`
-	CustomAttributes  string     `gorm:"type:text" json:"custom_attributes"` // 自定义属性 (JSON)
-	CreatedAt         time.Time  `json:"created_at"`
-	UpdatedAt         time.Time  `json:"updated_at"`
+	ID                uint        `gorm:"primaryKey" json:"id"`
+	Name              string      `json:"name"`                              // 统一关联对象的全局唯一名称
+	ExecutionSchemeID string      `json:"execution_scheme_id"`               // 执行方案ID (从真正流水线系统同步回来)
+	PipelineID        uint        `gorm:"index;not null" json:"pipeline_id"` // 关联的 Pipeline ID
+	RepositoryID      uint        `gorm:"index" json:"repository_id"`        // 关联本地只读 Repository 镜像表 ID
+	Repository        *Repository `gorm:"foreignKey:RepositoryID" json:"repository,omitempty"`
+	Branch            string      `gorm:"not null" json:"branchs"` // 分支
+	Username          string      `json:"username"`                // 用户名
+	Password          string      `json:"password"`                // 密码
+	CodeCheckerTaskID string      `json:"code_checker_task_id"`    // 代码检查任务 ID
+	Languages         string      `json:"languages"`               // 编程语言 (如: "C/C++,Python,Java")
+	MRBindingID       string      `json:"mr_binding_id"`           // 绑定的 MR 绑定 ID
+	ExecutionPlanID   string      `json:"execution_plan_id"`       // 绑定的每日构建/定时执行计划 ID
+	MRTrigger         bool        `gorm:"default:true" json:"mr_trigger"`
+	DailyBuild        bool        `gorm:"default:true" json:"daily_build"`
+	DailyBuildTime    string      `gorm:"type:varchar(50);default:'00:30'" json:"daily_build_time"`
+	CustomAttributes  string      `gorm:"type:text" json:"custom_attributes"` // 自定义属性 (JSON)
+	CreatedAt         time.Time   `json:"created_at"`
+	UpdatedAt         time.Time   `json:"updated_at"`
 }
 
 type MRBinding struct {
