@@ -223,7 +223,7 @@ func CreateExecutionScheme(c *gin.Context) {
 	}
 
 	scheme := models.ExecutionScheme{
-		PipelineID:       *req.PipelineID,
+		LocalPipelineID:  *req.PipelineID,
 		RepositoryID:     *req.RepositoryID,
 		Branch:           req.Branchs,
 		Languages:        req.Languages,
@@ -300,7 +300,7 @@ func UpdateExecutionScheme(c *gin.Context) {
 		return
 	}
 
-	scheme.PipelineID = *req.PipelineID
+	scheme.LocalPipelineID = *req.PipelineID
 	scheme.RepositoryID = *req.RepositoryID
 	scheme.Branch = req.Branchs
 	scheme.Languages = req.Languages
