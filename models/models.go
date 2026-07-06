@@ -1,6 +1,7 @@
 package models
 
 import (
+	"strings"
 	"time"
 )
 
@@ -47,6 +48,28 @@ type Pipeline struct {
 	WebURL      string    `gorm:"-" json:"web_url"` // 排除字段，仅在 JSON 序列化中返回
 }
 
+// GenerateWebURL 根据配置模板生成外链并回填到 WebURL 属性中
+func (p *Pipeline) GenerateWebURL(template string) {
+	if template == "" {
+		return
+	}
+	res := template
+	res = strings.ReplaceAll(res, "{workspaceId}", p.WorkspaceID)
+	res = strings.ReplaceAll(res, "{WORKSPACE_ID}", p.WorkspaceID)
+	res = strings.ReplaceAll(res, "{workspace_id}", p.WorkspaceID)
+
+	res = strings.ReplaceAll(res, "{ServiceID}", p.ServiceID)
+	res = strings.ReplaceAll(res, "{SERVICE_ID}", p.ServiceID)
+	res = strings.ReplaceAll(res, "{serviceId}", p.ServiceID)
+	res = strings.ReplaceAll(res, "{service_id}", p.ServiceID)
+
+	res = strings.ReplaceAll(res, "{PipelineID}", p.PipelineID)
+	res = strings.ReplaceAll(res, "{PIPELINE_ID}", p.PipelineID)
+	res = strings.ReplaceAll(res, "{pipelineId}", p.PipelineID)
+	res = strings.ReplaceAll(res, "{pipeline_id}", p.PipelineID)
+
+	p.WebURL = res
+}
 
 type ExecutionScheme struct {
 	ID                uint        `gorm:"primaryKey" json:"id"`
