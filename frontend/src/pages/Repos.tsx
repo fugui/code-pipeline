@@ -623,8 +623,15 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
             {/* 触发配置 */}
             <td style={{ padding: '10px 8px' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                <TriggerTag active={!!scheme.mr_trigger} label="MR触发" />
-                <TriggerTag active={!!scheme.daily_build} label={`每日 ${scheme.daily_build_time || '00:30'}`} />
+                {scheme.mr_binding_id && (
+                  <TriggerTag active={!!scheme.mr_trigger} label="MR触发" />
+                )}
+                {scheme.execution_plan_id && (
+                  <TriggerTag active={!!scheme.daily_build} label={`每日 ${scheme.daily_build_time || '00:30'}`} />
+                )}
+                {!scheme.mr_binding_id && !scheme.execution_plan_id && (
+                  <span style={{ color: 'var(--text-muted)' }}>-</span>
+                )}
               </div>
             </td>
 
