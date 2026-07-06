@@ -686,11 +686,41 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
 // ---- Name 单元格：优先显示 Name，hover 提示 ID ----
 const NameCell: React.FC<{ name?: string; id?: string }> = ({ name, id }) => {
   if (!name && !id) return <span style={{ color: 'var(--text-muted)' }}>-</span>
-  const displayName = name || id || '-';
-  const tooltip = id ? `ID: ${id}` : '';
+  
+  if (name && id) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 130 }}>
+        <span
+          style={{
+            fontSize: 12,
+            color: 'var(--text-secondary)',
+            display: 'block',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {name}
+        </span>
+        <span
+          style={{
+            fontSize: 10,
+            color: 'var(--text-muted)',
+            display: 'block',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          ID: {id}
+        </span>
+      </div>
+    )
+  }
+
+  const displayName = name || id;
   return (
     <span
-      title={tooltip}
       style={{
         fontSize: 12,
         color: 'var(--text-secondary)',
@@ -699,7 +729,6 @@ const NameCell: React.FC<{ name?: string; id?: string }> = ({ name, id }) => {
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
-        cursor: tooltip ? 'help' : 'default',
       }}
     >
       {displayName}
