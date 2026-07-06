@@ -71,7 +71,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
           <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>配置持续集成流水线，并绑定仓库执行方案，支持同步三方流水线控制台。</p>
         </div>
         <button className="btn btn-primary" onClick={onAddPipeline}>
-          <Plus size={16} /> 新增流水线
+          <Plus size={16} /> 导入流水线
         </button>
       </div>
 
