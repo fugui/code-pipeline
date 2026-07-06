@@ -377,7 +377,7 @@ func generateWebURL(p *models.Pipeline, template string) string {
 		return ""
 	}
 	return utils.ReplacePlaceholders(template, map[string]string{
-		"{WORKSPACE_ID}": p.WorkspaceID,
+		"{OWNER_ID}":     p.OwnerID,
 		"{SERVICE_ID}":   p.ServiceID,
 		"{PIPELINE_ID}":  p.PipelineID,
 	})
