@@ -162,7 +162,7 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>三方负责人 ID (OwnerID - 只读)</label>
+              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>三方项目 (OwnerID - 只读)</label>
               <input 
                 type="text" 
                 value={activePipeline.owner_id || '未拉取'} 
