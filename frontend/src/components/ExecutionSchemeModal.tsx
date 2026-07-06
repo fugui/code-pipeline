@@ -45,7 +45,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
 
   React.useEffect(() => {
     if (activeScheme && activeScheme.repository_id) {
-      const found = repos.find(r => r.id === activeScheme.repository_id)
+      const found = repos.find(r => r.id === activeScheme.repository_id) || activeScheme.repository
       // 只有找到对应仓库才更新显示名，避免 repos 尚未加载时将输入框错误清空
       if (found) {
         setFilterQuery(found.name)
@@ -194,7 +194,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
     (r.owner_name && r.owner_name.toLowerCase().includes(filterQuery.toLowerCase()))
   )
 
-  const selectedRepo = repos.find(r => r.id === activeScheme.repository_id)
+  const selectedRepo = repos.find(r => r.id === activeScheme.repository_id) || activeScheme.repository
 
   const updateCustomAttrs = (newList: { key: string; value: string }[]) => {
     setCustomAttrs(newList);

@@ -131,6 +131,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     } else if (currentView === 'repos') {
       // 预加载流水线列表，以便"新增方案"时能取到默认 pipeline_id
       if (pipelines.length === 0) fetchPipelines()
+      fetchRepos("")
     } else if (currentView === 'pipeline-config') {
       fetchPipelines()
       fetchRepos("")
