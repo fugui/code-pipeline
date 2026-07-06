@@ -134,7 +134,7 @@ func SyncExecutionSchemes(c *gin.Context) {
 		scheme := models.ExecutionScheme{
 			ExecutionSchemeID: remoteScheme.ID,
 			Name:              remoteScheme.Name,
-			PipelineID:        pipeline.ID,
+			LocalPipelineID:   pipeline.ID,
 			CustomAttributes:  remoteScheme.CustomParameter,
 			MRTrigger:         false,
 			DailyBuild:        false,
