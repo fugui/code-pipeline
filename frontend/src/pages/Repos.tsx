@@ -8,7 +8,7 @@ import {
 import { ExecutionScheme } from '../types'
 
 interface ReposProps {
-  onAddScheme: (repoId: number) => void
+  onAddScheme: (repo: Repo) => void
   onEditScheme: (scheme: ExecutionScheme) => void
   onDeleteScheme: (id: number) => void
   token: string | null
@@ -298,7 +298,7 @@ export const Repos: React.FC<ReposProps> = ({
                   schemes={repoSchemes[repo.id] !== undefined ? repoSchemes[repo.id] : repo.schemes}
                   schemesLoading={!!schemesLoading[repo.id]}
                   onToggle={() => toggleExpand(repo.id)}
-                  onAddScheme={() => onAddScheme(repo.id)}
+                  onAddScheme={() => onAddScheme(repo)}
                   onEditScheme={onEditScheme}
                   onDeleteScheme={onDeleteScheme}
                 />
