@@ -23,7 +23,7 @@ type PipelineRequest struct {
 	Description string `json:"description"`
 	ServiceID   string `json:"service_id"`
 	WorkspaceID string `json:"workspace_id"`
-	Owner       string `json:"owner"`
+	OwnerID     string `json:"owner_id"`
 	ServiceName string `json:"service_name"`
 }
 
@@ -73,7 +73,7 @@ func CreatePipeline(c *gin.Context) {
 		Description: req.Description,
 		ServiceID:   req.ServiceID,
 		WorkspaceID: req.WorkspaceID,
-		Owner:       req.Owner,
+		OwnerID:     req.OwnerID,
 		ServiceName: req.ServiceName,
 	}
 
@@ -107,7 +107,7 @@ func UpdatePipeline(c *gin.Context) {
 	pipeline.Description = req.Description
 	pipeline.ServiceID = req.ServiceID
 	pipeline.WorkspaceID = req.WorkspaceID
-	pipeline.Owner = req.Owner
+	pipeline.OwnerID = req.OwnerID
 	pipeline.ServiceName = req.ServiceName
 
 	if err := database.DB.Save(&pipeline).Error; err != nil {

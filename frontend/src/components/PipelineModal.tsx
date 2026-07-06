@@ -1,5 +1,5 @@
 import React from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, HelpCircle } from 'lucide-react'
 import { Pipeline } from '../types'
 
 interface PipelineModalProps {
@@ -29,13 +29,16 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }}>
       <div className="glass-card" style={{ width: '100%', maxWidth: 540, display: 'flex', flexDirection: 'column', gap: 20 }}>
         <h3 style={{ fontSize: 18, fontWeight: 700 }}>
-          {activePipeline.id ? '编辑流水线元数据' : '录入新流水线'}
+          {activePipeline.id ? '编辑流水线元数据' : '导入流水线'}
         </h3>
 
         <form onSubmit={onSave} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>
               流水线唯一 ID (Pipeline ID)
+              <span title="从三方流水线上获取" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <HelpCircle size={14} style={{ cursor: 'help', color: 'var(--text-muted)' }} />
+              </span>
             </label>
             <div style={{ display: 'flex', gap: 8 }}>
               <input 
@@ -79,15 +82,45 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>流水线类型</label>
-              <select 
-                value={activePipeline.type || '每日构建'} 
-                onChange={(e) => onChange({ ...activePipeline, type: e.target.value })}
-                required
-              >
-                <option value="每日构建">每日构建</option>
-                <option value="MR">MR (Merge Request 触发)</option>
-              </select>
+              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>流水线类型</label>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', height: 40 }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
+                  <input 
+                    type="checkbox" 
+                    checked={(activePipeline.type || '').includes('MR')} 
+                    style={{ width: 'auto', cursor: 'pointer' }}
+                    onChange={(e) => {
+                      const currentTypes = activePipeline.type ? activePipeline.type.split(',').filter(Boolean) : []
+                      let newTypes: string[]
+                      if (e.target.checked) {
+                        newTypes = [...currentTypes, 'MR']
+                      } else {
+                        newTypes = currentTypes.filter(t => t !== 'MR')
+                      }
+                      onChange({ ...activePipeline, type: newTypes.join(',') })
+                    }}
+                  />
+                  MR
+                </label>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
+                  <input 
+                    type="checkbox" 
+                    checked={(activePipeline.type || '').includes('每日构建')} 
+                    style={{ width: 'auto', cursor: 'pointer' }}
+                    onChange={(e) => {
+                      const currentTypes = activePipeline.type ? activePipeline.type.split(',').filter(Boolean) : []
+                      let newTypes: string[]
+                      if (e.target.checked) {
+                        newTypes = [...currentTypes, '每日构建']
+                      } else {
+                        newTypes = currentTypes.filter(t => t !== '每日构建')
+                      }
+                      onChange({ ...activePipeline, type: newTypes.join(',') })
+                    }}
+                  />
+                  每日构建
+                </label>
+              </div>
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>组名称 (GroupName)</label>
@@ -129,10 +162,10 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>三方负责人 (Owner - 只读)</label>
+              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>三方负责人 ID (OwnerID - 只读)</label>
               <input 
                 type="text" 
-                value={activePipeline.owner || '未拉取'} 
+                value={activePipeline.owner_id || '未拉取'} 
                 disabled 
               />
             </div>
@@ -153,7 +186,7 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
               取消
             </button>
             <button type="submit" className="btn btn-primary" disabled={isFetchingPipeline}>
-              保存流水线
+              {activePipeline.id ? '保存' : '导入'}
             </button>
           </div>
         </form>

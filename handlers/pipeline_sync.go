@@ -59,7 +59,7 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 		"description":  pipelineInfo.Description,
 		"service_id":   pipelineInfo.ServiceID,
 		"workspace_id": pipelineInfo.WorkspaceID,
-		"owner":        pipelineInfo.Owner,
+		"owner_id":     pipelineInfo.OwnerID,
 		"service_name": pipelineInfo.ServiceName,
 		"is_mock":      false,
 	})

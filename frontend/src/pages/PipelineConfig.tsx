@@ -143,7 +143,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                     {p.service_name && (
                       <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--text-muted)', marginTop: 6, borderTop: '1px dashed rgba(255,255,255,0.06)', paddingTop: 6 }}>
                         <span>关联服务: <strong>{p.service_name}</strong></span>
-                        <span>负责人: <strong>{p.owner}</strong></span>
+                        <span>负责人: <strong>{p.owner_id}</strong></span>
                       </div>
                     )}
                   </div>
