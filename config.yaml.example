@@ -61,3 +61,4 @@ pipeline_system:
   rule_sets:
     GO: "rule_id_go_1"
     PYTHON: "rule_id_py_1"
+  pipeline_link_template: "http://192.168.56.18:9080/workspace/{workspaceId}/service/{ServiceID}/pipeline/{PipelineID}"
