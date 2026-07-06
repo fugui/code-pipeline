@@ -531,11 +531,20 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         {/* VIEW 2: REPOS 代码仓全览 */}
         {currentView === 'repos' && (
           <Repos
-            onAddScheme={(repoId) => {
+            onAddScheme={(repo) => {
               const firstPipeline = pipelines[0]
               setActiveScheme({
                 pipeline_id: firstPipeline?.id || 0,
-                repository_id: repoId,
+                repository_id: repo.id,
+                repository: {
+                  id: repo.id,
+                  name: repo.name,
+                  http_url: repo.http_url,
+                  url: repo.http_url || '',
+                  owner_id: 0, // dummy or defaults
+                  is_active: repo.is_active,
+                  created_at: new Date().toISOString()
+                },
                 branchs: 'master',
                 languages: ''
               })
