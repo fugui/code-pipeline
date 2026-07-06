@@ -71,7 +71,7 @@ func GetRepos(c *gin.Context) {
 		for i := range repos {
 			for j := range repos[i].Schemes {
 				if repos[i].Schemes[j].PipelineInfo != nil {
-					repos[i].Schemes[j].PipelineInfo.GenerateWebURL(template)
+					repos[i].Schemes[j].PipelineInfo.WebURL = generateWebURL(repos[i].Schemes[j].PipelineInfo, template)
 				}
 			}
 		}

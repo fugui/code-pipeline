@@ -10,6 +10,7 @@ import (
 	"code-pipeline/database"
 	"code-pipeline/models"
 	"code-pipeline/services"
+	"code-pipeline/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -202,7 +203,7 @@ func GetExecutionSchemes(c *gin.Context) {
 	if template != "" {
 		for i := range schemes {
 			if schemes[i].PipelineInfo != nil {
-				schemes[i].PipelineInfo.GenerateWebURL(template)
+				schemes[i].PipelineInfo.WebURL = generateWebURL(schemes[i].PipelineInfo, template)
 			}
 		}
 	}
@@ -368,4 +369,16 @@ func DeleteExecutionScheme(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Execution scheme deleted successfully"})
+}
+
+// generateWebURL 使用公共的模板占位符替换函数生成可供前端跳转的流水线外链
+func generateWebURL(p *models.Pipeline, template string) string {
+	if template == "" || p == nil {
+		return ""
+	}
+	return utils.ReplacePlaceholders(template, map[string]string{
+		"{WORKSPACE_ID}": p.WorkspaceID,
+		"{SERVICE_ID}":   p.ServiceID,
+		"{PIPELINE_ID}":  p.PipelineID,
+	})
 }
