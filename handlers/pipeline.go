@@ -269,6 +269,20 @@ func CreateExecutionScheme(c *gin.Context) {
 	if err != nil {
 		log.Printf("[Pipeline] Remote sync failed for CreateExecutionScheme (using Mock ID): %v\n", err)
 		extID = fmt.Sprintf("ext_scheme_%d", time.Now().UnixNano())
+		scheme.ExecutionSchemeID = extID
+		scheme.ExecutionSchemeName = scheme.Name
+		if scheme.CodeCheckerTaskID == "" {
+			scheme.CodeCheckerTaskID = fmt.Sprintf("mock_task_%d", time.Now().UnixNano())
+			scheme.CodeCheckerTaskName = scheme.Name
+		}
+		if scheme.MRTrigger && scheme.MRBindingID == "" {
+			scheme.MRBindingID = fmt.Sprintf("mock_mr_bind_%d", time.Now().UnixNano())
+			scheme.MRBindingName = scheme.Name
+		}
+		if scheme.DailyBuild && scheme.ExecutionPlanID == "" {
+			scheme.ExecutionPlanID = fmt.Sprintf("mock_plan_%d", time.Now().UnixNano())
+			scheme.ExecutionPlanName = scheme.Name
+		}
 	}
 	scheme.ExecutionSchemeID = extID
 
@@ -377,8 +391,8 @@ func generateWebURL(p *models.Pipeline, template string) string {
 		return ""
 	}
 	return utils.ReplacePlaceholders(template, map[string]string{
-		"{OWNER_ID}":     p.OwnerID,
-		"{SERVICE_ID}":   p.ServiceID,
-		"{PIPELINE_ID}":  p.PipelineID,
+		"{OWNER_ID}":    p.OwnerID,
+		"{SERVICE_ID}":  p.ServiceID,
+		"{PIPELINE_ID}": p.PipelineID,
 	})
 }
