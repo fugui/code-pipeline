@@ -134,12 +134,13 @@ func SyncExecutionSchemes(c *gin.Context) {
 	for _, remoteScheme := range schemes {
 		// 根据 Scheme 的原始数据组装 ExecutionScheme 实例
 		scheme := models.ExecutionScheme{
-			ExecutionSchemeID: remoteScheme.ID,
-			Name:              remoteScheme.Name,
-			LocalPipelineID:   pipeline.ID,
-			CustomAttributes:  remoteScheme.CustomParameter,
-			MRTrigger:         false,
-			DailyBuild:        false,
+			ExecutionSchemeID:   remoteScheme.ID,
+			ExecutionSchemeName: remoteScheme.Name,
+			Name:                remoteScheme.Name,
+			LocalPipelineID:     pipeline.ID,
+			CustomAttributes:    remoteScheme.CustomParameter,
+			MRTrigger:           false,
+			DailyBuild:          false,
 		}
 
 		var codeURL string
@@ -162,6 +163,14 @@ func SyncExecutionSchemes(c *gin.Context) {
 						scheme.Password = param.Value
 					case "code_checker_task_id":
 						scheme.CodeCheckerTaskID = param.Value
+						if param.Value != "" {
+							if taskName, err := services.GetCheckerTaskName(c.Request.Context(), remoteScheme.Name, param.Value, headers); err == nil {
+								scheme.CodeCheckerTaskName = taskName
+							} else {
+								log.Printf("[SyncExecutionSchemes] Warning: failed to fetch checker task name for %s: %v\n", param.Value, err)
+								scheme.CodeCheckerTaskName = remoteScheme.Name
+							}
+						}
 					case "repository":
 						codeURL = param.Value
 					case "branch":
@@ -184,6 +193,7 @@ func SyncExecutionSchemes(c *gin.Context) {
 
 		if matchedMRBinding != nil {
 			scheme.MRBindingID = matchedMRBinding.ID
+			scheme.MRBindingName = matchedMRBinding.SchemeName
 			scheme.MRTrigger = true
 			if matchedMRBinding.Branches != "" {
 				branch = matchedMRBinding.Branches
@@ -204,6 +214,7 @@ func SyncExecutionSchemes(c *gin.Context) {
 
 		if matchedPlan != nil {
 			scheme.ExecutionPlanID = matchedPlan.ID
+			scheme.ExecutionPlanName = matchedPlan.ScheduleName
 			scheme.DailyBuild = true
 		}
 

@@ -264,6 +264,53 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 	return taskID, nil
 }
 
+// GetCheckerTaskName 根据任务ID和搜索名称在三方系统查找并获取任务的真实名称
+func GetCheckerTaskName(ctx context.Context, searchName string, taskID string, headers map[string]string) (string, error) {
+	queryURL := models.AppConfig.PipelineSystem.QueryCheckerTaskURL
+	if queryURL == "" {
+		return "", fmt.Errorf("query_checker_task_url not configured")
+	}
+
+	queryBody, err := utils.SendHTTPRequest(ctx, "GET", queryURL, nil, utils.HTTPOptions{
+		Headers: headers,
+		QueryParams: map[string]string{
+			"search": searchName,
+		},
+	}, []int{http.StatusOK}, "GetCheckerTaskName")
+	if err != nil {
+		return "", err
+	}
+
+	var queryResp struct {
+		Status string `json:"status"`
+		Result struct {
+			Info []struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+			} `json:"info"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(queryBody, &queryResp); err != nil {
+		return "", err
+	}
+	if queryResp.Status != "success" {
+		return "", fmt.Errorf("failed to query checker task: status is %s", queryResp.Status)
+	}
+
+	for _, info := range queryResp.Result.Info {
+		if info.ID == taskID {
+			return info.Name, nil
+		}
+	}
+
+	// fallback
+	if len(queryResp.Result.Info) > 0 {
+		return queryResp.Result.Info[0].Name, nil
+	}
+
+	return "", fmt.Errorf("checker task not found with name: %s", searchName)
+}
+
 // createExecutionSchemeStep 步骤二：创建执行方案（关联代码检查任务）
 func createExecutionSchemeStep(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, taskID string, repoURL string, headers map[string]string) (string, error) {
 	apiURLStr := models.AppConfig.PipelineSystem.CreateExecutionSchemeURL
@@ -596,6 +643,7 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 		return "", err
 	}
 	scheme.CodeCheckerTaskID = taskID
+	scheme.CodeCheckerTaskName = scheme.Name
 
 	// 2. 创建执行方案（并关联代码检查任务）
 	extID, err := createExecutionSchemeStep(ctx, pipelineBusinessID, scheme, taskID, repoURL, headers)
@@ -604,6 +652,7 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 		return "", err
 	}
 	scheme.ExecutionSchemeID = extID
+	scheme.ExecutionSchemeName = scheme.Name
 
 	// 3. 创建 MR 触发关联（关联该方案）
 	if scheme.MRTrigger {
@@ -612,6 +661,7 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 			log.Printf("[Pipeline] Remote sync Step 3 failed (non-fatal): %v\n", err)
 		}
 		scheme.MRBindingID = mrBindingID
+		scheme.MRBindingName = scheme.Name
 	}
 
 	// 4. 创建每日构建的执行计划
@@ -622,6 +672,7 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 			return "", err
 		}
 		scheme.ExecutionPlanID = planID
+		scheme.ExecutionPlanName = scheme.Name
 	}
 
 	return extID, nil
