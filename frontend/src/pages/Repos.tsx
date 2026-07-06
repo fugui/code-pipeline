@@ -443,8 +443,17 @@ const RepoRow: React.FC<RepoRowProps> = ({
         {/* 操作 */}
         <td style={{ padding: '12px 16px 12px 8px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
           <button
-            className="btn btn-primary btn-small"
-            style={{ padding: '6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4 }}
+            className="btn btn-secondary btn-small"
+            style={{ 
+              padding: '6px', 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              borderRadius: 6,
+              color: 'var(--text-secondary)',
+              borderColor: 'rgba(255, 255, 255, 0.06)',
+              background: 'rgba(255, 255, 255, 0.02)'
+            }}
             onClick={onAddScheme}
             title="为该仓库新增执行方案"
           >
