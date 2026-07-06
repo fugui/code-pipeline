@@ -21,6 +21,7 @@ interface Repo {
   service_group: string
   owner_name: string
   is_active: boolean
+  http_url?: string
   schemes?: ExecutionScheme[]
 }
 
@@ -419,7 +420,25 @@ const RepoRow: React.FC<RepoRowProps> = ({
 
         {/* 仓库名 */}
         <td style={{ padding: '12px 8px', fontWeight: 600, color: 'var(--text-main)' }}>
-          {repo.name}
+          {repo.http_url ? (
+            <a 
+              href={repo.http_url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              style={{ 
+                color: 'var(--text-main)', 
+                textDecoration: 'none',
+                transition: 'color 0.2s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.color = '#6366f1'}
+              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-main)'}
+            >
+              {repo.name}
+            </a>
+          ) : (
+            repo.name
+          )}
           {!repo.is_active && (
             <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--text-muted)', verticalAlign: 'middle' }}>已冻结</span>
           )}
