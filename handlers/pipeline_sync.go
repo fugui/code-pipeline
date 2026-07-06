@@ -41,7 +41,7 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 				"description":  "此配置由本地 Mock 数据自动回填，未配置 pipeline_system.get_pipeline_url",
 				"service_id":   "mock_svc_1001",
 				"workspace_id": "mock_ws_2002",
-				"owner":        "MockOwner",
+				"owner_id":     "MockOwner",
 				"service_name": "MockService",
 				"is_mock":      true,
 			})
