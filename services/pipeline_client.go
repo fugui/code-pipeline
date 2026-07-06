@@ -50,7 +50,7 @@ func FetchRemotePipelineInfo(ctx context.Context, pipelineID string, headers map
 				ServiceName  string `json:"serviceName"`
 				WorkspaceID  string `json:"workspaceId"`
 				OwnerID      string `json:"ownerId"`
-				OwnerName    string `json:"ownerName"`
+				OwnerName    string `json:"owner"`
 			} `json:"result"`
 		} `json:"entity"`
 	}
