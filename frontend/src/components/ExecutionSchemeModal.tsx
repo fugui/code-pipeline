@@ -154,12 +154,11 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       lastCustomAttrsRef.current = activeScheme.custom_attributes || '';
       try {
         const parsed = JSON.parse(activeScheme.custom_attributes || '{}');
-        const list = Object.entries(parsed)
-          .filter(([k]) => k !== 'mr_trigger' && k !== 'daily_build' && k !== 'daily_build_time')
-          .map(([k, v]) => ({
-            key: k,
-            value: String(v)
-          }));
+        const buildParams = Array.isArray(parsed.buildParameters) ? parsed.buildParameters : [];
+        const list = buildParams.map((item: any) => ({
+          key: item.name || '',
+          value: String(item.value !== undefined && item.value !== null ? item.value : '')
+        }));
         setCustomAttrs(list);
       } catch (e) {
         setCustomAttrs([]);
@@ -242,14 +241,23 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
 
   const updateCustomAttrs = (newList: { key: string; value: string }[]) => {
     setCustomAttrs(newList);
-    const obj: Record<string, any> = {};
-    newList.forEach(item => {
-      if (item.key.trim()) {
-        obj[item.key.trim()] = item.value;
-      }
-    });
+    let parsed: Record<string, any> = {};
+    try {
+      parsed = JSON.parse(activeScheme.custom_attributes || '{}');
+    } catch (e) {
+      parsed = {};
+    }
 
-    const serialized = JSON.stringify(obj);
+    const buildParameters = newList
+      .filter(item => item.key.trim())
+      .map(item => ({
+        name: item.key.trim(),
+        value: item.value
+      }));
+
+    parsed.buildParameters = buildParameters;
+
+    const serialized = JSON.stringify(parsed);
     lastCustomAttrsRef.current = serialized;
     onChange({
       ...activeScheme,
@@ -619,7 +627,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 200 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>自定义属性</label>
+                <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>构建参数</label>
                 <button
                   type="button"
                   className="btn btn-secondary"
@@ -629,7 +637,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                     updateCustomAttrs(newList);
                   }}
                 >
-                  + 添加属性
+                  + 添加参数
                 </button>
               </div>
 
@@ -645,8 +653,8 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', textAlign: 'left' }}>
-                        <th style={{ padding: '8px 12px', width: '45%' }}>键 (Key)</th>
-                        <th style={{ padding: '8px 12px', width: '45%' }}>值 (Value)</th>
+                        <th style={{ padding: '8px 12px', width: '45%' }}>参数名 (Name)</th>
+                        <th style={{ padding: '8px 12px', width: '45%' }}>参数值 (Value)</th>
                         <th style={{ padding: '8px 12px', width: '10%', textAlign: 'center' }}>操作</th>
                       </tr>
                     </thead>
@@ -654,7 +662,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                       {customAttrs.length === 0 ? (
                         <tr>
                           <td colSpan={3} style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
-                            暂无自定义属性，点击右上角“添加属性”新增
+                            暂无构建参数，点击右上角“添加参数”新增
                           </td>
                         </tr>
                       ) : (
@@ -663,7 +671,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                             <td style={{ padding: '4px 8px' }}>
                               <input
                                 type="text"
-                                placeholder="例如: timeout"
+                                placeholder="例如: TIMEOUT"
                                 value={item.key}
                                 style={{ width: '100%', padding: '6px 10px', fontSize: 13, height: 32 }}
                                 onChange={(e) => {
