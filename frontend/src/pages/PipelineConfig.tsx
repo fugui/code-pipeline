@@ -1,5 +1,5 @@
 import React from 'react'
-import { Plus, Search, Edit, Trash2, Activity, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, Activity, RefreshCw, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
 import { Pipeline, ExecutionScheme } from '../types'
 
 interface PipelineConfigProps {
@@ -225,9 +225,9 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                                 onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-main)'}
                                 onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
                                 onClick={() => onEditScheme(scheme)}
-                                title="编辑"
+                                title="查看"
                               >
-                                <Edit size={14} />
+                                <Eye size={14} />
                               </button>
                               <button 
                                 style={{ background: 'none', border: 'none', color: '#fda4af', padding: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', transition: 'color 0.2s' }} 
