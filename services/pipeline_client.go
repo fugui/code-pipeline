@@ -870,8 +870,15 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme) error {
 	if scheme.ExecutionSchemeID != "" {
 		apiURLStr := models.AppConfig.PipelineSystem.GetExecutionSchemeURL
 		if apiURLStr != "" {
-			targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), scheme.ExecutionSchemeID)
-			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", targetURL, nil, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteScheme")
+			deleteURL := apiURLStr
+			if strings.HasSuffix(deleteURL, "/post") {
+				deleteURL = deleteURL[:len(deleteURL)-4] + "/delete"
+			}
+			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", deleteURL, nil, utils.HTTPOptions{
+				QueryParams: map[string]string{
+					"id": scheme.ExecutionSchemeID,
+				},
+			}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteScheme")
 			if err != nil {
 				log.Printf("[SyncDelete] Failed to delete execution scheme %s: %v\n", scheme.ExecutionSchemeID, err)
 			}
