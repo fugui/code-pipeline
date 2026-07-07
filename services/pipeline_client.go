@@ -804,8 +804,15 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme) error {
 	if scheme.ExecutionPlanID != "" {
 		apiURLStr := models.AppConfig.PipelineSystem.GetExecutionPlanURL
 		if apiURLStr != "" {
-			targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), scheme.ExecutionPlanID)
-			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", targetURL, nil, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteExecutionPlan")
+			deleteURL := apiURLStr
+			if strings.HasSuffix(deleteURL, "/get") {
+				deleteURL = deleteURL[:len(deleteURL)-3] + "delete"
+			}
+			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", deleteURL, nil, utils.HTTPOptions{
+				QueryParams: map[string]string{
+					"scheduleId": scheme.ExecutionPlanID,
+				},
+			}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteExecutionPlan")
 			if err != nil {
 				log.Printf("[SyncDelete] Failed to delete execution plan %s: %v\n", scheme.ExecutionPlanID, err)
 			}
