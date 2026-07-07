@@ -798,17 +798,58 @@ func SyncUpdateExecutionSchemeRemote(pipelineBusinessID string, scheme models.Ex
 	return err
 }
 
-// SyncDeleteExecutionSchemeRemote 在三方系统中删除执行方案
-func SyncDeleteExecutionSchemeRemote(executionSchemeID string) error {
-	apiURLStr := models.AppConfig.PipelineSystem.GetExecutionSchemeURL
-	if apiURLStr == "" {
-		return fmt.Errorf("get_execution_scheme_url not configured")
+// SyncDeleteExecutionSchemeRemote 在三方系统中删除执行方案及其关联的所有对象（方案、计划、MR触发、检查任务）
+func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme) error {
+	// 1. 删除执行方案
+	if scheme.ExecutionSchemeID != "" {
+		apiURLStr := models.AppConfig.PipelineSystem.GetExecutionSchemeURL
+		if apiURLStr != "" {
+			targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), scheme.ExecutionSchemeID)
+			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", targetURL, nil, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteScheme")
+			if err != nil {
+				log.Printf("[SyncDelete] Failed to delete execution scheme %s: %v\n", scheme.ExecutionSchemeID, err)
+			}
+		}
 	}
 
-	targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), executionSchemeID)
+	// 2. 删除执行计划（每日构建）
+	if scheme.ExecutionPlanID != "" {
+		apiURLStr := models.AppConfig.PipelineSystem.GetExecutionPlanURL
+		if apiURLStr != "" {
+			targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), scheme.ExecutionPlanID)
+			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", targetURL, nil, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteExecutionPlan")
+			if err != nil {
+				log.Printf("[SyncDelete] Failed to delete execution plan %s: %v\n", scheme.ExecutionPlanID, err)
+			}
+		}
+	}
 
-	_, err := utils.SendHTTPRequest(context.Background(), "DELETE", targetURL, nil, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteScheme")
-	return err
+	// 3. 删除 MR 触发
+	if scheme.MRBindingID != "" {
+		apiURLStr := models.AppConfig.PipelineSystem.GetMRBindingsURL
+		if apiURLStr != "" {
+			targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), scheme.MRBindingID)
+			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", targetURL, nil, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteMRBinding")
+			if err != nil {
+				log.Printf("[SyncDelete] Failed to delete mr binding %s: %v\n", scheme.MRBindingID, err)
+			}
+		}
+	}
+
+	// 4. 删除代码检查任务
+	if scheme.CodeCheckerTaskID != "" {
+		apiURLStr := models.AppConfig.PipelineSystem.CreateCheckerTaskURL
+		if apiURLStr != "" {
+			deleteURL := strings.Replace(apiURLStr, "create-checker-task", "delete-checker-task", 1)
+			targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(deleteURL, "/"), scheme.CodeCheckerTaskID)
+			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", targetURL, nil, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteCheckerTask")
+			if err != nil {
+				log.Printf("[SyncDelete] Failed to delete checker task %s: %v\n", scheme.CodeCheckerTaskID, err)
+			}
+		}
+	}
+
+	return nil
 }
 
 // CheckRepoAuthorized 检查代码仓是否授权
