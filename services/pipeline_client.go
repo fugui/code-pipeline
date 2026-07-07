@@ -751,6 +751,9 @@ func SyncUpdateExecutionSchemeRemote(pipelineBusinessID string, scheme models.Ex
 			customAttrMap[param.Name] = param.Value
 		}
 	}
+	delete(customAttrMap, "code_checker_task_id")
+	delete(customAttrMap, "repository")
+	delete(customAttrMap, "branch")
 
 	var keys []string
 	for k := range customAttrMap {
