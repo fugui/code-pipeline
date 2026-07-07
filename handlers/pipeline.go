@@ -140,10 +140,11 @@ func DeletePipeline(c *gin.Context) {
 		return
 	}
 
+	headers := prepareRequestHeaders(c)
 	// 同步从三方系统删除方案
 	for _, scheme := range schemes {
 		if scheme.ExecutionSchemeID != "" {
-			go services.SyncDeleteExecutionSchemeRemote(scheme)
+			go services.SyncDeleteExecutionSchemeRemote(scheme, headers)
 		}
 	}
 
@@ -307,8 +308,9 @@ func DeleteExecutionScheme(c *gin.Context) {
 	}
 
 	if scheme.ExecutionSchemeID != "" {
+		headers := prepareRequestHeaders(c)
 		// 异步或同步删除远程系统中的方案
-		go services.SyncDeleteExecutionSchemeRemote(scheme)
+		go services.SyncDeleteExecutionSchemeRemote(scheme, headers)
 	}
 
 	if err := database.DB.Delete(&scheme).Error; err != nil {
