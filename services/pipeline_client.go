@@ -545,8 +545,7 @@ func createMRBindingStep(ctx context.Context, pipelineBusinessID string, scheme 
 	}
 
 	if mrBindingID == "" {
-		mrBindingID = fmt.Sprintf("mr_bind_%d", time.Now().UnixNano())
-		log.Printf("[SyncCreateScheme] Step 3: No ID found in response, fallback to mock MR binding ID: %s", mrBindingID)
+		return "", fmt.Errorf("failed to fetch created mr binding ID, response: %s", string(body))
 	}
 
 	return mrBindingID, nil

@@ -31,23 +31,6 @@ func FetchPipelineInfoFromRemote(c *gin.Context) {
 		if HandleSSOExpired(c, err) {
 			return
 		}
-		if err.Error() == "get_pipeline_url not configured" {
-			// 未配置接口，返回 Mock 数据
-			c.JSON(http.StatusOK, gin.H{
-				"pipeline_id":  pipelineID,
-				"name":         fmt.Sprintf("Mock流水线_%s", pipelineID),
-				"type":         "每日构建",
-				"group_name":   "DefaultGroup",
-				"description":  "此配置由本地 Mock 数据自动回填，未配置 pipeline_system.get_pipeline_url",
-				"service_id":   "mock_svc_1001",
-				"workspace_id": "mock_ws_2002",
-				"owner_id":     "MockOwner",
-				"owner_name":   "Mock项目空间名称",
-				"service_name": "MockService",
-				"is_mock":      true,
-			})
-			return
-		}
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
