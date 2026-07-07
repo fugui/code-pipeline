@@ -838,6 +838,7 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme) error {
 				QueryParams: map[string]string{
 					"pipelineId": pipelineBusinessID,
 					"configId":   scheme.MRBindingID,
+					"isSingle":   "true",
 				},
 			}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteMRBinding")
 			if err != nil {
