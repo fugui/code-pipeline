@@ -705,7 +705,7 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 }
 
 // SyncDeleteExecutionSchemeRemote 在三方系统中删除执行方案及其关联的所有对象（方案、计划、MR触发、检查任务）
-func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme) error {
+func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[string]string) error {
 	// 1. 删除执行计划（每日构建）
 	if scheme.ExecutionPlanID != "" {
 		apiURLStr := models.AppConfig.PipelineSystem.GetExecutionPlanURL
@@ -715,6 +715,7 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme) error {
 				deleteURL = deleteURL[:len(deleteURL)-3] + "delete"
 			}
 			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", deleteURL, nil, utils.HTTPOptions{
+				Headers: headers,
 				QueryParams: map[string]string{
 					"scheduleId": scheme.ExecutionPlanID,
 				},
@@ -741,6 +742,7 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme) error {
 			}
 
 			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", deleteURL, nil, utils.HTTPOptions{
+				Headers: headers,
 				QueryParams: map[string]string{
 					"pipelineId": pipelineBusinessID,
 					"configId":   scheme.MRBindingID,
@@ -762,7 +764,9 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme) error {
 			}
 			postData, err := json.Marshal(payload)
 			if err == nil {
-				_, err = utils.SendHTTPRequest(context.Background(), "DELETE", apiURLStr, postData, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteCheckerTask")
+				_, err = utils.SendHTTPRequest(context.Background(), "DELETE", apiURLStr, postData, utils.HTTPOptions{
+					Headers: headers,
+				}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteCheckerTask")
 				if err != nil {
 					log.Printf("[SyncDelete] Failed to delete checker task %s: %v\n", scheme.CodeCheckerTaskID, err)
 				}
@@ -781,6 +785,7 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme) error {
 				deleteURL = deleteURL[:len(deleteURL)-4] + "/delete"
 			}
 			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", deleteURL, nil, utils.HTTPOptions{
+				Headers: headers,
 				QueryParams: map[string]string{
 					"id": scheme.ExecutionSchemeID,
 				},
