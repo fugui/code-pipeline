@@ -685,7 +685,9 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 	if scheme.MRTrigger {
 		mrBindingID, err := createMRBindingStep(ctx, pipelineBusinessID, scheme, extID, repoURL, headers)
 		if err != nil {
-			log.Printf("[Pipeline] Remote sync Step 3 failed (non-fatal): %v\n", err)
+			log.Printf("[Pipeline] Remote sync Step 3 failed: %v\n", err)
+			SyncDeleteExecutionSchemeRemote(*scheme, headers)
+			return "", err
 		}
 		scheme.MRBindingID = mrBindingID
 		scheme.MRBindingName = scheme.Name
