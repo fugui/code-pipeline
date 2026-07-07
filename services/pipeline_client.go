@@ -325,15 +325,27 @@ func createExecutionSchemeStep(ctx context.Context, pipelineBusinessID string, s
 
 	schemeName := scheme.Name
 
-	var customAttrMap map[string]interface{}
+	type CustomAttr struct {
+		Name  string      `json:"name"`
+		Value interface{} `json:"value"`
+	}
+
+	var cp struct {
+		BuildParameters []CustomAttr `json:"buildParameters"`
+	}
+
 	if scheme.CustomAttributes != "" {
-		if err := json.Unmarshal([]byte(scheme.CustomAttributes), &customAttrMap); err != nil {
+		if err := json.Unmarshal([]byte(scheme.CustomAttributes), &cp); err != nil {
 			log.Printf("[SyncCreateScheme] Step 2: Failed to unmarshal custom_attributes: %v", err)
 			return "", fmt.Errorf("failed to parse custom_attributes JSON: %w", err)
 		}
 	}
-	if customAttrMap == nil {
-		customAttrMap = make(map[string]interface{})
+
+	customAttrMap := make(map[string]interface{})
+	for _, param := range cp.BuildParameters {
+		if param.Name != "" {
+			customAttrMap[param.Name] = param.Value
+		}
 	}
 
 	customAttrMap["cmc_username"] = scheme.Username
@@ -341,11 +353,6 @@ func createExecutionSchemeStep(ctx context.Context, pipelineBusinessID string, s
 	customAttrMap["code_checker_task_id"] = taskID
 	customAttrMap["repository"] = repoURL
 	customAttrMap["branch"] = scheme.Branch
-
-	type CustomAttr struct {
-		Name  string      `json:"name"`
-		Value interface{} `json:"value"`
-	}
 
 	var keys []string
 	for k := range customAttrMap {
@@ -361,7 +368,12 @@ func createExecutionSchemeStep(ctx context.Context, pipelineBusinessID string, s
 		})
 	}
 
-	mergedBytes, err := json.Marshal(customAttrList)
+	var finalObj struct {
+		BuildParameters []CustomAttr `json:"buildParameters"`
+	}
+	finalObj.BuildParameters = customAttrList
+
+	mergedBytes, err := json.Marshal(finalObj)
 	if err != nil {
 		log.Printf("[SyncCreateScheme] Step 2: Failed to marshal merged custom_attributes: %v", err)
 		return "", fmt.Errorf("failed to marshal custom_attributes to JSON: %w", err)
@@ -694,17 +706,24 @@ func SyncUpdateExecutionSchemeRemote(pipelineBusinessID string, scheme models.Ex
 
 	targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), scheme.ExecutionSchemeID)
 
-	var customAttrMap map[string]interface{}
-	if scheme.CustomAttributes != "" {
-		_ = json.Unmarshal([]byte(scheme.CustomAttributes), &customAttrMap)
-	}
-	if customAttrMap == nil {
-		customAttrMap = make(map[string]interface{})
-	}
-
 	type CustomAttr struct {
 		Name  string      `json:"name"`
 		Value interface{} `json:"value"`
+	}
+
+	var cp struct {
+		BuildParameters []CustomAttr `json:"buildParameters"`
+	}
+
+	if scheme.CustomAttributes != "" {
+		_ = json.Unmarshal([]byte(scheme.CustomAttributes), &cp)
+	}
+
+	customAttrMap := make(map[string]interface{})
+	for _, param := range cp.BuildParameters {
+		if param.Name != "" {
+			customAttrMap[param.Name] = param.Value
+		}
 	}
 
 	var keys []string
@@ -721,7 +740,12 @@ func SyncUpdateExecutionSchemeRemote(pipelineBusinessID string, scheme models.Ex
 		})
 	}
 
-	mergedBytes, err := json.Marshal(customAttrList)
+	var finalObj struct {
+		BuildParameters []CustomAttr `json:"buildParameters"`
+	}
+	finalObj.BuildParameters = customAttrList
+
+	mergedBytes, err := json.Marshal(finalObj)
 	if err != nil {
 		return fmt.Errorf("failed to marshal custom attributes: %w", err)
 	}
