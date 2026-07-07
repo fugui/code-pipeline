@@ -759,16 +759,11 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[
 			payload := map[string]interface{}{
 				"taskIds": []string{scheme.CodeCheckerTaskID},
 			}
-			postData, err := json.Marshal(payload)
-			if err == nil {
-				_, err = utils.SendHTTPRequest(context.Background(), "DELETE", apiURLStr, postData, utils.HTTPOptions{
-					Headers: headers,
-				}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteCheckerTask")
-				if err != nil {
-					log.Printf("[SyncDelete] Failed to delete checker task %s: %v\n", scheme.CodeCheckerTaskID, err)
-				}
-			} else {
-				log.Printf("[SyncDelete] Failed to marshal delete checker task payload: %v\n", err)
+			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", apiURLStr, payload, utils.HTTPOptions{
+				Headers: headers,
+			}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteCheckerTask")
+			if err != nil {
+				log.Printf("[SyncDelete] Failed to delete checker task %s: %v\n", scheme.CodeCheckerTaskID, err)
 			}
 		}
 	}
