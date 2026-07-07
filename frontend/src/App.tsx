@@ -275,8 +275,8 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     setIsSavingScheme(true)
     setSchemeError(null)
 
-    const method = activeScheme.id ? 'PUT' : 'POST'
-    const url = activeScheme.id ? `${apiBase}/execution-schemes/${activeScheme.id}` : `${apiBase}/execution-schemes`
+    const method = 'POST'
+    const url = `${apiBase}/execution-schemes`
 
     fetch(url, {
       method,

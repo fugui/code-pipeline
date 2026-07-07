@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
-  Search, ChevronDown, ChevronRight, Plus, Edit2, Trash2,
+  Search, ChevronDown, ChevronRight, Plus, Trash2,
   GitBranch, AlertCircle, CheckCircle2, Loader2, RefreshCw,
-  ExternalLink
+  ExternalLink, Eye
 } from 'lucide-react'
 import { ExecutionScheme } from '../types'
 
@@ -659,10 +659,10 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
                 <button
                   className="btn btn-secondary btn-small"
                   style={{ padding: '6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4 }}
-                  title="编辑执行方案"
+                  title="查看执行方案"
                   onClick={() => onEditScheme(scheme)}
                 >
-                  <Edit2 size={12} />
+                  <Eye size={12} />
                 </button>
                 <button
                   className="btn btn-secondary btn-small"
