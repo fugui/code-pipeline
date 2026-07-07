@@ -773,8 +773,8 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[
 		apiURLStr := models.AppConfig.PipelineSystem.GetExecutionSchemeURL
 		if apiURLStr != "" {
 			deleteURL := apiURLStr
-			if strings.HasSuffix(deleteURL, "/post") {
-				deleteURL = deleteURL[:len(deleteURL)-4] + "/delete"
+			if strings.HasSuffix(deleteURL, "/get") {
+				deleteURL = deleteURL[:len(deleteURL)-3] + "delete"
 			}
 			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", deleteURL, nil, utils.HTTPOptions{
 				Headers: headers,
