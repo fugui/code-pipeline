@@ -730,10 +730,7 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[
 	if scheme.MRBindingID != "" {
 		apiURLStr := models.AppConfig.PipelineSystem.GetMRBindingsURL
 		if apiURLStr != "" {
-			deleteURL := apiURLStr
-			if strings.HasSuffix(deleteURL, "/add") {
-				deleteURL = deleteURL[:len(deleteURL)-4] + "/delete"
-			}
+			deleteURL := strings.TrimSuffix(apiURLStr, "/") + "/delete"
 
 			var pipeline models.Pipeline
 			var pipelineBusinessID string
