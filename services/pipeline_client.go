@@ -331,7 +331,9 @@ func createExecutionSchemeStep(ctx context.Context, pipelineBusinessID string, s
 	}
 
 	var cp struct {
-		BuildParameters []CustomAttr `json:"buildParameters"`
+		BuildParameters                 []CustomAttr `json:"buildParameters"`
+		GateEnabled                     *bool        `json:"gateEnabled"`
+		CoverChildrenPipelineParameters *bool        `json:"coverChildrenPipelineParameters"`
 	}
 
 	if scheme.CustomAttributes != "" {
@@ -339,6 +341,16 @@ func createExecutionSchemeStep(ctx context.Context, pipelineBusinessID string, s
 			log.Printf("[SyncCreateScheme] Step 2: Failed to unmarshal custom_attributes: %v", err)
 			return "", fmt.Errorf("failed to parse custom_attributes JSON: %w", err)
 		}
+	}
+
+	gateEnabled := true
+	if cp.GateEnabled != nil {
+		gateEnabled = *cp.GateEnabled
+	}
+
+	coverChildrenPipelineParameters := false
+	if cp.CoverChildrenPipelineParameters != nil {
+		coverChildrenPipelineParameters = *cp.CoverChildrenPipelineParameters
 	}
 
 	customAttrMap := make(map[string]interface{})
@@ -369,9 +381,13 @@ func createExecutionSchemeStep(ctx context.Context, pipelineBusinessID string, s
 	}
 
 	var finalObj struct {
-		BuildParameters []CustomAttr `json:"buildParameters"`
+		BuildParameters                 []CustomAttr `json:"buildParameters"`
+		GateEnabled                     bool         `json:"gateEnabled"`
+		CoverChildrenPipelineParameters bool         `json:"coverChildrenPipelineParameters"`
 	}
 	finalObj.BuildParameters = customAttrList
+	finalObj.GateEnabled = gateEnabled
+	finalObj.CoverChildrenPipelineParameters = coverChildrenPipelineParameters
 
 	mergedBytes, err := json.Marshal(finalObj)
 	if err != nil {
@@ -712,11 +728,23 @@ func SyncUpdateExecutionSchemeRemote(pipelineBusinessID string, scheme models.Ex
 	}
 
 	var cp struct {
-		BuildParameters []CustomAttr `json:"buildParameters"`
+		BuildParameters                 []CustomAttr `json:"buildParameters"`
+		GateEnabled                     *bool        `json:"gateEnabled"`
+		CoverChildrenPipelineParameters *bool        `json:"coverChildrenPipelineParameters"`
 	}
 
 	if scheme.CustomAttributes != "" {
 		_ = json.Unmarshal([]byte(scheme.CustomAttributes), &cp)
+	}
+
+	gateEnabled := true
+	if cp.GateEnabled != nil {
+		gateEnabled = *cp.GateEnabled
+	}
+
+	coverChildrenPipelineParameters := false
+	if cp.CoverChildrenPipelineParameters != nil {
+		coverChildrenPipelineParameters = *cp.CoverChildrenPipelineParameters
 	}
 
 	customAttrMap := make(map[string]interface{})
@@ -741,9 +769,13 @@ func SyncUpdateExecutionSchemeRemote(pipelineBusinessID string, scheme models.Ex
 	}
 
 	var finalObj struct {
-		BuildParameters []CustomAttr `json:"buildParameters"`
+		BuildParameters                 []CustomAttr `json:"buildParameters"`
+		GateEnabled                     bool         `json:"gateEnabled"`
+		CoverChildrenPipelineParameters bool         `json:"coverChildrenPipelineParameters"`
 	}
 	finalObj.BuildParameters = customAttrList
+	finalObj.GateEnabled = gateEnabled
+	finalObj.CoverChildrenPipelineParameters = coverChildrenPipelineParameters
 
 	mergedBytes, err := json.Marshal(finalObj)
 	if err != nil {
