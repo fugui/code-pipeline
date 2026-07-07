@@ -800,19 +800,7 @@ func SyncUpdateExecutionSchemeRemote(pipelineBusinessID string, scheme models.Ex
 
 // SyncDeleteExecutionSchemeRemote 在三方系统中删除执行方案及其关联的所有对象（方案、计划、MR触发、检查任务）
 func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme) error {
-	// 1. 删除执行方案
-	if scheme.ExecutionSchemeID != "" {
-		apiURLStr := models.AppConfig.PipelineSystem.GetExecutionSchemeURL
-		if apiURLStr != "" {
-			targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), scheme.ExecutionSchemeID)
-			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", targetURL, nil, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteScheme")
-			if err != nil {
-				log.Printf("[SyncDelete] Failed to delete execution scheme %s: %v\n", scheme.ExecutionSchemeID, err)
-			}
-		}
-	}
-
-	// 2. 删除执行计划（每日构建）
+	// 1. 删除执行计划（每日构建）
 	if scheme.ExecutionPlanID != "" {
 		apiURLStr := models.AppConfig.PipelineSystem.GetExecutionPlanURL
 		if apiURLStr != "" {
@@ -824,7 +812,7 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme) error {
 		}
 	}
 
-	// 3. 删除 MR 触发
+	// 2. 删除 MR 触发
 	if scheme.MRBindingID != "" {
 		apiURLStr := models.AppConfig.PipelineSystem.GetMRBindingsURL
 		if apiURLStr != "" {
@@ -832,6 +820,18 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme) error {
 			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", targetURL, nil, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteMRBinding")
 			if err != nil {
 				log.Printf("[SyncDelete] Failed to delete mr binding %s: %v\n", scheme.MRBindingID, err)
+			}
+		}
+	}
+
+	// 3. 删除执行方案
+	if scheme.ExecutionSchemeID != "" {
+		apiURLStr := models.AppConfig.PipelineSystem.GetExecutionSchemeURL
+		if apiURLStr != "" {
+			targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), scheme.ExecutionSchemeID)
+			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", targetURL, nil, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteScheme")
+			if err != nil {
+				log.Printf("[SyncDelete] Failed to delete execution scheme %s: %v\n", scheme.ExecutionSchemeID, err)
 			}
 		}
 	}
