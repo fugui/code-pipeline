@@ -47,6 +47,7 @@ pipeline_system:
   repo_auth_check_url: "http://192.168.56.18:8080/api/external/repo-auth-check"
   get_branches_url: "http://192.168.56.18:8080/api/external/repo-branches"
   query_checker_task_url: "http://192.168.56.18:8080/api/external/query-checker-task"
+  delete_checker_task_url: "http://192.168.56.18:8080/api/external/delete-checker-task"
   create_execution_plan_url: "http://192.168.56.18:8080/api/external/daily-builds"
   create_execution_plan_body: |
     {

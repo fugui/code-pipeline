@@ -847,7 +847,26 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme) error {
 		}
 	}
 
-	// 3. 删除执行方案
+	// 3. 删除代码检查任务
+	if scheme.CodeCheckerTaskID != "" {
+		apiURLStr := models.AppConfig.PipelineSystem.DeleteCheckerTaskURL
+		if apiURLStr != "" {
+			payload := map[string]interface{}{
+				"taskIds": []string{scheme.CodeCheckerTaskID},
+			}
+			postData, err := json.Marshal(payload)
+			if err == nil {
+				_, err = utils.SendHTTPRequest(context.Background(), "POST", apiURLStr, postData, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteCheckerTask")
+				if err != nil {
+					log.Printf("[SyncDelete] Failed to delete checker task %s: %v\n", scheme.CodeCheckerTaskID, err)
+				}
+			} else {
+				log.Printf("[SyncDelete] Failed to marshal delete checker task payload: %v\n", err)
+			}
+		}
+	}
+
+	// 4. 删除执行方案
 	if scheme.ExecutionSchemeID != "" {
 		apiURLStr := models.AppConfig.PipelineSystem.GetExecutionSchemeURL
 		if apiURLStr != "" {
@@ -855,19 +874,6 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme) error {
 			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", targetURL, nil, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteScheme")
 			if err != nil {
 				log.Printf("[SyncDelete] Failed to delete execution scheme %s: %v\n", scheme.ExecutionSchemeID, err)
-			}
-		}
-	}
-
-	// 4. 删除代码检查任务
-	if scheme.CodeCheckerTaskID != "" {
-		apiURLStr := models.AppConfig.PipelineSystem.CreateCheckerTaskURL
-		if apiURLStr != "" {
-			deleteURL := strings.Replace(apiURLStr, "create-checker-task", "delete-checker-task", 1)
-			targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(deleteURL, "/"), scheme.CodeCheckerTaskID)
-			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", targetURL, nil, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteCheckerTask")
-			if err != nil {
-				log.Printf("[SyncDelete] Failed to delete checker task %s: %v\n", scheme.CodeCheckerTaskID, err)
 			}
 		}
 	}
