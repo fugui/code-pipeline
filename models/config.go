@@ -39,6 +39,7 @@ type Config struct {
 		CreateMRBindingURL        string            `yaml:"create_mr_binding_url"`
 		CreateMRBindingBody       string            `yaml:"create_mr_binding_body"`
 		QueryCheckerTaskURL       string            `yaml:"query_checker_task_url"`
+		DeleteCheckerTaskURL      string            `yaml:"delete_checker_task_url"`
 		CreateExecutionPlanURL    string            `yaml:"create_execution_plan_url"`
 		CreateExecutionPlanBody   string            `yaml:"create_execution_plan_body"`
 		GetExecutionPlanURL       string            `yaml:"get_execution_plan_url"`
