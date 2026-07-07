@@ -318,3 +318,27 @@ func generateWebURL(p *models.Pipeline, template string) string {
 		"{PIPELINE_ID}": p.PipelineID,
 	})
 }
+
+// RunExecutionScheme 运行/触发执行方案
+func RunExecutionScheme(c *gin.Context) {
+	id := c.Param("id")
+	var scheme models.ExecutionScheme
+	if err := database.DB.First(&scheme, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Execution scheme not found"})
+		return
+	}
+
+	if scheme.ExecutionSchemeID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Execution scheme has no remote binding ID"})
+		return
+	}
+
+	headers := prepareRequestHeaders(c)
+	if err := services.SyncRunExecutionSchemeRemote(scheme, headers); err != nil {
+		log.Printf("[Pipeline] Remote run failed for scheme %s: %v\n", scheme.ExecutionSchemeID, err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("启动流水线失败: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "流水线已成功启动"})
+}

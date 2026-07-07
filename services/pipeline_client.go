@@ -929,3 +929,24 @@ func GetRepoBranchesRemote(ctx context.Context, repository string, authID string
 
 	return responseData.Result, nil
 }
+
+// SyncRunExecutionSchemeRemote 在三方系统中触发运行指定的执行方案
+func SyncRunExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[string]string) error {
+	apiURLStr := models.AppConfig.PipelineSystem.GetExecutionSchemeURL
+	if apiURLStr == "" {
+		return fmt.Errorf("get_execution_scheme_url not configured")
+	}
+
+	runURL := apiURLStr
+	if strings.HasSuffix(runURL, "/get") {
+		runURL = runURL[:len(runURL)-3] + "run"
+	}
+
+	_, err := utils.SendHTTPRequest(context.Background(), "POST", runURL, nil, utils.HTTPOptions{
+		Headers: headers,
+		QueryParams: map[string]string{
+			"id": scheme.ExecutionSchemeID,
+		},
+	}, []int{http.StatusOK, http.StatusAccepted, http.StatusNoContent}, "SyncRunScheme")
+	return err
+}

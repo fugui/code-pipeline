@@ -80,6 +80,7 @@ func main() {
 			api.GET("/execution-schemes", handlers.GetExecutionSchemes)
 			api.POST("/execution-schemes", handlers.CreateExecutionScheme)
 			api.DELETE("/execution-schemes/:id", handlers.DeleteExecutionScheme)
+			api.POST("/execution-schemes/:id/run", handlers.RunExecutionScheme)
 			api.POST("/execution-schemes/sync", handlers.SyncExecutionSchemes)
 
 			// 看板状态大屏接口

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import {
   Search, ChevronDown, ChevronRight, Plus, Trash2,
   GitBranch, AlertCircle, CheckCircle2, Loader2, RefreshCw,
-  ExternalLink, Eye
+  ExternalLink, Eye, Play
 } from 'lucide-react'
 import { ExecutionScheme } from '../types'
 
@@ -87,6 +87,32 @@ export const Repos: React.FC<ReposProps> = ({
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
   const [repoSchemes, setRepoSchemes] = useState<Record<number, ExecutionScheme[]>>({})
   const [schemesLoading, setSchemesLoading] = useState<Record<number, boolean>>({})
+  const [runningSchemes, setRunningSchemes] = useState<Record<number, boolean>>({})
+
+  const handleRunScheme = (schemeId: number) => {
+    if (runningSchemes[schemeId]) return
+    setRunningSchemes(prev => ({ ...prev, [schemeId]: true }))
+
+    fetch(`${apiBase}/execution-schemes/${schemeId}/run`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    .then(async (res) => {
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || '启动流水线失败')
+      }
+      alert(data.message || '流水线启动成功！')
+    })
+    .catch(err => {
+      alert(err.message || '启动流水线失败，网络错误')
+    })
+    .finally(() => {
+      setRunningSchemes(prev => ({ ...prev, [schemeId]: false }))
+    })
+  }
 
   // 搜索防抖
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -301,6 +327,8 @@ export const Repos: React.FC<ReposProps> = ({
                   onAddScheme={() => onAddScheme(repo)}
                   onEditScheme={onEditScheme}
                   onDeleteScheme={onDeleteScheme}
+                  onRunScheme={handleRunScheme}
+                  runningSchemes={runningSchemes}
                 />
               ))
             )}
@@ -357,11 +385,14 @@ interface RepoRowProps {
   onAddScheme: () => void
   onEditScheme: (scheme: ExecutionScheme) => void
   onDeleteScheme: (id: number) => void
+  onRunScheme: (id: number) => void
+  runningSchemes: Record<number, boolean>
 }
 
 const RepoRow: React.FC<RepoRowProps> = ({
   repo, isExpanded, schemes, schemesLoading,
   onToggle, onAddScheme, onEditScheme, onDeleteScheme,
+  onRunScheme, runningSchemes
 }) => {
   const schemeCount = schemes?.length ?? null
 
@@ -485,6 +516,8 @@ const RepoRow: React.FC<RepoRowProps> = ({
               loading={schemesLoading}
               onEditScheme={onEditScheme}
               onDeleteScheme={onDeleteScheme}
+              onRunScheme={onRunScheme}
+              runningSchemes={runningSchemes}
             />
           </td>
         </tr>
@@ -499,9 +532,18 @@ interface SubSchemeTableProps {
   loading: boolean
   onEditScheme: (scheme: ExecutionScheme) => void
   onDeleteScheme: (id: number) => void
+  onRunScheme: (id: number) => void
+  runningSchemes: Record<number, boolean>
 }
 
-const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEditScheme, onDeleteScheme }) => {
+const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ 
+  schemes, 
+  loading, 
+  onEditScheme, 
+  onDeleteScheme,
+  onRunScheme,
+  runningSchemes
+}) => {
   if (loading) {
     return (
       <div style={{ padding: '20px 60px', display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-muted)', fontSize: 13 }}>
@@ -656,6 +698,19 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ schemes, loading, onEdi
             {/* 操作 */}
             <td style={{ padding: '10px 16px 10px 8px', textAlign: 'right' }}>
               <div style={{ display: 'inline-flex', gap: 6 }}>
+                <button
+                  className="btn btn-secondary btn-small"
+                  style={{ padding: '6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, color: '#34d399' }}
+                  title="按执行方案启动流水线"
+                  onClick={() => scheme.id && onRunScheme(scheme.id)}
+                  disabled={scheme.id ? runningSchemes[scheme.id] : false}
+                >
+                  {scheme.id && runningSchemes[scheme.id] ? (
+                    <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
+                  ) : (
+                    <Play size={12} />
+                  )}
+                </button>
                 <button
                   className="btn btn-secondary btn-small"
                   style={{ padding: '6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4 }}
