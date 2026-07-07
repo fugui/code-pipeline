@@ -155,10 +155,12 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       try {
         const parsed = JSON.parse(activeScheme.custom_attributes || '{}');
         const buildParams = Array.isArray(parsed.buildParameters) ? parsed.buildParameters : [];
-        const list = buildParams.map((item: any) => ({
-          key: item.name || '',
-          value: String(item.value !== undefined && item.value !== null ? item.value : '')
-        }));
+        const list = buildParams
+          .filter((item: any) => item.name !== 'code_checker_task_id' && item.name !== 'repository' && item.name !== 'branch')
+          .map((item: any) => ({
+            key: item.name || '',
+            value: String(item.value !== undefined && item.value !== null ? item.value : '')
+          }));
         setCustomAttrs(list);
       } catch (e) {
         setCustomAttrs([]);
@@ -250,6 +252,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
 
     const buildParameters = newList
       .filter(item => item.key.trim())
+      .filter(item => item.key.trim() !== 'code_checker_task_id' && item.key.trim() !== 'repository' && item.key.trim() !== 'branch')
       .map(item => ({
         name: item.key.trim(),
         value: item.value
