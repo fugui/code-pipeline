@@ -823,8 +823,23 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme) error {
 	if scheme.MRBindingID != "" {
 		apiURLStr := models.AppConfig.PipelineSystem.GetMRBindingsURL
 		if apiURLStr != "" {
-			targetURL := fmt.Sprintf("%s/%s", strings.TrimSuffix(apiURLStr, "/"), scheme.MRBindingID)
-			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", targetURL, nil, utils.HTTPOptions{}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteMRBinding")
+			deleteURL := apiURLStr
+			if strings.HasSuffix(deleteURL, "/add") {
+				deleteURL = deleteURL[:len(deleteURL)-4] + "/delete"
+			}
+
+			var pipeline models.Pipeline
+			var pipelineBusinessID string
+			if err := database.DB.First(&pipeline, scheme.LocalPipelineID).Error; err == nil {
+				pipelineBusinessID = pipeline.PipelineID
+			}
+
+			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", deleteURL, nil, utils.HTTPOptions{
+				QueryParams: map[string]string{
+					"pipelineId": pipelineBusinessID,
+					"configId":   scheme.MRBindingID,
+				},
+			}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteMRBinding")
 			if err != nil {
 				log.Printf("[SyncDelete] Failed to delete mr binding %s: %v\n", scheme.MRBindingID, err)
 			}
