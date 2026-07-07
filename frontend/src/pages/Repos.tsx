@@ -706,13 +706,9 @@ const NameCell: React.FC<{ name?: string; id?: string }> = ({ name, id }) => {
           style={{
             fontSize: 10,
             color: 'var(--text-muted)',
-            display: 'block',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
           }}
         >
-          ID: {id}
+          ({id})
         </span>
       </div>
     )
