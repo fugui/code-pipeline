@@ -675,6 +675,7 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 	extID, err := createExecutionSchemeStep(ctx, pipelineBusinessID, scheme, taskID, repoURL, headers)
 	if err != nil {
 		log.Printf("[Pipeline] Remote sync Step 2 failed: %v\n", err)
+		SyncDeleteExecutionSchemeRemote(*scheme, headers)
 		return "", err
 	}
 	scheme.ExecutionSchemeID = extID
@@ -695,6 +696,7 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 		planID, err := createExecutionPlanStep(ctx, pipelineBusinessID, scheme, extID, headers)
 		if err != nil {
 			log.Printf("[Pipeline] Remote sync Step 4 failed: %v\n", err)
+			SyncDeleteExecutionSchemeRemote(*scheme, headers)
 			return "", err
 		}
 		scheme.ExecutionPlanID = planID
