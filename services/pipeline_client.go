@@ -360,8 +360,6 @@ func createExecutionSchemeStep(ctx context.Context, pipelineBusinessID string, s
 		}
 	}
 
-	customAttrMap["cmc_username"] = scheme.Username
-	customAttrMap["cmc_password"] = scheme.Password
 	customAttrMap["code_checker_task_id"] = taskID
 	customAttrMap["repository"] = repoURL
 	customAttrMap["branch"] = scheme.Branch
