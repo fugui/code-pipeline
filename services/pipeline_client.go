@@ -937,16 +937,24 @@ func SyncRunExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[str
 		return fmt.Errorf("get_execution_scheme_url not configured")
 	}
 
-	runURL := apiURLStr
-	if strings.HasSuffix(runURL, "/get") {
-		runURL = runURL[:len(runURL)-3] + "run"
+	var pipeline models.Pipeline
+	var pipelineBusinessID string
+	if err := database.DB.First(&pipeline, scheme.LocalPipelineID).Error; err == nil {
+		pipelineBusinessID = pipeline.PipelineID
 	}
 
-	_, err := utils.SendHTTPRequest(context.Background(), "POST", runURL, nil, utils.HTTPOptions{
+	runURL := apiURLStr
+	if strings.HasSuffix(runURL, "/get") {
+		runURL = runURL[:len(runURL)-3] + "execution"
+	}
+
+	payload := map[string]interface{}{
+		"pipelineId": pipelineBusinessID,
+		"schemeIds":  []string{scheme.ExecutionSchemeID},
+	}
+
+	_, err := utils.SendHTTPRequest(context.Background(), "POST", runURL, payload, utils.HTTPOptions{
 		Headers: headers,
-		QueryParams: map[string]string{
-			"id": scheme.ExecutionSchemeID,
-		},
 	}, []int{http.StatusOK, http.StatusAccepted, http.StatusNoContent}, "SyncRunScheme")
 	return err
 }
