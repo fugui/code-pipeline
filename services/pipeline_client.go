@@ -957,16 +957,18 @@ func SyncRunExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[str
 
 	if len(body) > 0 {
 		var responseData struct {
-			Result   string   `json:"result"`
-			Message  string   `json:"message"`
-			Entities []string `json:"entities"`
+			Result   string `json:"result"`
+			Message  string `json:"message"`
+			Entities []struct {
+				JobID string `json:"jobId"`
+			} `json:"entities"`
 		}
 		if err := json.Unmarshal(body, &responseData); err == nil {
 			if responseData.Result == "failed" {
 				return "", fmt.Errorf("%s", responseData.Message)
 			}
 			if len(responseData.Entities) > 0 {
-				return responseData.Entities[0], nil
+				return responseData.Entities[0].JobID, nil
 			}
 		} else {
 			log.Printf("[SyncRunScheme] Failed to parse response JSON: %v, Body: %s", err, string(body))
