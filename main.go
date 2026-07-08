@@ -55,11 +55,16 @@ func main() {
 	{
 		// 免密路由
 		api.POST("/login", handlers.Login)
+		api.POST("/webhook", handlers.HandleWebhook)
 
 		// 受保护路由
 		api.Use(handlers.AuthMiddleware())
 		{
 			api.GET("/me", handlers.GetMe)
+
+			// Merge Request 实时看护相关接口
+			api.GET("/mr", handlers.GetMrEvents)
+			api.GET("/mr/:id", handlers.GetMrEventDetail)
 
 			// 仓库配置路由
 			api.GET("/repos", handlers.GetRepos)

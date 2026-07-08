@@ -14,7 +14,8 @@ export const menuGroups: MenuGroup[] = [
     items: [
       { path: '/dashboard', label: '控制中心' },
       { path: '/repos', label: '代码仓全览' },
-      { path: '/pipeline-config', label: '流水线配置' }
+      { path: '/pipeline-config', label: '流水线配置' },
+      { path: '/realtime/mr', label: 'Merge Request 看护' }
     ]
   }
 ];
@@ -22,7 +23,8 @@ export const menuGroups: MenuGroup[] = [
 export const menuItems: SubMenuItem[] = [
   { path: '/dashboard', label: '控制中心' },
   { path: '/repos', label: '仓库配置' },
-  { path: '/pipeline-config', label: '流水线配置' }
+  { path: '/pipeline-config', label: '流水线配置' },
+  { path: '/realtime/mr', label: 'Merge Request 看护' }
 ];
 
 export default menuItems;

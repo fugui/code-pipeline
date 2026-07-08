@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { 
-  Activity, Loader2, LayoutDashboard, GitBranch, LogOut
+  Activity, Loader2, LayoutDashboard, GitBranch, LogOut, Eye
 } from 'lucide-react'
 
 // Import types
@@ -11,6 +11,9 @@ import { User, ExecutionLog, DashboardStats, Pipeline, ExecutionScheme } from '.
 import { Dashboard } from './pages/Dashboard'
 import { Repos } from './pages/Repos'
 import { PipelineConfig } from './pages/PipelineConfig'
+import RealtimeMr from './pages/RealtimeMr'
+import { ToastProvider } from './components/Toast'
+
 
 // Import modals
 import { PipelineModal } from './components/PipelineModal'
@@ -45,7 +48,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     return localStorage.getItem('code_shield_token') || localStorage.getItem(AUTH_TOKEN_KEY);
   })
   const [user, setUser] = useState<User | null>(null)
-  const [currentView, setCurrentView] = useState<'dashboard' | 'repos' | 'pipeline-config'>('dashboard')
+  const [currentView, setCurrentView] = useState<'dashboard' | 'repos' | 'pipeline-config' | 'realtime-mr'>('dashboard')
   
   // Data lists — repos 仅用于 ExecutionSchemeModal 的候选项
   const [repos, setRepos] = useState<{ id: number; name: string; url: string; service_group?: string; owner_name?: string }[]>([])
@@ -90,6 +93,8 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
       setCurrentView('repos')
     } else if (path.endsWith('/pipeline-config')) {
       setCurrentView('pipeline-config')
+    } else if (path.endsWith('/realtime/mr')) {
+      setCurrentView('realtime-mr')
     } else if (path.endsWith('/dashboard')) {
       setCurrentView('dashboard')
     } else {
@@ -468,7 +473,8 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <ToastProvider>
+      <div style={{ display: 'flex', minHeight: '100vh' }}>
       {/* Sidebar */}
       {!isEmbedded && (
         <aside className="glass-card" style={{ width: 260, borderRadius: 0, borderTop: 'none', borderBottom: 'none', borderLeft: 'none', padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -499,6 +505,13 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
                 style={{ justifyContent: 'flex-start', width: '100%' }}
               >
                 <Activity size={16} /> 流水线配置
+              </button>
+              <button 
+                onClick={() => { setCurrentView('realtime-mr'); setActiveExec(null); }} 
+                className={`btn ${currentView === 'realtime-mr' ? 'btn-primary' : 'btn-secondary'}`} 
+                style={{ justifyContent: 'flex-start', width: '100%' }}
+              >
+                <Eye size={16} /> Merge Request 看护
               </button>
             </nav>
           </div>
@@ -579,6 +592,14 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
           />
         )}
 
+        {/* VIEW 5: REALTIME MR */}
+        {currentView === 'realtime-mr' && (
+          <RealtimeMr 
+            apiBase={apiBase}
+            token={token}
+          />
+        )}
+
       </main>
 
       {/* Pipeline metadata Modal */}
@@ -616,6 +637,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         onCancel={handleCancelExecution}
       />
     </div>
+    </ToastProvider>
   )
 }
 
