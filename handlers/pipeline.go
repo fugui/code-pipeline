@@ -343,13 +343,8 @@ func RunExecutionScheme(c *gin.Context) {
 		return
 	}
 
-	// 获取当前登录用户，提取 EmployeeID 并格式化
-	userID, _ := c.Get("userID")
-	var user models.User
-	var employeeID string
-	if err := database.DB.First(&user, userID).Error; err == nil {
-		employeeID = utils.FormatEmployeeID(user.EmployeeID)
-	}
+	// 从 Context 获取 EmployeeID 并格式化，避免重复查询数据库
+	employeeID := utils.FormatEmployeeID(c.GetString("employeeID"))
 
 	headers := prepareRequestHeaders(c)
 	if headers == nil {

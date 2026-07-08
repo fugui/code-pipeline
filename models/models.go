@@ -5,16 +5,16 @@ import (
 )
 
 type User struct {
-	ID        uint       `gorm:"primaryKey" json:"id"`
-	Email     string     `gorm:"uniqueIndex;not null" json:"email"`
-	Name      string     `gorm:"not null;default:''" json:"name"`
+	ID         uint       `gorm:"primaryKey" json:"id"`
+	Email      string     `gorm:"uniqueIndex;not null" json:"email"`
+	Name       string     `gorm:"not null;default:''" json:"name"`
 	EmployeeID string     `gorm:"index;default:''" json:"employee_id"`
-	Password  string     `gorm:"not null" json:"-"`
-	IsActive  bool       `gorm:"default:true" json:"is_active"`
-	IsAdmin   bool       `gorm:"default:false" json:"is_admin"`
-	LastLogin *time.Time `json:"last_login"`
-	LastIP    string     `gorm:"default:''" json:"last_ip"`
-	CreatedAt time.Time  `json:"created_at"`
+	Password   string     `gorm:"not null" json:"-"`
+	IsActive   bool       `gorm:"default:true" json:"is_active"`
+	IsAdmin    bool       `gorm:"default:false" json:"is_admin"`
+	LastLogin  *time.Time `json:"last_login"`
+	LastIP     string     `gorm:"default:''" json:"last_ip"`
+	CreatedAt  time.Time  `json:"created_at"`
 }
 
 type Repository struct {
