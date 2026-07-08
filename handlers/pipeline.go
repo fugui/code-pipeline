@@ -333,7 +333,31 @@ func RunExecutionScheme(c *gin.Context) {
 		return
 	}
 
+	// 查询对应的 Pipeline 以获取 OwnerID
+	var pipeline models.Pipeline
+	if err := database.DB.First(&pipeline, scheme.LocalPipelineID).Error; err == nil {
+		pipelineBusinessID := pipeline.PipelineID
+		_ = pipelineBusinessID
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Associated pipeline not found"})
+		return
+	}
+
+	// 获取当前登录用户，提取 EmployeeID
+	userID, _ := c.Get("userID")
+	var user models.User
+	var employeeID string
+	if err := database.DB.First(&user, userID).Error; err == nil {
+		employeeID = user.EmployeeID
+	}
+
 	headers := prepareRequestHeaders(c)
+	if headers == nil {
+		headers = make(map[string]string)
+	}
+	headers["x-user-name"] = employeeID
+	headers["x-user-owner"] = pipeline.OwnerID
+
 	if err := services.SyncRunExecutionSchemeRemote(scheme, headers); err != nil {
 		log.Printf("[Pipeline] Remote run failed for scheme %s: %v\n", scheme.ExecutionSchemeID, err)
 		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("启动流水线失败: %v", err)})

@@ -8,6 +8,7 @@ type User struct {
 	ID        uint       `gorm:"primaryKey" json:"id"`
 	Email     string     `gorm:"uniqueIndex;not null" json:"email"`
 	Name      string     `gorm:"not null;default:''" json:"name"`
+	EmployeeID string     `gorm:"index;default:''" json:"employee_id"`
 	Password  string     `gorm:"not null" json:"-"`
 	IsActive  bool       `gorm:"default:true" json:"is_active"`
 	IsAdmin   bool       `gorm:"default:false" json:"is_admin"`

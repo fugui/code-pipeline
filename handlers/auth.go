@@ -17,10 +17,11 @@ import (
 )
 
 type PortalClaims struct {
-	UserID  uint   `json:"user_id"`
-	Email   string `json:"email"`
-	Name    string `json:"name"`
-	IsAdmin bool   `json:"is_admin"`
+	UserID     uint   `json:"user_id"`
+	Email      string `json:"email"`
+	Name       string `json:"name"`
+	EmployeeID string `json:"employee_id"`
+	IsAdmin    bool   `json:"is_admin"`
 	jwt.RegisteredClaims
 	SSOUserID string `json:"-"`
 }
@@ -98,9 +99,10 @@ func AuthMiddleware() gin.HandlerFunc {
 			if user.ID != 0 {
 				claims.UserID = user.ID
 				// 同步更新本地用户角色和姓名等，以保证与 SSO 端保持最新状态同步
-				if user.IsAdmin != claims.IsAdmin || user.Name != claims.Name {
+				if user.IsAdmin != claims.IsAdmin || user.Name != claims.Name || user.EmployeeID != claims.EmployeeID {
 					user.IsAdmin = claims.IsAdmin
 					user.Name = claims.Name
+					user.EmployeeID = claims.EmployeeID
 					_ = database.DB.Save(&user).Error
 				}
 			}
@@ -115,11 +117,12 @@ func AuthMiddleware() gin.HandlerFunc {
 		if findErr != nil {
 			// 如果是合法的 SSO 用户但在本系统尚不存在，自动注册
 			user = models.User{
-				Email:    claims.Email,
-				Name:     claims.Name,
-				IsAdmin:  claims.IsAdmin,
-				IsActive: true,
-				Password: "SSO_USER_NO_PASSWORD",
+				Email:      claims.Email,
+				Name:       claims.Name,
+				EmployeeID: claims.EmployeeID,
+				IsAdmin:    claims.IsAdmin,
+				IsActive:   true,
+				Password:   "SSO_USER_NO_PASSWORD",
 			}
 			if errCreate := database.DB.Create(&user).Error; errCreate != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to auto-register SSO user"})
