@@ -485,6 +485,9 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
             </div>
 
             <nav style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ padding: '0.4rem 0.6rem 0.2rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                构建与检查
+              </div>
               <button 
                 onClick={() => { setCurrentView('dashboard'); setActiveExec(null); }} 
                 className={`btn ${currentView === 'dashboard' ? 'btn-primary' : 'btn-secondary'}`} 
@@ -500,18 +503,24 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
                 <GitBranch size={16} /> 仓库流配置
               </button>
               <button 
-                onClick={() => { setCurrentView('pipeline-config'); setActiveExec(null); }} 
-                className={`btn ${currentView === 'pipeline-config' ? 'btn-primary' : 'btn-secondary'}`} 
-                style={{ justifyContent: 'flex-start', width: '100%' }}
-              >
-                <Activity size={16} /> 流水线配置
-              </button>
-              <button 
                 onClick={() => { setCurrentView('realtime-mr'); setActiveExec(null); }} 
                 className={`btn ${currentView === 'realtime-mr' ? 'btn-primary' : 'btn-secondary'}`} 
                 style={{ justifyContent: 'flex-start', width: '100%' }}
               >
                 <Eye size={16} /> Merge Request 看护
+              </button>
+
+              <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
+
+              <div style={{ padding: '0.4rem 0.6rem 0.2rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                管理中心
+              </div>
+              <button 
+                onClick={() => { setCurrentView('pipeline-config'); setActiveExec(null); }} 
+                className={`btn ${currentView === 'pipeline-config' ? 'btn-primary' : 'btn-secondary'}`} 
+                style={{ justifyContent: 'flex-start', width: '100%' }}
+              >
+                <Activity size={16} /> 流水线配置
               </button>
             </nav>
           </div>
