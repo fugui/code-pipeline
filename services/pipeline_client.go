@@ -948,8 +948,26 @@ func SyncRunExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[str
 		"schemeIds":  []string{scheme.ExecutionSchemeID},
 	}
 
-	_, err := utils.SendHTTPRequest(context.Background(), "POST", apiURLStr, payload, utils.HTTPOptions{
+	body, err := utils.SendHTTPRequest(context.Background(), "POST", apiURLStr, payload, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusAccepted, http.StatusNoContent}, "SyncRunScheme")
-	return err
+	if err != nil {
+		return err
+	}
+
+	if len(body) > 0 {
+		var responseData struct {
+			Result  string `json:"result"`
+			Message string `json:"message"`
+		}
+		if err := json.Unmarshal(body, &responseData); err == nil {
+			if responseData.Result == "failed" {
+				return fmt.Errorf("%s", responseData.Message)
+			}
+		} else {
+			log.Printf("[SyncRunScheme] Failed to parse response JSON: %v, Body: %s", err, string(body))
+		}
+	}
+
+	return nil
 }
