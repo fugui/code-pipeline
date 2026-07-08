@@ -40,6 +40,7 @@ func InitDB() {
 		&models.Repository{},
 		&models.Pipeline{},
 		&models.ExecutionScheme{},
+		&models.MrEvent{},
 	)
 	if err != nil {
 		log.Fatalf("[Database] Migration failed: %v", err)
