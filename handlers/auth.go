@@ -142,6 +142,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		c.Set("userID", user.ID)
 		c.Set("email", user.Email)
 		c.Set("isAdmin", user.IsAdmin)
+		c.Set("employeeID", user.EmployeeID)
 
 		ctx := context.WithValue(c.Request.Context(), "userEmail", user.Email)
 		ctx = context.WithValue(ctx, "employeeID", user.EmployeeID)
