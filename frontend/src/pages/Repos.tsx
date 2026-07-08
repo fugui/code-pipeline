@@ -104,7 +104,8 @@ export const Repos: React.FC<ReposProps> = ({
       if (!res.ok) {
         throw new Error(data.error || '启动流水线失败')
       }
-      alert(data.message || '流水线启动成功！')
+      const msg = data.job_id ? `流水线启动成功！任务 ID: ${data.job_id}` : (data.message || '流水线启动成功！')
+      alert(msg)
     })
     .catch(err => {
       alert(err.message || '启动流水线失败，网络错误')
