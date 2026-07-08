@@ -404,16 +404,17 @@ func createExecutionSchemeStep(ctx context.Context, pipelineBusinessID string, s
 		escapedCustomAttributes = escapedCustomAttributes[1 : len(escapedCustomAttributes)-1]
 	}
 
-	userEmail, _ := ctx.Value("userEmail").(string)
-	if userEmail == "" {
-		userEmail = "system"
+	empID, _ := ctx.Value("employeeID").(string)
+	formattedEmpID := utils.FormatEmployeeID(empID)
+	if formattedEmpID == "" {
+		formattedEmpID = "system"
 	}
 
 	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
 		"{SCHEME_NAME}":       schemeName,
 		"{NAME}":              schemeName,
 		"{PIPELINE_ID}":       pipelineBusinessID,
-		"{USER_EMAIL}":        userEmail,
+		"{USER_EMAIL}":        formattedEmpID,
 		"{CUSTOM_ATTRIBUTES}": escapedCustomAttributes,
 	})
 

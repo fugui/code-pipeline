@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"code-pipeline/database"
 	"code-pipeline/models"
@@ -349,7 +348,7 @@ func RunExecutionScheme(c *gin.Context) {
 	var user models.User
 	var employeeID string
 	if err := database.DB.First(&user, userID).Error; err == nil {
-		employeeID = formatEmployeeID(user.EmployeeID)
+		employeeID = utils.FormatEmployeeID(user.EmployeeID)
 	}
 
 	headers := prepareRequestHeaders(c)
@@ -367,20 +366,4 @@ func RunExecutionScheme(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "流水线已成功启动", "job_id": jobID})
-}
-
-// formatEmployeeID 格式化工号数据：例如将 "fugui 008163" 格式化为 "f008163"
-// 规则：ID由两个部分组成，中间空格分割，取第一部分的第一个字符与第二部分拼接
-func formatEmployeeID(raw string) string {
-	parts := strings.Fields(raw)
-	if len(parts) < 2 {
-		return raw
-	}
-	firstPart := parts[0]
-	secondPart := parts[1]
-	if len(firstPart) == 0 {
-		return secondPart
-	}
-	firstChar := string([]rune(firstPart)[0])
-	return firstChar + secondPart
 }
