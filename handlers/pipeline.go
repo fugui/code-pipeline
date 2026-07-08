@@ -359,13 +359,14 @@ func RunExecutionScheme(c *gin.Context) {
 	headers["x-user-name"] = employeeID
 	headers["x-user-owner"] = pipeline.OwnerID
 
-	if err := services.SyncRunExecutionSchemeRemote(scheme, headers); err != nil {
+	jobID, err := services.SyncRunExecutionSchemeRemote(scheme, headers)
+	if err != nil {
 		log.Printf("[Pipeline] Remote run failed for scheme %s: %v\n", scheme.ExecutionSchemeID, err)
 		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("启动流水线失败: %v", err)})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "流水线已成功启动"})
+	c.JSON(http.StatusOK, gin.H{"message": "流水线已成功启动", "job_id": jobID})
 }
 
 // formatEmployeeID 格式化工号数据：例如将 "fugui 008163" 格式化为 "f008163"

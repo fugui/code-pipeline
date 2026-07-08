@@ -931,10 +931,10 @@ func GetRepoBranchesRemote(ctx context.Context, repository string, authID string
 }
 
 // SyncRunExecutionSchemeRemote 在三方系统中触发运行指定的执行方案
-func SyncRunExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[string]string) error {
+func SyncRunExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[string]string) (string, error) {
 	apiURLStr := models.AppConfig.PipelineSystem.RunExecutionSchemeURL
 	if apiURLStr == "" {
-		return fmt.Errorf("run_execution_scheme_url not configured")
+		return "", fmt.Errorf("run_execution_scheme_url not configured")
 	}
 
 	var pipeline models.Pipeline
@@ -952,22 +952,26 @@ func SyncRunExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[str
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusAccepted, http.StatusNoContent}, "SyncRunScheme")
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if len(body) > 0 {
 		var responseData struct {
-			Result  string `json:"result"`
-			Message string `json:"message"`
+			Result   string   `json:"result"`
+			Message  string   `json:"message"`
+			Entities []string `json:"entities"`
 		}
 		if err := json.Unmarshal(body, &responseData); err == nil {
 			if responseData.Result == "failed" {
-				return fmt.Errorf("%s", responseData.Message)
+				return "", fmt.Errorf("%s", responseData.Message)
+			}
+			if len(responseData.Entities) > 0 {
+				return responseData.Entities[0], nil
 			}
 		} else {
 			log.Printf("[SyncRunScheme] Failed to parse response JSON: %v, Body: %s", err, string(body))
 		}
 	}
 
-	return nil
+	return "", nil
 }
