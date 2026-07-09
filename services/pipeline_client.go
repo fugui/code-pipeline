@@ -980,19 +980,20 @@ func SyncRunExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[str
 }
 
 // CheckWebhookRegistered 调用代码托管平台 API 检查指定仓库是否已注册指向 code-pipeline 的 Webhook
-func CheckWebhookRegistered(ctx context.Context, repoHTTPURL string, headers map[string]string) (bool, error) {
+func CheckWebhookRegistered(ctx context.Context, projectID string, headers map[string]string) (bool, error) {
 	apiURLStr := models.AppConfig.PipelineSystem.GetWebhooksURL
 	if apiURLStr == "" {
 		return false, fmt.Errorf("get_webhooks_url not configured")
 	}
 
+	// 替换 URL 中可能包含的 {REPO_ID} 或 {PROJECT_ID} 占位符
+	apiURLStr = strings.ReplaceAll(apiURLStr, "{REPO_ID}", projectID)
+	apiURLStr = strings.ReplaceAll(apiURLStr, "{PROJECT_ID}", projectID)
+
 	callbackURL := models.AppConfig.PipelineSystem.WebhookCallbackURL
 
 	body, err := utils.SendHTTPRequest(ctx, "GET", apiURLStr, nil, utils.HTTPOptions{
 		Headers: headers,
-		QueryParams: map[string]string{
-			"repoUrl": repoHTTPURL,
-		},
 	}, []int{http.StatusOK}, "CheckWebhookRegistered")
 	if err != nil {
 		return false, err
@@ -1019,16 +1020,19 @@ func CheckWebhookRegistered(ctx context.Context, repoHTTPURL string, headers map
 }
 
 // RegisterWebhook 调用代码托管平台 API 为指定仓库注册 Webhook
-func RegisterWebhook(ctx context.Context, repoHTTPURL string, headers map[string]string) error {
+func RegisterWebhook(ctx context.Context, projectID string, headers map[string]string) error {
 	apiURLStr := models.AppConfig.PipelineSystem.CreateWebhookURL
 	if apiURLStr == "" {
 		return fmt.Errorf("create_webhook_url not configured")
 	}
 
+	// 替换 URL 中可能包含的 {REPO_ID} 或 {PROJECT_ID} 占位符
+	apiURLStr = strings.ReplaceAll(apiURLStr, "{REPO_ID}", projectID)
+	apiURLStr = strings.ReplaceAll(apiURLStr, "{PROJECT_ID}", projectID)
+
 	callbackURL := models.AppConfig.PipelineSystem.WebhookCallbackURL
 
 	payload := map[string]interface{}{
-		"repoUrl":    repoHTTPURL,
 		"webhookUrl": callbackURL,
 		"events":     []string{"merge_request"},
 	}
