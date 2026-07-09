@@ -269,6 +269,16 @@ func RegisterRepoWebhook(c *gin.Context) {
 	}
 
 	headers := prepareRequestHeaders(c)
+
+	// 前置检查：如果远程已经存在该 Webhook，就直接置为 true，防止重复注册报错
+	alreadyRegistered, err := services.CheckWebhookRegistered(c.Request.Context(), projectID, headers)
+	if err == nil && alreadyRegistered {
+		database.DB.Model(&repo).Update("webhook_registered", true)
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "Webhook already registered on remote, synchronized state successfully"})
+		return
+	}
+
+	// 远程确实不存在，发起注册
 	if err := services.RegisterWebhook(c.Request.Context(), projectID, headers); err != nil {
 		if HandleSSOExpired(c, err) {
 			return
