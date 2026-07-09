@@ -992,12 +992,17 @@ func CheckWebhookRegistered(ctx context.Context, projectID string, headers map[s
 
 	callbackURL := models.AppConfig.PipelineSystem.WebhookCallbackURL
 
+	log.Printf("[CheckWebhookRegistered] Checking webhook for projectID=%s, callbackURL=%s, URL=%s", projectID, callbackURL, apiURLStr)
+
 	body, err := utils.SendHTTPRequest(ctx, "GET", apiURLStr, nil, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK}, "CheckWebhookRegistered")
 	if err != nil {
+		log.Printf("[CheckWebhookRegistered] HTTP request failed for projectID=%s: %v", projectID, err)
 		return false, err
 	}
+
+	log.Printf("[CheckWebhookRegistered] Received response body for projectID=%s: %s", projectID, string(body))
 
 	var responseData []struct {
 		URL string `json:"url"`
@@ -1008,11 +1013,14 @@ func CheckWebhookRegistered(ctx context.Context, projectID string, headers map[s
 	}
 
 	for _, entity := range responseData {
+		log.Printf("[CheckWebhookRegistered] Inspecting registered webhook URL: %s (looking for matches with: %s)", entity.URL, callbackURL)
 		if strings.Contains(entity.URL, callbackURL) {
+			log.Printf("[CheckWebhookRegistered] Match found! Webhook is registered for projectID=%s", projectID)
 			return true, nil
 		}
 	}
 
+	log.Printf("[CheckWebhookRegistered] No matching webhook found for projectID=%s", projectID)
 	return false, nil
 }
 
@@ -1029,17 +1037,21 @@ func RegisterWebhook(ctx context.Context, projectID string, headers map[string]s
 
 	callbackURL := models.AppConfig.PipelineSystem.WebhookCallbackURL
 
+	log.Printf("[RegisterWebhook] Requesting registration for projectID=%s, callbackURL=%s, URL=%s", projectID, callbackURL, apiURLStr)
+
 	payload := map[string]interface{}{
 		"webhookUrl": callbackURL,
 		"events":     []string{"merge_request"},
 	}
 
-	_, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, payload, utils.HTTPOptions{
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, payload, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated}, "RegisterWebhook")
 	if err != nil {
+		log.Printf("[RegisterWebhook] Registration request failed for projectID=%s: %v", projectID, err)
 		return err
 	}
 
+	log.Printf("[RegisterWebhook] Registration request succeeded for projectID=%s. Response: %s", projectID, string(body))
 	return nil
 }
