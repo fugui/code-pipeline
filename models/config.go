@@ -48,6 +48,7 @@ type Config struct {
 		PipelineLinkTemplate      string            `yaml:"pipeline_link_template"`
 		GetWebhooksURL            string            `yaml:"get_webhooks_url"`     // 查询仓库 Webhook 列表的托管平台 API
 		CreateWebhookURL          string            `yaml:"create_webhook_url"`   // 创建 Webhook 的托管平台 API
+		CreateWebhookBody         string            `yaml:"create_webhook_body"`  // 创建 Webhook 的请求 Body 模板
 		WebhookCallbackURL        string            `yaml:"webhook_callback_url"` // 托管平台配置的完整 Webhook 回调 URL
 	} `yaml:"pipeline_system"`
 }
@@ -85,6 +86,9 @@ func LoadConfig(filename string) error {
 	}
 	if AppConfig.PipelineSystem.GetExecutionPlanURL == "" {
 		return fmt.Errorf("pipeline_system.get_execution_plan_url is required")
+	}
+	if AppConfig.PipelineSystem.CreateWebhookBody == "" {
+		return fmt.Errorf("pipeline_system.create_webhook_body is required")
 	}
 
 	return nil
