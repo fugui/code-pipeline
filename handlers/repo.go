@@ -231,9 +231,9 @@ func CheckRepoWebhook(c *gin.Context) {
 		return
 	}
 
-	repoURL := utils.SSHToHTTPS(repo.URL)
+	repoURL := repo.HTTPURL
 	if repoURL == "" {
-		repoURL = repo.HTTPURL
+		repoURL = utils.SSHToHTTPS(repo.URL)
 	}
 	if repoURL == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Repository has no HTTP URL configured"})
@@ -265,9 +265,9 @@ func RegisterRepoWebhook(c *gin.Context) {
 		return
 	}
 
-	repoURL := utils.SSHToHTTPS(repo.URL)
+	repoURL := repo.HTTPURL
 	if repoURL == "" {
-		repoURL = repo.HTTPURL
+		repoURL = utils.SSHToHTTPS(repo.URL)
 	}
 	if repoURL == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Repository has no HTTP URL configured"})
