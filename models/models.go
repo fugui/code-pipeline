@@ -18,17 +18,18 @@ type User struct {
 }
 
 type Repository struct {
-	ID           uint              `gorm:"primaryKey;autoIncrement:false" json:"id"` // 对应 code-bench 中的仓库 ID
-	Name         string            `gorm:"uniqueIndex;not null" json:"name"`         // 仓库名称
-	URL          string            `gorm:"default:''" json:"url"`                    // Git 克隆地址
-	OwnerID      uint              `json:"owner_id"`                                 // 负责人 ID
-	IsActive     bool              `gorm:"default:true" json:"is_active"`            // 是否在宿主端被冻结
-	ProjectID    string            `gorm:"default:''" json:"project_id"`
-	HTTPURL      string            `gorm:"default:''" json:"http_url"`
-	ServiceGroup string            `gorm:"default:''" json:"service_group"` // 归属子系统
-	OwnerName    string            `gorm:"default:''" json:"owner_name"`    // 负责人姓名
-	CreatedAt    time.Time         `json:"created_at"`
-	Schemes      []ExecutionScheme `gorm:"foreignKey:RepositoryID" json:"schemes"`
+	ID                uint              `gorm:"primaryKey;autoIncrement:false" json:"id"` // 对应 code-bench 中的仓库 ID
+	Name              string            `gorm:"uniqueIndex;not null" json:"name"`         // 仓库名称
+	URL               string            `gorm:"default:''" json:"url"`                    // Git 克隆地址
+	OwnerID           uint              `json:"owner_id"`                                 // 负责人 ID
+	IsActive          bool              `gorm:"default:true" json:"is_active"`            // 是否在宿主端被冻结
+	ProjectID         string            `gorm:"default:''" json:"project_id"`
+	HTTPURL           string            `gorm:"default:''" json:"http_url"`
+	ServiceGroup      string            `gorm:"default:''" json:"service_group"` // 归属子系统
+	OwnerName         string            `gorm:"default:''" json:"owner_name"`    // 负责人姓名
+	CreatedAt         time.Time         `json:"created_at"`
+	WebhookRegistered bool              `gorm:"default:false" json:"webhook_registered"` // Webhook 是否已在托管平台注册
+	Schemes           []ExecutionScheme `gorm:"foreignKey:RepositoryID" json:"schemes"`
 }
 
 type Pipeline struct {
@@ -114,4 +115,3 @@ type MrEvent struct {
 	InterfaceFiles string    `gorm:"type:text" json:"interface_files"`           // 接口相关修改的文件列表 (JSON string 数组)
 	CreatedAt      time.Time `json:"created_at"`
 }
-

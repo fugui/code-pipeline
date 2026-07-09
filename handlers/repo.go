@@ -221,3 +221,70 @@ func GetRepoBranches(c *gin.Context) {
 
 	c.JSON(http.StatusOK, branches)
 }
+
+// CheckRepoWebhook 检查代码仓在托管平台的 Webhook 注册状态，并同步更新本地 DB 缓存
+func CheckRepoWebhook(c *gin.Context) {
+	id := c.Param("id")
+	var repo models.Repository
+	if err := database.DB.First(&repo, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Repository not found"})
+		return
+	}
+
+	repoURL := utils.SSHToHTTPS(repo.URL)
+	if repoURL == "" {
+		repoURL = repo.HTTPURL
+	}
+	if repoURL == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Repository has no HTTP URL configured"})
+		return
+	}
+
+	headers := prepareRequestHeaders(c)
+	registered, err := services.CheckWebhookRegistered(c.Request.Context(), repoURL, headers)
+	if err != nil {
+		if HandleSSOExpired(c, err) {
+			return
+		}
+		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to check webhook status: %v", err)})
+		return
+	}
+
+	// 更新 DB 缓存
+	database.DB.Model(&repo).Update("webhook_registered", registered)
+
+	c.JSON(http.StatusOK, gin.H{"registered": registered})
+}
+
+// RegisterRepoWebhook 为代码仓在托管平台注册 Webhook，并更新本地 DB 缓存
+func RegisterRepoWebhook(c *gin.Context) {
+	id := c.Param("id")
+	var repo models.Repository
+	if err := database.DB.First(&repo, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Repository not found"})
+		return
+	}
+
+	repoURL := utils.SSHToHTTPS(repo.URL)
+	if repoURL == "" {
+		repoURL = repo.HTTPURL
+	}
+	if repoURL == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Repository has no HTTP URL configured"})
+		return
+	}
+
+	headers := prepareRequestHeaders(c)
+	if err := services.RegisterWebhook(c.Request.Context(), repoURL, headers); err != nil {
+		if HandleSSOExpired(c, err) {
+			return
+		}
+		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to register webhook: %v", err)})
+		return
+	}
+
+	// 注册成功，更新 DB 缓存
+	database.DB.Model(&repo).Update("webhook_registered", true)
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Webhook registered successfully"})
+}

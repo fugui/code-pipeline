@@ -64,3 +64,6 @@ pipeline_system:
     GO: "rule_id_go_1"
     PYTHON: "rule_id_py_1"
   pipeline_link_template: "http://192.168.56.18:9080/workspace/{OWNER_ID}/service/{SERVICE_ID}/pipeline/{PIPELINE_ID}"
+  get_webhooks_url: "http://192.168.56.18:8080/api/external/webhooks"          # 查询仓库 Webhook 列表
+  create_webhook_url: "http://192.168.56.18:8080/api/external/webhooks/create" # 创建 Webhook
+  webhook_base_url: "http://192.168.56.18:8082"                                # code-pipeline 自身基地址，回调 URL = {base}/api/webhook

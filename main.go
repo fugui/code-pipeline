@@ -73,6 +73,8 @@ func main() {
 			api.POST("/repos/:id/trigger", handlers.TriggerRepo)
 			api.GET("/repos/:id/latest-log", handlers.GetRepoLatestLog)
 			api.GET("/repos/:id/branches", handlers.GetRepoBranches)
+			api.GET("/repos/:id/webhook", handlers.CheckRepoWebhook)
+			api.POST("/repos/:id/webhook", handlers.RegisterRepoWebhook)
 
 			// 流水线配置相关接口
 			api.GET("/pipelines", handlers.GetPipelines)
