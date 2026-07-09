@@ -986,7 +986,7 @@ func CheckWebhookRegistered(ctx context.Context, repoHTTPURL string, headers map
 		return false, fmt.Errorf("get_webhooks_url not configured")
 	}
 
-	callbackURL := models.AppConfig.PipelineSystem.WebhookBaseURL + "/api/webhook"
+	callbackURL := models.AppConfig.PipelineSystem.WebhookCallbackURL
 
 	body, err := utils.SendHTTPRequest(ctx, "GET", apiURLStr, nil, utils.HTTPOptions{
 		Headers: headers,
@@ -1025,7 +1025,7 @@ func RegisterWebhook(ctx context.Context, repoHTTPURL string, headers map[string
 		return fmt.Errorf("create_webhook_url not configured")
 	}
 
-	callbackURL := models.AppConfig.PipelineSystem.WebhookBaseURL + "/api/webhook"
+	callbackURL := models.AppConfig.PipelineSystem.WebhookCallbackURL
 
 	payload := map[string]interface{}{
 		"repoUrl":    repoHTTPURL,
