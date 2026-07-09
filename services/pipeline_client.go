@@ -1039,12 +1039,15 @@ func RegisterWebhook(ctx context.Context, projectID string, headers map[string]s
 
 	log.Printf("[RegisterWebhook] Requesting registration for projectID=%s, callbackURL=%s, URL=%s", projectID, callbackURL, apiURLStr)
 
-	payload := map[string]interface{}{
-		"webhookUrl": callbackURL,
-		"events":     []string{"merge_request"},
-	}
+	tmpl := models.AppConfig.PipelineSystem.CreateWebhookBody
+	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
+		"{WEBHOOK_URL}": callbackURL,
+		"{PROJECT_ID}":  projectID,
+		"{REPO_ID}":     projectID,
+	})
+	postData := json.RawMessage(bodyStr)
 
-	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, payload, utils.HTTPOptions{
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated}, "RegisterWebhook")
 	if err != nil {
