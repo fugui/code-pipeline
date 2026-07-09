@@ -999,18 +999,15 @@ func CheckWebhookRegistered(ctx context.Context, projectID string, headers map[s
 		return false, err
 	}
 
-	var responseData struct {
-		Status   string `json:"status"`
-		Entities []struct {
-			URL string `json:"url"`
-		} `json:"entities"`
+	var responseData []struct {
+		URL string `json:"url"`
 	}
 	if err := json.Unmarshal(body, &responseData); err != nil {
 		log.Printf("[CheckWebhookRegistered] Failed to parse JSON: %v, Body: %s", err, string(body))
 		return false, fmt.Errorf("failed to parse webhook query response: %v", err)
 	}
 
-	for _, entity := range responseData.Entities {
+	for _, entity := range responseData {
 		if strings.Contains(entity.URL, callbackURL) {
 			return true, nil
 		}
@@ -1037,24 +1034,11 @@ func RegisterWebhook(ctx context.Context, projectID string, headers map[string]s
 		"events":     []string{"merge_request"},
 	}
 
-	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, payload, utils.HTTPOptions{
+	_, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, payload, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated}, "RegisterWebhook")
 	if err != nil {
 		return err
-	}
-
-	var responseData struct {
-		Status  string `json:"status"`
-		Message string `json:"message"`
-	}
-	if err := json.Unmarshal(body, &responseData); err != nil {
-		log.Printf("[RegisterWebhook] Failed to parse JSON: %v, Body: %s", err, string(body))
-		return fmt.Errorf("failed to parse webhook create response: %v", err)
-	}
-
-	if responseData.Status != "" && responseData.Status != "success" {
-		return fmt.Errorf("webhook registration failed: %s", responseData.Message)
 	}
 
 	return nil
