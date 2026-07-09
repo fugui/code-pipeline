@@ -986,41 +986,32 @@ func CheckWebhookRegistered(ctx context.Context, projectID string, headers map[s
 		return false, fmt.Errorf("get_webhooks_url not configured")
 	}
 
-	// 替换 URL 中可能包含的 {REPO_ID} 或 {PROJECT_ID} 占位符
+	// 替换 URL 中可能包含 of {REPO_ID} 或 {PROJECT_ID} 占位符
 	apiURLStr = strings.ReplaceAll(apiURLStr, "{REPO_ID}", projectID)
 	apiURLStr = strings.ReplaceAll(apiURLStr, "{PROJECT_ID}", projectID)
 
 	callbackURL := models.AppConfig.PipelineSystem.WebhookCallbackURL
 
-	log.Printf("[CheckWebhookRegistered] Checking webhook for projectID=%s, callbackURL=%s, URL=%s", projectID, callbackURL, apiURLStr)
-
 	body, err := utils.SendHTTPRequest(ctx, "GET", apiURLStr, nil, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK}, "CheckWebhookRegistered")
 	if err != nil {
-		log.Printf("[CheckWebhookRegistered] HTTP request failed for projectID=%s: %v", projectID, err)
 		return false, err
 	}
-
-	log.Printf("[CheckWebhookRegistered] Received response body for projectID=%s: %s", projectID, string(body))
 
 	var responseData []struct {
 		URL string `json:"url"`
 	}
 	if err := json.Unmarshal(body, &responseData); err != nil {
-		log.Printf("[CheckWebhookRegistered] Failed to parse JSON: %v, Body: %s", err, string(body))
 		return false, fmt.Errorf("failed to parse webhook query response: %v", err)
 	}
 
 	for _, entity := range responseData {
-		log.Printf("[CheckWebhookRegistered] Inspecting registered webhook URL: %s (looking for matches with: %s)", entity.URL, callbackURL)
 		if strings.Contains(entity.URL, callbackURL) {
-			log.Printf("[CheckWebhookRegistered] Match found! Webhook is registered for projectID=%s", projectID)
 			return true, nil
 		}
 	}
 
-	log.Printf("[CheckWebhookRegistered] No matching webhook found for projectID=%s", projectID)
 	return false, nil
 }
 
@@ -1031,13 +1022,11 @@ func RegisterWebhook(ctx context.Context, projectID string, headers map[string]s
 		return fmt.Errorf("create_webhook_url not configured")
 	}
 
-	// 替换 URL 中可能包含的 {REPO_ID} 或 {PROJECT_ID} 占位符
+	// 替换 URL 中可能包含 of {REPO_ID} 或 {PROJECT_ID} 占位符
 	apiURLStr = strings.ReplaceAll(apiURLStr, "{REPO_ID}", projectID)
 	apiURLStr = strings.ReplaceAll(apiURLStr, "{PROJECT_ID}", projectID)
 
 	callbackURL := models.AppConfig.PipelineSystem.WebhookCallbackURL
-
-	log.Printf("[RegisterWebhook] Requesting registration for projectID=%s, callbackURL=%s, URL=%s", projectID, callbackURL, apiURLStr)
 
 	tmpl := models.AppConfig.PipelineSystem.CreateWebhookBody
 	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
@@ -1047,14 +1036,12 @@ func RegisterWebhook(ctx context.Context, projectID string, headers map[string]s
 	})
 	postData := json.RawMessage(bodyStr)
 
-	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
+	_, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated}, "RegisterWebhook")
 	if err != nil {
-		log.Printf("[RegisterWebhook] Registration request failed for projectID=%s: %v", projectID, err)
 		return err
 	}
 
-	log.Printf("[RegisterWebhook] Registration request succeeded for projectID=%s. Response: %s", projectID, string(body))
 	return nil
 }
