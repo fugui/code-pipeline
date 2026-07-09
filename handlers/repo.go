@@ -231,17 +231,14 @@ func CheckRepoWebhook(c *gin.Context) {
 		return
 	}
 
-	repoURL := repo.HTTPURL
-	if repoURL == "" {
-		repoURL = utils.SSHToHTTPS(repo.URL)
-	}
-	if repoURL == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Repository has no HTTP URL configured"})
+	projectID := repo.ProjectID
+	if projectID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Repository has no project ID configured"})
 		return
 	}
 
 	headers := prepareRequestHeaders(c)
-	registered, err := services.CheckWebhookRegistered(c.Request.Context(), repoURL, headers)
+	registered, err := services.CheckWebhookRegistered(c.Request.Context(), projectID, headers)
 	if err != nil {
 		if HandleSSOExpired(c, err) {
 			return
@@ -265,17 +262,14 @@ func RegisterRepoWebhook(c *gin.Context) {
 		return
 	}
 
-	repoURL := repo.HTTPURL
-	if repoURL == "" {
-		repoURL = utils.SSHToHTTPS(repo.URL)
-	}
-	if repoURL == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Repository has no HTTP URL configured"})
+	projectID := repo.ProjectID
+	if projectID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Repository has no project ID configured"})
 		return
 	}
 
 	headers := prepareRequestHeaders(c)
-	if err := services.RegisterWebhook(c.Request.Context(), repoURL, headers); err != nil {
+	if err := services.RegisterWebhook(c.Request.Context(), projectID, headers); err != nil {
 		if HandleSSOExpired(c, err) {
 			return
 		}
