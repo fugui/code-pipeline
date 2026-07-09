@@ -978,3 +978,80 @@ func SyncRunExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[str
 
 	return "", nil
 }
+
+// CheckWebhookRegistered 调用代码托管平台 API 检查指定仓库是否已注册指向 code-pipeline 的 Webhook
+func CheckWebhookRegistered(ctx context.Context, repoHTTPURL string, headers map[string]string) (bool, error) {
+	apiURLStr := models.AppConfig.PipelineSystem.GetWebhooksURL
+	if apiURLStr == "" {
+		return false, fmt.Errorf("get_webhooks_url not configured")
+	}
+
+	callbackURL := models.AppConfig.PipelineSystem.WebhookBaseURL + "/api/webhook"
+
+	body, err := utils.SendHTTPRequest(ctx, "GET", apiURLStr, nil, utils.HTTPOptions{
+		Headers: headers,
+		QueryParams: map[string]string{
+			"repoUrl": repoHTTPURL,
+		},
+	}, []int{http.StatusOK}, "CheckWebhookRegistered")
+	if err != nil {
+		return false, err
+	}
+
+	var responseData struct {
+		Status   string `json:"status"`
+		Entities []struct {
+			URL string `json:"url"`
+		} `json:"entities"`
+	}
+	if err := json.Unmarshal(body, &responseData); err != nil {
+		log.Printf("[CheckWebhookRegistered] Failed to parse JSON: %v, Body: %s", err, string(body))
+		return false, fmt.Errorf("failed to parse webhook query response: %v", err)
+	}
+
+	for _, entity := range responseData.Entities {
+		if strings.Contains(entity.URL, callbackURL) {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// RegisterWebhook 调用代码托管平台 API 为指定仓库注册 Webhook
+func RegisterWebhook(ctx context.Context, repoHTTPURL string, headers map[string]string) error {
+	apiURLStr := models.AppConfig.PipelineSystem.CreateWebhookURL
+	if apiURLStr == "" {
+		return fmt.Errorf("create_webhook_url not configured")
+	}
+
+	callbackURL := models.AppConfig.PipelineSystem.WebhookBaseURL + "/api/webhook"
+
+	payload := map[string]interface{}{
+		"repoUrl":    repoHTTPURL,
+		"webhookUrl": callbackURL,
+		"events":     []string{"merge_request"},
+	}
+
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, payload, utils.HTTPOptions{
+		Headers: headers,
+	}, []int{http.StatusOK, http.StatusCreated}, "RegisterWebhook")
+	if err != nil {
+		return err
+	}
+
+	var responseData struct {
+		Status  string `json:"status"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &responseData); err != nil {
+		log.Printf("[RegisterWebhook] Failed to parse JSON: %v, Body: %s", err, string(body))
+		return fmt.Errorf("failed to parse webhook create response: %v", err)
+	}
+
+	if responseData.Status != "" && responseData.Status != "success" {
+		return fmt.Errorf("webhook registration failed: %s", responseData.Message)
+	}
+
+	return nil
+}

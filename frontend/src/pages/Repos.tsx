@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import {
   Search, ChevronDown, ChevronRight, Plus, Trash2,
   GitBranch, AlertCircle, CheckCircle2, Loader2, RefreshCw,
-  ExternalLink, Eye, Play
+  ExternalLink, Eye, Play, Zap
 } from 'lucide-react'
 import { ExecutionScheme } from '../types'
 
@@ -23,6 +23,7 @@ interface Repo {
   owner_name: string
   is_active: boolean
   http_url?: string
+  webhook_registered?: boolean
   schemes?: ExecutionScheme[]
 }
 
@@ -330,6 +331,8 @@ export const Repos: React.FC<ReposProps> = ({
                   onDeleteScheme={onDeleteScheme}
                   onRunScheme={handleRunScheme}
                   runningSchemes={runningSchemes}
+                  token={token}
+                  apiBase={apiBase}
                 />
               ))
             )}
@@ -388,13 +391,53 @@ interface RepoRowProps {
   onDeleteScheme: (id: number) => void
   onRunScheme: (id: number) => void
   runningSchemes: Record<number, boolean>
+  token: string | null
+  apiBase: string
 }
 
 const RepoRow: React.FC<RepoRowProps> = ({
   repo, isExpanded, schemes, schemesLoading,
   onToggle, onAddScheme, onEditScheme, onDeleteScheme,
-  onRunScheme, runningSchemes
+  onRunScheme, runningSchemes, token, apiBase
 }) => {
+  // Webhook 状态管理
+  const [webhookStatus, setWebhookStatus] = useState<'idle' | 'checking' | 'registering'>('idle')
+  const [webhookRegistered, setWebhookRegistered] = useState(repo.webhook_registered ?? false)
+
+  // 同步外部数据刷新
+  useEffect(() => {
+    setWebhookRegistered(repo.webhook_registered ?? false)
+  }, [repo.webhook_registered])
+
+  const handleCheckWebhook = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (webhookStatus !== 'idle') return
+    setWebhookStatus('checking')
+    fetch(`${apiBase}/repos/${repo.id}/webhook`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => res.json())
+      .then(data => setWebhookRegistered(!!data.registered))
+      .catch(err => console.error('check webhook failed', err))
+      .finally(() => setWebhookStatus('idle'))
+  }
+
+  const handleRegisterWebhook = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (webhookStatus !== 'idle') return
+    setWebhookStatus('registering')
+    fetch(`${apiBase}/repos/${repo.id}/webhook`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async res => {
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || '注册 Webhook 失败')
+        setWebhookRegistered(true)
+      })
+      .catch(err => alert(err.message || '注册 Webhook 失败'))
+      .finally(() => setWebhookStatus('idle'))
+  }
   const schemeCount = schemes?.length ?? null
 
   const schemeBadge = () => {
@@ -498,13 +541,39 @@ const RepoRow: React.FC<RepoRowProps> = ({
 
         {/* 操作 */}
         <td style={{ padding: '12px 16px 12px 8px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
-          <button
-            className="btn-action-add"
-            onClick={onAddScheme}
-            title="为该仓库新增执行方案"
-          >
-            <Plus size={14} />
-          </button>
+          <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+            {/* Webhook 状态指示器 */}
+            {webhookStatus !== 'idle' ? (
+              <span title="检查中...">
+                <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', color: '#6366f1' }} />
+              </span>
+            ) : webhookRegistered ? (
+              <button
+                className="btn-action-add"
+                onClick={handleCheckWebhook}
+                title="Webhook 已就绪（点击重新检查）"
+                style={{ color: '#34d399' }}
+              >
+                <Zap size={14} />
+              </button>
+            ) : (
+              <button
+                className="btn-action-add"
+                onClick={handleRegisterWebhook}
+                title="Webhook 未注册，点击注册"
+                style={{ color: '#f59e0b' }}
+              >
+                <Zap size={14} />
+              </button>
+            )}
+            <button
+              className="btn-action-add"
+              onClick={onAddScheme}
+              title="为该仓库新增执行方案"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
         </td>
       </tr>
 
