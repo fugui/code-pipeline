@@ -197,3 +197,81 @@ func TestCreateCheckerTaskStep(t *testing.T) {
 		}
 	}
 }
+
+func TestRegisterWebhook(t *testing.T) {
+	origCreateURL := models.AppConfig.PipelineSystem.CreateWebhookURL
+	origCreateBody := models.AppConfig.PipelineSystem.CreateWebhookBody
+	origCallbackURL := models.AppConfig.PipelineSystem.WebhookCallbackURL
+	origUpdateURL := models.AppConfig.PipelineSystem.UpdateRepoSettingsURL
+	origUpdateBody := models.AppConfig.PipelineSystem.UpdateRepoSettingsBody
+
+	defer func() {
+		models.AppConfig.PipelineSystem.CreateWebhookURL = origCreateURL
+		models.AppConfig.PipelineSystem.CreateWebhookBody = origCreateBody
+		models.AppConfig.PipelineSystem.WebhookCallbackURL = origCallbackURL
+		models.AppConfig.PipelineSystem.UpdateRepoSettingsURL = origUpdateURL
+		models.AppConfig.PipelineSystem.UpdateRepoSettingsBody = origUpdateBody
+	}()
+
+	var receivedPostMethod string
+	var receivedPostPath string
+	var receivedPostPayload string
+	var receivedPutMethod string
+	var receivedPutPath string
+	var receivedPutPayload string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			receivedPostMethod = r.Method
+			receivedPostPath = r.URL.Path
+			body, _ := io.ReadAll(r.Body)
+			receivedPostPayload = string(body)
+			w.WriteHeader(http.StatusCreated)
+			w.Write([]byte(`{"status":"success"}`))
+			return
+		}
+		if r.Method == "PUT" {
+			receivedPutMethod = r.Method
+			receivedPutPath = r.URL.Path
+			body, _ := io.ReadAll(r.Body)
+			receivedPutPayload = string(body)
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status":"success"}`))
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	models.AppConfig.PipelineSystem.CreateWebhookURL = server.URL + "/projects/{REPO_ID}/hooks"
+	models.AppConfig.PipelineSystem.CreateWebhookBody = `{"url":"{WEBHOOK_URL}","repo_id":"{REPO_ID}"}`
+	models.AppConfig.PipelineSystem.WebhookCallbackURL = "http://callback.local"
+	models.AppConfig.PipelineSystem.UpdateRepoSettingsURL = server.URL + "/projects/{REPO_ID}/settings"
+	models.AppConfig.PipelineSystem.UpdateRepoSettingsBody = `{"project_id":"{PROJECT_ID}","enabled":true}`
+
+	ctx := context.Background()
+	err := RegisterWebhook(ctx, "project-123", nil)
+	if err != nil {
+		t.Fatalf("RegisterWebhook failed: %v", err)
+	}
+
+	if receivedPostMethod != "POST" {
+		t.Errorf("expected POST method for webhook creation, got %q", receivedPostMethod)
+	}
+	if receivedPostPath != "/projects/project-123/hooks" {
+		t.Errorf("expected POST path '/projects/project-123/hooks', got %q", receivedPostPath)
+	}
+	if receivedPostPayload != `{"url":"http://callback.local","repo_id":"project-123"}` {
+		t.Errorf("expected POST body replacement, got %q", receivedPostPayload)
+	}
+
+	if receivedPutMethod != "PUT" {
+		t.Errorf("expected PUT method for settings update, got %q", receivedPutMethod)
+	}
+	if receivedPutPath != "/projects/project-123/settings" {
+		t.Errorf("expected PUT path '/projects/project-123/settings', got %q", receivedPutPath)
+	}
+	if receivedPutPayload != `{"project_id":"project-123","enabled":true}` {
+		t.Errorf("expected PUT body replacement, got %q", receivedPutPayload)
+	}
+}
