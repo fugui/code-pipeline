@@ -50,6 +50,8 @@ type Config struct {
 		CreateWebhookURL          string            `yaml:"create_webhook_url"`   // 创建 Webhook 的托管平台 API
 		CreateWebhookBody         string            `yaml:"create_webhook_body"`  // 创建 Webhook 的请求 Body 模板
 		WebhookCallbackURL        string            `yaml:"webhook_callback_url"` // 托管平台配置的完整 Webhook 回调 URL
+		UpdateRepoSettingsURL     string            `yaml:"update_repo_settings_url"`
+		UpdateRepoSettingsBody    string            `yaml:"update_repo_settings_body"`
 	} `yaml:"pipeline_system"`
 }
 
@@ -89,6 +91,12 @@ func LoadConfig(filename string) error {
 	}
 	if AppConfig.PipelineSystem.CreateWebhookBody == "" {
 		return fmt.Errorf("pipeline_system.create_webhook_body is required")
+	}
+	if AppConfig.PipelineSystem.UpdateRepoSettingsURL == "" {
+		return fmt.Errorf("pipeline_system.update_repo_settings_url is required")
+	}
+	if AppConfig.PipelineSystem.UpdateRepoSettingsBody == "" {
+		return fmt.Errorf("pipeline_system.update_repo_settings_body is required")
 	}
 
 	return nil

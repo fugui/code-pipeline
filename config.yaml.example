@@ -72,3 +72,8 @@ pipeline_system:
       "events": ["merge_request"]
     }
   webhook_callback_url: "http://192.168.56.18:8082/api/webhook"                # code-pipeline 接收 Webhook 事件的回调 URL
+  update_repo_settings_url: "http://192.168.56.18:8080/api/v1/projects/{REPO_ID}/settings"      # 修改代码仓设置
+  update_repo_settings_body: |                                                                  # 修改代码仓设置的请求 Body 模板
+    {
+      "merge_requests_enabled": true
+    }

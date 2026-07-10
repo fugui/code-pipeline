@@ -1043,5 +1043,38 @@ func RegisterWebhook(ctx context.Context, projectID string, headers map[string]s
 		return err
 	}
 
+	// 注册 Webhook 的时候，还需要调用代码仓设置
+	if err := UpdateRepoSettings(ctx, projectID, headers); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// UpdateRepoSettings 调用代码托管平台 API 修改代码仓设置
+func UpdateRepoSettings(ctx context.Context, projectID string, headers map[string]string) error {
+	apiURLStr := models.AppConfig.PipelineSystem.UpdateRepoSettingsURL
+	if apiURLStr == "" {
+		return fmt.Errorf("update_repo_settings_url not configured")
+	}
+
+	// 替换 URL 中可能包含的 {REPO_ID} 或 {PROJECT_ID} 占位符
+	apiURLStr = strings.ReplaceAll(apiURLStr, "{REPO_ID}", projectID)
+	apiURLStr = strings.ReplaceAll(apiURLStr, "{PROJECT_ID}", projectID)
+
+	tmpl := models.AppConfig.PipelineSystem.UpdateRepoSettingsBody
+	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
+		"{PROJECT_ID}": projectID,
+		"{REPO_ID}":    projectID,
+	})
+	putData := json.RawMessage(bodyStr)
+
+	_, err := utils.SendHTTPRequest(ctx, "PUT", apiURLStr, putData, utils.HTTPOptions{
+		Headers: headers,
+	}, []int{http.StatusOK, http.StatusAccepted, http.StatusNoContent}, "UpdateRepoSettings")
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
