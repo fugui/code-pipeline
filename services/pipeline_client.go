@@ -655,11 +655,19 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 	}
 	unifiedName := fmt.Sprintf("%s_%s_CodeShield_%s", repoName, scheme.Branch, randomSuffix)
 	unifiedName = strings.Map(func(r rune) rune {
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
 			return r
 		}
 		return '_'
 	}, unifiedName)
+
+	// 确保名字以字母开头
+	if len(unifiedName) > 0 {
+		firstChar := unifiedName[0]
+		if !((firstChar >= 'a' && firstChar <= 'z') || (firstChar >= 'A' && firstChar <= 'Z')) {
+			unifiedName = "s_" + unifiedName
+		}
+	}
 	scheme.Name = unifiedName
 
 	// 1. 创建代码检查执行任务
