@@ -53,6 +53,7 @@ export default function RealtimeMrList({ apiBase, token }: RealtimeMrListProps) 
   const [selectedState, setSelectedState] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [hasSynced, setHasSynced] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 15;
 
@@ -94,6 +95,7 @@ export default function RealtimeMrList({ apiBase, token }: RealtimeMrListProps) 
       .then(data => {
         setMrs(data || []);
         setPage(1); // 重置页码
+        setHasSynced(true);
         showToast('已从 Git 托管平台同步最新 MR 数据', 'success');
       })
       .catch(err => {
@@ -107,14 +109,16 @@ export default function RealtimeMrList({ apiBase, token }: RealtimeMrListProps) 
 
   useEffect(() => {
     fetchRepos();
-    fetchMRs();
-  }, [fetchRepos, fetchMRs]);
+  }, [fetchRepos]);
 
   const handleRepoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     setSelectedRepoId(val);
-    fetchMRs(val);
+    setMrs([]);
+    setHasSynced(false);
+    setPage(1);
   };
+
 
   const getStatusBadgeStyle = (state: string) => {
     let bg = 'rgba(100, 116, 139, 0.08)';
@@ -362,7 +366,7 @@ export default function RealtimeMrList({ apiBase, token }: RealtimeMrListProps) 
               {paginatedMRs.length === 0 ? (
                 <tr>
                   <td colSpan={9} style={{ textAlign: 'center', padding: '5rem', color: '#94a3b8' }}>
-                    暂无相关的 Merge Request 记录。
+                    {!hasSynced ? '暂无数据，请点击右上角“同步最新数据”按钮拉取三方合并请求列表。' : '暂无相关的 Merge Request 记录。'}
                   </td>
                 </tr>
               ) : (
