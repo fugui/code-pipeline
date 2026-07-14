@@ -26,6 +26,7 @@ func TestGetMrListFromGitRemote(t *testing.T) {
 		contextHeaders map[string]string
 		expectedCount  int
 		expectError    bool
+		skipURLConfig  bool
 		checkFields    func(t *testing.T, list []GitMr)
 	}{
 		{
@@ -138,6 +139,14 @@ func TestGetMrListFromGitRemote(t *testing.T) {
 			expectedCount: 0,
 			expectError:   true,
 		},
+		{
+			name:          "No Configured URL Response",
+			mockStatus:    http.StatusOK,
+			mockBody:      `[]`,
+			expectedCount: 0,
+			expectError:   true,
+			skipURLConfig:  true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -161,7 +170,11 @@ func TestGetMrListFromGitRemote(t *testing.T) {
 			}))
 			defer server.Close()
 
-			models.AppConfig.CodeHub.GetMRsURL = server.URL + "/projects/{REPO_ID}/merge_requests"
+			if !tc.skipURLConfig {
+				models.AppConfig.CodeHub.GetMRsURL = server.URL + "/projects/{REPO_ID}/merge_requests"
+			} else {
+				models.AppConfig.CodeHub.GetMRsURL = ""
+			}
 			models.AppConfig.CodeHub.Headers = tc.configHeaders
 
 			list, err := GetMrListFromGitRemote(context.Background(), "test-project-123", "test_sync_repo", tc.contextHeaders)
