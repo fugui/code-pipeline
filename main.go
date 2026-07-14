@@ -62,9 +62,11 @@ func main() {
 		{
 			api.GET("/me", handlers.GetMe)
 
-			// Merge Request 实时看护相关接口
-			api.GET("/mr", handlers.GetMrEvents)
-			api.GET("/mr/:id", handlers.GetMrEventDetail)
+			// Merge Request 实时看护与全览相关接口
+			api.GET("/mr/hook", handlers.GetMrEvents)
+			api.GET("/mr/hook/:id", handlers.GetMrEventDetail)
+			api.GET("/mr/list", handlers.GetMrListFromGit)
+
 
 			// 仓库配置路由
 			api.GET("/repos", handlers.GetRepos)
