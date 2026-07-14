@@ -36,7 +36,7 @@ type GitMr struct {
 func GetMrListFromGitRemote(ctx context.Context, projectID string, repoName string, contextHeaders map[string]string) ([]GitMr, error) {
 	apiURLStr := models.AppConfig.CodeHub.GetMRsURL
 	if apiURLStr == "" {
-		apiURLStr = "http://192.168.56.18:9080/api/v1/projects/{REPO_ID}/merge_requests"
+		return nil, fmt.Errorf("CodeHub GetMRsURL is not configured")
 	}
 
 	apiURLStr = strings.ReplaceAll(apiURLStr, "{REPO_ID}", projectID)
