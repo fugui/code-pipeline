@@ -77,3 +77,10 @@ pipeline_system:
     {
       "merge_requests_enabled": true
     }
+
+codehub:
+  get_mrs_url: "http://192.168.56.18:9080/api/v1/projects/{REPO_ID}/merge_requests"
+  headers:
+    Accept: "application/json"
+    Content-Type: "application/json"
+
