@@ -3,11 +3,15 @@ package handlers
 import (
 	"code-pipeline/database"
 	"code-pipeline/models"
+	"code-pipeline/services"
+	"log"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
+
 
 // GetMrEvents 获取合并请求推送事件列表（支持分页及多字段筛选）
 func GetMrEvents(c *gin.Context) {
@@ -71,3 +75,72 @@ func GetMrEventDetail(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, event)
 }
+
+// GetMrListFromGit 从托管平台实时获取合并请求列表并聚合返回
+func GetMrListFromGit(c *gin.Context) {
+	repoIDStr := c.Query("repo_id")
+	headers := prepareRequestHeaders(c)
+
+	var targetRepos []models.Repository
+
+	if repoIDStr != "" {
+		repoID, err := strconv.ParseUint(repoIDStr, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid repo_id"})
+			return
+		}
+		var repo models.Repository
+		if err := database.DB.Where("id = ? AND is_active = ?", repoID, true).First(&repo).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Repository not found or inactive"})
+			return
+		}
+		if repo.ProjectID == "" {
+			c.JSON(http.StatusOK, []interface{}{})
+			return
+		}
+		targetRepos = append(targetRepos, repo)
+	} else {
+		// 查询所有有效仓库
+		if err := database.DB.Where("is_active = ?", true).Find(&targetRepos).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch repositories"})
+			return
+		}
+	}
+
+	// 开启协程并发查询各仓库最新的 MR
+	type result struct {
+		mrs []services.GitMr
+		err error
+	}
+	ch := make(chan result, len(targetRepos))
+
+	for _, repo := range targetRepos {
+		go func(r models.Repository) {
+			if r.ProjectID == "" {
+				ch <- result{mrs: nil, err: nil}
+				return
+			}
+			mrs, err := services.GetMrListFromGitRemote(c.Request.Context(), r.ProjectID, r.Name, headers)
+			ch <- result{mrs: mrs, err: err}
+		}(repo)
+	}
+
+	var allMRs []services.GitMr
+	for i := 0; i < len(targetRepos); i++ {
+		res := <-ch
+		if res.err != nil {
+			log.Printf("[GetMrListFromGit] Failed to fetch MRs for a repository: %v", res.err)
+			continue
+		}
+		if len(res.mrs) > 0 {
+			allMRs = append(allMRs, res.mrs...)
+		}
+	}
+
+	sort.Slice(allMRs, func(i, j int) bool {
+		return allMRs[i].UpdatedAt > allMRs[j].UpdatedAt
+	})
+
+	c.JSON(http.StatusOK, allMRs)
+}
+

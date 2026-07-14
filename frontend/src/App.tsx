@@ -12,6 +12,7 @@ import { Dashboard } from './pages/Dashboard'
 import { Repos } from './pages/Repos'
 import { PipelineConfig } from './pages/PipelineConfig'
 import RealtimeMr from './pages/RealtimeMr'
+import RealtimeMrList from './pages/RealtimeMrList'
 import { ToastProvider } from './components/Toast'
 
 
@@ -48,7 +49,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     return localStorage.getItem('code_shield_token') || localStorage.getItem(AUTH_TOKEN_KEY);
   })
   const [user, setUser] = useState<User | null>(null)
-  const [currentView, setCurrentView] = useState<'dashboard' | 'repos' | 'pipeline-config' | 'realtime-mr'>('dashboard')
+  const [currentView, setCurrentView] = useState<'dashboard' | 'repos' | 'pipeline-config' | 'mr-hook' | 'mr-list'>('dashboard')
   
   // Data lists — repos 仅用于 ExecutionSchemeModal 的候选项
   const [repos, setRepos] = useState<{ id: number; name: string; url: string; service_group?: string; owner_name?: string }[]>([])
@@ -93,8 +94,10 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
       setCurrentView('repos')
     } else if (path.endsWith('/pipeline-config')) {
       setCurrentView('pipeline-config')
-    } else if (path.endsWith('/realtime/mr')) {
-      setCurrentView('realtime-mr')
+    } else if (path.endsWith('/mr/hook')) {
+      setCurrentView('mr-hook')
+    } else if (path.endsWith('/mr/list')) {
+      setCurrentView('mr-list')
     } else if (path.endsWith('/dashboard')) {
       setCurrentView('dashboard')
     } else {
@@ -502,12 +505,24 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
               >
                 <GitBranch size={16} /> 仓库流配置
               </button>
+              <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
+
+              <div style={{ padding: '0.4rem 0.6rem 0.2rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                代码实时看护
+              </div>
               <button 
-                onClick={() => { setCurrentView('realtime-mr'); setActiveExec(null); }} 
-                className={`btn ${currentView === 'realtime-mr' ? 'btn-primary' : 'btn-secondary'}`} 
+                onClick={() => { setCurrentView('mr-list'); setActiveExec(null); }} 
+                className={`btn ${currentView === 'mr-list' ? 'btn-primary' : 'btn-secondary'}`} 
                 style={{ justifyContent: 'flex-start', width: '100%' }}
               >
-                <Eye size={16} /> Merge Request 看护
+                <Eye size={16} /> MR 全览
+              </button>
+              <button 
+                onClick={() => { setCurrentView('mr-hook'); setActiveExec(null); }} 
+                className={`btn ${currentView === 'mr-hook' ? 'btn-primary' : 'btn-secondary'}`} 
+                style={{ justifyContent: 'flex-start', width: '100%' }}
+              >
+                <Eye size={16} /> 实时MR看护
               </button>
 
               <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
@@ -601,9 +616,17 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
           />
         )}
 
-        {/* VIEW 5: REALTIME MR */}
-        {currentView === 'realtime-mr' && (
+        {/* VIEW 5: REALTIME MR HOOK */}
+        {currentView === 'mr-hook' && (
           <RealtimeMr 
+            apiBase={apiBase}
+            token={token}
+          />
+        )}
+
+        {/* VIEW 6: REALTIME MR LIST */}
+        {currentView === 'mr-list' && (
+          <RealtimeMrList 
             apiBase={apiBase}
             token={token}
           />

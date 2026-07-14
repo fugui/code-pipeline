@@ -78,7 +78,7 @@ export default function RealtimeMr({ apiBase, token }: RealtimeMrProps) {
     if (repoFilter) params.append('repo', repoFilter);
     if (authorFilter) params.append('author', authorFilter);
 
-    fetch(`${apiBase}/mr?${params.toString()}`, {
+    fetch(`${apiBase}/mr/hook?${params.toString()}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }

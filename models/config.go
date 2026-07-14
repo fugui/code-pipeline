@@ -53,7 +53,12 @@ type Config struct {
 		UpdateRepoSettingsURL     string            `yaml:"update_repo_settings_url"`
 		UpdateRepoSettingsBody    string            `yaml:"update_repo_settings_body"`
 	} `yaml:"pipeline_system"`
+	CodeHub struct {
+		GetMRsURL string            `yaml:"get_mrs_url"`
+		Headers   map[string]string `yaml:"headers"`
+	} `yaml:"codehub"`
 }
+
 
 var AppConfig Config
 
@@ -132,4 +137,14 @@ func applyDefaults() {
 		AppConfig.Auth.JWTSecret = hex.EncodeToString(randomBytes)
 		log.Println("[Auth] WARNING: jwt_secret not configured. Using ephemeral random secret.")
 	}
+	if AppConfig.CodeHub.GetMRsURL == "" {
+		AppConfig.CodeHub.GetMRsURL = "http://192.168.56.18:9080/api/v1/projects/{REPO_ID}/merge_requests"
+	}
+	if AppConfig.CodeHub.Headers == nil {
+		AppConfig.CodeHub.Headers = map[string]string{
+			"Accept":       "application/json",
+			"Content-Type": "application/json",
+		}
+	}
 }
+
