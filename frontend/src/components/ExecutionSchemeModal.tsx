@@ -38,6 +38,8 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   const [customAttrs, setCustomAttrs] = React.useState<{ key: string; value: string }[]>([]);
   const [animateVisible, setAnimateVisible] = React.useState(false);
   const [orderedBranches, setOrderedBranches] = React.useState<string[]>([]);
+  const [showPasteModal, setShowPasteModal] = React.useState(false);
+  const [pasteContent, setPasteContent] = React.useState('');
 
   const [mrTrigger, setMrTrigger] = React.useState(true);
   const [dailyBuild, setDailyBuild] = React.useState(true);
@@ -283,6 +285,53 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       daily_build: newDailyBuild,
       daily_build_time: newTime
     });
+  };
+
+  const handlePasteAttrs = () => {
+    const lines = pasteContent.split('\n');
+    const parsedAttrs: { key: string; value: string }[] = [];
+    
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      
+      let key = '';
+      let value = '';
+      
+      const eqIdx = trimmed.indexOf('=');
+      const colonIdx = trimmed.indexOf(':');
+      
+      if (eqIdx !== -1 && (colonIdx === -1 || eqIdx < colonIdx)) {
+        key = trimmed.substring(0, eqIdx).trim();
+        value = trimmed.substring(eqIdx + 1).trim();
+      } else if (colonIdx !== -1) {
+        key = trimmed.substring(0, colonIdx).trim();
+        value = trimmed.substring(colonIdx + 1).trim();
+      } else {
+        key = trimmed;
+        value = '';
+      }
+      
+      if (key) {
+        parsedAttrs.push({ key, value });
+      }
+    });
+
+    if (parsedAttrs.length > 0) {
+      const updatedAttrs = [...customAttrs];
+      parsedAttrs.forEach(newAttr => {
+        const idx = updatedAttrs.findIndex(item => item.key.trim() === newAttr.key);
+        if (idx !== -1) {
+          updatedAttrs[idx] = newAttr;
+        } else {
+          updatedAttrs.push(newAttr);
+        }
+      });
+      updateCustomAttrs(updatedAttrs);
+    }
+    
+    setPasteContent('');
+    setShowPasteModal(false);
   };
 
   return (
@@ -637,17 +686,27 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>构建参数</label>
                 {!isView && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    style={{ padding: '4px 10px', fontSize: 12, height: 'auto' }}
-                    onClick={() => {
-                      const newList = [...customAttrs, { key: '', value: '' }];
-                      updateCustomAttrs(newList);
-                    }}
-                  >
-                    + 添加参数
-                  </button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ padding: '4px 10px', fontSize: 12, height: 'auto' }}
+                      onClick={() => setShowPasteModal(true)}
+                    >
+                      粘贴参数
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ padding: '4px 10px', fontSize: 12, height: 'auto' }}
+                      onClick={() => {
+                        const newList = [...customAttrs, { key: '', value: '' }];
+                        updateCustomAttrs(newList);
+                      }}
+                    >
+                      + 添加参数
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -812,6 +871,131 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
               isNew={!activeScheme?.id}
               onDone={onSuccessClose}
             />
+          )}
+
+          {/* 粘贴参数弹窗 */}
+          {showPasteModal && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(15, 23, 42, 0.85)',
+              backdropFilter: 'blur(8px)',
+              zIndex: 1002,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '24px',
+              animation: 'fadeIn 0.25s ease-out'
+            }}>
+              <div style={{
+                background: 'var(--bg-secondary, #1f2937)',
+                border: '1px solid var(--border-color, rgba(255,255,255,0.08))',
+                borderRadius: 12,
+                width: '100%',
+                maxWidth: 480,
+                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5), 0 10px 10px -5px rgba(0,0,0,0.4)',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '16px 20px',
+                  borderBottom: '1px solid var(--border-color, rgba(255,255,255,0.08))'
+                }}>
+                  <h4 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>粘贴参数</h4>
+                  <button
+                    type="button"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-secondary)',
+                      fontSize: 20,
+                      cursor: 'pointer',
+                      padding: '2px 6px',
+                      lineHeight: 1
+                    }}
+                    onClick={() => {
+                      setPasteContent('');
+                      setShowPasteModal(false);
+                    }}
+                  >
+                    &times;
+                  </button>
+                </div>
+                <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    支持解析以等号 <code>=</code> 或冒号 <code>:</code> 分割的键值对，每行一个参数。例如：
+                    <pre style={{ 
+                      background: 'rgba(0,0,0,0.2)', 
+                      padding: '8px 12px', 
+                      borderRadius: 6, 
+                      fontSize: 12, 
+                      color: '#a7f3d0', 
+                      margin: '8px 0 0 0',
+                      fontFamily: 'monospace'
+                    }}>
+                      TIMEOUT=300{"\n"}
+                      ENV: production{"\n"}
+                      DEBUG=true
+                    </pre>
+                  </div>
+                  <textarea
+                    placeholder="在此粘贴您的参数..."
+                    value={pasteContent}
+                    onChange={(e) => setPasteContent(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: 160,
+                      padding: '10px 12px',
+                      fontSize: 13,
+                      background: 'var(--bg-secondary, #111827)',
+                      border: '1px solid var(--border-color, rgba(255,255,255,0.08))',
+                      borderRadius: 6,
+                      color: 'var(--text-main)',
+                      resize: 'none',
+                      fontFamily: 'monospace',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                    autoFocus
+                  />
+                </div>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: 10,
+                  padding: '12px 20px',
+                  borderTop: '1px solid var(--border-color, rgba(255,255,255,0.08))',
+                  background: 'rgba(255, 255, 255, 0.01)'
+                }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ padding: '6px 12px', fontSize: 12, height: 'auto' }}
+                    onClick={() => {
+                      setPasteContent('');
+                      setShowPasteModal(false);
+                    }}
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ padding: '6px 12px', fontSize: 12, height: 'auto' }}
+                    onClick={handlePasteAttrs}
+                  >
+                    导入
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </form>
       </div>
