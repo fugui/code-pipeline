@@ -361,8 +361,8 @@ func createExecutionSchemeStep(ctx context.Context, pipelineBusinessID string, s
 	}
 
 	customAttrMap["code_checker_task_id"] = taskID
-	customAttrMap["repository"] = repoURL
-	customAttrMap["branch"] = scheme.Branch
+	customAttrMap["codehubTargetRepoHttpUrl"] = repoURL
+	customAttrMap["selectedBranchs"] = scheme.Branch
 
 	var keys []string
 	for k := range customAttrMap {
