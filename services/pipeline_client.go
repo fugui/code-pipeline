@@ -670,14 +670,34 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 	}
 	scheme.Name = unifiedName
 
-	// 1. 创建代码检查执行任务
-	taskID, err := createCheckerTaskStep(ctx, repoURL, scheme.Branch, scheme.Languages, scheme.Name, headers)
-	if err != nil {
-		log.Printf("[Pipeline] Remote sync Step 1 failed: %v\n", err)
-		return "", err
+	// 1. 获取或创建代码检查执行任务
+	var taskID string
+	var taskName string
+	if repo.CodeCheckerTaskID != "" {
+		taskID = repo.CodeCheckerTaskID
+		taskName = repo.CodeCheckerTaskName
+		log.Printf("[SyncCreateScheme] Reusing existing code checker task ID: %s, Name: %s for repo ID: %d", taskID, taskName, repo.ID)
+	} else {
+		createdTaskID, err := createCheckerTaskStep(ctx, repoURL, scheme.Branch, scheme.Languages, scheme.Name, headers)
+		if err != nil {
+			log.Printf("[Pipeline] Remote sync Step 1 failed: %v\n", err)
+			return "", err
+		}
+		taskID = createdTaskID
+		taskName = scheme.Name
+
+		// 立即将任务 ID 持久化回 Repository
+		repo.CodeCheckerTaskID = taskID
+		repo.CodeCheckerTaskName = taskName
+		if err := database.DB.Model(&repo).Updates(map[string]interface{}{
+			"code_checker_task_id":   taskID,
+			"code_checker_task_name": taskName,
+		}).Error; err != nil {
+			log.Printf("[Pipeline] Warning: failed to save CodeCheckerTaskID to Repository %d: %v\n", repo.ID, err)
+		}
 	}
 	scheme.CodeCheckerTaskID = taskID
-	scheme.CodeCheckerTaskName = scheme.Name
+	scheme.CodeCheckerTaskName = taskName
 
 	// 2. 创建执行方案（并关联代码检查任务）
 	extID, err := createExecutionSchemeStep(ctx, pipelineBusinessID, scheme, taskID, repoURL, headers)
@@ -764,21 +784,7 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[
 		}
 	}
 
-	// 3. 删除代码检查任务
-	if scheme.CodeCheckerTaskID != "" {
-		apiURLStr := models.AppConfig.PipelineSystem.DeleteCheckerTaskURL
-		if apiURLStr != "" {
-			payload := map[string]interface{}{
-				"taskIds": []string{scheme.CodeCheckerTaskID},
-			}
-			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", apiURLStr, payload, utils.HTTPOptions{
-				Headers: headers,
-			}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteCheckerTask")
-			if err != nil {
-				log.Printf("[SyncDelete] Failed to delete checker task %s: %v\n", scheme.CodeCheckerTaskID, err)
-			}
-		}
-	}
+	// 3. 不再在此处删除代码检查任务，使其能够被其他方案复用或保留
 
 	// 4. 删除执行方案
 	if scheme.ExecutionSchemeID != "" {
