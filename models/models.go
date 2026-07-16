@@ -28,8 +28,10 @@ type Repository struct {
 	ServiceGroup      string            `gorm:"default:''" json:"service_group"` // 归属子系统
 	OwnerName         string            `gorm:"default:''" json:"owner_name"`    // 负责人姓名
 	CreatedAt         time.Time         `json:"created_at"`
-	WebhookRegistered bool              `gorm:"default:false" json:"webhook_registered"` // Webhook 是否已在托管平台注册
-	Schemes           []ExecutionScheme `gorm:"foreignKey:RepositoryID" json:"schemes"`
+	WebhookRegistered   bool              `gorm:"default:false" json:"webhook_registered"` // Webhook 是否已在托管平台注册
+	CodeCheckerTaskID   string            `gorm:"default:''" json:"code_checker_task_id"`   // 绑定的代码检查任务 ID
+	CodeCheckerTaskName string            `gorm:"default:''" json:"code_checker_task_name"` // 绑定的代码检查任务名称
+	Schemes             []ExecutionScheme `gorm:"foreignKey:RepositoryID" json:"schemes"`
 }
 
 type Pipeline struct {
