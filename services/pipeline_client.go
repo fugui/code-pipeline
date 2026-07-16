@@ -653,7 +653,7 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 	if _, err := rand.Read(randBytes); err == nil {
 		randomSuffix = hex.EncodeToString(randBytes)
 	}
-	unifiedName := fmt.Sprintf("%s_%s_CodeShield_%s", repoName, scheme.Branch, randomSuffix)
+	unifiedName := fmt.Sprintf("%s_%s", repoName, randomSuffix)
 	unifiedName = strings.Map(func(r rune) rune {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
 			return r
