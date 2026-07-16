@@ -641,9 +641,18 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 	log.Printf("[SyncCreateScheme] Start remote sync execution scheme. pipelineBusinessID: %s, RepositoryID: %d", pipelineBusinessID, scheme.RepositoryID)
 	var repo models.Repository
 	database.DB.First(&repo, scheme.RepositoryID)
-	repoURL := repo.URL
+	repoURL := repo.HTTPURL
+	if repoURL == "" {
+		repoURL = repo.URL
+	}
 	if repoURL == "" && scheme.Repository != nil {
-		repoURL = scheme.Repository.URL
+		repoURL = scheme.Repository.HTTPURL
+		if repoURL == "" {
+			repoURL = scheme.Repository.URL
+		}
+	}
+	if repoURL != "" {
+		repoURL = utils.SSHToHTTPS(repoURL)
 	}
 
 	// 产生全局唯一且一致的 Name 并回填
