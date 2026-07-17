@@ -46,6 +46,7 @@ type Config struct {
 		GetExecutionPlanURL       string            `yaml:"get_execution_plan_url"`
 		RuleSets                  map[string]string `yaml:"rule_sets"`
 		PipelineLinkTemplate      string            `yaml:"pipeline_link_template"`
+		LinkCheckerTaskURL        string            `yaml:"link_checker_task_url"`
 		GetWebhooksURL            string            `yaml:"get_webhooks_url"`     // 查询仓库 Webhook 列表的托管平台 API
 		CreateWebhookURL          string            `yaml:"create_webhook_url"`   // 创建 Webhook 的托管平台 API
 		CreateWebhookBody         string            `yaml:"create_webhook_body"`  // 创建 Webhook 的请求 Body 模板

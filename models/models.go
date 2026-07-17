@@ -63,11 +63,12 @@ type ExecutionScheme struct {
 	PipelineInfo        *Pipeline `gorm:"foreignKey:LocalPipelineID;references:ID" json:"pipeline,omitempty"`
 	Username            string    `json:"username"`               // 用户名
 	Password            string    `json:"password"`               // 密码
-	ExecutionSchemeID   string    `json:"execution_scheme_id"`    // 执行方案ID (从真正流水线系统同步回来)
-	ExecutionSchemeName string    `json:"execution_scheme_name"`  // 执行方案名称
-	CodeCheckerTaskID   string    `json:"code_checker_task_id"`   // 代码检查任务 ID
-	CodeCheckerTaskName string    `json:"code_checker_task_name"` // 代码检查任务名称
-	MRBindingID         string    `json:"mr_binding_id"`          // 绑定的 MR 绑定 ID
+	ExecutionSchemeID     string    `json:"execution_scheme_id"`    // 执行方案ID (从真正流水线系统同步回来)
+	ExecutionSchemeName   string    `json:"execution_scheme_name"`  // 执行方案名称
+	CodeCheckerTaskID     string    `json:"code_checker_task_id"`   // 代码检查任务 ID
+	CodeCheckerTaskName   string    `json:"code_checker_task_name"` // 代码检查任务名称
+	CodeCheckerTaskWebURL string    `gorm:"-" json:"code_checker_task_web_url"`
+	MRBindingID           string    `json:"mr_binding_id"`          // 绑定的 MR 绑定 ID
 	MRBindingName       string    `json:"mr_binding_name"`        // 绑定的 MR 绑定名称
 	ExecutionPlanID     string    `json:"execution_plan_id"`      // 绑定的每日构建/定时执行计划 ID
 	ExecutionPlanName   string    `json:"execution_plan_name"`    // 绑定的每日构建/定时执行计划名称
