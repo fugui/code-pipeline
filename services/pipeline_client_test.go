@@ -318,8 +318,24 @@ func TestManagedGitPlatformAPI(t *testing.T) {
 	// 重定向 BaseURL (模拟用户在 base_url 中自定义 API 前缀)
 	origBaseURL := GitPlatformBaseURL
 	GitPlatformBaseURL = server.URL + "/api/v1"
+
+	// 备份并注入 Mock Body 模板
+	origRepoBody := models.AppConfig.CodeHub.CreateRepoBody
+	origBranchBody := models.AppConfig.CodeHub.CreateBranchBody
+	origProtectBody := models.AppConfig.CodeHub.ConfigureProtectionBody
+	origACLBody := models.AppConfig.CodeHub.ConfigureACLBody
+
+	models.AppConfig.CodeHub.CreateRepoBody = `{"name":"{REPO_NAME}","namespace_path":"{GROUP_PATH}","visibility":"private"}`
+	models.AppConfig.CodeHub.CreateBranchBody = `{"branch_name":"{BRANCH_NAME}","ref":"{SOURCE_REF}"}`
+	models.AppConfig.CodeHub.ConfigureProtectionBody = `{"name":"{BRANCH_PATTERN}","push_access_level":0}`
+	models.AppConfig.CodeHub.ConfigureACLBody = `{"principal_type":"{PRINCIPAL_TYPE}","principal_id":"{PRINCIPAL_ID}","access_level":{ACCESS_LEVEL}}`
+
 	defer func() {
 		GitPlatformBaseURL = origBaseURL
+		models.AppConfig.CodeHub.CreateRepoBody = origRepoBody
+		models.AppConfig.CodeHub.CreateBranchBody = origBranchBody
+		models.AppConfig.CodeHub.ConfigureProtectionBody = origProtectBody
+		models.AppConfig.CodeHub.ConfigureACLBody = origACLBody
 	}()
 
 	ctx := context.Background()

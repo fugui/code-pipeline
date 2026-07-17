@@ -85,4 +85,29 @@ codehub:
   headers:
     Accept: "application/json"
     Content-Type: "application/json"
+  create_repo_body: |
+    {
+      "name": "{REPO_NAME}",
+      "namespace_path": "{GROUP_PATH}",
+      "visibility": "private"
+    }
+  create_branch_body: |
+    {
+      "branch_name": "{BRANCH_NAME}",
+      "ref": "{SOURCE_REF}"
+    }
+  configure_protection_body: |
+    {
+      "name": "{BRANCH_PATTERN}",
+      "push_access_level": 0,
+      "merge_access_level": 30,
+      "code_review_required": true,
+      "status_check_required": true
+    }
+  configure_acl_body: |
+    {
+      "principal_type": "{PRINCIPAL_TYPE}",
+      "principal_id": "{PRINCIPAL_ID}",
+      "access_level": {ACCESS_LEVEL}
+    }
 
