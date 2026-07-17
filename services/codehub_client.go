@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -148,12 +149,6 @@ func InitGitPlatform() {
 func CreateRemoteRepo(ctx context.Context, name string, groupPath string) (uint, string, string, error) {
 	apiURL := GitPlatformBaseURL + "/projects"
 
-	type CreateReq struct {
-		Name          string `json:"name"`
-		NamespacePath string `json:"namespace_path,omitempty"`
-		Visibility    string `json:"visibility"`
-	}
-
 	reqHeaders := make(map[string]string)
 	for k, v := range models.AppConfig.CodeHub.Headers {
 		reqHeaders[k] = v
@@ -161,11 +156,11 @@ func CreateRemoteRepo(ctx context.Context, name string, groupPath string) (uint,
 	reqHeaders["Accept"] = "application/json"
 	reqHeaders["Content-Type"] = "application/json"
 
-	body, err := utils.SendHTTPRequest(ctx, "POST", apiURL, CreateReq{
-		Name:          name,
-		NamespacePath: groupPath,
-		Visibility:    "private",
-	}, utils.HTTPOptions{
+	bodyStr := models.AppConfig.CodeHub.CreateRepoBody
+	bodyStr = strings.ReplaceAll(bodyStr, "{REPO_NAME}", name)
+	bodyStr = strings.ReplaceAll(bodyStr, "{GROUP_PATH}", groupPath)
+
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURL, json.RawMessage([]byte(bodyStr)), utils.HTTPOptions{
 		Headers: reqHeaders,
 	}, []int{http.StatusOK, http.StatusCreated}, "CreateRemoteRepo")
 	if err != nil {
@@ -203,11 +198,6 @@ func CreateRemoteRepo(ctx context.Context, name string, groupPath string) (uint,
 func CreateRemoteBranch(ctx context.Context, projectID string, branchName string, ref string) error {
 	apiURL := fmt.Sprintf("%s/projects/%s/branches", GitPlatformBaseURL, projectID)
 
-	type CreateBranchReq struct {
-		BranchName string `json:"branch_name"`
-		Ref        string `json:"ref"`
-	}
-
 	reqHeaders := make(map[string]string)
 	for k, v := range models.AppConfig.CodeHub.Headers {
 		reqHeaders[k] = v
@@ -215,10 +205,11 @@ func CreateRemoteBranch(ctx context.Context, projectID string, branchName string
 	reqHeaders["Accept"] = "application/json"
 	reqHeaders["Content-Type"] = "application/json"
 
-	_, err := utils.SendHTTPRequest(ctx, "POST", apiURL, CreateBranchReq{
-		BranchName: branchName,
-		Ref:        ref,
-	}, utils.HTTPOptions{
+	bodyStr := models.AppConfig.CodeHub.CreateBranchBody
+	bodyStr = strings.ReplaceAll(bodyStr, "{BRANCH_NAME}", branchName)
+	bodyStr = strings.ReplaceAll(bodyStr, "{SOURCE_REF}", ref)
+
+	_, err := utils.SendHTTPRequest(ctx, "POST", apiURL, json.RawMessage([]byte(bodyStr)), utils.HTTPOptions{
 		Headers: reqHeaders,
 	}, []int{http.StatusOK, http.StatusCreated, http.StatusAccepted}, "CreateRemoteBranch")
 	if err != nil {
@@ -231,14 +222,6 @@ func CreateRemoteBranch(ctx context.Context, projectID string, branchName string
 func ConfigureBranchProtection(ctx context.Context, projectID string, branchPattern string) error {
 	apiURL := fmt.Sprintf("%s/projects/%s/protected_branches", GitPlatformBaseURL, projectID)
 
-	type ProtectReq struct {
-		Name                string `json:"name"`
-		PushAccessLevel     int    `json:"push_access_level"`
-		MergeAccessLevel    int    `json:"merge_access_level"`
-		CodeReviewRequired  bool   `json:"code_review_required"`
-		StatusCheckRequired bool   `json:"status_check_required"`
-	}
-
 	reqHeaders := make(map[string]string)
 	for k, v := range models.AppConfig.CodeHub.Headers {
 		reqHeaders[k] = v
@@ -246,13 +229,10 @@ func ConfigureBranchProtection(ctx context.Context, projectID string, branchPatt
 	reqHeaders["Accept"] = "application/json"
 	reqHeaders["Content-Type"] = "application/json"
 
-	_, err := utils.SendHTTPRequest(ctx, "POST", apiURL, ProtectReq{
-		Name:                branchPattern,
-		PushAccessLevel:     0,  // 禁止直接 Push
-		MergeAccessLevel:    30, // 仅允许 Developer 合并
-		CodeReviewRequired:  true,
-		StatusCheckRequired: true,
-	}, utils.HTTPOptions{
+	bodyStr := models.AppConfig.CodeHub.ConfigureProtectionBody
+	bodyStr = strings.ReplaceAll(bodyStr, "{BRANCH_PATTERN}", branchPattern)
+
+	_, err := utils.SendHTTPRequest(ctx, "POST", apiURL, json.RawMessage([]byte(bodyStr)), utils.HTTPOptions{
 		Headers: reqHeaders,
 	}, []int{http.StatusOK, http.StatusCreated, http.StatusAccepted, http.StatusNoContent}, "ConfigureBranchProtection")
 	if err != nil {
@@ -272,12 +252,6 @@ func ConfigureRemoteACL(ctx context.Context, targetType string, targetID string,
 		return fmt.Errorf("invalid target type: %s", targetType)
 	}
 
-	type ACLReq struct {
-		PrincipalType string `json:"principal_type"`
-		PrincipalID   string `json:"principal_id"`
-		AccessLevel   int    `json:"access_level"`
-	}
-
 	reqHeaders := make(map[string]string)
 	for k, v := range models.AppConfig.CodeHub.Headers {
 		reqHeaders[k] = v
@@ -285,11 +259,12 @@ func ConfigureRemoteACL(ctx context.Context, targetType string, targetID string,
 	reqHeaders["Accept"] = "application/json"
 	reqHeaders["Content-Type"] = "application/json"
 
-	_, err := utils.SendHTTPRequest(ctx, "POST", apiURL, ACLReq{
-		PrincipalType: principalType,
-		PrincipalID:   principalID,
-		AccessLevel:   accessLevel,
-	}, utils.HTTPOptions{
+	bodyStr := models.AppConfig.CodeHub.ConfigureACLBody
+	bodyStr = strings.ReplaceAll(bodyStr, "{PRINCIPAL_TYPE}", principalType)
+	bodyStr = strings.ReplaceAll(bodyStr, "{PRINCIPAL_ID}", principalID)
+	bodyStr = strings.ReplaceAll(bodyStr, "{ACCESS_LEVEL}", strconv.Itoa(accessLevel))
+
+	_, err := utils.SendHTTPRequest(ctx, "POST", apiURL, json.RawMessage([]byte(bodyStr)), utils.HTTPOptions{
 		Headers: reqHeaders,
 	}, []int{http.StatusOK, http.StatusCreated, http.StatusAccepted, http.StatusNoContent}, "ConfigureRemoteACL")
 	if err != nil {

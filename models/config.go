@@ -55,9 +55,13 @@ type Config struct {
 		UpdateRepoSettingsBody    string            `yaml:"update_repo_settings_body"`
 	} `yaml:"pipeline_system"`
 	CodeHub struct {
-		BaseURL   string            `yaml:"base_url"`
-		GetMRsURL string            `yaml:"get_mrs_url"`
-		Headers   map[string]string `yaml:"headers"`
+		BaseURL                 string            `yaml:"base_url"`
+		GetMRsURL               string            `yaml:"get_mrs_url"`
+		Headers                 map[string]string `yaml:"headers"`
+		CreateRepoBody          string            `yaml:"create_repo_body"`
+		CreateBranchBody        string            `yaml:"create_branch_body"`
+		ConfigureProtectionBody string            `yaml:"configure_protection_body"`
+		ConfigureACLBody        string            `yaml:"configure_acl_body"`
 	} `yaml:"codehub"`
 }
 
@@ -107,6 +111,18 @@ func LoadConfig(filename string) error {
 	}
 	if AppConfig.CodeHub.BaseURL == "" {
 		return fmt.Errorf("codehub.base_url is required")
+	}
+	if AppConfig.CodeHub.CreateRepoBody == "" {
+		return fmt.Errorf("codehub.create_repo_body is required")
+	}
+	if AppConfig.CodeHub.CreateBranchBody == "" {
+		return fmt.Errorf("codehub.create_branch_body is required")
+	}
+	if AppConfig.CodeHub.ConfigureProtectionBody == "" {
+		return fmt.Errorf("codehub.configure_protection_body is required")
+	}
+	if AppConfig.CodeHub.ConfigureACLBody == "" {
+		return fmt.Errorf("codehub.configure_acl_body is required")
 	}
 
 	return nil
