@@ -315,9 +315,9 @@ func TestManagedGitPlatformAPI(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// 重定向 BaseURL
+	// 重定向 BaseURL (模拟用户在 base_url 中自定义 API 前缀)
 	origBaseURL := GitPlatformBaseURL
-	GitPlatformBaseURL = server.URL
+	GitPlatformBaseURL = server.URL + "/api/v1"
 	defer func() {
 		GitPlatformBaseURL = origBaseURL
 	}()

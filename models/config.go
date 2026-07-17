@@ -140,7 +140,7 @@ func applyDefaults() {
 		log.Println("[Auth] WARNING: jwt_secret not configured. Using ephemeral random secret.")
 	}
 	if AppConfig.CodeHub.BaseURL == "" {
-		AppConfig.CodeHub.BaseURL = "http://192.168.56.18:9080"
+		AppConfig.CodeHub.BaseURL = "http://192.168.56.18:9080/api/v1"
 	}
 	if AppConfig.CodeHub.GetMRsURL == "" {
 		AppConfig.CodeHub.GetMRsURL = "http://192.168.56.18:9080/api/v1/projects/{REPO_ID}/merge_requests"
