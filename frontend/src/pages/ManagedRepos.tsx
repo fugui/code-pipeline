@@ -586,7 +586,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                       setBranchStatusFilter(e.target.value)
                       fetchBranchAudits(activeRepo.id, e.target.value)
                     }}
-                    style={{ background: '#12141f', border: '1px solid var(--border-color)', color: '#fff', borderRadius: 4, padding: '4px 8px', fontSize: 13 }}
+                    style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-color)', color: 'var(--text-main)', borderRadius: 4, padding: '4px 8px', fontSize: 13 }}
                   >
                     <option value="all">[全部存量分支]</option>
                     <option value="active">🟢 活跃分支 (Active)</option>
@@ -734,7 +734,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                 placeholder="例如：后端开发组" 
                 value={newGroupName}
                 onChange={(e) => setNewGroupName(e.target.value)}
-                style={{ padding: '8px 12px', background: '#12141f', border: '1px solid var(--border-color)', borderRadius: 6, color: '#fff' }}
+                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
               />
             </div>
 
@@ -746,7 +746,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                 placeholder="例如：backend" 
                 value={newGroupPath}
                 onChange={(e) => setNewGroupPath(e.target.value)}
-                style={{ padding: '8px 12px', background: '#12141f', border: '1px solid var(--border-color)', borderRadius: 6, color: '#fff' }}
+                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
               />
             </div>
 
@@ -755,7 +755,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
               <select 
                 value={newGroupParent || ''} 
                 onChange={(e) => setNewGroupParent(e.target.value ? Number(e.target.value) : undefined)}
-                style={{ padding: '8px 12px', background: '#12141f', border: '1px solid var(--border-color)', borderRadius: 6, color: '#fff' }}
+                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
               >
                 <option value="">[根目录]</option>
                 {groups.map(g => (
@@ -794,7 +794,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                 placeholder="例如：auth-service" 
                 value={newRepoName}
                 onChange={(e) => setNewRepoName(e.target.value)}
-                style={{ padding: '8px 12px', background: '#12141f', border: '1px solid var(--border-color)', borderRadius: 6, color: '#fff' }}
+                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
               />
             </div>
 
@@ -804,7 +804,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                 required
                 value={newRepoGroup} 
                 onChange={(e) => setNewRepoGroup(Number(e.target.value))}
-                style={{ padding: '8px 12px', background: '#12141f', border: '1px solid var(--border-color)', borderRadius: 6, color: '#fff' }}
+                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
               >
                 <option value={0}>请选择归属组织 Group...</option>
                 {groups.map(g => (
@@ -854,7 +854,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                     setBranchNameError('')
                   }
                 }}
-                style={{ padding: '8px 12px', background: '#12141f', border: '1px solid var(--border-color)', borderRadius: 6, color: '#fff' }}
+                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
               />
               {branchNameError && <span style={{ color: '#ef4444', fontSize: 11, fontWeight: 600 }}>{branchNameError}</span>}
             </div>
@@ -867,7 +867,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                 placeholder="例如 master 或 main" 
                 value={newBranchSource}
                 onChange={(e) => setNewBranchSource(e.target.value)}
-                style={{ padding: '8px 12px', background: '#12141f', border: '1px solid var(--border-color)', borderRadius: 6, color: '#fff' }}
+                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
               />
             </div>
 
@@ -920,7 +920,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                 placeholder="例如用户或外部群组在系统中的自增 ID" 
                 value={newAclPrincipalID || ''}
                 onChange={(e) => setNewAclPrincipalID(Number(e.target.value))}
-                style={{ padding: '8px 12px', background: '#12141f', border: '1px solid var(--border-color)', borderRadius: 6, color: '#fff' }}
+                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
               />
             </div>
 
@@ -932,7 +932,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                 placeholder="缓存用于看板展示的名称" 
                 value={newAclPrincipalName}
                 onChange={(e) => setNewAclPrincipalName(e.target.value)}
-                style={{ padding: '8px 12px', background: '#12141f', border: '1px solid var(--border-color)', borderRadius: 6, color: '#fff' }}
+                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
               />
             </div>
 
@@ -941,7 +941,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
               <select 
                 value={newAclLevel} 
                 onChange={(e) => setNewAclLevel(Number(e.target.value))}
-                style={{ padding: '8px 12px', background: '#12141f', border: '1px solid var(--border-color)', borderRadius: 6, color: '#fff' }}
+                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
               >
                 <option value={10}>📖 Reporter (只读查看)</option>
                 <option value={30}>🛠️ Developer (开发者，允许在受限范围内通过MR提交)</option>
