@@ -200,11 +200,13 @@ func GetExecutionSchemes(c *gin.Context) {
 	}
 
 	template := models.AppConfig.PipelineSystem.PipelineLinkTemplate
-	if template != "" {
-		for i := range schemes {
-			if schemes[i].PipelineInfo != nil {
-				schemes[i].PipelineInfo.WebURL = generateWebURL(schemes[i].PipelineInfo, template)
-			}
+	taskTemplate := models.AppConfig.PipelineSystem.LinkCheckerTaskURL
+	for i := range schemes {
+		if template != "" && schemes[i].PipelineInfo != nil {
+			schemes[i].PipelineInfo.WebURL = generateWebURL(schemes[i].PipelineInfo, template)
+		}
+		if taskTemplate != "" {
+			schemes[i].CodeCheckerTaskWebURL = generateTaskWebURL(schemes[i].CodeCheckerTaskID, taskTemplate)
 		}
 	}
 
@@ -281,6 +283,11 @@ func CreateExecutionScheme(c *gin.Context) {
 	// 加载 repository
 	database.DB.Preload("Repository").First(&scheme, scheme.ID)
 
+	taskTemplate := models.AppConfig.PipelineSystem.LinkCheckerTaskURL
+	if taskTemplate != "" {
+		scheme.CodeCheckerTaskWebURL = generateTaskWebURL(scheme.CodeCheckerTaskID, taskTemplate)
+	}
+
 	c.JSON(http.StatusCreated, scheme)
 }
 
@@ -316,6 +323,16 @@ func generateWebURL(p *models.Pipeline, template string) string {
 		"{OWNER_ID}":    p.OwnerID,
 		"{SERVICE_ID}":  p.ServiceID,
 		"{PIPELINE_ID}": p.PipelineID,
+	})
+}
+
+// generateTaskWebURL 使用公共的模板占位符替换函数生成可供前端跳转的检查任务外链
+func generateTaskWebURL(taskID string, template string) string {
+	if template == "" || taskID == "" {
+		return ""
+	}
+	return utils.ReplacePlaceholders(template, map[string]string{
+		"{TASK_ID}": taskID,
 	})
 }
 

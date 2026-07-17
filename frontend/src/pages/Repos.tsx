@@ -757,7 +757,7 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
 
             {/* 检查任务 */}
             <td style={{ padding: '10px 8px' }}>
-              <NameCell name={scheme.code_checker_task_name} id={scheme.code_checker_task_id} />
+              <NameCell name={scheme.code_checker_task_name} id={scheme.code_checker_task_id} linkUrl={scheme.code_checker_task_web_url} />
             </td>
 
             {/* 执行方案 */}
@@ -809,52 +809,78 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
 
 
 // ---- Name 单元格：优先显示 Name，hover 提示 ID ----
-const NameCell: React.FC<{ name?: string; id?: string }> = ({ name, id }) => {
+const NameCell: React.FC<{ name?: string; id?: string; linkUrl?: string }> = ({ name, id, linkUrl }) => {
   if (!name && !id) return <span style={{ color: 'var(--text-muted)' }}>-</span>
   
-  if (name && id) {
+  const renderContent = () => {
+    if (name && id) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 130 }}>
+          <span
+            style={{
+              fontSize: 12,
+              color: linkUrl ? 'inherit' : 'var(--text-secondary)',
+              display: 'block',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {name}
+          </span>
+          <span
+            style={{
+              fontSize: 10,
+              color: linkUrl ? 'inherit' : 'var(--text-muted)',
+              opacity: linkUrl ? 0.7 : 1,
+            }}
+          >
+            ({id})
+          </span>
+        </div>
+      )
+    }
+
+    const displayName = name || id;
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 130 }}>
-        <span
-          style={{
-            fontSize: 12,
-            color: 'var(--text-secondary)',
-            display: 'block',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {name}
-        </span>
-        <span
-          style={{
-            fontSize: 10,
-            color: 'var(--text-muted)',
-          }}
-        >
-          ({id})
-        </span>
-      </div>
+      <span
+        style={{
+          fontSize: 12,
+          color: linkUrl ? 'inherit' : 'var(--text-secondary)',
+          display: 'block',
+          maxWidth: 130,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {displayName}
+      </span>
     )
   }
 
-  const displayName = name || id;
-  return (
-    <span
-      style={{
-        fontSize: 12,
-        color: 'var(--text-secondary)',
-        display: 'block',
-        maxWidth: 130,
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {displayName}
-    </span>
-  )
+  if (linkUrl) {
+    return (
+      <a
+        href={linkUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={e => e.stopPropagation()}
+        style={{
+          color: 'var(--text-secondary)',
+          textDecoration: 'none',
+          transition: 'color 0.2s',
+          display: 'inline-block'
+        }}
+        onMouseEnter={e => e.currentTarget.style.color = '#6366f1'}
+        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+      >
+        {renderContent()}
+      </a>
+    )
+  }
+
+  return renderContent();
 }
 
 // ---- 触发配置标签 ----

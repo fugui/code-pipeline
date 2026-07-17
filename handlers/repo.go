@@ -67,12 +67,14 @@ func GetRepos(c *gin.Context) {
 	}
 
 	template := models.AppConfig.PipelineSystem.PipelineLinkTemplate
-	if template != "" {
-		for i := range repos {
-			for j := range repos[i].Schemes {
-				if repos[i].Schemes[j].PipelineInfo != nil {
-					repos[i].Schemes[j].PipelineInfo.WebURL = generateWebURL(repos[i].Schemes[j].PipelineInfo, template)
-				}
+	taskTemplate := models.AppConfig.PipelineSystem.LinkCheckerTaskURL
+	for i := range repos {
+		for j := range repos[i].Schemes {
+			if template != "" && repos[i].Schemes[j].PipelineInfo != nil {
+				repos[i].Schemes[j].PipelineInfo.WebURL = generateWebURL(repos[i].Schemes[j].PipelineInfo, template)
+			}
+			if taskTemplate != "" {
+				repos[i].Schemes[j].CodeCheckerTaskWebURL = generateTaskWebURL(repos[i].Schemes[j].CodeCheckerTaskID, taskTemplate)
 			}
 		}
 	}

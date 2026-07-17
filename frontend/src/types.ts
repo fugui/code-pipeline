@@ -78,6 +78,7 @@ export interface ExecutionScheme {
   password?: string
   code_checker_task_id?: string
   code_checker_task_name?: string
+  code_checker_task_web_url?: string
   languages?: string
   custom_attributes?: string
   mr_trigger?: boolean
