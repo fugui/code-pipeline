@@ -2,26 +2,14 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"strconv"
 	"time"
 
 	"code-pipeline/database"
 	"code-pipeline/models"
-	"code-pipeline/utils"
 )
-
-type RemoteBranchDetail struct {
-	Name           string    `json:"name"`
-	LastCommitHash string    `json:"last_commit_hash"`
-	LastCommitTime time.Time `json:"last_commit_time"`
-	LastAuthor     string    `json:"last_author"`
-	IsMerged       bool      `json:"is_merged"`
-	IsProtected    bool      `json:"is_protected"`
-}
 
 // StartBranchAuditTimer 开启后台分支审计定时器 (每 4 小时巡检一次)
 func StartBranchAuditTimer(ctx context.Context) {
@@ -148,39 +136,4 @@ func AuditSingleRepoBranches(ctx context.Context, repoID uint) error {
 	}
 
 	return nil
-}
-
-// GetRemoteBranchesDetail 调用托管平台超级管理员接口获取包含最后Commit信息的全量分支明细
-func GetRemoteBranchesDetail(ctx context.Context, projectID string) ([]RemoteBranchDetail, error) {
-	apiURL := fmt.Sprintf("%s/api/v1/projects/%s/branches_detail", GitPlatformBaseURL, projectID)
-
-	headers := map[string]string{
-		"Accept":       "application/json",
-		"Content-Type": "application/json",
-	}
-
-	body, err := utils.SendHTTPRequest(ctx, "GET", apiURL, nil, utils.HTTPOptions{
-		Headers: headers,
-	}, []int{http.StatusOK}, "GetRemoteBranchesDetail")
-	if err != nil {
-		return nil, err
-	}
-
-	type RemoteResp struct {
-		Status string               `json:"status"`
-		Result []RemoteBranchDetail `json:"result"`
-	}
-
-	var resp RemoteResp
-	if err := json.Unmarshal(body, &resp); err == nil && resp.Status == "success" {
-		return resp.Result, nil
-	}
-
-	// 容错处理：若没有 status 包装，直接解析为数组
-	var list []RemoteBranchDetail
-	if err := json.Unmarshal(body, &list); err != nil {
-		return nil, fmt.Errorf("failed to parse branches detail JSON: %w", err)
-	}
-
-	return list, nil
 }
