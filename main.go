@@ -40,6 +40,9 @@ func main() {
 	// 3. 启动后台只读代码仓 Pull 同步任务
 	services.StartRepoSyncTimer(ctx)
 
+	// 启动被管仓历史非活动分支定时巡检任务
+	services.StartBranchAuditTimer(ctx)
+
 	// 4. 初始化 Gin 引擎
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
@@ -77,6 +80,17 @@ func main() {
 			api.GET("/repos/:id/branches", handlers.GetRepoBranches)
 			api.GET("/repos/:id/webhook", handlers.CheckRepoWebhook)
 			api.POST("/repos/:id/webhook", handlers.RegisterRepoWebhook)
+
+			// 独立被管代码仓与嵌套组管理路由
+			api.POST("/managed-groups", handlers.CreateManagedGroup)
+			api.GET("/managed-groups", handlers.GetManagedGroups)
+			api.POST("/managed-repos", handlers.CreateManagedRepo)
+			api.GET("/managed-repos", handlers.GetManagedRepos)
+			api.POST("/managed-repos/:id/branches", handlers.CreateManagedBranch)
+			api.POST("/managed-acl", handlers.ConfigureManagedACL)
+			api.GET("/managed-repos/:id/branches_audit", handlers.GetManagedRepoBranchAudit)
+			api.POST("/managed-repos/:id/branches_audit/trigger", handlers.TriggerManagedRepoBranchAudit)
+			api.POST("/managed-repos/:id/branches_audit/notify", handlers.NotifyBranchOwner)
 
 			// 流水线配置相关接口
 			api.GET("/pipelines", handlers.GetPipelines)

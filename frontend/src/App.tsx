@@ -10,6 +10,7 @@ import { User, ExecutionLog, DashboardStats, Pipeline, ExecutionScheme } from '.
 // Import page components
 import { Dashboard } from './pages/Dashboard'
 import { Repos } from './pages/Repos'
+import { ManagedRepos } from './pages/ManagedRepos'
 import { PipelineConfig } from './pages/PipelineConfig'
 import RealtimeMr from './pages/RealtimeMr'
 import RealtimeMrList from './pages/RealtimeMrList'
@@ -49,7 +50,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     return localStorage.getItem('code_shield_token') || localStorage.getItem(AUTH_TOKEN_KEY);
   })
   const [user, setUser] = useState<User | null>(null)
-  const [currentView, setCurrentView] = useState<'dashboard' | 'repos' | 'pipeline-config' | 'mr-hook' | 'mr-list'>('dashboard')
+  const [currentView, setCurrentView] = useState<'dashboard' | 'repos' | 'managed-repos' | 'pipeline-config' | 'mr-hook' | 'mr-list'>('dashboard')
   
   // Data lists — repos 仅用于 ExecutionSchemeModal 的候选项
   const [repos, setRepos] = useState<{ id: number; name: string; url: string; service_group?: string; owner_name?: string }[]>([])
@@ -83,7 +84,6 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
   const [activeExec, setActiveExec] = useState<ExecutionLog | null>(null)
   
 
-
   const activeExecInterval = useRef<any>(null)
   const location = useLocation()
 
@@ -92,6 +92,8 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     const path = location.pathname
     if (path.endsWith('/repos')) {
       setCurrentView('repos')
+    } else if (path.endsWith('/managed-repos')) {
+      setCurrentView('managed-repos')
     } else if (path.endsWith('/pipeline-config')) {
       setCurrentView('pipeline-config')
     } else if (path.endsWith('/mr/hook')) {
@@ -531,6 +533,13 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
                 管理中心
               </div>
               <button 
+                onClick={() => { setCurrentView('managed-repos'); setActiveExec(null); }} 
+                className={`btn ${currentView === 'managed-repos' ? 'btn-primary' : 'btn-secondary'}`} 
+                style={{ justifyContent: 'flex-start', width: '100%' }}
+              >
+                <GitBranch size={16} /> 代码仓与分支管理
+              </button>
+              <button 
                 onClick={() => { setCurrentView('pipeline-config'); setActiveExec(null); }} 
                 className={`btn ${currentView === 'pipeline-config' ? 'btn-primary' : 'btn-secondary'}`} 
                 style={{ justifyContent: 'flex-start', width: '100%' }}
@@ -595,7 +604,13 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
           />
         )}
 
-
+        {/* VIEW 3: MANAGED REPOS 代码仓与分支管理 */}
+        {currentView === 'managed-repos' && (
+          <ManagedRepos 
+            apiBase={apiBase}
+            token={token}
+          />
+        )}
 
         {/* VIEW 4: PIPELINE CONFIG */}
         {currentView === 'pipeline-config' && (
