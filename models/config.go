@@ -105,6 +105,9 @@ func LoadConfig(filename string) error {
 	if AppConfig.PipelineSystem.UpdateRepoSettingsBody == "" {
 		return fmt.Errorf("pipeline_system.update_repo_settings_body is required")
 	}
+	if AppConfig.CodeHub.BaseURL == "" {
+		return fmt.Errorf("codehub.base_url is required")
+	}
 
 	return nil
 }
@@ -138,9 +141,6 @@ func applyDefaults() {
 		}
 		AppConfig.Auth.JWTSecret = hex.EncodeToString(randomBytes)
 		log.Println("[Auth] WARNING: jwt_secret not configured. Using ephemeral random secret.")
-	}
-	if AppConfig.CodeHub.BaseURL == "" {
-		AppConfig.CodeHub.BaseURL = "http://192.168.56.18:9080/api/v1"
 	}
 	if AppConfig.CodeHub.GetMRsURL == "" {
 		AppConfig.CodeHub.GetMRsURL = "http://192.168.56.18:9080/api/v1/projects/{REPO_ID}/merge_requests"
