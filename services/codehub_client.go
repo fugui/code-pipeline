@@ -134,8 +134,8 @@ type RemoteBranchDetail struct {
 	IsProtected    bool      `json:"is_protected"`
 }
 
-// GitPlatformBaseURL 远程 Git 平台接口的默认 BaseURL，可由单元测试重定向 Mock
-var GitPlatformBaseURL = "http://192.168.56.18:9080/api/v1"
+// GitPlatformBaseURL 远程 Git 平台接口的 BaseURL，由配置解析并填充，可由单元测试重定向 Mock
+var GitPlatformBaseURL string
 
 // InitGitPlatform 根据全局配置初始化远程 Git 平台地址
 func InitGitPlatform() {
