@@ -80,7 +80,7 @@ pipeline_system:
     }
 
 codehub:
-  base_url: "http://192.168.56.18:9080"                         # 远程 Git 平台接口的默认 BaseURL，用于建仓、保护分支以及成员ACL下发
+  base_url: "http://192.168.56.18:9080/api/v1"                         # 远程 Git 平台接口的默认 BaseURL，用于建仓、保护分支以及成员ACL下发 (支持在 base_url 中自定义 API 前缀)
   get_mrs_url: "http://192.168.56.18:9080/api/v1/projects/{REPO_ID}/merge_requests"
   headers:
     Accept: "application/json"

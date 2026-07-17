@@ -135,7 +135,7 @@ type RemoteBranchDetail struct {
 }
 
 // GitPlatformBaseURL 远程 Git 平台接口的默认 BaseURL，可由单元测试重定向 Mock
-var GitPlatformBaseURL = "http://192.168.56.18:9080"
+var GitPlatformBaseURL = "http://192.168.56.18:9080/api/v1"
 
 // InitGitPlatform 根据全局配置初始化远程 Git 平台地址
 func InitGitPlatform() {
@@ -146,7 +146,7 @@ func InitGitPlatform() {
 
 // CreateRemoteRepo 使用超级管理员权限在远程 Git 平台创建代码仓，并融合鉴权 Header
 func CreateRemoteRepo(ctx context.Context, name string, groupPath string) (uint, string, string, error) {
-	apiURL := GitPlatformBaseURL + "/api/v1/projects"
+	apiURL := GitPlatformBaseURL + "/projects"
 
 	type CreateReq struct {
 		Name          string `json:"name"`
@@ -201,7 +201,7 @@ func CreateRemoteRepo(ctx context.Context, name string, groupPath string) (uint,
 
 // CreateRemoteBranch 使用超级管理员权限在远程 Git 平台创建分支，并融合鉴权 Header
 func CreateRemoteBranch(ctx context.Context, projectID string, branchName string, ref string) error {
-	apiURL := fmt.Sprintf("%s/api/v1/projects/%s/branches", GitPlatformBaseURL, projectID)
+	apiURL := fmt.Sprintf("%s/projects/%s/branches", GitPlatformBaseURL, projectID)
 
 	type CreateBranchReq struct {
 		BranchName string `json:"branch_name"`
@@ -229,7 +229,7 @@ func CreateRemoteBranch(ctx context.Context, projectID string, branchName string
 
 // ConfigureBranchProtection 使用超级管理员权限在远程 Git 平台设置保护分支规则，并融合鉴权 Header
 func ConfigureBranchProtection(ctx context.Context, projectID string, branchPattern string) error {
-	apiURL := fmt.Sprintf("%s/api/v1/projects/%s/protected_branches", GitPlatformBaseURL, projectID)
+	apiURL := fmt.Sprintf("%s/projects/%s/protected_branches", GitPlatformBaseURL, projectID)
 
 	type ProtectReq struct {
 		Name                string `json:"name"`
@@ -265,9 +265,9 @@ func ConfigureBranchProtection(ctx context.Context, projectID string, branchPatt
 func ConfigureRemoteACL(ctx context.Context, targetType string, targetID string, principalType string, principalID string, accessLevel int) error {
 	var apiURL string
 	if targetType == "repository" {
-		apiURL = fmt.Sprintf("%s/api/v1/projects/%s/members", GitPlatformBaseURL, targetID)
+		apiURL = fmt.Sprintf("%s/projects/%s/members", GitPlatformBaseURL, targetID)
 	} else if targetType == "group" {
-		apiURL = fmt.Sprintf("%s/api/v1/groups/%s/members", GitPlatformBaseURL, targetID)
+		apiURL = fmt.Sprintf("%s/groups/%s/members", GitPlatformBaseURL, targetID)
 	} else {
 		return fmt.Errorf("invalid target type: %s", targetType)
 	}
@@ -300,7 +300,7 @@ func ConfigureRemoteACL(ctx context.Context, targetType string, targetID string,
 
 // GetRemoteBranchesDetail 调用托管平台超级管理员接口获取包含最后Commit信息的全量分支明细，并融合鉴权 Header
 func GetRemoteBranchesDetail(ctx context.Context, projectID string) ([]RemoteBranchDetail, error) {
-	apiURL := fmt.Sprintf("%s/api/v1/projects/%s/branches_detail", GitPlatformBaseURL, projectID)
+	apiURL := fmt.Sprintf("%s/projects/%s/branches_detail", GitPlatformBaseURL, projectID)
 
 	reqHeaders := make(map[string]string)
 	for k, v := range models.AppConfig.CodeHub.Headers {
