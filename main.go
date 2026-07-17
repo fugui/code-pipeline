@@ -33,6 +33,9 @@ func main() {
 		log.Fatalf("[Server] Failed to load config.yaml: %v", err)
 	}
 
+	// 初始化 Git 平台基准地址配置
+	services.InitGitPlatform()
+
 	// 启动优雅关闭 context 与拉取同步任务
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

@@ -1106,6 +1106,13 @@ func UpdateRepoSettings(ctx context.Context, projectID string, headers map[strin
 // GitPlatformBaseURL 远程 Git 平台接口的默认 BaseURL，可由单元测试重定向 Mock
 var GitPlatformBaseURL = "http://192.168.56.18:9080"
 
+// InitGitPlatform 根据全局配置初始化远程 Git 平台地址
+func InitGitPlatform() {
+	if models.AppConfig.CodeHub.BaseURL != "" {
+		GitPlatformBaseURL = models.AppConfig.CodeHub.BaseURL
+	}
+}
+
 // CreateRemoteRepo 使用超级管理员权限在远程 Git 平台创建代码仓
 func CreateRemoteRepo(ctx context.Context, name string, groupPath string) (uint, string, string, error) {
 	apiURL := GitPlatformBaseURL + "/api/v1/projects"
