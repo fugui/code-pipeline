@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"code-pipeline/models"
@@ -275,3 +276,92 @@ func TestRegisterWebhook(t *testing.T) {
 		t.Errorf("expected PUT body replacement, got %q", receivedPutPayload)
 	}
 }
+
+func TestManagedGitPlatformAPI(t *testing.T) {
+	var receivedPostRepo string
+	var receivedPostBranch string
+	var receivedPostProtect string
+	var receivedPostACL string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		path := r.URL.Path
+
+		if r.Method == "POST" && path == "/api/v1/projects" {
+			receivedPostRepo = string(body)
+			w.WriteHeader(http.StatusCreated)
+			w.Write([]byte(`{"id":456,"ssh_url":"git@git.local:group/repo.git","http_url":"http://git.local/group/repo"}`))
+			return
+		}
+		if r.Method == "POST" && path == "/api/v1/projects/456/branches" {
+			receivedPostBranch = string(body)
+			w.WriteHeader(http.StatusCreated)
+			w.Write([]byte(`{"status":"success"}`))
+			return
+		}
+		if r.Method == "POST" && path == "/api/v1/projects/456/protected_branches" {
+			receivedPostProtect = string(body)
+			w.WriteHeader(http.StatusCreated)
+			w.Write([]byte(`{"status":"success"}`))
+			return
+		}
+		if r.Method == "POST" && path == "/api/v1/projects/456/members" {
+			receivedPostACL = string(body)
+			w.WriteHeader(http.StatusCreated)
+			w.Write([]byte(`{"status":"success"}`))
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	// 重定向 BaseURL
+	origBaseURL := GitPlatformBaseURL
+	GitPlatformBaseURL = server.URL
+	defer func() {
+		GitPlatformBaseURL = origBaseURL
+	}()
+
+	ctx := context.Background()
+
+	// 1. 测试创建远程代码仓
+	repoID, sshURL, httpURL, err := CreateRemoteRepo(ctx, "test-repo", "tech/infra")
+	if err != nil {
+		t.Fatalf("CreateRemoteRepo failed: %v", err)
+	}
+	if repoID != 456 || sshURL != "git@git.local:group/repo.git" || httpURL != "http://git.local/group/repo" {
+		t.Errorf("unexpected CreateRemoteRepo return values: %d, %s, %s", repoID, sshURL, httpURL)
+	}
+	if !strings.Contains(receivedPostRepo, `"name":"test-repo"`) || !strings.Contains(receivedPostRepo, `"namespace_path":"tech/infra"`) {
+		t.Errorf("unexpected CreateRemoteRepo body: %s", receivedPostRepo)
+	}
+
+	// 2. 测试创建远程分支
+	err = CreateRemoteBranch(ctx, "456", "feature-auth", "master")
+	if err != nil {
+		t.Fatalf("CreateRemoteBranch failed: %v", err)
+	}
+	if !strings.Contains(receivedPostBranch, `"branch_name":"feature-auth"`) || !strings.Contains(receivedPostBranch, `"ref":"master"`) {
+		t.Errorf("unexpected CreateRemoteBranch body: %s", receivedPostBranch)
+	}
+
+	// 3. 测试设置分支保护
+	err = ConfigureBranchProtection(ctx, "456", "feature-*")
+	if err != nil {
+		t.Fatalf("ConfigureBranchProtection failed: %v", err)
+	}
+	if !strings.Contains(receivedPostProtect, `"name":"feature-*"`) || !strings.Contains(receivedPostProtect, `"push_access_level":0`) {
+		t.Errorf("unexpected ConfigureBranchProtection body: %s", receivedPostProtect)
+	}
+
+	// 4. 测试授权成员
+	err = ConfigureRemoteACL(ctx, "repository", "456", "user", "1001", 30)
+	if err != nil {
+		t.Fatalf("ConfigureRemoteACL failed: %v", err)
+	}
+	if !strings.Contains(receivedPostACL, `"principal_type":"user"`) || !strings.Contains(receivedPostACL, `"principal_id":"1001"`) || !strings.Contains(receivedPostACL, `"access_level":30`) {
+		t.Errorf("unexpected ConfigureRemoteACL body: %s", receivedPostACL)
+	}
+}
+
+

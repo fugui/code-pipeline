@@ -1102,3 +1102,153 @@ func UpdateRepoSettings(ctx context.Context, projectID string, headers map[strin
 
 	return nil
 }
+
+// GitPlatformBaseURL 远程 Git 平台接口的默认 BaseURL，可由单元测试重定向 Mock
+var GitPlatformBaseURL = "http://192.168.56.18:9080"
+
+// CreateRemoteRepo 使用超级管理员权限在远程 Git 平台创建代码仓
+func CreateRemoteRepo(ctx context.Context, name string, groupPath string) (uint, string, string, error) {
+	apiURL := GitPlatformBaseURL + "/api/v1/projects"
+
+	type CreateReq struct {
+		Name          string `json:"name"`
+		NamespacePath string `json:"namespace_path,omitempty"`
+		Visibility    string `json:"visibility"`
+	}
+
+	headers := map[string]string{
+		"Accept":       "application/json",
+		"Content-Type": "application/json",
+	}
+
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURL, CreateReq{
+		Name:          name,
+		NamespacePath: groupPath,
+		Visibility:    "private",
+	}, utils.HTTPOptions{
+		Headers: headers,
+	}, []int{http.StatusOK, http.StatusCreated}, "CreateRemoteRepo")
+	if err != nil {
+		return 0, "", "", fmt.Errorf("failed to create remote repo: %w", err)
+	}
+
+	var resp struct {
+		ID      uint   `json:"id"`
+		SSHURL  string `json:"ssh_url"`
+		HTTPURL string `json:"http_url"`
+	}
+
+	if err := json.Unmarshal(body, &resp); err != nil {
+		var wrapped struct {
+			Status string `json:"status"`
+			Result struct {
+				ID      uint   `json:"id"`
+				SSHURL  string `json:"ssh_url"`
+				HTTPURL string `json:"http_url"`
+			} `json:"result"`
+		}
+		if err2 := json.Unmarshal(body, &wrapped); err2 == nil && wrapped.Status == "success" {
+			resp.ID = wrapped.Result.ID
+			resp.SSHURL = wrapped.Result.SSHURL
+			resp.HTTPURL = wrapped.Result.HTTPURL
+		} else {
+			return 0, "", "", fmt.Errorf("failed to parse create repo response: %w", err)
+		}
+	}
+
+	return resp.ID, resp.SSHURL, resp.HTTPURL, nil
+}
+
+// CreateRemoteBranch 使用超级管理员权限在远程 Git 平台创建分支
+func CreateRemoteBranch(ctx context.Context, projectID string, branchName string, ref string) error {
+	apiURL := fmt.Sprintf("%s/api/v1/projects/%s/branches", GitPlatformBaseURL, projectID)
+
+	type CreateBranchReq struct {
+		BranchName string `json:"branch_name"`
+		Ref        string `json:"ref"`
+	}
+
+	headers := map[string]string{
+		"Accept":       "application/json",
+		"Content-Type": "application/json",
+	}
+
+	_, err := utils.SendHTTPRequest(ctx, "POST", apiURL, CreateBranchReq{
+		BranchName: branchName,
+		Ref:        ref,
+	}, utils.HTTPOptions{
+		Headers: headers,
+	}, []int{http.StatusOK, http.StatusCreated, http.StatusAccepted}, "CreateRemoteBranch")
+	if err != nil {
+		return fmt.Errorf("failed to create remote branch: %w", err)
+	}
+	return nil
+}
+
+// ConfigureBranchProtection 使用超级管理员权限在远程 Git 平台设置保护分支规则
+func ConfigureBranchProtection(ctx context.Context, projectID string, branchPattern string) error {
+	apiURL := fmt.Sprintf("%s/api/v1/projects/%s/protected_branches", GitPlatformBaseURL, projectID)
+
+	type ProtectReq struct {
+		Name                string `json:"name"`
+		PushAccessLevel     int    `json:"push_access_level"`
+		MergeAccessLevel    int    `json:"merge_access_level"`
+		CodeReviewRequired  bool   `json:"code_review_required"`
+		StatusCheckRequired bool   `json:"status_check_required"`
+	}
+
+	headers := map[string]string{
+		"Accept":       "application/json",
+		"Content-Type": "application/json",
+	}
+
+	_, err := utils.SendHTTPRequest(ctx, "POST", apiURL, ProtectReq{
+		Name:                branchPattern,
+		PushAccessLevel:     0,  // 禁止直接 Push
+		MergeAccessLevel:    30, // 仅允许 Developer 合并
+		CodeReviewRequired:  true,
+		StatusCheckRequired: true,
+	}, utils.HTTPOptions{
+		Headers: headers,
+	}, []int{http.StatusOK, http.StatusCreated, http.StatusAccepted, http.StatusNoContent}, "ConfigureBranchProtection")
+	if err != nil {
+		return fmt.Errorf("failed to configure branch protection: %w", err)
+	}
+	return nil
+}
+
+// ConfigureRemoteACL 使用超级管理员权限在远程 Git 平台授权成员/用户组
+func ConfigureRemoteACL(ctx context.Context, targetType string, targetID string, principalType string, principalID string, accessLevel int) error {
+	var apiURL string
+	if targetType == "repository" {
+		apiURL = fmt.Sprintf("%s/api/v1/projects/%s/members", GitPlatformBaseURL, targetID)
+	} else if targetType == "group" {
+		apiURL = fmt.Sprintf("%s/api/v1/groups/%s/members", GitPlatformBaseURL, targetID)
+	} else {
+		return fmt.Errorf("invalid target type: %s", targetType)
+	}
+
+	type ACLReq struct {
+		PrincipalType string `json:"principal_type"`
+		PrincipalID   string `json:"principal_id"`
+		AccessLevel   int    `json:"access_level"`
+	}
+
+	headers := map[string]string{
+		"Accept":       "application/json",
+		"Content-Type": "application/json",
+	}
+
+	_, err := utils.SendHTTPRequest(ctx, "POST", apiURL, ACLReq{
+		PrincipalType: principalType,
+		PrincipalID:   principalID,
+		AccessLevel:   accessLevel,
+	}, utils.HTTPOptions{
+		Headers: headers,
+	}, []int{http.StatusOK, http.StatusCreated, http.StatusAccepted, http.StatusNoContent}, "ConfigureRemoteACL")
+	if err != nil {
+		return fmt.Errorf("failed to configure remote ACL: %w", err)
+	}
+	return nil
+}
+

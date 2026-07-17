@@ -26,6 +26,7 @@ export const menuGroups: MenuGroup[] = [
   {
     title: '管理中心',
     items: [
+      { path: '/managed-repos', label: '代码仓与分支管理' },
       { path: '/pipeline-config', label: '流水线配置' }
     ]
   }
@@ -34,6 +35,7 @@ export const menuGroups: MenuGroup[] = [
 export const menuItems: SubMenuItem[] = [
   { path: '/dashboard', label: '控制中心' },
   { path: '/repos', label: '仓库配置' },
+  { path: '/managed-repos', label: '代码仓与分支管理' },
   { path: '/pipeline-config', label: '流水线配置' },
   { path: '/mr/list', label: 'MR 全览' },
   { path: '/mr/hook', label: '实时MR看护' }

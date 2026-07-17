@@ -118,3 +118,57 @@ type MrEvent struct {
 	InterfaceFiles string    `gorm:"type:text" json:"interface_files"`           // 接口相关修改的文件列表 (JSON string 数组)
 	CreatedAt      time.Time `json:"created_at"`
 }
+
+// ManagedGroup 新系统独立的嵌套组表
+type ManagedGroup struct {
+	ID        uint          `gorm:"primaryKey" json:"id"`                           // 对应托管平台的 Group ID
+	Name      string        `gorm:"size:100;not null" json:"name"`                  // 组名称
+	Path      string        `gorm:"size:100;uniqueIndex;not null" json:"path"`      // 组相对路径
+	FullPath  string        `gorm:"size:255;uniqueIndex;not null" json:"full_path"`  // 组完整路径，如 "tech/infra"
+	ParentID  *uint         `gorm:"index" json:"parent_id"`                         // 父组 ID (空代表根组)
+	Parent    *ManagedGroup `gorm:"foreignKey:ParentID" json:"-"`
+	CreatedAt time.Time     `json:"created_at"`
+}
+
+// ManagedRepository 新系统独立的被管代码仓表
+type ManagedRepository struct {
+	ID                uint              `gorm:"primaryKey" json:"id"`                  // 对应托管平台的 Project ID
+	ManagedGroupID    uint              `gorm:"index;not null" json:"managed_group_id"`// 关联被管组
+	ManagedGroup      ManagedGroup      `gorm:"foreignKey:ManagedGroupID" json:"group"`
+	Name              string            `gorm:"uniqueIndex:idx_mg_repo;not null" json:"name"`
+	SSHURL            string            `gorm:"not null" json:"ssh_url"`               // SSH 克隆地址
+	HTTPURL           string            `gorm:"default:''" json:"http_url"`            // HTTP 访问地址
+	OwnerID           uint              `json:"owner_id"`                              // 负责人 ID (系统 User)
+	IsActive          bool              `gorm:"default:true" json:"is_active"`
+	WebhookRegistered bool              `gorm:"default:false" json:"webhook_registered"`
+	CreatedAt         time.Time         `json:"created_at"`
+}
+
+// ManagedMemberAccess 本地存储的成员/群组权限设置记录表
+type ManagedMemberAccess struct {
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	SourceType    string    `gorm:"size:20;index:idx_mma_source"`    // "group" 或 "repository"
+	SourceID      uint      `gorm:"index:idx_mma_source"`            // 对应 ManagedGroupID 或 ManagedRepositoryID
+	PrincipalType string    `gorm:"size:20;not null" json:"principal_type"` // 授权主体类型: "user" 或 "user_group"
+	PrincipalID   uint      `gorm:"index;not null" json:"principal_id"`     // 对应的 User ID 或 外部 UserGroup ID
+	PrincipalName string    `gorm:"size:100;default:''" json:"principal_name"` // 展示名缓存
+	AccessLevel   int       `gorm:"not null" json:"access_level"`    // 权限等级: 10(Reporter), 30(Developer), 50(Owner)
+	SyncStatus    string    `gorm:"size:20;default:'pending'" json:"sync_status"` // "pending" | "synced" | "failed"
+	SyncError     string    `gorm:"type:text" json:"sync_error,omitempty"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// ManagedBranchMonitor 本地非活动分支监控表
+type ManagedBranchMonitor struct {
+	ID                  uint      `gorm:"primaryKey" json:"id"`
+	ManagedRepositoryID uint      `gorm:"index;not null" json:"managed_repository_id"`
+	BranchName          string    `gorm:"size:120;index;not null" json:"branch_name"`
+	LastCommitHash      string    `gorm:"size:60" json:"last_commit_hash"`
+	LastCommitTime      time.Time `gorm:"index" json:"last_commit_time"`
+	LastAuthor          string    `gorm:"size:100" json:"last_author"`
+	IsMerged            bool      `gorm:"index" json:"is_merged"`
+	IsProtected         bool      `gorm:"index" json:"is_protected"`
+	Status              string    `gorm:"size:20" json:"status"` // "active" | "merged_stale" | "unmerged_stale"
+	UpdatedAt           time.Time `json:"updated_at"`
+}
+
