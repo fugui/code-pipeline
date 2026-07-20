@@ -141,6 +141,7 @@ type ManagedRepository struct {
 	OwnerID           uint              `json:"owner_id"`                              // 负责人 ID (系统 User)
 	IsActive          bool              `gorm:"default:true" json:"is_active"`
 	WebhookRegistered bool              `gorm:"default:false" json:"webhook_registered"`
+	BranchCount       int               `gorm:"default:0" json:"branch_count"`         // 仓库分支总数
 	CreatedAt         time.Time         `json:"created_at"`
 }
 

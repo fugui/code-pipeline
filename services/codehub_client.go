@@ -274,9 +274,52 @@ func ConfigureRemoteACL(ctx context.Context, targetType string, targetID string,
 	return nil
 }
 
-// GetRemoteBranchesDetail 调用托管平台超级管理员接口获取包含最后Commit信息的全量分支明细，并融合鉴权 Header
-func GetRemoteBranchesDetail(ctx context.Context, projectID string) ([]RemoteBranchDetail, error) {
-	apiURL := fmt.Sprintf("%s/projects/%s/repository/branches.json", GitPlatformBaseURL, projectID)
+// GetRemoteProjectBranchCount 调用托管平台接口获取特定代码仓的分支总数
+func GetRemoteProjectBranchCount(ctx context.Context, projectID string) (int, error) {
+	apiURL := fmt.Sprintf("%s/projects/%s", GitPlatformBaseURL, projectID)
+
+	reqHeaders := make(map[string]string)
+	for k, v := range models.AppConfig.CodeHub.Headers {
+		reqHeaders[k] = v
+	}
+	reqHeaders["Accept"] = "application/json"
+
+	body, err := utils.SendHTTPRequest(ctx, "GET", apiURL, nil, utils.HTTPOptions{
+		Headers: reqHeaders,
+	}, []int{http.StatusOK}, "GetRemoteProjectBranchCount")
+	if err != nil {
+		return 0, err
+	}
+
+	type ProjectDetail struct {
+		BranchCount int `json:"branch_count"`
+	}
+
+	type WrappedResp struct {
+		Status string        `json:"status"`
+		Result ProjectDetail `json:"result"`
+	}
+
+	var resp WrappedResp
+	if err := json.Unmarshal(body, &resp); err == nil && resp.Status == "success" {
+		return resp.Result.BranchCount, nil
+	}
+
+	var detail ProjectDetail
+	if err := json.Unmarshal(body, &detail); err != nil {
+		return 0, fmt.Errorf("failed to parse project details JSON: %w", err)
+	}
+
+	return detail.BranchCount, nil
+}
+
+// GetRemoteBranchesDetail 分页调用托管平台接口获取包含最后Commit信息的全量分支明细，并进行多页数据合并
+func GetRemoteBranchesDetail(ctx context.Context, projectID string, branchCount int) ([]RemoteBranchDetail, error) {
+	perPage := 100
+	totalPages := 1
+	if branchCount > 0 {
+		totalPages = (branchCount + perPage - 1) / perPage
+	}
 
 	reqHeaders := make(map[string]string)
 	for k, v := range models.AppConfig.CodeHub.Headers {
@@ -285,30 +328,43 @@ func GetRemoteBranchesDetail(ctx context.Context, projectID string) ([]RemoteBra
 	reqHeaders["Accept"] = "application/json"
 	reqHeaders["Content-Type"] = "application/json"
 
-	body, err := utils.SendHTTPRequest(ctx, "GET", apiURL, nil, utils.HTTPOptions{
-		Headers: reqHeaders,
-	}, []int{http.StatusOK}, "GetRemoteBranchesDetail")
-	if err != nil {
-		return nil, err
+	var allBranches []RemoteBranchDetail
+
+	for page := 1; page <= totalPages; page++ {
+		apiURL := fmt.Sprintf("%s/projects/%s/repository/branches?page=%d&per_page=%d", GitPlatformBaseURL, projectID, page, perPage)
+
+		body, err := utils.SendHTTPRequest(ctx, "GET", apiURL, nil, utils.HTTPOptions{
+			Headers: reqHeaders,
+		}, []int{http.StatusOK}, "GetRemoteBranchesDetail")
+		if err != nil {
+			return nil, err
+		}
+
+		type RemoteResp struct {
+			Status string               `json:"status"`
+			Result []RemoteBranchDetail `json:"result"`
+		}
+
+		var pageBranches []RemoteBranchDetail
+		var resp RemoteResp
+		if err := json.Unmarshal(body, &resp); err == nil && resp.Status == "success" {
+			pageBranches = resp.Result
+		} else {
+			var list []RemoteBranchDetail
+			if err := json.Unmarshal(body, &list); err != nil {
+				return nil, fmt.Errorf("failed to parse page %d branches JSON: %w", page, err)
+			}
+			pageBranches = list
+		}
+
+		allBranches = append(allBranches, pageBranches...)
+
+		if len(pageBranches) < perPage {
+			break
+		}
 	}
 
-	type RemoteResp struct {
-		Status string               `json:"status"`
-		Result []RemoteBranchDetail `json:"result"`
-	}
-
-	var resp RemoteResp
-	if err := json.Unmarshal(body, &resp); err == nil && resp.Status == "success" {
-		return resp.Result, nil
-	}
-
-	// 容错处理：若没有 status 包装，直接解析为数组
-	var list []RemoteBranchDetail
-	if err := json.Unmarshal(body, &list); err != nil {
-		return nil, fmt.Errorf("failed to parse branches detail JSON: %w", err)
-	}
-
-	return list, nil
+	return allBranches, nil
 }
 
 // RemoteSubgroup 远程子群组
