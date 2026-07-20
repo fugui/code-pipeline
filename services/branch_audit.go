@@ -91,8 +91,8 @@ func AuditSingleRepoBranches(ctx context.Context, repoID uint) error {
 		if br.IsMerged && age > 7*24*time.Hour {
 			// 分支已合入 master 且超过 7 天无改动，判为“已合并待清理”
 			status = "merged_stale"
-		} else if !br.IsMerged && age > 90*24*time.Hour {
-			// 分支未合入 master 且超过 90 天无改动，判为“未合并僵尸分支”
+		} else if !br.IsMerged && age > 30*24*time.Hour {
+			// 分支未合入 master 且超过 30 天无改动，判为“未合并僵尸分支”
 			status = "unmerged_stale"
 		}
 
