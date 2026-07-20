@@ -139,13 +139,14 @@ func AuditSingleRepoBranches(ctx context.Context, repoID uint) error {
 	db.Model(&models.ManagedBranchMonitor{}).Where("managed_repository_id = ? AND status = 'merged_stale'", repoID).Count(&staleMergedCount)
 
 	var maxCommitTime *time.Time
-	db.Model(&models.ManagedBranchMonitor{}).
-		Where("managed_repository_id = ?", repoID).
-		Select("MAX(last_commit_time)").
-		Scan(&maxCommitTime)
-
-	if maxCommitTime != nil && maxCommitTime.IsZero() {
-		maxCommitTime = nil
+	for _, br := range branches {
+		if br.LastCommitTime.IsZero() {
+			continue
+		}
+		if maxCommitTime == nil || br.LastCommitTime.After(*maxCommitTime) {
+			t := br.LastCommitTime
+			maxCommitTime = &t
+		}
 	}
 
 	if err := db.Model(&models.ManagedRepository{}).Where("id = ?", repoID).Updates(map[string]interface{}{
