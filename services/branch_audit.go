@@ -50,6 +50,14 @@ func AuditAllReposBranches(ctx context.Context) {
 	}
 
 	for _, repo := range repos {
+		// 每次审计之间加入 400 毫秒的平滑等待，防止瞬间高频访问 CodeHub 触发 429 限流
+		select {
+		case <-ctx.Done():
+			log.Println("[BranchAudit] Audit cancelled via context closure")
+			return
+		case <-time.After(400 * time.Millisecond):
+		}
+
 		if err := AuditSingleRepoBranches(ctx, repo.ID); err != nil {
 			log.Printf("[BranchAudit] Error auditing repo %s (ID: %d): %v", repo.Name, repo.ID, err)
 		}
