@@ -206,6 +206,12 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
   // Sync Group subgroups & repos from remote CodeHub
   const handleSyncGroup = () => {
     if (!selectedGroup) return
+
+    const confirmSync = window.confirm(
+      `确定要同步组 "${selectedGroup.name}" 吗？\n警告：同步操作会先清空该组下在本地已缓存的直属子组和直属代码仓数据，再拉取 CodeHub 上的最新数据。`
+    )
+    if (!confirmSync) return
+
     setIsSyncingGroup(true)
     fetch(`${apiBase}/managed-groups/${selectedGroup.id}/sync`, {
       method: 'POST',
