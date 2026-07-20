@@ -340,26 +340,46 @@ func GetRemoteBranchesDetail(ctx context.Context, projectID string, branchCount 
 			return nil, err
 		}
 
-		type RemoteResp struct {
-			Status string               `json:"status"`
-			Result []RemoteBranchDetail `json:"result"`
+		type CodehubBranchResp struct {
+			Name      string `json:"name"`
+			Merged    bool   `json:"merged"`
+			Protected bool   `json:"protected"`
+			Commit    struct {
+				ID            string    `json:"id"`
+				CommittedDate time.Time `json:"committed_date"`
+				AuthorName    string    `json:"author_name"`
+			} `json:"commit"`
 		}
 
-		var pageBranches []RemoteBranchDetail
+		type RemoteResp struct {
+			Status string               `json:"status"`
+			Result []CodehubBranchResp  `json:"result"`
+		}
+
+		var pageItems []CodehubBranchResp
 		var resp RemoteResp
 		if err := json.Unmarshal(body, &resp); err == nil && resp.Status == "success" {
-			pageBranches = resp.Result
+			pageItems = resp.Result
 		} else {
-			var list []RemoteBranchDetail
+			var list []CodehubBranchResp
 			if err := json.Unmarshal(body, &list); err != nil {
 				return nil, fmt.Errorf("failed to parse page %d branches JSON: %w", page, err)
 			}
-			pageBranches = list
+			pageItems = list
 		}
 
-		allBranches = append(allBranches, pageBranches...)
+		for _, item := range pageItems {
+			allBranches = append(allBranches, RemoteBranchDetail{
+				Name:           item.Name,
+				LastCommitHash: item.Commit.ID,
+				LastCommitTime: item.Commit.CommittedDate,
+				LastAuthor:     item.Commit.AuthorName,
+				IsMerged:       item.Merged,
+				IsProtected:    item.Protected,
+			})
+		}
 
-		if len(pageBranches) < perPage {
+		if len(pageItems) < perPage {
 			break
 		}
 	}
