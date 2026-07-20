@@ -395,7 +395,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
       {/* Group Sidebar */}
       <div className="glass-card" style={{ width: 280, display: 'flex', flexDirection: 'column', padding: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>嵌套 Group 架构树</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Groups</h3>
           <div style={{ display: 'flex', gap: 6 }}>
             {selectedGroup && (
               <button 
