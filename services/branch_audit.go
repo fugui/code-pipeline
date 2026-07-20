@@ -132,5 +132,26 @@ func AuditSingleRepoBranches(ctx context.Context, repoID uint) error {
 		}
 	}
 
+	// 5. 汇总该仓库的分支状态并更新到 ManagedRepository 表中
+	var activeCount, staleUnmergedCount, staleMergedCount int64
+	db.Model(&models.ManagedBranchMonitor{}).Where("managed_repository_id = ? AND status = 'active'", repoID).Count(&activeCount)
+	db.Model(&models.ManagedBranchMonitor{}).Where("managed_repository_id = ? AND status = 'unmerged_stale'", repoID).Count(&staleUnmergedCount)
+	db.Model(&models.ManagedBranchMonitor{}).Where("managed_repository_id = ? AND status = 'merged_stale'", repoID).Count(&staleMergedCount)
+
+	var maxCommitTime *time.Time
+	db.Model(&models.ManagedBranchMonitor{}).
+		Where("managed_repository_id = ?", repoID).
+		Select("MAX(last_commit_time)").
+		Scan(&maxCommitTime)
+
+	if err := db.Model(&models.ManagedRepository{}).Where("id = ?", repoID).Updates(map[string]interface{}{
+		"active_count":         int(activeCount),
+		"stale_unmerged_count": int(staleUnmergedCount),
+		"stale_merged_count":   int(staleMergedCount),
+		"last_commit_time":     maxCommitTime,
+	}).Error; err != nil {
+		log.Printf("[BranchAudit] Failed to update branch aggregation stats for repo %d: %v", repoID, err)
+	}
+
 	return nil
 }
