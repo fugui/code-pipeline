@@ -276,7 +276,7 @@ func ConfigureRemoteACL(ctx context.Context, targetType string, targetID string,
 
 // GetRemoteBranchesDetail 调用托管平台超级管理员接口获取包含最后Commit信息的全量分支明细，并融合鉴权 Header
 func GetRemoteBranchesDetail(ctx context.Context, projectID string) ([]RemoteBranchDetail, error) {
-	apiURL := fmt.Sprintf("%s/projects/%s/branches_detail", GitPlatformBaseURL, projectID)
+	apiURL := fmt.Sprintf("%s/projects/%s/repository/branches", GitPlatformBaseURL, projectID)
 
 	reqHeaders := make(map[string]string)
 	for k, v := range models.AppConfig.CodeHub.Headers {
