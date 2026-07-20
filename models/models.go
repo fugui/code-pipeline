@@ -123,7 +123,7 @@ type MrEvent struct {
 type ManagedGroup struct {
 	ID        uint          `gorm:"primaryKey" json:"id"`                           // 对应托管平台的 Group ID
 	Name      string        `gorm:"size:100;not null" json:"name"`                  // 组名称
-	Path      string        `gorm:"size:100;uniqueIndex;not null" json:"path"`      // 组相对路径
+	Path      string        `gorm:"size:100;index;not null" json:"path"`            // 组相对路径
 	FullPath  string        `gorm:"size:255;uniqueIndex;not null" json:"full_path"`  // 组完整路径，如 "tech/infra"
 	ParentID  *uint         `gorm:"index" json:"parent_id"`                         // 父组 ID (空代表根组)
 	Parent    *ManagedGroup `gorm:"foreignKey:ParentID" json:"-"`
