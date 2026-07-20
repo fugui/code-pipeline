@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -390,101 +389,87 @@ func SyncManagedGroup(c *gin.Context) {
 		}
 	}
 
-	// 3. 定义递归同步辅助函数
-	var syncGroupRecursive func(ctx context.Context, gID uint, parentFullPath string) error
-	syncGroupRecursive = func(ctx context.Context, gID uint, parentFullPath string) error {
-		// 同步当前组底下的项目
-		remotes, err := services.GetRemoteProjects(ctx, gID)
-		if err == nil {
-			for _, rp := range remotes {
-				sshURL := rp.SSHURL
-				if sshURL == "" {
-					sshURL = rp.SSHURLToRepo
-				}
-				httpURL := rp.HTTPURL
-				if httpURL == "" {
-					httpURL = rp.HTTPURLToRepo
-				}
-
-				var existing models.ManagedRepository
-				errDb := database.DB.Where("id = ?", rp.ID).First(&existing).Error
-				if errDb == nil {
-					// 更新已有项目
-					database.DB.Model(&existing).Updates(models.ManagedRepository{
-						Name:           rp.Name,
-						SSHURL:         sshURL,
-						HTTPURL:        httpURL,
-						ManagedGroupID: gID,
-					})
-				} else {
-					// 新增项目，主键使用远程 ID
-					newRepo := models.ManagedRepository{
-						ID:             rp.ID,
-						ManagedGroupID: gID,
-						Name:           rp.Name,
-						SSHURL:         sshURL,
-						HTTPURL:        httpURL,
-						OwnerID:        userID,
-						IsActive:       true,
-						CreatedAt:      time.Now(),
-					}
-					database.DB.Create(&newRepo)
-				}
+	// 3. 同步当前组直属的项目
+	remotes, err := services.GetRemoteProjects(c.Request.Context(), remoteID)
+	if err == nil {
+		for _, rp := range remotes {
+			sshURL := rp.SSHURL
+			if sshURL == "" {
+				sshURL = rp.SSHURLToRepo
 			}
-		}
-
-		// 获取子群组并递归同步
-		subgroups, err := services.GetRemoteSubgroups(ctx, gID)
-		if err != nil {
-			return err
-		}
-
-		for _, sub := range subgroups {
-			var fullPath string
-			if parentFullPath != "" {
-				fullPath = parentFullPath + "/" + sub.Path
-			} else {
-				fullPath = sub.Path
+			httpURL := rp.HTTPURL
+			if httpURL == "" {
+				httpURL = rp.HTTPURLToRepo
 			}
 
-			var existingGroup models.ManagedGroup
-			errDb := database.DB.Where("id = ?", sub.ID).First(&existingGroup).Error
+			var existing models.ManagedRepository
+			errDb := database.DB.Where("id = ?", rp.ID).First(&existing).Error
 			if errDb == nil {
-				// 更新已存在的组
-				pID := gID
-				database.DB.Model(&existingGroup).Updates(models.ManagedGroup{
-					Name:     sub.Name,
-					Path:     sub.Path,
-					FullPath: fullPath,
-					ParentID: &pID,
+				// 更新已有项目
+				database.DB.Model(&existing).Updates(models.ManagedRepository{
+					Name:           rp.Name,
+					SSHURL:         sshURL,
+					HTTPURL:        httpURL,
+					ManagedGroupID: remoteID,
 				})
 			} else {
-				// 创建新组，主键使用远程 ID
-				pID := gID
-				newGroup := models.ManagedGroup{
-					ID:        sub.ID,
-					Name:      sub.Name,
-					Path:      sub.Path,
-					FullPath:  fullPath,
-					ParentID:  &pID,
-					CreatedAt: time.Now(),
+				// 新增项目，主键使用远程 ID
+				newRepo := models.ManagedRepository{
+					ID:             rp.ID,
+					ManagedGroupID: remoteID,
+					Name:           rp.Name,
+					SSHURL:         sshURL,
+					HTTPURL:        httpURL,
+					OwnerID:        userID,
+					IsActive:       true,
+					CreatedAt:      time.Now(),
 				}
-				database.DB.Create(&newGroup)
+				database.DB.Create(&newRepo)
 			}
-
-			// 递归同步子群组的项目与子组
-			_ = syncGroupRecursive(ctx, sub.ID, fullPath)
 		}
-
-		return nil
 	}
 
-	// 4. 开始递归同步
-	if err := syncGroupRecursive(c.Request.Context(), remoteID, startGroup.FullPath); err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Synchronization recursive call failed: %v", err)})
+	// 4. 同步当前组直属的子群组
+	subgroups, err := services.GetRemoteSubgroups(c.Request.Context(), remoteID)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to fetch remote subgroups: %v", err)})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Group metadata and repositories synchronized successfully"})
+	for _, sub := range subgroups {
+		var fullPath string
+		if startGroup.FullPath != "" {
+			fullPath = startGroup.FullPath + "/" + sub.Path
+		} else {
+			fullPath = sub.Path
+		}
+
+		var existingGroup models.ManagedGroup
+		errDb := database.DB.Where("id = ?", sub.ID).First(&existingGroup).Error
+		if errDb == nil {
+			// 更新已存在的组
+			pID := remoteID
+			database.DB.Model(&existingGroup).Updates(models.ManagedGroup{
+				Name:     sub.Name,
+				Path:     sub.Path,
+				FullPath: fullPath,
+				ParentID: &pID,
+			})
+		} else {
+			// 创建新组，主键使用远程 ID
+			pID := remoteID
+			newGroup := models.ManagedGroup{
+				ID:        sub.ID,
+				Name:      sub.Name,
+				Path:      sub.Path,
+				FullPath:  fullPath,
+				ParentID:  &pID,
+				CreatedAt: time.Now(),
+			}
+			database.DB.Create(&newGroup)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Group direct sub-groups and repositories synchronized successfully"})
 }
 
