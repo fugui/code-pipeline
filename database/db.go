@@ -50,6 +50,13 @@ func InitDB() {
 		log.Fatalf("[Database] Migration failed: %v", err)
 	}
 
+	// 显式删除旧数据库上残存的 managed_groups.path 全局唯一索引，解除同名子组的冲突
+	if err := DB.Exec("DROP INDEX IF EXISTS idx_managed_groups_path").Error; err != nil {
+		log.Printf("[Database] Failed to drop old path unique index: %v", err)
+	} else {
+		log.Println("[Database] Checked and removed unique index on managed_groups.path successfully")
+	}
+
 	// Seed admin user
 	var count int64
 	DB.Model(&models.User{}).Count(&count)
