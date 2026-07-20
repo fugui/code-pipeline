@@ -45,8 +45,21 @@ func AuditAllReposBranches(ctx context.Context) {
 func AuditSingleRepoBranches(ctx context.Context, repoID uint) error {
 	log.Printf("[BranchAudit] Auditing branches for repo ID %d...", repoID)
 	
-	// 1. 获取远程详细分支清单
-	branches, err := GetRemoteBranchesDetail(ctx, strconv.Itoa(int(repoID)))
+	repoStrID := strconv.Itoa(int(repoID))
+
+	// 1. 获取远程分支总数，并保存/更新到本地 ManagedRepository 的 BranchCount 字段
+	branchCount, err := GetRemoteProjectBranchCount(ctx, repoStrID)
+	if err != nil {
+		log.Printf("[BranchAudit] Warning: failed to fetch branch count for repo %d: %v. Defaulting to 1 page.", repoID, err)
+		branchCount = 0 // 容错：默认为 0，后续拉取 1 页
+	} else {
+		if errDb := database.DB.Model(&models.ManagedRepository{}).Where("id = ?", repoID).Update("branch_count", branchCount).Error; errDb != nil {
+			log.Printf("[BranchAudit] Failed to update BranchCount in db for repo %d: %v", repoID, errDb)
+		}
+	}
+
+	// 2. 分页并合并获取远程详细分支清单
+	branches, err := GetRemoteBranchesDetail(ctx, repoStrID, branchCount)
 	if err != nil {
 		return fmt.Errorf("failed to fetch remote branch details: %w", err)
 	}
