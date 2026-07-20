@@ -141,8 +141,12 @@ type ManagedRepository struct {
 	OwnerID           uint              `json:"owner_id"`                              // 负责人 ID (系统 User)
 	IsActive          bool              `gorm:"default:true" json:"is_active"`
 	WebhookRegistered bool              `gorm:"default:false" json:"webhook_registered"`
-	BranchCount       int               `gorm:"default:0" json:"branch_count"`         // 仓库分支总数
-	CreatedAt         time.Time         `json:"created_at"`
+	BranchCount        int               `gorm:"default:0" json:"branch_count"`          // 仓库分支总数
+	ActiveCount        int               `gorm:"default:0" json:"active_count"`          // 活跃分支数
+	StaleUnmergedCount int               `gorm:"default:0" json:"stale_unmerged_count"`  // 未合并僵尸分支数
+	StaleMergedCount   int               `gorm:"default:0" json:"stale_merged_count"`    // 已合并待清理分支数
+	LastCommitTime     *time.Time        `json:"last_commit_time"`                       // 所有分支中最新的提交时间
+	CreatedAt          time.Time         `json:"created_at"`
 }
 
 // ManagedMemberAccess 本地存储的成员/群组权限设置记录表

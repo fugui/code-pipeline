@@ -21,6 +21,11 @@ interface ManagedRepository {
   owner_id: number
   is_active: boolean
   webhook_registered: boolean
+  branch_count?: number
+  active_count?: number
+  stale_unmerged_count?: number
+  stale_merged_count?: number
+  last_commit_time?: string
   created_at: string
 }
 
@@ -610,7 +615,8 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                   <th style={{ padding: '12px 8px' }}>仓库 ID</th>
                   <th style={{ padding: '12px 8px' }}>仓库名称</th>
                   <th style={{ padding: '12px 8px' }}>所属嵌套组</th>
-                  <th style={{ padding: '12px 8px' }}>SSH 克隆地址</th>
+                  <th style={{ padding: '12px 8px' }}>分支数 (活/僵/已合并)</th>
+                  <th style={{ padding: '12px 8px' }}>最新提交时间</th>
                   <th style={{ padding: '12px 8px' }}>标准化状态</th>
                   <th style={{ padding: '12px 8px', textAlign: 'right' }}>操作</th>
                 </tr>
@@ -618,7 +624,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
               <tbody>
                 {filteredRepos.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: 48, color: 'var(--text-secondary)' }}>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: 48, color: 'var(--text-secondary)' }}>
                       <AlertCircle size={32} style={{ margin: '0 auto 12px auto', opacity: 0.5 }} />
                       <p>未发现符合条件的被管代码仓。</p>
                     </td>
@@ -633,7 +639,29 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                           {r.group?.full_path || 'Default'}
                         </span>
                       </td>
-                      <td style={{ padding: '14px 8px', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: 12 }}>{r.ssh_url}</td>
+                      <td style={{ padding: '14px 8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span className="badge badge-secondary" title="分支总数" style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.08)', color: 'var(--text-main)', fontWeight: 600 }}>
+                            共 {r.branch_count || 0}
+                          </span>
+                          {(r.branch_count || 0) > 0 && (
+                            <>
+                              <span className="badge" title="活跃分支" style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontSize: 11 }}>
+                                活 {r.active_count || 0}
+                              </span>
+                              <span className="badge" title="未合并僵尸" style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: 11 }}>
+                                僵 {r.stale_unmerged_count || 0}
+                              </span>
+                              <span className="badge" title="已合并待清理" style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', fontSize: 11 }}>
+                                合 {r.stale_merged_count || 0}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 8px', color: 'var(--text-secondary)' }}>
+                        {r.last_commit_time ? new Date(r.last_commit_time).toLocaleString('zh-CN', { hour12: false }).replace(/:\d{2}$/, '') : '-'}
+                      </td>
                       <td style={{ padding: '14px 8px' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#10b981', fontWeight: 600 }}>
                           🟢 已加固 Webhook
