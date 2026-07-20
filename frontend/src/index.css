@@ -334,3 +334,44 @@ input:focus, textarea:focus, select:focus {
 .btn-action-add:active {
   transform: scale(0.95);
 }
+
+/* Group Tree Node styling */
+.group-tree-node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-start;
+  width: 100%;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 500;
+  transition: var(--transition);
+  position: relative;
+}
+
+.group-tree-node:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
+}
+
+.group-tree-node.active {
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.group-tree-node.active::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  background: var(--border-active, #6366f1);
+  border-radius: 2px;
+}

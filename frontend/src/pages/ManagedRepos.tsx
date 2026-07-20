@@ -428,10 +428,10 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
           <button 
             onClick={() => handleGroupSelect(null)} 
-            className={`btn ${selectedGroup === null ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ justifyContent: 'flex-start', width: '100%', fontSize: 13 }}
+            className={`group-tree-node ${selectedGroup === null ? 'active' : ''}`}
           >
-            <Folder size={14} /> [全部仓库]
+            <Folder size={14} color={selectedGroup === null ? 'var(--border-active)' : 'var(--text-muted)'} /> 
+            <span>[全部仓库]</span>
           </button>
           
           {filteredGroups.map(g => {
@@ -441,15 +441,12 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
               <button 
                 key={g.id}
                 onClick={() => handleGroupSelect(g)} 
-                className={`btn ${selectedGroup?.id === g.id ? 'btn-primary' : 'btn-secondary'}`}
+                className={`group-tree-node ${selectedGroup?.id === g.id ? 'active' : ''}`}
                 style={{ 
-                  justifyContent: 'flex-start', 
-                  width: '100%', 
-                  fontSize: 13, 
                   paddingLeft: 12 + depth * 14 
                 }}
               >
-                <Folder size={14} color={depth > 0 ? '#818cf8' : '#6366f1'} /> 
+                <Folder size={14} color={selectedGroup?.id === g.id ? 'var(--border-active)' : 'var(--text-muted)'} /> 
                 <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{g.name}</span>
               </button>
             )
