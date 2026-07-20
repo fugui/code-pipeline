@@ -11,33 +11,9 @@ import (
 	"code-pipeline/models"
 )
 
-// StartBranchAuditTimer 开启后台分支审计定时器 (每 4 小时巡检一次)
+// StartBranchAuditTimer 开启后台分支审计定时器 (按用户要求已停用后台定时器，改为用户手动按需触发)
 func StartBranchAuditTimer(ctx context.Context) {
-	log.Println("[BranchAudit] Starting stale branch monitor timer (every 4 hours)...")
-	ticker := time.NewTicker(4 * time.Hour)
-
-	// 启动时延迟 30 秒执行一次初始审计，防止与 repo 镜像拉取任务抢占数据库写锁
-	go func() {
-		select {
-		case <-time.After(30 * time.Second):
-			AuditAllReposBranches(ctx)
-		case <-ctx.Done():
-			return
-		}
-	}()
-
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				AuditAllReposBranches(ctx)
-			case <-ctx.Done():
-				ticker.Stop()
-				log.Println("[BranchAudit] Stopped stale branch monitor timer")
-				return
-			}
-		}
-	}()
+	log.Println("[BranchAudit] Background stale branch monitor timer is disabled. Manual triggers only.")
 }
 
 // AuditAllReposBranches 全量审计所有被管仓库的分支并写入本地 DB 缓存

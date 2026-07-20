@@ -609,6 +609,14 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                           }} className="btn btn-secondary btn-small">
                             <GitBranch size={13} /> 分支审计看板
                           </button>
+                          <button 
+                            disabled={isAuditing}
+                            onClick={() => handleTriggerAudit(r.id)} 
+                            className="btn btn-secondary btn-small"
+                            title="手动即时触发该代码仓的分支审计分析"
+                          >
+                            <RefreshCw size={13} className={isAuditing ? 'animate-spin' : ''} /> 审计
+                          </button>
                         </div>
                       </td>
                     </tr>
