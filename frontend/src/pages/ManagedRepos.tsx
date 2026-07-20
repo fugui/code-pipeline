@@ -36,6 +36,44 @@ interface BranchMonitor {
   status: 'active' | 'merged_stale' | 'unmerged_stale'
 }
 
+interface TreeNode {
+  group: ManagedGroup
+  children: TreeNode[]
+}
+
+const sortGroupsAsTree = (flatGroups: ManagedGroup[]): ManagedGroup[] => {
+  const groupMap: Record<number, TreeNode> = {}
+  flatGroups.forEach(g => {
+    groupMap[g.id] = { group: g, children: [] }
+  })
+
+  const roots: TreeNode[] = []
+  
+  flatGroups.forEach(g => {
+    const node = groupMap[g.id]
+    if (g.parent_id && groupMap[g.parent_id]) {
+      groupMap[g.parent_id].children.push(node)
+    } else {
+      roots.push(node)
+    }
+  })
+
+  const sortNodes = (nodes: TreeNode[]) => {
+    nodes.sort((a, b) => a.group.name.localeCompare(b.group.name))
+    nodes.forEach(n => sortNodes(n.children))
+  }
+  sortNodes(roots)
+
+  const result: ManagedGroup[] = []
+  const dfs = (node: TreeNode) => {
+    result.push(node.group)
+    node.children.forEach(dfs)
+  }
+  roots.forEach(dfs)
+
+  return result
+}
+
 interface ManagedReposProps {
   apiBase: string
   token: string
@@ -404,11 +442,13 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
     fetchAcls(type, targetId)
   }
 
-  // Filters group list based on search
-  const filteredGroups = groups.filter(g => 
-    g.name.toLowerCase().includes(groupSearchQuery.toLowerCase()) ||
-    g.full_path.toLowerCase().includes(groupSearchQuery.toLowerCase()) ||
-    g.id.toString().includes(groupSearchQuery)
+  // Filters group list based on search and sort as a tree DFS
+  const filteredGroups = sortGroupsAsTree(
+    groups.filter(g => 
+      g.name.toLowerCase().includes(groupSearchQuery.toLowerCase()) ||
+      g.full_path.toLowerCase().includes(groupSearchQuery.toLowerCase()) ||
+      g.id.toString().includes(groupSearchQuery)
+    )
   )
 
   // Filters repos list based on search
