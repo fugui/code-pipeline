@@ -40,7 +40,22 @@ func CreateManagedGroup(c *gin.Context) {
 		fullPath = req.Path
 	}
 
+	// 1. 在创建时直接去托管平台 (CodeHub) 校验并换取真实的远程 Group ID
+	remoteID, err := services.GetRemoteGroupDetails(c.Request.Context(), fullPath)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("该组路径在托管平台上不存在，无法创建: %v", err)})
+		return
+	}
+
+	// 2. 检查本地数据库中是否已存在该 remoteID 的记录以防冲突
+	var existing models.ManagedGroup
+	if err := database.DB.First(&existing, remoteID).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "该群组已存在于本地数据库中"})
+		return
+	}
+
 	group := models.ManagedGroup{
+		ID:        remoteID, // 直接使用托管平台的真实 ID 作为本地主键
 		Name:      req.Name,
 		Path:      req.Path,
 		FullPath:  fullPath,
@@ -342,60 +357,15 @@ func SyncManagedGroup(c *gin.Context) {
 	userIDVal, _ := c.Get("userID")
 	userID, _ := userIDVal.(uint)
 
-	// 1. 根据 startGroup.FullPath 换取 CodeHub 上的真实 ID
-	remoteID, err := services.GetRemoteGroupDetails(c.Request.Context(), startGroup.FullPath)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to fetch group details from CodeHub: %v", err)})
-		return
-	}
+	// 本地 ID 自打创建起就是 CodeHub 的真实 ID (即 startGroup.ID)，直接用于数据清理和单层同步
 
-	// 2. 如果远程 ID 与本地自增 ID 不同，进行平滑过渡升级事务
-	if remoteID != startGroup.ID {
-		tx := database.DB.Begin()
-		// 更新子组的 parent_id
-		if err := tx.Model(&models.ManagedGroup{}).Where("parent_id = ?", startGroup.ID).Update("parent_id", remoteID).Error; err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to update parent_id of child groups: %v", err)})
-			return
-		}
-		// 更新仓库的 managed_group_id
-		if err := tx.Model(&models.ManagedRepository{}).Where("managed_group_id = ?", startGroup.ID).Update("managed_group_id", remoteID).Error; err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to update managed_group_id of repositories: %v", err)})
-			return
-		}
-		// 更新 ACL 的 source_id
-		if err := tx.Model(&models.ManagedMemberAccess{}).Where("source_type = 'group' AND source_id = ?", startGroup.ID).Update("source_id", remoteID).Error; err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to update source_id of ACLs: %v", err)})
-			return
-		}
-		// 删除旧组，插入带有真实 ID 的新组
-		oldID := startGroup.ID
-		startGroup.ID = remoteID
-		if err := tx.Delete(&models.ManagedGroup{}, oldID).Error; err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to delete old group record: %v", err)})
-			return
-		}
-		if err := tx.Create(&startGroup).Error; err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to recreate group with remote ID: %v", err)})
-			return
-		}
-		if err := tx.Commit().Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to commit upgrade transaction: %v", err)})
-			return
-		}
-	}
-
-	// 2.5 开启事务，清除本地已记录的与该 group 及其所有后代节点关联的子组、代码仓及关联子表缓存，防止宿主端已删除数据继续残留
+	// 1. 开启事务，清除本地已记录的与该 group (startGroup.ID) 及其所有后代节点关联的子组、代码仓及关联子表缓存，防止宿主端已删除数据继续残留
 	txClean := database.DB.Begin()
 	var groupIDs []uint
 	likePattern := startGroup.FullPath + "/%"
 	// 找到所有后代组的 ID 列表 (包含当前组自己)
 	if err := txClean.Model(&models.ManagedGroup{}).
-		Where("id = ? OR full_path LIKE ?", remoteID, likePattern).
+		Where("id = ? OR full_path LIKE ?", startGroup.ID, likePattern).
 		Pluck("id", &groupIDs).Error; err != nil {
 		txClean.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to query groups for cleaning: %v", err)})
@@ -436,7 +406,7 @@ func SyncManagedGroup(c *gin.Context) {
 		// 收集所有需要物理删除的子孙组 ID (排除当前组本身)
 		var childGroupIDs []uint
 		for _, gid := range groupIDs {
-			if gid != remoteID {
+			if gid != startGroup.ID {
 				childGroupIDs = append(childGroupIDs, gid)
 			}
 		}
@@ -460,8 +430,8 @@ func SyncManagedGroup(c *gin.Context) {
 		return
 	}
 
-	// 3. 同步当前组直属的项目
-	remotes, err := services.GetRemoteProjects(c.Request.Context(), remoteID)
+	// 2. 同步当前组直属的项目
+	remotes, err := services.GetRemoteProjects(c.Request.Context(), startGroup.ID)
 	if err == nil {
 		for _, rp := range remotes {
 			sshURL := rp.SSHURL
@@ -481,13 +451,13 @@ func SyncManagedGroup(c *gin.Context) {
 					Name:           rp.Name,
 					SSHURL:         sshURL,
 					HTTPURL:        httpURL,
-					ManagedGroupID: remoteID,
+					ManagedGroupID: startGroup.ID,
 				})
 			} else {
 				// 新增项目，主键使用远程 ID
 				newRepo := models.ManagedRepository{
 					ID:             rp.ID,
-					ManagedGroupID: remoteID,
+					ManagedGroupID: startGroup.ID,
 					Name:           rp.Name,
 					SSHURL:         sshURL,
 					HTTPURL:        httpURL,
@@ -500,8 +470,8 @@ func SyncManagedGroup(c *gin.Context) {
 		}
 	}
 
-	// 4. 同步当前组直属的子群组
-	subgroups, err := services.GetRemoteSubgroups(c.Request.Context(), remoteID)
+	// 3. 同步当前组直属的子群组
+	subgroups, err := services.GetRemoteSubgroups(c.Request.Context(), startGroup.ID)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to fetch remote subgroups: %v", err)})
 		return
@@ -519,7 +489,7 @@ func SyncManagedGroup(c *gin.Context) {
 		errDb := database.DB.Where("id = ?", sub.ID).First(&existingGroup).Error
 		if errDb == nil {
 			// 更新已存在的组
-			pID := remoteID
+			pID := startGroup.ID
 			database.DB.Model(&existingGroup).Updates(models.ManagedGroup{
 				Name:     sub.Name,
 				Path:     sub.Path,
@@ -528,7 +498,7 @@ func SyncManagedGroup(c *gin.Context) {
 			})
 		} else {
 			// 创建新组，主键使用远程 ID
-			pID := remoteID
+			pID := startGroup.ID
 			newGroup := models.ManagedGroup{
 				ID:        sub.ID,
 				Name:      sub.Name,
