@@ -125,12 +125,28 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
     fetchRepos()
   }, [])
 
-  const fetchGroups = () => {
+  const fetchGroups = (selectFullPathToRestore?: string) => {
     fetch(`${apiBase}/managed-groups`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())
-    .then(data => setGroups(Array.isArray(data) ? data : []))
+    .then(data => {
+      const list = Array.isArray(data) ? data : []
+      setGroups(list)
+
+      if (selectFullPathToRestore) {
+        const found = list.find(g => g.full_path === selectFullPathToRestore)
+        if (found) {
+          setSelectedGroup(found)
+          fetchRepos(found.id)
+        }
+      } else if (selectedGroup) {
+        const found = list.find(g => g.full_path === selectedGroup.full_path)
+        if (found && found.id !== selectedGroup.id) {
+          setSelectedGroup(found)
+        }
+      }
+    })
     .catch(err => showToast('error', `获取 Group 失败: ${err.message}`))
   }
 
@@ -223,8 +239,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
     })
     .then(() => {
       showToast('success', '该组的子组结构及各个节点下的代码仓同步成功！')
-      fetchGroups()
-      fetchRepos(selectedGroup.id)
+      fetchGroups(selectedGroup.full_path)
     })
     .catch(err => showToast('error', `同步组失败: ${err.message}`))
     .finally(() => setIsSyncingGroup(false))

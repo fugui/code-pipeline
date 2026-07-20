@@ -389,50 +389,72 @@ func SyncManagedGroup(c *gin.Context) {
 		}
 	}
 
-	// 2.5 开启事务，清除本地已记录的与该 group (remoteID) 直接关联的子组、代码仓及关联子表缓存，防止宿主端已删除数据继续残留
+	// 2.5 开启事务，清除本地已记录的与该 group 及其所有后代节点关联的子组、代码仓及关联子表缓存，防止宿主端已删除数据继续残留
 	txClean := database.DB.Begin()
-	var repoIDs []uint
-	if err := txClean.Model(&models.ManagedRepository{}).Where("managed_group_id = ?", remoteID).Pluck("id", &repoIDs).Error; err != nil {
+	var groupIDs []uint
+	likePattern := startGroup.FullPath + "/%"
+	// 找到所有后代组的 ID 列表 (包含当前组自己)
+	if err := txClean.Model(&models.ManagedGroup{}).
+		Where("id = ? OR full_path LIKE ?", remoteID, likePattern).
+		Pluck("id", &groupIDs).Error; err != nil {
 		txClean.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to query repositories for cleaning: %v", err)})
-		return
-	}
-	if len(repoIDs) > 0 {
-		if err := txClean.Where("managed_repository_id IN ?", repoIDs).Delete(&models.ManagedBranchMonitor{}).Error; err != nil {
-			txClean.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean branch monitor cache: %v", err)})
-			return
-		}
-		if err := txClean.Where("source_type = 'repository' AND source_id IN ?", repoIDs).Delete(&models.ManagedMemberAccess{}).Error; err != nil {
-			txClean.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean repository ACLs: %v", err)})
-			return
-		}
-	}
-	if err := txClean.Where("managed_group_id = ?", remoteID).Delete(&models.ManagedRepository{}).Error; err != nil {
-		txClean.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean managed repositories: %v", err)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to query groups for cleaning: %v", err)})
 		return
 	}
 
-	var subGroupIDs []uint
-	if err := txClean.Model(&models.ManagedGroup{}).Where("parent_id = ?", remoteID).Pluck("id", &subGroupIDs).Error; err != nil {
-		txClean.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to query child groups for cleaning: %v", err)})
-		return
-	}
-	if len(subGroupIDs) > 0 {
-		if err := txClean.Where("source_type = 'group' AND source_id IN ?", subGroupIDs).Delete(&models.ManagedMemberAccess{}).Error; err != nil {
+	if len(groupIDs) > 0 {
+		// 找到这些组下的所有被管仓库 ID
+		var repoIDs []uint
+		if err := txClean.Model(&models.ManagedRepository{}).
+			Where("managed_group_id IN ?", groupIDs).
+			Pluck("id", &repoIDs).Error; err != nil {
 			txClean.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean child group ACLs: %v", err)})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to query repositories for cleaning: %v", err)})
 			return
 		}
+
+		if len(repoIDs) > 0 {
+			// 删除这些仓库关联的分支审计和 ACL
+			if err := txClean.Where("managed_repository_id IN ?", repoIDs).Delete(&models.ManagedBranchMonitor{}).Error; err != nil {
+				txClean.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean branch monitor cache: %v", err)})
+				return
+			}
+			if err := txClean.Where("source_type = 'repository' AND source_id IN ?", repoIDs).Delete(&models.ManagedMemberAccess{}).Error; err != nil {
+				txClean.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean repository ACLs: %v", err)})
+				return
+			}
+			// 删除这些仓库记录
+			if err := txClean.Where("id IN ?", repoIDs).Delete(&models.ManagedRepository{}).Error; err != nil {
+				txClean.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean managed repositories: %v", err)})
+				return
+			}
+		}
+
+		// 收集所有需要物理删除的子孙组 ID (排除当前组本身)
+		var childGroupIDs []uint
+		for _, gid := range groupIDs {
+			if gid != remoteID {
+				childGroupIDs = append(childGroupIDs, gid)
+			}
+		}
+		if len(childGroupIDs) > 0 {
+			if err := txClean.Where("source_type = 'group' AND source_id IN ?", childGroupIDs).Delete(&models.ManagedMemberAccess{}).Error; err != nil {
+				txClean.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean child group ACLs: %v", err)})
+				return
+			}
+			// 删除子孙组记录
+			if err := txClean.Where("id IN ?", childGroupIDs).Delete(&models.ManagedGroup{}).Error; err != nil {
+				txClean.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean child groups: %v", err)})
+				return
+			}
+		}
 	}
-	if err := txClean.Where("parent_id = ?", remoteID).Delete(&models.ManagedGroup{}).Error; err != nil {
-		txClean.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean child groups: %v", err)})
-		return
-	}
+
 	if err := txClean.Commit().Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to commit cleaning transaction: %v", err)})
 		return
