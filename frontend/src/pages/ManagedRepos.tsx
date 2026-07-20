@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { 
-  GitBranch, Folder, Plus, Search, Users, AlertCircle, RefreshCw, Send, CheckCircle2
+  GitBranch, Folder, Plus, Search, Users, AlertCircle, RefreshCw, Send, CheckCircle2, ChevronRight, ChevronDown
 } from 'lucide-react'
 
 interface ManagedGroup {
@@ -95,6 +95,29 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
   const showToast = (type: 'success' | 'error' | 'warning', text: string) => {
     setToastMsg({ type, text })
     setTimeout(() => setToastMsg(null), 4000)
+  }
+
+  const [expandedGroups, setExpandedGroups] = useState<Record<number, boolean>>({})
+
+  const isGroupVisible = (g: ManagedGroup) => {
+    let parentId = g.parent_id
+    while (parentId) {
+      const parent = groups.find(x => x.id === parentId)
+      if (!parent) break
+      if (!expandedGroups[parentId]) {
+        return false
+      }
+      parentId = parent.parent_id
+    }
+    return true
+  }
+
+  const toggleGroupExpand = (groupId: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setExpandedGroups(prev => ({
+      ...prev,
+      [groupId]: !prev[groupId]
+    }))
   }
 
   useEffect(() => {
@@ -429,23 +452,46 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
           <button 
             onClick={() => handleGroupSelect(null)} 
             className={`group-tree-node ${selectedGroup === null ? 'active' : ''}`}
+            style={{ paddingLeft: 26 }}
           >
             <Folder size={14} color={selectedGroup === null ? 'var(--border-active)' : 'var(--text-muted)'} /> 
             <span>[全部仓库]</span>
           </button>
           
-          {filteredGroups.map(g => {
-            // Calculate indent based on path depth
+          {filteredGroups.filter(isGroupVisible).map(g => {
+            const isExpanded = !!expandedGroups[g.id]
             const depth = g.full_path.split('/').length - 1
+            const hasChildren = groups.some(x => x.parent_id === g.id)
             return (
               <button 
                 key={g.id}
                 onClick={() => handleGroupSelect(g)} 
                 className={`group-tree-node ${selectedGroup?.id === g.id ? 'active' : ''}`}
                 style={{ 
-                  paddingLeft: 12 + depth * 14 
+                  paddingLeft: 8 + depth * 14 
                 }}
               >
+                {/* 展开/折叠三角图标 */}
+                {hasChildren ? (
+                  <span 
+                    onClick={(e) => toggleGroupExpand(g.id, e)}
+                    style={{ 
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      width: 16, 
+                      height: 16, 
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      marginRight: 2
+                    }}
+                  >
+                    {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                  </span>
+                ) : (
+                  <span style={{ width: 16, marginRight: 2 }} />
+                )}
+                
                 <Folder size={14} color={selectedGroup?.id === g.id ? 'var(--border-active)' : 'var(--text-muted)'} /> 
                 <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{g.name}</span>
               </button>
