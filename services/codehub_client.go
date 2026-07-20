@@ -387,7 +387,7 @@ func GetRemoteGroupDetails(ctx context.Context, fullPath string) (uint, error) {
 
 // GetRemoteSubgroups 获取远程子群组列表
 func GetRemoteSubgroups(ctx context.Context, groupID uint) ([]RemoteSubgroup, error) {
-	apiURL := fmt.Sprintf("%s/groups/%d/subgroups", GitPlatformBaseURL, groupID)
+	apiURL := fmt.Sprintf("%s/groups/%d/subgroups?all_available=true&page=1&per_page=100", GitPlatformBaseURL, groupID)
 
 	reqHeaders := make(map[string]string)
 	for k, v := range models.AppConfig.CodeHub.Headers {
@@ -421,7 +421,7 @@ func GetRemoteSubgroups(ctx context.Context, groupID uint) ([]RemoteSubgroup, er
 
 // GetRemoteProjects 获取群组下的远程项目列表
 func GetRemoteProjects(ctx context.Context, groupID uint) ([]RemoteProject, error) {
-	apiURL := fmt.Sprintf("%s/groups/%d/projects", GitPlatformBaseURL, groupID)
+	apiURL := fmt.Sprintf("%s/groups/%d/projects?all_available=true&page=1&per_page=100", GitPlatformBaseURL, groupID)
 
 	reqHeaders := make(map[string]string)
 	for k, v := range models.AppConfig.CodeHub.Headers {
