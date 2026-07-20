@@ -389,6 +389,55 @@ func SyncManagedGroup(c *gin.Context) {
 		}
 	}
 
+	// 2.5 开启事务，清除本地已记录的与该 group (remoteID) 直接关联的子组、代码仓及关联子表缓存，防止宿主端已删除数据继续残留
+	txClean := database.DB.Begin()
+	var repoIDs []uint
+	if err := txClean.Model(&models.ManagedRepository{}).Where("managed_group_id = ?", remoteID).Pluck("id", &repoIDs).Error; err != nil {
+		txClean.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to query repositories for cleaning: %v", err)})
+		return
+	}
+	if len(repoIDs) > 0 {
+		if err := txClean.Where("managed_repository_id IN ?", repoIDs).Delete(&models.ManagedBranchMonitor{}).Error; err != nil {
+			txClean.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean branch monitor cache: %v", err)})
+			return
+		}
+		if err := txClean.Where("source_type = 'repository' AND source_id IN ?", repoIDs).Delete(&models.ManagedMemberAccess{}).Error; err != nil {
+			txClean.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean repository ACLs: %v", err)})
+			return
+		}
+	}
+	if err := txClean.Where("managed_group_id = ?", remoteID).Delete(&models.ManagedRepository{}).Error; err != nil {
+		txClean.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean managed repositories: %v", err)})
+		return
+	}
+
+	var subGroupIDs []uint
+	if err := txClean.Model(&models.ManagedGroup{}).Where("parent_id = ?", remoteID).Pluck("id", &subGroupIDs).Error; err != nil {
+		txClean.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to query child groups for cleaning: %v", err)})
+		return
+	}
+	if len(subGroupIDs) > 0 {
+		if err := txClean.Where("source_type = 'group' AND source_id IN ?", subGroupIDs).Delete(&models.ManagedMemberAccess{}).Error; err != nil {
+			txClean.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean child group ACLs: %v", err)})
+			return
+		}
+	}
+	if err := txClean.Where("parent_id = ?", remoteID).Delete(&models.ManagedGroup{}).Error; err != nil {
+		txClean.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean child groups: %v", err)})
+		return
+	}
+	if err := txClean.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to commit cleaning transaction: %v", err)})
+		return
+	}
+
 	// 3. 同步当前组直属的项目
 	remotes, err := services.GetRemoteProjects(c.Request.Context(), remoteID)
 	if err == nil {
