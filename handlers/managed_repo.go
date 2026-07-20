@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -322,5 +323,168 @@ func NotifyBranchOwner(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("Notification sent successfully to %s for cleaning up %s", req.OwnerName, req.BranchName),
 	})
+}
+
+// SyncManagedGroup 从托管平台同步嵌套组的子组和代码仓
+func SyncManagedGroup(c *gin.Context) {
+	idStr := c.Param("id")
+	groupID, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid group ID"})
+		return
+	}
+
+	var startGroup models.ManagedGroup
+	if err := database.DB.First(&startGroup, groupID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Managed group not found"})
+		return
+	}
+
+	userIDVal, _ := c.Get("userID")
+	userID, _ := userIDVal.(uint)
+
+	// 1. 根据 startGroup.FullPath 换取 CodeHub 上的真实 ID
+	remoteID, err := services.GetRemoteGroupDetails(c.Request.Context(), startGroup.FullPath)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to fetch group details from CodeHub: %v", err)})
+		return
+	}
+
+	// 2. 如果远程 ID 与本地自增 ID 不同，进行平滑过渡升级事务
+	if remoteID != startGroup.ID {
+		tx := database.DB.Begin()
+		// 更新子组的 parent_id
+		if err := tx.Model(&models.ManagedGroup{}).Where("parent_id = ?", startGroup.ID).Update("parent_id", remoteID).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to update parent_id of child groups: %v", err)})
+			return
+		}
+		// 更新仓库的 managed_group_id
+		if err := tx.Model(&models.ManagedRepository{}).Where("managed_group_id = ?", startGroup.ID).Update("managed_group_id", remoteID).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to update managed_group_id of repositories: %v", err)})
+			return
+		}
+		// 更新 ACL 的 source_id
+		if err := tx.Model(&models.ManagedMemberAccess{}).Where("source_type = 'group' AND source_id = ?", startGroup.ID).Update("source_id", remoteID).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to update source_id of ACLs: %v", err)})
+			return
+		}
+		// 删除旧组，插入带有真实 ID 的新组
+		oldID := startGroup.ID
+		startGroup.ID = remoteID
+		if err := tx.Delete(&models.ManagedGroup{}, oldID).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to delete old group record: %v", err)})
+			return
+		}
+		if err := tx.Create(&startGroup).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to recreate group with remote ID: %v", err)})
+			return
+		}
+		if err := tx.Commit().Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to commit upgrade transaction: %v", err)})
+			return
+		}
+	}
+
+	// 3. 定义递归同步辅助函数
+	var syncGroupRecursive func(ctx context.Context, gID uint, parentFullPath string) error
+	syncGroupRecursive = func(ctx context.Context, gID uint, parentFullPath string) error {
+		// 同步当前组底下的项目
+		remotes, err := services.GetRemoteProjects(ctx, gID)
+		if err == nil {
+			for _, rp := range remotes {
+				sshURL := rp.SSHURL
+				if sshURL == "" {
+					sshURL = rp.SSHURLToRepo
+				}
+				httpURL := rp.HTTPURL
+				if httpURL == "" {
+					httpURL = rp.HTTPURLToRepo
+				}
+
+				var existing models.ManagedRepository
+				errDb := database.DB.Where("id = ?", rp.ID).First(&existing).Error
+				if errDb == nil {
+					// 更新已有项目
+					database.DB.Model(&existing).Updates(models.ManagedRepository{
+						Name:           rp.Name,
+						SSHURL:         sshURL,
+						HTTPURL:        httpURL,
+						ManagedGroupID: gID,
+					})
+				} else {
+					// 新增项目，主键使用远程 ID
+					newRepo := models.ManagedRepository{
+						ID:             rp.ID,
+						ManagedGroupID: gID,
+						Name:           rp.Name,
+						SSHURL:         sshURL,
+						HTTPURL:        httpURL,
+						OwnerID:        userID,
+						IsActive:       true,
+						CreatedAt:      time.Now(),
+					}
+					database.DB.Create(&newRepo)
+				}
+			}
+		}
+
+		// 获取子群组并递归同步
+		subgroups, err := services.GetRemoteSubgroups(ctx, gID)
+		if err != nil {
+			return err
+		}
+
+		for _, sub := range subgroups {
+			var fullPath string
+			if parentFullPath != "" {
+				fullPath = parentFullPath + "/" + sub.Path
+			} else {
+				fullPath = sub.Path
+			}
+
+			var existingGroup models.ManagedGroup
+			errDb := database.DB.Where("id = ?", sub.ID).First(&existingGroup).Error
+			if errDb == nil {
+				// 更新已存在的组
+				pID := gID
+				database.DB.Model(&existingGroup).Updates(models.ManagedGroup{
+					Name:     sub.Name,
+					Path:     sub.Path,
+					FullPath: fullPath,
+					ParentID: &pID,
+				})
+			} else {
+				// 创建新组，主键使用远程 ID
+				pID := gID
+				newGroup := models.ManagedGroup{
+					ID:        sub.ID,
+					Name:      sub.Name,
+					Path:      sub.Path,
+					FullPath:  fullPath,
+					ParentID:  &pID,
+					CreatedAt: time.Now(),
+				}
+				database.DB.Create(&newGroup)
+			}
+
+			// 递归同步子群组的项目与子组
+			_ = syncGroupRecursive(ctx, sub.ID, fullPath)
+		}
+
+		return nil
+	}
+
+	// 4. 开始递归同步
+	if err := syncGroupRecursive(c.Request.Context(), remoteID, startGroup.FullPath); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Synchronization recursive call failed: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Group metadata and repositories synchronized successfully"})
 }
 

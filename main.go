@@ -87,6 +87,7 @@ func main() {
 			// 独立被管代码仓与嵌套组管理路由
 			api.POST("/managed-groups", handlers.CreateManagedGroup)
 			api.GET("/managed-groups", handlers.GetManagedGroups)
+			api.POST("/managed-groups/:id/sync", handlers.SyncManagedGroup)
 			api.POST("/managed-repos", handlers.CreateManagedRepo)
 			api.GET("/managed-repos", handlers.GetManagedRepos)
 			api.POST("/managed-repos/:id/branches", handlers.CreateManagedBranch)

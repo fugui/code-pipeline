@@ -87,6 +87,8 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
   const [newAclPrincipalName, setNewAclPrincipalName] = useState('')
   const [newAclLevel, setNewAclLevel] = useState<number>(30) // Default Developer
 
+  const [isSyncingGroup, setIsSyncingGroup] = useState(false)
+
   // Toast message
   const [toastMsg, setToastMsg] = useState<{ type: 'success' | 'error' | 'warning', text: string } | null>(null)
 
@@ -176,6 +178,27 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
       showToast('success', `清理通知已成功送达负责人: ${author}`)
     })
     .catch(err => showToast('error', `发送通知失败: ${err.message}`))
+  }
+
+  // Sync Group subgroups & repos from remote CodeHub
+  const handleSyncGroup = () => {
+    if (!selectedGroup) return
+    setIsSyncingGroup(true)
+    fetch(`${apiBase}/managed-groups/${selectedGroup.id}/sync`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('同步请求失败')
+      return res.json()
+    })
+    .then(() => {
+      showToast('success', '该组的子组结构及各个节点下的代码仓同步成功！')
+      fetchGroups()
+      fetchRepos(selectedGroup.id)
+    })
+    .catch(err => showToast('error', `同步组失败: ${err.message}`))
+    .finally(() => setIsSyncingGroup(false))
   }
 
   // Create Group
@@ -373,9 +396,22 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
       <div className="glass-card" style={{ width: 280, display: 'flex', flexDirection: 'column', padding: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>嵌套 Group 架构树</h3>
-          <button onClick={() => setShowGroupModal(true)} className="btn btn-secondary btn-small" style={{ padding: '4px 8px' }}>
-            <Plus size={14} /> 新建组
-          </button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {selectedGroup && (
+              <button 
+                onClick={handleSyncGroup} 
+                className="btn btn-secondary btn-small" 
+                style={{ padding: '4px 8px' }}
+                title="同步当前组子树"
+                disabled={isSyncingGroup}
+              >
+                <RefreshCw size={14} className={isSyncingGroup ? 'animate-spin' : ''} /> 同步
+              </button>
+            )}
+            <button onClick={() => setShowGroupModal(true)} className="btn btn-secondary btn-small" style={{ padding: '4px 8px' }}>
+              <Plus size={14} /> 新建组
+            </button>
+          </div>
         </div>
         
         <div style={{ position: 'relative', marginBottom: 16 }}>
