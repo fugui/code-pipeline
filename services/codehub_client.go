@@ -331,7 +331,7 @@ type RemoteProject struct {
 
 // GetRemoteGroupDetails 获取远程 Group 详情，用于转换本地自增 ID 为 Codehub 真实 ID
 func GetRemoteGroupDetails(ctx context.Context, fullPath string) (uint, error) {
-	apiURL := fmt.Sprintf("%s/groups?search=%s", GitPlatformBaseURL, url.QueryEscape(fullPath))
+	apiURL := fmt.Sprintf("%s/groups?search=%s&all_available=true", GitPlatformBaseURL, url.QueryEscape(fullPath))
 
 	reqHeaders := make(map[string]string)
 	for k, v := range models.AppConfig.CodeHub.Headers {
