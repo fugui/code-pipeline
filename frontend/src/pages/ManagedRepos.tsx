@@ -628,14 +628,13 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                   <th style={{ padding: '12px 8px' }}>所属嵌套组</th>
                   <th style={{ padding: '12px 8px' }}>分支数 (活/僵/已合并)</th>
                   <th style={{ padding: '12px 8px' }}>最新提交时间</th>
-                  <th style={{ padding: '12px 8px' }}>标准化状态</th>
                   <th style={{ padding: '12px 8px', textAlign: 'right' }}>操作</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRepos.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', padding: 48, color: 'var(--text-secondary)' }}>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: 48, color: 'var(--text-secondary)' }}>
                       <AlertCircle size={32} style={{ margin: '0 auto 12px auto', opacity: 0.5 }} />
                       <p>未发现符合条件的被管代码仓。</p>
                     </td>
@@ -673,11 +672,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                       <td style={{ padding: '14px 8px', color: 'var(--text-secondary)' }}>
                         {formatLastCommitTime(r.last_commit_time)}
                       </td>
-                      <td style={{ padding: '14px 8px' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#10b981', fontWeight: 600 }}>
-                          🟢 已加固 Webhook
-                        </span>
-                      </td>
+
                       <td style={{ padding: '14px 8px', textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', gap: 8 }}>
                           <button onClick={() => {
