@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -305,6 +306,148 @@ func GetRemoteBranchesDetail(ctx context.Context, projectID string) ([]RemoteBra
 	var list []RemoteBranchDetail
 	if err := json.Unmarshal(body, &list); err != nil {
 		return nil, fmt.Errorf("failed to parse branches detail JSON: %w", err)
+	}
+
+	return list, nil
+}
+
+// RemoteSubgroup 远程子群组
+type RemoteSubgroup struct {
+	ID       uint   `json:"id"`
+	Name     string `json:"name"`
+	Path     string `json:"path"`
+	FullPath string `json:"full_path"`
+}
+
+// RemoteProject 远程项目
+type RemoteProject struct {
+	ID            uint   `json:"id"`
+	Name          string `json:"name"`
+	SSHURL        string `json:"ssh_url"`
+	HTTPURL       string `json:"http_url"`
+	SSHURLToRepo  string `json:"ssh_url_to_repo"`
+	HTTPURLToRepo string `json:"http_url_to_repo"`
+}
+
+// GetRemoteGroupDetails 获取远程 Group 详情，用于转换本地自增 ID 为 Codehub 真实 ID
+func GetRemoteGroupDetails(ctx context.Context, fullPath string) (uint, error) {
+	apiURL := fmt.Sprintf("%s/groups?search=%s", GitPlatformBaseURL, url.QueryEscape(fullPath))
+
+	reqHeaders := make(map[string]string)
+	for k, v := range models.AppConfig.CodeHub.Headers {
+		reqHeaders[k] = v
+	}
+
+	body, err := utils.SendHTTPRequest(ctx, "GET", apiURL, nil, utils.HTTPOptions{
+		Headers: reqHeaders,
+	}, []int{http.StatusOK}, "GetRemoteGroupDetails")
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch group details: %w", err)
+	}
+
+	type GroupDetail struct {
+		ID       uint   `json:"id"`
+		FullPath string `json:"full_path"`
+	}
+
+	type WrappedResp struct {
+		Status string        `json:"status"`
+		Result []GroupDetail `json:"result"`
+	}
+
+	var resp WrappedResp
+	if err := json.Unmarshal(body, &resp); err == nil && resp.Status == "success" {
+		for _, g := range resp.Result {
+			if g.FullPath == fullPath {
+				return g.ID, nil
+			}
+		}
+		if len(resp.Result) > 0 {
+			return resp.Result[0].ID, nil
+		}
+		return 0, fmt.Errorf("group not found with full_path: %s", fullPath)
+	}
+
+	var list []GroupDetail
+	if err := json.Unmarshal(body, &list); err != nil {
+		return 0, fmt.Errorf("failed to parse group details list JSON: %w", err)
+	}
+
+	for _, g := range list {
+		if g.FullPath == fullPath {
+			return g.ID, nil
+		}
+	}
+	if len(list) > 0 {
+		return list[0].ID, nil
+	}
+
+	return 0, fmt.Errorf("group not found with full_path: %s", fullPath)
+}
+
+// GetRemoteSubgroups 获取远程子群组列表
+func GetRemoteSubgroups(ctx context.Context, groupID uint) ([]RemoteSubgroup, error) {
+	apiURL := fmt.Sprintf("%s/groups/%d/subgroups", GitPlatformBaseURL, groupID)
+
+	reqHeaders := make(map[string]string)
+	for k, v := range models.AppConfig.CodeHub.Headers {
+		reqHeaders[k] = v
+	}
+
+	body, err := utils.SendHTTPRequest(ctx, "GET", apiURL, nil, utils.HTTPOptions{
+		Headers: reqHeaders,
+	}, []int{http.StatusOK}, "GetRemoteSubgroups")
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch remote subgroups: %w", err)
+	}
+
+	type WrappedResp struct {
+		Status string           `json:"status"`
+		Result []RemoteSubgroup `json:"result"`
+	}
+
+	var resp WrappedResp
+	if err := json.Unmarshal(body, &resp); err == nil && resp.Status == "success" {
+		return resp.Result, nil
+	}
+
+	var list []RemoteSubgroup
+	if err := json.Unmarshal(body, &list); err != nil {
+		return nil, fmt.Errorf("failed to parse subgroups JSON: %w", err)
+	}
+
+	return list, nil
+}
+
+// GetRemoteProjects 获取群组下的远程项目列表
+func GetRemoteProjects(ctx context.Context, groupID uint) ([]RemoteProject, error) {
+	apiURL := fmt.Sprintf("%s/groups/%d/projects", GitPlatformBaseURL, groupID)
+
+	reqHeaders := make(map[string]string)
+	for k, v := range models.AppConfig.CodeHub.Headers {
+		reqHeaders[k] = v
+	}
+
+	body, err := utils.SendHTTPRequest(ctx, "GET", apiURL, nil, utils.HTTPOptions{
+		Headers: reqHeaders,
+	}, []int{http.StatusOK}, "GetRemoteProjects")
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch remote projects: %w", err)
+	}
+
+	type WrappedResp struct {
+		Status string          `json:"status"`
+		Result []RemoteProject `json:"result"`
+	}
+
+	var resp WrappedResp
+	if err := json.Unmarshal(body, &resp); err == nil && resp.Status == "success" {
+		return resp.Result, nil
+	}
+
+	var list []RemoteProject
+	if err := json.Unmarshal(body, &list); err != nil {
+		return nil, fmt.Errorf("failed to parse projects JSON: %w", err)
 	}
 
 	return list, nil

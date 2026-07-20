@@ -311,6 +311,24 @@ func TestManagedGitPlatformAPI(t *testing.T) {
 			w.Write([]byte(`{"status":"success"}`))
 			return
 		}
+		if r.Method == "GET" && path == "/api/v1/groups" {
+			searchVal := r.URL.Query().Get("search")
+			if searchVal == "tech/infra" {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`{"status":"success","result":[{"id":999,"full_path":"tech/infra"}]}`))
+				return
+			}
+		}
+		if r.Method == "GET" && path == "/api/v1/groups/999/subgroups" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`[{"id":1001,"name":"sub1","path":"sub1","full_path":"tech/infra/sub1"}]`))
+			return
+		}
+		if r.Method == "GET" && path == "/api/v1/groups/999/projects" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status":"success","result":[{"id":888,"name":"repo1","ssh_url_to_repo":"git@git.local:tech/infra/repo1.git"}]}`))
+			return
+		}
 		w.WriteHeader(http.StatusBadRequest)
 	}))
 	defer server.Close()
@@ -377,6 +395,33 @@ func TestManagedGitPlatformAPI(t *testing.T) {
 	}
 	if !strings.Contains(receivedPostACL, `"principal_type":"user"`) || !strings.Contains(receivedPostACL, `"principal_id":"1001"`) || !strings.Contains(receivedPostACL, `"access_level":30`) {
 		t.Errorf("unexpected ConfigureRemoteACL body: %s", receivedPostACL)
+	}
+
+	// 5. 测试获取远程群组详情 (GetRemoteGroupDetails)
+	remoteGroupID, err := GetRemoteGroupDetails(ctx, "tech/infra")
+	if err != nil {
+		t.Fatalf("GetRemoteGroupDetails failed: %v", err)
+	}
+	if remoteGroupID != 999 {
+		t.Errorf("expected group ID 999, got %d", remoteGroupID)
+	}
+
+	// 6. 测试获取远程子组 (GetRemoteSubgroups)
+	subgroups, err := GetRemoteSubgroups(ctx, 999)
+	if err != nil {
+		t.Fatalf("GetRemoteSubgroups failed: %v", err)
+	}
+	if len(subgroups) != 1 || subgroups[0].ID != 1001 || subgroups[0].FullPath != "tech/infra/sub1" {
+		t.Errorf("unexpected subgroups result: %v", subgroups)
+	}
+
+	// 7. 测试获取远程项目 (GetRemoteProjects)
+	projects, err := GetRemoteProjects(ctx, 999)
+	if err != nil {
+		t.Fatalf("GetRemoteProjects failed: %v", err)
+	}
+	if len(projects) != 1 || projects[0].ID != 888 || projects[0].Name != "repo1" {
+		t.Errorf("unexpected projects result: %v", projects)
 	}
 }
 
