@@ -386,7 +386,8 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
   // Filters group list based on search
   const filteredGroups = groups.filter(g => 
     g.name.toLowerCase().includes(groupSearchQuery.toLowerCase()) ||
-    g.full_path.toLowerCase().includes(groupSearchQuery.toLowerCase())
+    g.full_path.toLowerCase().includes(groupSearchQuery.toLowerCase()) ||
+    g.id.toString().includes(groupSearchQuery)
   )
 
   // Filters repos list based on search
@@ -493,7 +494,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                 )}
                 
                 <Folder size={14} color={selectedGroup?.id === g.id ? 'var(--border-active)' : 'var(--text-muted)'} /> 
-                <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{g.name}</span>
+                <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{g.name}({g.id})</span>
               </button>
             )
           })}
