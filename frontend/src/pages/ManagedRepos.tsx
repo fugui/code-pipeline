@@ -385,7 +385,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
             placeholder="搜索组..." 
             value={groupSearchQuery}
             onChange={(e) => setGroupSearchQuery(e.target.value)}
-            style={{ width: '100%', padding: '6px 12px 6px 30px', fontSize: 13, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: 6, color: '#fff' }}
+            style={{ width: '100%', padding: '6px 12px 6px 30px', fontSize: 13, background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
           />
         </div>
 
@@ -457,7 +457,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                 placeholder="检索仓库名称或 SSHURL..." 
                 value={repoSearchQuery}
                 onChange={(e) => setRepoSearchQuery(e.target.value)}
-                style={{ width: '100%', padding: '6px 12px 6px 30px', fontSize: 13, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: 6, color: '#fff' }}
+                style={{ width: '100%', padding: '6px 12px 6px 30px', fontSize: 13, background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
               />
             </div>
           </div>
@@ -523,8 +523,8 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
       {activeRepo && (
         <div style={{
           position: 'fixed', top: 0, right: 0, bottom: 0, width: 800,
-          background: 'rgba(15, 17, 26, 0.95)', borderLeft: '1px solid var(--border-color)',
-          boxShadow: '-10px 0 30px rgba(0,0,0,0.5)', zIndex: 100, padding: 32,
+          background: 'var(--bg-secondary)', borderLeft: '1px solid var(--border-color)',
+          boxShadow: '-10px 0 30px rgba(0,0,0,0.15)', zIndex: 100, padding: 32,
           display: 'flex', flexDirection: 'column', gap: 24,
           animation: 'slideLeft 0.2s ease-out'
         }}>
@@ -661,7 +661,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                   </tbody>
                 </table>
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.02)', padding: 12, borderRadius: 6, border: '1px solid var(--border-color)' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', background: 'var(--bg-primary)', padding: 12, borderRadius: 6, border: '1px solid var(--border-color)' }}>
                 💡 <b>安全原则说明：</b>系统对非活动分支只作大数据检测、预警与邮件/工作台通知。不会直接执行物理删除，请复制分支名称后在本地执行 <code>git push origin --delete [branch]</code>。
               </div>
             </div>
