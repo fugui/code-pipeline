@@ -144,6 +144,10 @@ func AuditSingleRepoBranches(ctx context.Context, repoID uint) error {
 		Select("MAX(last_commit_time)").
 		Scan(&maxCommitTime)
 
+	if maxCommitTime != nil && maxCommitTime.IsZero() {
+		maxCommitTime = nil
+	}
+
 	if err := db.Model(&models.ManagedRepository{}).Where("id = ?", repoID).Updates(map[string]interface{}{
 		"active_count":         int(activeCount),
 		"stale_unmerged_count": int(staleUnmergedCount),

@@ -85,6 +85,17 @@ interface ManagedReposProps {
 }
 
 export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) => {
+  const formatLastCommitTime = (timeStr?: string) => {
+    if (!timeStr || timeStr.startsWith('0001-01-01')) return '-'
+    try {
+      const date = new Date(timeStr)
+      if (date.getFullYear() <= 1970) return '-'
+      return date.toLocaleString('zh-CN', { hour12: false }).replace(/:\d{2}$/, '')
+    } catch {
+      return '-'
+    }
+  }
+
   // Lists
   const [groups, setGroups] = useState<ManagedGroup[]>([])
   const [repos, setRepos] = useState<ManagedRepository[]>([])
@@ -660,7 +671,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                         </div>
                       </td>
                       <td style={{ padding: '14px 8px', color: 'var(--text-secondary)' }}>
-                        {r.last_commit_time ? new Date(r.last_commit_time).toLocaleString('zh-CN', { hour12: false }).replace(/:\d{2}$/, '') : '-'}
+                        {formatLastCommitTime(r.last_commit_time)}
                       </td>
                       <td style={{ padding: '14px 8px' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#10b981', fontWeight: 600 }}>
