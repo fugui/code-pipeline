@@ -128,6 +128,7 @@ type ManagedGroup struct {
 	ParentID  *uint         `gorm:"index" json:"parent_id"`                         // 父组 ID (空代表根组)
 	Parent    *ManagedGroup `gorm:"foreignKey:ParentID" json:"-"`
 	SyncedAt  *time.Time    `json:"synced_at"`                                      // 最后的同步时间 (nil代表未同步)
+	IsHidden  bool          `gorm:"default:false" json:"is_hidden"`                 // 是否被隐藏/屏蔽管理
 	CreatedAt time.Time     `json:"created_at"`
 }
 
