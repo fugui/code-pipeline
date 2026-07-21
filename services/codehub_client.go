@@ -461,70 +461,106 @@ func GetRemoteGroupDetails(ctx context.Context, fullPath string) (uint, error) {
 	return 0, fmt.Errorf("group not found with full_path: %s", fullPath)
 }
 
-// GetRemoteSubgroups 获取远程子群组列表
+// GetRemoteSubgroups 获取远程子群组列表 (支持多页合并)
 func GetRemoteSubgroups(ctx context.Context, groupID uint) ([]RemoteSubgroup, error) {
-	apiURL := fmt.Sprintf("%s/groups/%d/subgroups?all_available=true&page=1&per_page=100", GitPlatformBaseURL, groupID)
+	var allSubgroups []RemoteSubgroup
+	page := 1
+	perPage := 100
 
-	reqHeaders := make(map[string]string)
-	for k, v := range models.AppConfig.CodeHub.Headers {
-		reqHeaders[k] = v
+	for {
+		apiURL := fmt.Sprintf("%s/groups/%d/subgroups?all_available=true&page=%d&per_page=%d", GitPlatformBaseURL, groupID, page, perPage)
+
+		reqHeaders := make(map[string]string)
+		for k, v := range models.AppConfig.CodeHub.Headers {
+			reqHeaders[k] = v
+		}
+
+		body, err := utils.SendHTTPRequest(ctx, "GET", apiURL, nil, utils.HTTPOptions{
+			Headers: reqHeaders,
+		}, []int{http.StatusOK}, "GetRemoteSubgroups")
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch remote subgroups page %d: %w", page, err)
+		}
+
+		type WrappedResp struct {
+			Status string           `json:"status"`
+			Result []RemoteSubgroup `json:"result"`
+		}
+
+		var pageList []RemoteSubgroup
+		var resp WrappedResp
+		if err := json.Unmarshal(body, &resp); err == nil && resp.Status == "success" {
+			pageList = resp.Result
+		} else {
+			var list []RemoteSubgroup
+			if err := json.Unmarshal(body, &list); err != nil {
+				return nil, fmt.Errorf("failed to parse subgroups JSON at page %d: %w", page, err)
+			}
+			pageList = list
+		}
+
+		if len(pageList) == 0 {
+			break
+		}
+
+		allSubgroups = append(allSubgroups, pageList...)
+		if len(pageList) < perPage {
+			break
+		}
+		page++
 	}
 
-	body, err := utils.SendHTTPRequest(ctx, "GET", apiURL, nil, utils.HTTPOptions{
-		Headers: reqHeaders,
-	}, []int{http.StatusOK}, "GetRemoteSubgroups")
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch remote subgroups: %w", err)
-	}
-
-	type WrappedResp struct {
-		Status string           `json:"status"`
-		Result []RemoteSubgroup `json:"result"`
-	}
-
-	var resp WrappedResp
-	if err := json.Unmarshal(body, &resp); err == nil && resp.Status == "success" {
-		return resp.Result, nil
-	}
-
-	var list []RemoteSubgroup
-	if err := json.Unmarshal(body, &list); err != nil {
-		return nil, fmt.Errorf("failed to parse subgroups JSON: %w", err)
-	}
-
-	return list, nil
+	return allSubgroups, nil
 }
 
-// GetRemoteProjects 获取群组下的远程项目列表
+// GetRemoteProjects 获取群组下的远程项目列表 (支持多页合并)
 func GetRemoteProjects(ctx context.Context, groupID uint) ([]RemoteProject, error) {
-	apiURL := fmt.Sprintf("%s/groups/%d/projects?all_available=true&page=1&per_page=100", GitPlatformBaseURL, groupID)
+	var allProjects []RemoteProject
+	page := 1
+	perPage := 100
 
-	reqHeaders := make(map[string]string)
-	for k, v := range models.AppConfig.CodeHub.Headers {
-		reqHeaders[k] = v
+	for {
+		apiURL := fmt.Sprintf("%s/groups/%d/projects?all_available=true&page=%d&per_page=%d", GitPlatformBaseURL, groupID, page, perPage)
+
+		reqHeaders := make(map[string]string)
+		for k, v := range models.AppConfig.CodeHub.Headers {
+			reqHeaders[k] = v
+		}
+
+		body, err := utils.SendHTTPRequest(ctx, "GET", apiURL, nil, utils.HTTPOptions{
+			Headers: reqHeaders,
+		}, []int{http.StatusOK}, "GetRemoteProjects")
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch remote projects page %d: %w", page, err)
+		}
+
+		type WrappedResp struct {
+			Status string          `json:"status"`
+			Result []RemoteProject `json:"result"`
+		}
+
+		var pageList []RemoteProject
+		var resp WrappedResp
+		if err := json.Unmarshal(body, &resp); err == nil && resp.Status == "success" {
+			pageList = resp.Result
+		} else {
+			var list []RemoteProject
+			if err := json.Unmarshal(body, &list); err != nil {
+				return nil, fmt.Errorf("failed to parse projects JSON at page %d: %w", page, err)
+			}
+			pageList = list
+		}
+
+		if len(pageList) == 0 {
+			break
+		}
+
+		allProjects = append(allProjects, pageList...)
+		if len(pageList) < perPage {
+			break
+		}
+		page++
 	}
 
-	body, err := utils.SendHTTPRequest(ctx, "GET", apiURL, nil, utils.HTTPOptions{
-		Headers: reqHeaders,
-	}, []int{http.StatusOK}, "GetRemoteProjects")
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch remote projects: %w", err)
-	}
-
-	type WrappedResp struct {
-		Status string          `json:"status"`
-		Result []RemoteProject `json:"result"`
-	}
-
-	var resp WrappedResp
-	if err := json.Unmarshal(body, &resp); err == nil && resp.Status == "success" {
-		return resp.Result, nil
-	}
-
-	var list []RemoteProject
-	if err := json.Unmarshal(body, &list); err != nil {
-		return nil, fmt.Errorf("failed to parse projects JSON: %w", err)
-	}
-
-	return list, nil
+	return allProjects, nil
 }
