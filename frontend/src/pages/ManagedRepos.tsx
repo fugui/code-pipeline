@@ -127,7 +127,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
   // Form states
   const [newGroupName, setNewGroupName] = useState('')
   const [newGroupPath, setNewGroupPath] = useState('')
-  const [newGroupParent, setNewGroupParent] = useState<number | undefined>(undefined)
+
 
   const [newRepoName, setNewRepoName] = useState('')
   const [newRepoGroup, setNewRepoGroup] = useState<number>(0)
@@ -318,7 +318,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
       body: JSON.stringify({
         name: newGroupName,
         path: newGroupPath,
-        parent_id: newGroupParent || null
+        parent_id: null
       })
     })
     .then(res => {
@@ -330,7 +330,6 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
       setShowGroupModal(false)
       setNewGroupName('')
       setNewGroupPath('')
-      setNewGroupParent(undefined)
       fetchGroups()
     })
     .catch(err => showToast('error', err.message))
@@ -958,19 +957,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
               />
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600 }}>父级组 (选填，空代表创建根组)</label>
-              <select 
-                value={newGroupParent || ''} 
-                onChange={(e) => setNewGroupParent(e.target.value ? Number(e.target.value) : undefined)}
-                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
-              >
-                <option value="">[根目录]</option>
-                {groups.map(g => (
-                  <option key={g.id} value={g.id}>{g.full_path}</option>
-                ))}
-              </select>
-            </div>
+
 
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
               <button type="button" onClick={() => setShowGroupModal(false)} className="btn btn-secondary">
