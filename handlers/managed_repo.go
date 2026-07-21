@@ -362,126 +362,209 @@ func SyncManagedGroup(c *gin.Context) {
 	userIDVal, _ := c.Get("userID")
 	userID, _ := userIDVal.(uint)
 
-	// 本地 ID 自打创建起就是 CodeHub 的真实 ID (即 startGroup.ID)，直接用于数据清理和单层同步
-
-	// 1. 开启事务，清除本地已记录的与该 group (startGroup.ID) 及其所有后代节点关联的子组、代码仓及关联子表缓存，防止宿主端已删除数据继续残留
-	txClean := database.DB.Begin()
-	var groupIDs []uint
-	likePattern := startGroup.FullPath + "/%"
-	// 找到所有后代组的 ID 列表 (包含当前组自己)
-	if err := txClean.Model(&models.ManagedGroup{}).
-		Where("id = ? OR full_path LIKE ?", startGroup.ID, likePattern).
-		Pluck("id", &groupIDs).Error; err != nil {
-		txClean.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to query groups for cleaning: %v", err)})
-		return
-	}
-
-	if len(groupIDs) > 0 {
-		// 找到这些组下的所有被管仓库 ID
-		var repoIDs []uint
-		if err := txClean.Model(&models.ManagedRepository{}).
-			Where("managed_group_id IN ?", groupIDs).
-			Pluck("id", &repoIDs).Error; err != nil {
-			txClean.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to query repositories for cleaning: %v", err)})
-			return
-		}
-
-		if len(repoIDs) > 0 {
-			// 删除这些仓库关联的分支审计和 ACL
-			if err := txClean.Where("managed_repository_id IN ?", repoIDs).Delete(&models.ManagedBranchMonitor{}).Error; err != nil {
-				txClean.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean branch monitor cache: %v", err)})
-				return
-			}
-			if err := txClean.Where("source_type = 'repository' AND source_id IN ?", repoIDs).Delete(&models.ManagedMemberAccess{}).Error; err != nil {
-				txClean.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean repository ACLs: %v", err)})
-				return
-			}
-			// 删除这些仓库记录
-			if err := txClean.Where("id IN ?", repoIDs).Delete(&models.ManagedRepository{}).Error; err != nil {
-				txClean.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean managed repositories: %v", err)})
-				return
-			}
-		}
-
-		// 收集所有需要物理删除的子孙组 ID (排除当前组本身)
-		var childGroupIDs []uint
-		for _, gid := range groupIDs {
-			if gid != startGroup.ID {
-				childGroupIDs = append(childGroupIDs, gid)
-			}
-		}
-		if len(childGroupIDs) > 0 {
-			if err := txClean.Where("source_type = 'group' AND source_id IN ?", childGroupIDs).Delete(&models.ManagedMemberAccess{}).Error; err != nil {
-				txClean.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean child group ACLs: %v", err)})
-				return
-			}
-			// 删除子孙组记录
-			if err := txClean.Where("id IN ?", childGroupIDs).Delete(&models.ManagedGroup{}).Error; err != nil {
-				txClean.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean child groups: %v", err)})
-				return
-			}
-		}
-	}
-
-	if err := txClean.Commit().Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to commit cleaning transaction: %v", err)})
-		return
-	}
-
-	// 2. 同步当前组直属的项目
+	// 1. 先从远程拉取直属项目和直属子群组，若失败提前返回，不破坏本地数据
 	remotes, err := services.GetRemoteProjects(c.Request.Context(), startGroup.ID)
-	if err == nil {
-		for _, rp := range remotes {
-			sshURL := rp.SSHURL
-			if sshURL == "" {
-				sshURL = rp.SSHURLToRepo
-			}
-			httpURL := rp.HTTPURL
-			if httpURL == "" {
-				httpURL = rp.HTTPURLToRepo
-			}
-
-			var existing models.ManagedRepository
-			errDb := database.DB.Where("id = ?", rp.ID).First(&existing).Error
-			if errDb == nil {
-				// 更新已有项目
-				database.DB.Model(&existing).Updates(models.ManagedRepository{
-					Name:           rp.Name,
-					SSHURL:         sshURL,
-					HTTPURL:        httpURL,
-					ManagedGroupID: startGroup.ID,
-				})
-			} else {
-				// 新增项目，主键使用远程 ID
-				newRepo := models.ManagedRepository{
-					ID:             rp.ID,
-					ManagedGroupID: startGroup.ID,
-					Name:           rp.Name,
-					SSHURL:         sshURL,
-					HTTPURL:        httpURL,
-					OwnerID:        userID,
-					IsActive:       true,
-					CreatedAt:      time.Now(),
-				}
-				database.DB.Create(&newRepo)
-			}
-		}
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to fetch remote projects: %v", err)})
+		return
 	}
 
-	// 3. 同步当前组直属的子群组
 	subgroups, err := services.GetRemoteSubgroups(c.Request.Context(), startGroup.ID)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to fetch remote subgroups: %v", err)})
 		return
 	}
 
+	// 2. 开启事务进行增量比对更新与删除
+	tx := database.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// ==================== 2.1 直属代码仓的对比更新 ====================
+	remoteRepoIDs := make([]uint, 0, len(remotes))
+	for _, rp := range remotes {
+		remoteRepoIDs = append(remoteRepoIDs, rp.ID)
+	}
+
+	var localRepos []models.ManagedRepository
+	if err := tx.Where("managed_group_id = ?", startGroup.ID).Find(&localRepos).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to query local repos: %v", err)})
+		return
+	}
+
+	remoteRepoIDMap := make(map[uint]bool)
+	for _, rid := range remoteRepoIDs {
+		remoteRepoIDMap[rid] = true
+	}
+
+	var deletedRepoIDs []uint
+	for _, lr := range localRepos {
+		if !remoteRepoIDMap[lr.ID] {
+			deletedRepoIDs = append(deletedRepoIDs, lr.ID)
+		}
+	}
+
+	if len(deletedRepoIDs) > 0 {
+		// 删除这些已被远程物理删除的本地直属仓库关联的分支监控
+		if err := tx.Where("managed_repository_id IN ?", deletedRepoIDs).Delete(&models.ManagedBranchMonitor{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean branch monitors for deleted repos: %v", err)})
+			return
+		}
+		// 删除关联的 ACL 权限记录
+		if err := tx.Where("source_type = 'repository' AND source_id IN ?", deletedRepoIDs).Delete(&models.ManagedMemberAccess{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean repository ACLs for deleted repos: %v", err)})
+			return
+		}
+		// 删除被管仓库记录本身
+		if err := tx.Where("id IN ?", deletedRepoIDs).Delete(&models.ManagedRepository{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean deleted repositories: %v", err)})
+			return
+		}
+	}
+
+	// 增量 Upsert 依然存在的直属仓库
+	for _, rp := range remotes {
+		sshURL := rp.SSHURL
+		if sshURL == "" {
+			sshURL = rp.SSHURLToRepo
+		}
+		httpURL := rp.HTTPURL
+		if httpURL == "" {
+			httpURL = rp.HTTPURLToRepo
+		}
+
+		var existing models.ManagedRepository
+		errDb := tx.Where("id = ?", rp.ID).First(&existing).Error
+		if errDb == nil {
+			// 更新已有项目，保持分支统计与负责人等关联属性不变
+			if err := tx.Model(&existing).Updates(models.ManagedRepository{
+				Name:           rp.Name,
+				SSHURL:         sshURL,
+				HTTPURL:        httpURL,
+				ManagedGroupID: startGroup.ID,
+			}).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to update repository %s: %v", rp.Name, err)})
+				return
+			}
+		} else {
+			// 新增项目，主键使用远程 ID
+			newRepo := models.ManagedRepository{
+				ID:             rp.ID,
+				ManagedGroupID: startGroup.ID,
+				Name:           rp.Name,
+				SSHURL:         sshURL,
+				HTTPURL:        httpURL,
+				OwnerID:        userID,
+				IsActive:       true,
+				CreatedAt:      time.Now(),
+			}
+			if err := tx.Create(&newRepo).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to create repository %s: %v", rp.Name, err)})
+				return
+			}
+		}
+	}
+
+	// ==================== 2.2 直属子组的对比更新 ====================
+	remoteSubgroupIDs := make([]uint, 0, len(subgroups))
+	for _, sub := range subgroups {
+		remoteSubgroupIDs = append(remoteSubgroupIDs, sub.ID)
+	}
+
+	var localSubgroups []models.ManagedGroup
+	if err := tx.Where("parent_id = ?", startGroup.ID).Find(&localSubgroups).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to query local subgroups: %v", err)})
+		return
+	}
+
+	remoteSubgroupIDMap := make(map[uint]bool)
+	for _, sgid := range remoteSubgroupIDs {
+		remoteSubgroupIDMap[sgid] = true
+	}
+
+	var deletedSubgroupIDs []uint
+	for _, lsg := range localSubgroups {
+		if !remoteSubgroupIDMap[lsg.ID] {
+			deletedSubgroupIDs = append(deletedSubgroupIDs, lsg.ID)
+		}
+	}
+
+	if len(deletedSubgroupIDs) > 0 {
+		var allDeletedGroupIDs []uint
+		allDeletedGroupIDs = append(allDeletedGroupIDs, deletedSubgroupIDs...)
+
+		// 收集所有被删除的子组下的所有子孙组 ID 列表（通过 full_path 进行匹配）
+		for _, dsgID := range deletedSubgroupIDs {
+			var dsg models.ManagedGroup
+			if err := tx.First(&dsg, dsgID).Error; err == nil {
+				var descGroupIDs []uint
+				likePattern := dsg.FullPath + "/%"
+				if err := tx.Model(&models.ManagedGroup{}).
+					Where("full_path LIKE ?", likePattern).
+					Pluck("id", &descGroupIDs).Error; err == nil {
+					allDeletedGroupIDs = append(allDeletedGroupIDs, descGroupIDs...)
+				}
+			}
+		}
+
+		if len(allDeletedGroupIDs) > 0 {
+			// 找到这些被删除组下的所有被管仓库 ID
+			var subRepoIDs []uint
+			if err := tx.Model(&models.ManagedRepository{}).
+				Where("managed_group_id IN ?", allDeletedGroupIDs).
+				Pluck("id", &subRepoIDs).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to query sub-repositories for deletion: %v", err)})
+				return
+			}
+
+			if len(subRepoIDs) > 0 {
+				// 删除关联的分支监控记录
+				if err := tx.Where("managed_repository_id IN ?", subRepoIDs).Delete(&models.ManagedBranchMonitor{}).Error; err != nil {
+					tx.Rollback()
+					c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean sub-repository branch monitors: %v", err)})
+					return
+				}
+				// 删除关联的 ACL 权限记录
+				if err := tx.Where("source_type = 'repository' AND source_id IN ?", subRepoIDs).Delete(&models.ManagedMemberAccess{}).Error; err != nil {
+					tx.Rollback()
+					c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean sub-repository ACLs: %v", err)})
+					return
+				}
+				// 删除被管仓库记录本身
+				if err := tx.Where("id IN ?", subRepoIDs).Delete(&models.ManagedRepository{}).Error; err != nil {
+					tx.Rollback()
+					c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean sub-repositories: %v", err)})
+					return
+				}
+			}
+
+			// 删除这些组的 ACL
+			if err := tx.Where("source_type = 'group' AND source_id IN ?", allDeletedGroupIDs).Delete(&models.ManagedMemberAccess{}).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean sub-group ACLs: %v", err)})
+				return
+			}
+			// 删除子孙组记录本身
+			if err := tx.Where("id IN ?", allDeletedGroupIDs).Delete(&models.ManagedGroup{}).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clean sub-groups: %v", err)})
+				return
+			}
+		}
+	}
+
+	// 增量 Upsert 依然存在的直属子组
 	for _, sub := range subgroups {
 		var fullPath string
 		if startGroup.FullPath != "" {
@@ -491,18 +574,20 @@ func SyncManagedGroup(c *gin.Context) {
 		}
 
 		var existingGroup models.ManagedGroup
-		errDb := database.DB.Where("id = ?", sub.ID).First(&existingGroup).Error
+		errDb := tx.Where("id = ?", sub.ID).First(&existingGroup).Error
 		if errDb == nil {
-			// 更新已存在的组
 			pID := startGroup.ID
-			database.DB.Model(&existingGroup).Updates(models.ManagedGroup{
+			if err := tx.Model(&existingGroup).Updates(models.ManagedGroup{
 				Name:     sub.Name,
 				Path:     sub.Path,
 				FullPath: fullPath,
 				ParentID: &pID,
-			})
+			}).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to update sub-group %s: %v", sub.Name, err)})
+				return
+			}
 		} else {
-			// 创建新组，主键使用远程 ID
 			pID := startGroup.ID
 			newGroup := models.ManagedGroup{
 				ID:        sub.ID,
@@ -512,11 +597,21 @@ func SyncManagedGroup(c *gin.Context) {
 				ParentID:  &pID,
 				CreatedAt: time.Now(),
 			}
-			database.DB.Create(&newGroup)
+			if err := tx.Create(&newGroup).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to create sub-group %s: %v", sub.Name, err)})
+				return
+			}
 		}
 	}
 
-	// 4. 更新当前组的同步时间
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to commit sync transaction: %v", err)})
+		return
+	}
+
+	// 3. 更新当前组的同步时间
 	now := time.Now()
 	if err := database.DB.Model(&startGroup).Update("synced_at", &now).Error; err != nil {
 		log.Printf("[SyncGroup] Failed to update synced_at for group %d: %v", startGroup.ID, err)
