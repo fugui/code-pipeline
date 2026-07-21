@@ -579,7 +579,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                 
                 <Folder size={14} color={selectedGroup?.id === g.id ? 'var(--border-active)' : 'var(--text-muted)'} /> 
                 <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                  {g.name}({g.id})
+                  {g.name}
                   {!g.synced_at && <span style={{ fontSize: 10, color: 'var(--text-secondary)', marginLeft: 4, fontStyle: 'italic' }}>(未同步)</span>}
                 </span>
               </button>
