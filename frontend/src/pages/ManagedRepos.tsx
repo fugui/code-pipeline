@@ -9,6 +9,7 @@ interface ManagedGroup {
   path: string
   full_path: string
   parent_id?: number
+  synced_at?: string
 }
 
 interface ManagedRepository {
@@ -293,6 +294,10 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
     })
     .then(() => {
       showToast('success', '该组的子组结构及各个节点下的代码仓同步成功！')
+      setSelectedGroup({
+        ...selectedGroup,
+        synced_at: new Date().toISOString()
+      })
       fetchGroups(selectedGroup.full_path)
     })
     .catch(err => showToast('error', `同步组失败: ${err.message}`))
@@ -546,8 +551,10 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                 onClick={() => handleGroupSelect(g)} 
                 className={`group-tree-node ${selectedGroup?.id === g.id ? 'active' : ''}`}
                 style={{ 
-                  paddingLeft: 8 + depth * 14 
+                  paddingLeft: 8 + depth * 14,
+                  opacity: g.synced_at ? 1 : 0.65
                 }}
+                title={g.synced_at ? `已同步，最近同步时间: ${new Date(g.synced_at).toLocaleString('zh-CN', { hour12: false })}` : '尚未进行同步，请点击右上角同步按钮进行同步'}
               >
                 {/* 展开/折叠三角图标 */}
                 {hasChildren ? (
@@ -571,7 +578,10 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                 )}
                 
                 <Folder size={14} color={selectedGroup?.id === g.id ? 'var(--border-active)' : 'var(--text-muted)'} /> 
-                <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{g.name}({g.id})</span>
+                <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                  {g.name}({g.id})
+                  {!g.synced_at && <span style={{ fontSize: 10, color: 'var(--text-secondary)', marginLeft: 4, fontStyle: 'italic' }}>(未同步)</span>}
+                </span>
               </button>
             )
           })}
@@ -584,8 +594,23 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
         {/* Statistics & Quick Actions */}
         <div className="glass-card" style={{ padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 4px 0' }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 12 }}>
               {selectedGroup ? `当前组：${selectedGroup.full_path}` : '全部辖区被管代码仓'}
+              {selectedGroup && (
+                <span style={{ 
+                  fontSize: 12, 
+                  fontWeight: 500, 
+                  padding: '2px 8px', 
+                  borderRadius: 12, 
+                  background: selectedGroup.synced_at ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', 
+                  color: selectedGroup.synced_at ? '#10b981' : '#ef4444',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}>
+                  {selectedGroup.synced_at ? `已同步 (${new Date(selectedGroup.synced_at).toLocaleString('zh-CN', { hour12: false }).replace(/:\d{2}$/, '')})` : '未同步'}
+                </span>
+              )}
             </h2>
             <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: 13 }}>
               所有的代码仓创建与保护分支拉取，均受到统一策略校验和标准化下发。
