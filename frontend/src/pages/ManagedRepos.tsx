@@ -133,6 +133,26 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
   const [groupSearchQuery, setGroupSearchQuery] = useState('')
   const [showHidden, setShowHidden] = useState(false)
 
+  // Sort & Pagination states
+  const [sortField, setSortField] = useState<'name' | 'branch_count' | 'last_commit_time' | null>(null)
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(15)
+
+  const handleSort = (field: 'name' | 'branch_count' | 'last_commit_time') => {
+    if (sortField === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortOrder('asc')
+    }
+    setCurrentPage(1)
+  }
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [repoSearchQuery, selectedGroup])
+
   // Modals visibility
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [showRepoModal, setShowRepoModal] = useState(false)
@@ -511,6 +531,47 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
     r.ssh_url.toLowerCase().includes(repoSearchQuery.toLowerCase())
   )
 
+  // Sort repos based on sortField
+  const sortedRepos = [...filteredRepos].sort((a, b) => {
+    if (!sortField) return 0
+
+    if (sortField === 'name') {
+      const valA = a.name || ''
+      const valB = b.name || ''
+      return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA)
+    }
+
+    if (sortField === 'branch_count') {
+      const valA = a.branch_count || 0
+      const valB = b.branch_count || 0
+      if (valA !== valB) {
+        return sortOrder === 'asc' ? valA - valB : valB - valA
+      }
+      return 0
+    }
+
+    if (sortField === 'last_commit_time') {
+      const parseTime = (timeStr?: string): number => {
+        if (!timeStr || timeStr.startsWith('0001-01-01')) return 0
+        const t = Date.parse(timeStr)
+        return isNaN(t) ? 0 : t
+      }
+      const valA = parseTime(a.last_commit_time)
+      const valB = parseTime(b.last_commit_time)
+      if (valA !== valB) {
+        return sortOrder === 'asc' ? valA - valB : valB - valA
+      }
+      return 0
+    }
+
+    return 0
+  })
+
+  // Paginate repos
+  const totalItems = sortedRepos.length
+  const totalPages = Math.ceil(totalItems / pageSize) || 1
+  const paginatedRepos = sortedRepos.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
   const mergedStale = branches.filter(b => b.status === 'merged_stale').length
   const unmergedStale = branches.filter(b => b.status === 'unmerged_stale').length
 
@@ -719,15 +780,33 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: 13 }}>
                   <th style={{ padding: '12px 8px' }}>仓库 ID</th>
-                  <th style={{ padding: '12px 8px' }}>仓库名称</th>
+                  <th 
+                    onClick={() => handleSort('name')} 
+                    style={{ padding: '12px 8px', cursor: 'pointer', userSelect: 'none' }}
+                    title="点击按仓库名称排序"
+                  >
+                    仓库名称 {sortField === 'name' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'}
+                  </th>
                   <th style={{ padding: '12px 8px' }}>所属嵌套组</th>
-                  <th style={{ padding: '12px 8px' }}>分支数 (活/僵/已合并)</th>
-                  <th style={{ padding: '12px 8px' }}>最新提交时间</th>
+                  <th 
+                    onClick={() => handleSort('branch_count')} 
+                    style={{ padding: '12px 8px', cursor: 'pointer', userSelect: 'none' }}
+                    title="点击按分支总数排序"
+                  >
+                    分支数 (活/僵/已合并) {sortField === 'branch_count' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'}
+                  </th>
+                  <th 
+                    onClick={() => handleSort('last_commit_time')} 
+                    style={{ padding: '12px 8px', cursor: 'pointer', userSelect: 'none' }}
+                    title="点击按最新提交时间排序"
+                  >
+                    最新提交时间 {sortField === 'last_commit_time' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'}
+                  </th>
                   <th style={{ padding: '12px 8px', textAlign: 'right' }}>操作</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredRepos.length === 0 ? (
+                {paginatedRepos.length === 0 ? (
                   <tr>
                     <td colSpan={6} style={{ textAlign: 'center', padding: 48, color: 'var(--text-secondary)' }}>
                       <AlertCircle size={32} style={{ margin: '0 auto 12px auto', opacity: 0.5 }} />
@@ -735,7 +814,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                     </td>
                   </tr>
                 ) : (
-                  filteredRepos.map(r => (
+                  paginatedRepos.map(r => (
                     <tr key={r.id} style={{ borderBottom: '1px solid var(--border-color)', fontSize: 13 }}>
                       <td style={{ padding: '14px 8px', color: 'var(--text-secondary)' }}>{r.id}</td>
                       <td style={{ padding: '14px 8px', fontWeight: 600 }}>{r.name}</td>
@@ -793,6 +872,70 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Pagination Footer */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: 16,
+            paddingTop: 16,
+            borderTop: '1px solid var(--border-color)',
+            fontSize: 13,
+            color: 'var(--text-secondary)'
+          }}>
+            <div>
+              共 <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{totalItems}</span> 个仓库
+              {totalItems > 0 && `，显示第 ${(currentPage - 1) * pageSize + 1} - ${Math.min(currentPage * pageSize, totalItems)} 个`}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>每页:</span>
+                <select 
+                  value={pageSize} 
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value))
+                    setCurrentPage(1)
+                  }}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: 12,
+                    background: 'var(--bg-primary)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 4,
+                    color: 'var(--text-main)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                  <option value={30}>30</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <button 
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  className="btn btn-secondary btn-small"
+                  style={{ padding: '4px 8px', minWidth: 60 }}
+                >
+                  上一页
+                </button>
+                <span style={{ margin: '0 8px' }}>
+                  第 {currentPage} / {totalPages} 页
+                </span>
+                <button 
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  className="btn btn-secondary btn-small"
+                  style={{ padding: '4px 8px', minWidth: 60 }}
+                >
+                  下一页
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
