@@ -293,7 +293,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
     if (!selectedGroup) return
 
     const confirmSync = window.confirm(
-      `确定要同步组 "${selectedGroup.name}" 吗？\n警告：同步操作会先清空该组下在本地已缓存的直属子组和直属代码仓数据，再拉取 CodeHub 上的最新数据。`
+      `确定要同步组 "${selectedGroup.name}" 吗？\n系统将在后台进行递归同步，差量更新所有子组和代码仓，并更新其对应的分支数据。`
     )
     if (!confirmSync) return
 
@@ -306,12 +306,8 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
       if (!res.ok) throw new Error('同步请求失败')
       return res.json()
     })
-    .then(() => {
-      showToast('success', '该组的子组结构及各个节点下的代码仓同步成功！')
-      setSelectedGroup({
-        ...selectedGroup,
-        synced_at: new Date().toISOString()
-      })
+    .then(data => {
+      showToast('success', data.message || '同步任务已成功提交到后台处理队列，系统正在同步中...')
       fetchGroups(selectedGroup.full_path)
     })
     .catch(err => showToast('error', `同步组失败: ${err.message}`))
