@@ -539,18 +539,15 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
       <div className="glass-card" style={{ width: 280, display: 'flex', flexDirection: 'column', padding: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Groups</h3>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {selectedGroup && (
-              <button 
-                onClick={handleSyncGroup} 
-                className="btn btn-secondary btn-small" 
-                style={{ padding: '4px 8px' }}
-                title="同步当前组子树"
-                disabled={isSyncingGroup}
-              >
-                <RefreshCw size={14} className={isSyncingGroup ? 'animate-spin' : ''} /> 同步
-              </button>
-            )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <input 
+              type="checkbox" 
+              id="checkbox-show-hidden" 
+              checked={showHidden} 
+              onChange={(e) => setShowHidden(e.target.checked)} 
+              style={{ cursor: 'pointer', width: 15, height: 15, margin: 0 }}
+              title="显示已隐藏嵌套组"
+            />
             <button onClick={() => setShowGroupModal(true)} className="btn btn-secondary btn-small" style={{ padding: '4px 8px' }}>
               <Plus size={14} /> 新建组
             </button>
@@ -566,17 +563,6 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
             onChange={(e) => setGroupSearchQuery(e.target.value)}
             style={{ width: '100%', padding: '6px 12px 6px 30px', fontSize: 13, background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
           />
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, fontSize: 12, color: 'var(--text-secondary)', userSelect: 'none' }}>
-          <input 
-            type="checkbox" 
-            id="checkbox-show-hidden" 
-            checked={showHidden} 
-            onChange={(e) => setShowHidden(e.target.checked)} 
-            style={{ cursor: 'pointer' }}
-          />
-          <label htmlFor="checkbox-show-hidden" style={{ cursor: 'pointer' }}>显示已隐藏嵌套组</label>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -681,15 +667,27 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             {selectedGroup && (
-              <button 
-                onClick={() => handleToggleGroupHide(selectedGroup)} 
-                className="btn btn-secondary"
-                title={selectedGroup.is_hidden ? '取消屏蔽隐藏，使此组重新在大盘和树节点中展示' : '将该组屏蔽隐藏，默认不参与展示'}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-              >
-                {selectedGroup.is_hidden ? <Eye size={15} /> : <EyeOff size={15} />}
-                {selectedGroup.is_hidden ? '显示此组' : '隐藏此组'}
-              </button>
+              <>
+                <button 
+                  onClick={() => handleToggleGroupHide(selectedGroup)} 
+                  className="btn btn-secondary"
+                  title={selectedGroup.is_hidden ? '取消屏蔽隐藏，使此组重新在大盘和树节点中展示' : '将该组屏蔽隐藏，默认不参与展示'}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                >
+                  {selectedGroup.is_hidden ? <Eye size={15} /> : <EyeOff size={15} />}
+                  {selectedGroup.is_hidden ? '显示此组' : '隐藏此组'}
+                </button>
+                <button 
+                  onClick={handleSyncGroup} 
+                  className="btn btn-secondary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  title="同步当前组子树"
+                  disabled={isSyncingGroup}
+                >
+                  <RefreshCw size={15} className={isSyncingGroup ? 'animate-spin' : ''} />
+                  同步此组
+                </button>
+              </>
             )}
             <button onClick={() => {
               if (groups.length === 0) {
