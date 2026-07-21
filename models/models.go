@@ -72,8 +72,8 @@ type ExecutionScheme struct {
 	MRBindingName       string    `json:"mr_binding_name"`        // 绑定的 MR 绑定名称
 	ExecutionPlanID     string    `json:"execution_plan_id"`      // 绑定的每日构建/定时执行计划 ID
 	ExecutionPlanName   string    `json:"execution_plan_name"`    // 绑定的每日构建/定时执行计划名称
-	MRTrigger           bool      `gorm:"default:true" json:"mr_trigger"`
-	DailyBuild          bool      `gorm:"default:true" json:"daily_build"`
+	MRTrigger           bool      `json:"mr_trigger"`
+	DailyBuild          bool      `json:"daily_build"`
 	DailyBuildTime      string    `gorm:"type:varchar(50);default:'00:30'" json:"daily_build_time"`
 	CustomAttributes    string    `gorm:"type:text" json:"custom_attributes"` // 自定义属性 (JSON)
 	CreatedAt           time.Time `json:"created_at"`
