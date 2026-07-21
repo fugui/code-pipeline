@@ -22,11 +22,11 @@ type Repository struct {
 	Name              string            `gorm:"uniqueIndex;not null" json:"name"`         // 仓库名称
 	URL               string            `gorm:"default:''" json:"url"`                    // Git 克隆地址
 	OwnerID           uint              `json:"owner_id"`                                 // 负责人 ID
-	IsActive          bool              `gorm:"default:true" json:"is_active"`            // 是否在宿主端被冻结
+	IsActive          bool              `gorm:"index;default:true" json:"is_active"`            // 是否在宿主端被冻结
 	ProjectID         string            `gorm:"default:''" json:"project_id"`
 	HTTPURL           string            `gorm:"default:''" json:"http_url"`
-	ServiceGroup      string            `gorm:"default:''" json:"service_group"` // 归属子系统
-	OwnerName         string            `gorm:"default:''" json:"owner_name"`    // 负责人姓名
+	ServiceGroup      string            `gorm:"index;default:''" json:"service_group"` // 归属子系统
+	OwnerName         string            `gorm:"index;default:''" json:"owner_name"`    // 负责人姓名
 	CreatedAt         time.Time         `json:"created_at"`
 	WebhookRegistered   bool              `gorm:"default:false" json:"webhook_registered"` // Webhook 是否已在托管平台注册
 	CodeCheckerTaskID   string            `gorm:"default:''" json:"code_checker_task_id"`   // 绑定的代码检查任务 ID
@@ -54,9 +54,9 @@ type Pipeline struct {
 type ExecutionScheme struct {
 	ID           uint        `gorm:"primaryKey" json:"id"`
 	Name         string      `json:"name"`                       // 统一关联对象的全局唯一名称
-	RepositoryID uint        `gorm:"index" json:"repository_id"` // 关联本地只读 Repository 镜像表 ID
+	RepositoryID uint        `gorm:"index;index:idx_es_repo_branch" json:"repository_id"` // 关联本地只读 Repository 镜像表 ID
 	Repository   *Repository `gorm:"foreignKey:RepositoryID" json:"repository,omitempty"`
-	Branch       string      `gorm:"not null" json:"branchs"` // 分支
+	Branch       string      `gorm:"index:idx_es_repo_branch;not null" json:"branchs"` // 分支
 	Languages    string      `json:"languages"`               // 编程语言 (如: "C/C++,Python,Java")
 
 	LocalPipelineID     uint      `gorm:"column:pipeline_id;index;not null" json:"pipeline_id"` // 关联的 Pipeline ID
@@ -135,7 +135,7 @@ type ManagedGroup struct {
 // ManagedRepository 新系统独立的被管代码仓表
 type ManagedRepository struct {
 	ID                uint              `gorm:"primaryKey" json:"id"`                  // 对应托管平台的 Project ID
-	ManagedGroupID    uint              `gorm:"index;not null" json:"managed_group_id"`// 关联被管组
+	ManagedGroupID    uint              `gorm:"index;uniqueIndex:idx_mg_repo;not null" json:"managed_group_id"`// 关联被管组
 	ManagedGroup      ManagedGroup      `gorm:"foreignKey:ManagedGroupID" json:"group"`
 	Name              string            `gorm:"uniqueIndex:idx_mg_repo;not null" json:"name"`
 	SSHURL            string            `gorm:"not null" json:"ssh_url"`               // SSH 克隆地址
@@ -154,10 +154,10 @@ type ManagedRepository struct {
 // ManagedMemberAccess 本地存储的成员/群组权限设置记录表
 type ManagedMemberAccess struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
-	SourceType    string    `gorm:"size:20;index:idx_mma_source"`    // "group" 或 "repository"
-	SourceID      uint      `gorm:"index:idx_mma_source"`            // 对应 ManagedGroupID 或 ManagedRepositoryID
-	PrincipalType string    `gorm:"size:20;not null" json:"principal_type"` // 授权主体类型: "user" 或 "user_group"
-	PrincipalID   uint      `gorm:"index;not null" json:"principal_id"`     // 对应的 User ID 或 外部 UserGroup ID
+	SourceType    string    `gorm:"size:20;index:idx_mma_source;index:idx_mma_lookup"`    // "group" 或 "repository"
+	SourceID      uint      `gorm:"index:idx_mma_source;index:idx_mma_lookup"`            // 对应 ManagedGroupID 或 ManagedRepositoryID
+	PrincipalType string    `gorm:"size:20;index:idx_mma_lookup;not null" json:"principal_type"` // 授权主体类型: "user" 或 "user_group"
+	PrincipalID   uint      `gorm:"index;index:idx_mma_lookup;not null" json:"principal_id"`     // 对应的 User ID 或 外部 UserGroup ID
 	PrincipalName string    `gorm:"size:100;default:''" json:"principal_name"` // 展示名缓存
 	AccessLevel   int       `gorm:"not null" json:"access_level"`    // 权限等级: 10(Reporter), 30(Developer), 50(Owner)
 	SyncStatus    string    `gorm:"size:20;default:'pending'" json:"sync_status"` // "pending" | "synced" | "failed"
@@ -168,14 +168,13 @@ type ManagedMemberAccess struct {
 // ManagedBranchMonitor 本地非活动分支监控表
 type ManagedBranchMonitor struct {
 	ID                  uint      `gorm:"primaryKey" json:"id"`
-	ManagedRepositoryID uint      `gorm:"index;not null" json:"managed_repository_id"`
+	ManagedRepositoryID uint      `gorm:"index;index:idx_mbm_repo_status;not null" json:"managed_repository_id"`
 	BranchName          string    `gorm:"size:120;index;not null" json:"branch_name"`
 	LastCommitHash      string    `gorm:"size:60" json:"last_commit_hash"`
 	LastCommitTime      time.Time `gorm:"index" json:"last_commit_time"`
 	LastAuthor          string    `gorm:"size:100" json:"last_author"`
 	IsMerged            bool      `gorm:"index" json:"is_merged"`
 	IsProtected         bool      `gorm:"index" json:"is_protected"`
-	Status              string    `gorm:"size:20" json:"status"` // "active" | "merged_stale" | "unmerged_stale"
+	Status              string    `gorm:"size:20;index:idx_mbm_repo_status" json:"status"` // "active" | "merged_stale" | "unmerged_stale"
 	UpdatedAt           time.Time `json:"updated_at"`
 }
-
