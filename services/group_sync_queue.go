@@ -64,13 +64,23 @@ func StartGroupSyncQueue(ctx context.Context) {
 		}
 	}()
 }
-
 // syncGroupRecursive 递归同步组、子组和项目分支数据
 func syncGroupRecursive(ctx context.Context, groupID uint, userID uint) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-time.After(500 * time.Millisecond): // 每次递归平滑等待，防止触发 CodeHub 429
+	}
+
+	// 检查当前分组是否已经被隐藏。如果是已隐藏分组，不再同步其自身及下面的任何数据
+	var group models.ManagedGroup
+	if err := database.DB.First(&group, groupID).Error; err == nil {
+		if group.IsHidden {
+			log.Printf("[SyncQueue] Skipping sync for group %d (%s) because it is hidden.", groupID, group.FullPath)
+			return nil
+		}
+	} else {
+		return fmt.Errorf("failed to load group %d from database: %w", groupID, err)
 	}
 
 	// 1. 同步当前组的直属子组和直属仓库 (使用对比更新)
