@@ -28,6 +28,11 @@ func CreateManagedGroup(c *gin.Context) {
 		return
 	}
 
+	if req.ParentID != nil && *req.ParentID > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "仅允许在本地创建顶层根组。子组必须先在托管平台上创建，再通过父组同步按钮拉取同步。"})
+		return
+	}
+
 	var fullPath string
 	if req.ParentID != nil && *req.ParentID > 0 {
 		var parent models.ManagedGroup
