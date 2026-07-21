@@ -219,6 +219,28 @@ func CreateRemoteBranch(ctx context.Context, projectID string, branchName string
 	return nil
 }
 
+// DeleteRemoteBranch 使用超级管理员权限在远程 Git 平台物理删除指定分支
+func DeleteRemoteBranch(ctx context.Context, projectID string, branchName string) error {
+	encodedBranch := url.PathEscape(branchName)
+	apiURL := fmt.Sprintf("%s/projects/%s/repository/branches/%s", GitPlatformBaseURL, projectID, encodedBranch)
+
+	reqHeaders := make(map[string]string)
+	for k, v := range models.AppConfig.CodeHub.Headers {
+		reqHeaders[k] = v
+	}
+	reqHeaders["Accept"] = "application/json"
+	reqHeaders["Content-Type"] = "application/json"
+
+	_, err := utils.SendHTTPRequest(ctx, "DELETE", apiURL, nil, utils.HTTPOptions{
+		Headers: reqHeaders,
+	}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "DeleteRemoteBranch")
+	if err != nil {
+		return fmt.Errorf("failed to delete remote branch %s: %w", branchName, err)
+	}
+	return nil
+}
+
+
 // ConfigureBranchProtection 使用超级管理员权限在远程 Git 平台设置保护分支规则，并融合鉴权 Header
 func ConfigureBranchProtection(ctx context.Context, projectID string, branchPattern string) error {
 	apiURL := fmt.Sprintf("%s/projects/%s/protected_branches", GitPlatformBaseURL, projectID)

@@ -344,6 +344,65 @@ func NotifyBranchOwner(c *gin.Context) {
 	})
 }
 
+// CleanupManagedBranches 批量或单个在远程 Git 平台物理删除非活动分支，并触发本地审计同步
+func CleanupManagedBranches(c *gin.Context) {
+	idStr := c.Param("id")
+	repoID, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid repository ID"})
+		return
+	}
+
+	var req struct {
+		BranchNames []string `json:"branch_names" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil || len(req.BranchNames) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format or empty branch list"})
+		return
+	}
+
+	var repo models.ManagedRepository
+	if err := database.DB.First(&repo, repoID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Managed repository not found"})
+		return
+	}
+
+	projectID := strconv.FormatUint(uint64(repo.ID), 10)
+	var deletedCount int
+	var errMsgs []string
+
+	for _, branchName := range req.BranchNames {
+		if branchName == "" {
+			continue
+		}
+		if err := services.DeleteRemoteBranch(c.Request.Context(), projectID, branchName); err != nil {
+			log.Printf("[BranchCleanup] Failed to delete remote branch %s for repo %d: %v", branchName, repoID, err)
+			errMsgs = append(errMsgs, fmt.Sprintf("%s: %v", branchName, err))
+		} else {
+			deletedCount++
+			log.Printf("[BranchCleanup] Successfully deleted remote branch %s for repo %d", branchName, repoID)
+		}
+	}
+
+	// 无论结果如何，重新触发一次审计增量计算，清除已删除的分支本地记录并重新核算计数
+	_ = services.AuditSingleRepoBranches(c.Request.Context(), uint(repoID))
+
+	if len(errMsgs) > 0 && deletedCount == 0 {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("Failed to delete branches: %s", strings.Join(errMsgs, "; ")),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       fmt.Sprintf("Successfully cleaned up %d branch(es)", deletedCount),
+		"deleted_count": deletedCount,
+		"errors":        errMsgs,
+	})
+}
+
+
 // SyncManagedGroup 接收嵌套组同步请求并加入后台异步任务队列
 func SyncManagedGroup(c *gin.Context) {
 	idStr := c.Param("id")

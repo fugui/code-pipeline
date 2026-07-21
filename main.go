@@ -99,6 +99,7 @@ func main() {
 			api.GET("/managed-repos/:id/branches_audit", handlers.GetManagedRepoBranchAudit)
 			api.POST("/managed-repos/:id/branches_audit/trigger", handlers.TriggerManagedRepoBranchAudit)
 			api.POST("/managed-repos/:id/branches_audit/notify", handlers.NotifyBranchOwner)
+			api.POST("/managed-repos/:id/branches/cleanup", handlers.CleanupManagedBranches)
 
 			// 流水线配置相关接口
 			api.GET("/pipelines", handlers.GetPipelines)
