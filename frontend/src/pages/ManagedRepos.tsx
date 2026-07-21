@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { 
   GitBranch, Folder, Plus, Search, Users, AlertCircle, RefreshCw, Send, CheckCircle2, ChevronRight, ChevronDown, Eye, EyeOff
 } from 'lucide-react'
@@ -134,10 +135,12 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
   const [showHidden, setShowHidden] = useState(false)
 
   // Sort & Pagination states
+  const [searchParams, setSearchParams] = useSearchParams()
   const [sortField, setSortField] = useState<'name' | 'branch_count' | 'last_commit_time' | null>(null)
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(15)
+  const [hasInitialized, setHasInitialized] = useState(false)
 
   const handleSort = (field: 'name' | 'branch_count' | 'last_commit_time') => {
     if (sortField === field) {
@@ -146,12 +149,80 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
       setSortField(field)
       setSortOrder('asc')
     }
-    setCurrentPage(1)
+    const newParams = new URLSearchParams(searchParams)
+    newParams.set('page', '1')
+    setSearchParams(newParams)
   }
 
+  const handlePageChange = (newPage: number) => {
+    const newParams = new URLSearchParams(searchParams)
+    newParams.set('page', newPage.toString())
+    setSearchParams(newParams)
+  }
+
+  const handlePageSizeChange = (newSize: number) => {
+    const newParams = new URLSearchParams(searchParams)
+    newParams.set('page_size', newSize.toString())
+    newParams.set('page', '1')
+    setSearchParams(newParams)
+  }
+
+  // 监听并同步 URL 参数变化到组件 State（Single Source of Truth 还原）
   useEffect(() => {
-    setCurrentPage(1)
-  }, [repoSearchQuery, selectedGroup])
+    const paramGroupId = searchParams.get('group_id')
+    const paramPage = searchParams.get('page')
+    const paramPageSize = searchParams.get('page_size')
+
+    // 1. 同步 page_size
+    const size = paramPageSize ? Number(paramPageSize) : 15
+    if ([15, 25, 50, 100].includes(size)) {
+      setPageSize(size)
+    } else {
+      setPageSize(15)
+    }
+
+    // 2. 同步 page
+    const page = paramPage ? Number(paramPage) : 1
+    if (!isNaN(page) && page > 0) {
+      setCurrentPage(page)
+    } else {
+      setCurrentPage(1)
+    }
+
+    // 3. 同步 selectedGroup 与数据拉取
+    if (paramGroupId) {
+      const groupId = Number(paramGroupId)
+      if (!isNaN(groupId)) {
+        if (groups.length > 0) {
+          const found = groups.find(g => g.id === groupId)
+          if (found) {
+            if (selectedGroup?.id !== found.id) {
+              setSelectedGroup(found)
+              fetchRepos(found.id)
+            }
+          } else {
+            setSelectedGroup(null)
+            fetchRepos(undefined)
+          }
+        }
+      }
+    } else {
+      if (selectedGroup !== null || !hasInitialized) {
+        setSelectedGroup(null)
+        fetchRepos(undefined)
+        setHasInitialized(true)
+      }
+    }
+  }, [searchParams, groups, hasInitialized])
+
+  // 在搜索词改变时，重置 URL 页码为 1
+  useEffect(() => {
+    if (searchParams.get('page') !== '1' && repoSearchQuery !== '') {
+      const newParams = new URLSearchParams(searchParams)
+      newParams.set('page', '1')
+      setSearchParams(newParams)
+    }
+  }, [repoSearchQuery])
 
   // Modals visibility
   const [showGroupModal, setShowGroupModal] = useState(false)
@@ -211,30 +282,15 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
 
   useEffect(() => {
     fetchGroups()
-    fetchRepos()
   }, [])
 
-  const fetchGroups = (selectFullPathToRestore?: string) => {
+  const fetchGroups = () => {
     fetch(`${apiBase}/managed-groups`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())
     .then(data => {
-      const list = Array.isArray(data) ? data : []
-      setGroups(list)
-
-      if (selectFullPathToRestore) {
-        const found = list.find(g => g.full_path === selectFullPathToRestore)
-        if (found) {
-          setSelectedGroup(found)
-          fetchRepos(found.id)
-        }
-      } else if (selectedGroup) {
-        const found = list.find(g => g.full_path === selectedGroup.full_path)
-        if (found && found.id !== selectedGroup.id) {
-          setSelectedGroup(found)
-        }
-      }
+      setGroups(Array.isArray(data) ? data : [])
     })
     .catch(err => showToast('error', `获取 Group 失败: ${err.message}`))
   }
@@ -253,8 +309,14 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
   }
 
   const handleGroupSelect = (group: ManagedGroup | null) => {
-    setSelectedGroup(group)
-    fetchRepos(group ? group.id : undefined)
+    const newParams = new URLSearchParams(searchParams)
+    if (group) {
+      newParams.set('group_id', group.id.toString())
+    } else {
+      newParams.delete('group_id')
+    }
+    newParams.set('page', '1')
+    setSearchParams(newParams)
   }
 
   // Branch Audits Fetch
@@ -328,7 +390,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
     })
     .then(data => {
       showToast('success', data.message || '同步任务已成功提交到后台处理队列，系统正在同步中...')
-      fetchGroups(selectedGroup.full_path)
+      fetchGroups()
     })
     .catch(err => showToast('error', `同步组失败: ${err.message}`))
     .finally(() => setIsSyncingGroup(false))
@@ -894,10 +956,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                 <span>每页:</span>
                 <select 
                   value={pageSize} 
-                  onChange={(e) => {
-                    setPageSize(Number(e.target.value))
-                    setCurrentPage(1)
-                  }}
+                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
                   style={{
                     padding: '4px 8px',
                     fontSize: 12,
@@ -908,16 +967,16 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                     cursor: 'pointer'
                   }}
                 >
-                  <option value={10}>10</option>
                   <option value={15}>15</option>
-                  <option value={30}>30</option>
+                  <option value={25}>25</option>
                   <option value={50}>50</option>
+                  <option value={100}>100</option>
                 </select>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <button 
                   disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
                   className="btn btn-secondary btn-small"
                   style={{ padding: '4px 8px', minWidth: 60 }}
                 >
@@ -928,7 +987,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                 </span>
                 <button 
                   disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  onClick={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
                   className="btn btn-secondary btn-small"
                   style={{ padding: '4px 8px', minWidth: 60 }}
                 >
