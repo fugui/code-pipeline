@@ -46,6 +46,9 @@ func main() {
 	// 启动被管仓历史非活动分支定时巡检任务
 	services.StartBranchAuditTimer(ctx)
 
+	// 启动嵌套组同步队列工作线程
+	services.StartGroupSyncQueue(ctx)
+
 	// 4. 初始化 Gin 引擎
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
