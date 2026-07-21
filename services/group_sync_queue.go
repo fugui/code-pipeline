@@ -115,6 +115,12 @@ func syncGroupRecursive(ctx context.Context, groupID uint, userID uint) error {
 		}
 	}
 
+	// 4. 更新当前嵌套组（自身及子组节点）的同步状态
+	now := time.Now()
+	if err := database.DB.Model(&group).Update("synced_at", &now).Error; err != nil {
+		log.Printf("[SyncQueue] Failed to update synced_at for group %d: %v", groupID, err)
+	}
+
 	return nil
 }
 
