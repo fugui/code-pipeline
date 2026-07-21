@@ -688,22 +688,26 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 		taskName = repo.CodeCheckerTaskName
 		log.Printf("[SyncCreateScheme] Reusing existing code checker task ID: %s, Name: %s for repo ID: %d", taskID, taskName, repo.ID)
 	} else {
-		createdTaskID, err := createCheckerTaskStep(ctx, repoURL, scheme.Branch, scheme.Languages, scheme.Name, headers)
-		if err != nil {
-			log.Printf("[Pipeline] Remote sync Step 1 failed: %v\n", err)
-			return "", err
-		}
-		taskID = createdTaskID
-		taskName = scheme.Name
+		if scheme.Languages == "" {
+			log.Printf("[SyncCreateScheme] No languages selected, skipping checker task creation for repo ID: %d", repo.ID)
+		} else {
+			createdTaskID, err := createCheckerTaskStep(ctx, repoURL, scheme.Branch, scheme.Languages, scheme.Name, headers)
+			if err != nil {
+				log.Printf("[Pipeline] Remote sync Step 1 failed: %v\n", err)
+				return "", err
+			}
+			taskID = createdTaskID
+			taskName = scheme.Name
 
-		// 立即将任务 ID 持久化回 Repository
-		repo.CodeCheckerTaskID = taskID
-		repo.CodeCheckerTaskName = taskName
-		if err := database.DB.Model(&repo).Updates(map[string]interface{}{
-			"code_checker_task_id":   taskID,
-			"code_checker_task_name": taskName,
-		}).Error; err != nil {
-			log.Printf("[Pipeline] Warning: failed to save CodeCheckerTaskID to Repository %d: %v\n", repo.ID, err)
+			// 立即将任务 ID 持久化回 Repository
+			repo.CodeCheckerTaskID = taskID
+			repo.CodeCheckerTaskName = taskName
+			if err := database.DB.Model(&repo).Updates(map[string]interface{}{
+				"code_checker_task_id":   taskID,
+				"code_checker_task_name": taskName,
+			}).Error; err != nil {
+				log.Printf("[Pipeline] Warning: failed to save CodeCheckerTaskID to Repository %d: %v\n", repo.ID, err)
+			}
 		}
 	}
 	scheme.CodeCheckerTaskID = taskID
