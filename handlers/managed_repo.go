@@ -525,3 +525,31 @@ func SyncManagedGroup(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Group direct sub-groups and repositories synchronized successfully"})
 }
 
+// ToggleGroupHide 切换嵌套组的隐藏状态
+func ToggleGroupHide(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid group ID"})
+		return
+	}
+
+	var group models.ManagedGroup
+	if err := database.DB.First(&group, uint(id)).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Group not found"})
+		return
+	}
+
+	group.IsHidden = !group.IsHidden
+	if err := database.DB.Model(&group).Update("is_hidden", group.IsHidden).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update group hide status"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "Group hide status toggled successfully",
+		"is_hidden": group.IsHidden,
+	})
+}
+
+

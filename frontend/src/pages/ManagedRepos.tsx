@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { 
-  GitBranch, Folder, Plus, Search, Users, AlertCircle, RefreshCw, Send, CheckCircle2, ChevronRight, ChevronDown
+  GitBranch, Folder, Plus, Search, Users, AlertCircle, RefreshCw, Send, CheckCircle2, ChevronRight, ChevronDown, Eye, EyeOff
 } from 'lucide-react'
 
 interface ManagedGroup {
@@ -10,6 +10,7 @@ interface ManagedGroup {
   full_path: string
   parent_id?: number
   synced_at?: string
+  is_hidden?: boolean
 }
 
 interface ManagedRepository {
@@ -80,6 +81,18 @@ const sortGroupsAsTree = (flatGroups: ManagedGroup[]): ManagedGroup[] => {
   return result
 }
 
+const isAnyAncestorHidden = (group: ManagedGroup, allGroups: ManagedGroup[]): boolean => {
+  let current: ManagedGroup | undefined = group
+  while (current && current.parent_id) {
+    const parent: ManagedGroup | undefined = allGroups.find(g => g.id === current?.parent_id)
+    if (parent && parent.is_hidden) {
+      return true
+    }
+    current = parent
+  }
+  return false
+}
+
 interface ManagedReposProps {
   apiBase: string
   token: string
@@ -118,6 +131,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
   // Search
   const [repoSearchQuery, setRepoSearchQuery] = useState('')
   const [groupSearchQuery, setGroupSearchQuery] = useState('')
+  const [showHidden, setShowHidden] = useState(false)
 
   // Modals visibility
   const [showGroupModal, setShowGroupModal] = useState(false)
@@ -302,6 +316,30 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
     })
     .catch(err => showToast('error', `同步组失败: ${err.message}`))
     .finally(() => setIsSyncingGroup(false))
+  }
+
+  const handleToggleGroupHide = (group: ManagedGroup) => {
+    fetch(`${apiBase}/managed-groups/${group.id}/toggle-hide`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('操作失败')
+      return res.json()
+    })
+    .then((data) => {
+      const nextHide = !!data.is_hidden
+      showToast('success', nextHide ? `已隐藏组 "${group.name}"` : `已取消隐藏组 "${group.name}"`)
+      if (selectedGroup?.id === group.id) {
+        setSelectedGroup({
+          ...selectedGroup,
+          is_hidden: nextHide
+        })
+      }
+      setGroups(prev => prev.map(g => g.id === group.id ? { ...g, is_hidden: nextHide } : g))
+      fetchGroups()
+    })
+    .catch(err => showToast('error', `操作失败: ${err.message}`))
   }
 
   // Create Group
@@ -530,6 +568,17 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
           />
         </div>
 
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, fontSize: 12, color: 'var(--text-secondary)', userSelect: 'none' }}>
+          <input 
+            type="checkbox" 
+            id="checkbox-show-hidden" 
+            checked={showHidden} 
+            onChange={(e) => setShowHidden(e.target.checked)} 
+            style={{ cursor: 'pointer' }}
+          />
+          <label htmlFor="checkbox-show-hidden" style={{ cursor: 'pointer' }}>显示已隐藏嵌套组</label>
+        </div>
+
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
           <button 
             onClick={() => handleGroupSelect(null)} 
@@ -540,10 +589,17 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
             <span>[全部仓库]</span>
           </button>
           
-          {filteredGroups.filter(isGroupVisible).map(g => {
+          {filteredGroups.filter(g => {
+            if (!isGroupVisible(g)) return false
+            if (!showHidden && (g.is_hidden || isAnyAncestorHidden(g, groups))) {
+              return false
+            }
+            return true
+          }).map(g => {
             const isExpanded = !!expandedGroups[g.id]
             const depth = g.full_path.split('/').length - 1
             const hasChildren = groups.some(x => x.parent_id === g.id)
+            const isSelfOrParentHidden = g.is_hidden || isAnyAncestorHidden(g, groups)
             return (
               <button 
                 key={g.id}
@@ -551,9 +607,13 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                 className={`group-tree-node ${selectedGroup?.id === g.id ? 'active' : ''}`}
                 style={{ 
                   paddingLeft: 8 + depth * 14,
-                  opacity: g.synced_at ? 1 : 0.65
+                  opacity: isSelfOrParentHidden ? 0.4 : (g.synced_at ? 1 : 0.65)
                 }}
-                title={g.synced_at ? `已同步，最近同步时间: ${new Date(g.synced_at).toLocaleString('zh-CN', { hour12: false })}` : '尚未进行同步，请点击右上角同步按钮进行同步'}
+                title={
+                  isSelfOrParentHidden 
+                    ? '该组（或其父组）已被标记隐藏，默认不参与展示' 
+                    : (g.synced_at ? `已同步，最近同步时间: ${new Date(g.synced_at).toLocaleString('zh-CN', { hour12: false })}` : '尚未进行同步，请点击右上角同步按钮进行同步')
+                }
               >
                 {/* 展开/折叠三角图标 */}
                 {hasChildren ? (
@@ -577,9 +637,13 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                 )}
                 
                 <Folder size={14} color={selectedGroup?.id === g.id ? 'var(--border-active)' : 'var(--text-muted)'} /> 
-                <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', textDecoration: isSelfOrParentHidden ? 'line-through' : 'none' }}>
                   {g.name}
-                  {!g.synced_at && <span style={{ fontSize: 10, color: 'var(--text-secondary)', marginLeft: 4, fontStyle: 'italic' }}>(未同步)</span>}
+                  {isSelfOrParentHidden ? (
+                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', marginLeft: 4, fontStyle: 'italic' }}>(已隐藏)</span>
+                  ) : (
+                    !g.synced_at && <span style={{ fontSize: 10, color: 'var(--text-secondary)', marginLeft: 4, fontStyle: 'italic' }}>(未同步)</span>
+                  )}
                 </span>
               </button>
             )
@@ -615,16 +679,29 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
               所有的代码仓创建与保护分支拉取，均受到统一策略校验和标准化下发。
             </p>
           </div>
-          <button onClick={() => {
-            if (groups.length === 0) {
-              showToast('error', '请先创建一个嵌套组！')
-              return
-            }
-            setNewRepoGroup(selectedGroup?.id || groups[0]?.id || 0)
-            setShowRepoModal(true)
-          }} className="btn btn-primary">
-            <Plus size={16} /> 创建被管代码仓
-          </button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {selectedGroup && (
+              <button 
+                onClick={() => handleToggleGroupHide(selectedGroup)} 
+                className="btn btn-secondary"
+                title={selectedGroup.is_hidden ? '取消屏蔽隐藏，使此组重新在大盘和树节点中展示' : '将该组屏蔽隐藏，默认不参与展示'}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                {selectedGroup.is_hidden ? <Eye size={15} /> : <EyeOff size={15} />}
+                {selectedGroup.is_hidden ? '显示此组' : '隐藏此组'}
+              </button>
+            )}
+            <button onClick={() => {
+              if (groups.length === 0) {
+                showToast('error', '请先创建一个嵌套组！')
+                return
+              }
+              setNewRepoGroup(selectedGroup?.id || groups[0]?.id || 0)
+              setShowRepoModal(true)
+            }} className="btn btn-primary">
+              <Plus size={16} /> 创建被管代码仓
+            </button>
+          </div>
         </div>
 
         {/* Repository Table */}

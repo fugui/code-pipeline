@@ -88,6 +88,7 @@ func main() {
 			api.POST("/managed-groups", handlers.CreateManagedGroup)
 			api.GET("/managed-groups", handlers.GetManagedGroups)
 			api.POST("/managed-groups/:id/sync", handlers.SyncManagedGroup)
+			api.POST("/managed-groups/:id/toggle-hide", handlers.ToggleGroupHide)
 			api.POST("/managed-repos", handlers.CreateManagedRepo)
 			api.GET("/managed-repos", handlers.GetManagedRepos)
 			api.POST("/managed-repos/:id/branches", handlers.CreateManagedBranch)
