@@ -597,7 +597,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                   gap: 10,
                   justifyContent: 'center'
                 }}>
-                  {['C', 'C++', 'Python', 'Java'].map((lang) => {
+                  {['C', 'C++', 'Python', 'Java', 'JavaScript'].map((lang) => {
                     const activeLangs = activeScheme.languages ? activeScheme.languages.split(',') : [];
                     const checked = activeLangs.includes(lang);
                     return (
@@ -858,9 +858,9 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                 {saving ? (
                   <>
                     <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
-                    保存中...
+                    创建中...
                   </>
-                ) : '保存方案'}
+                ) : '创建方案'}
               </button>
             )}
           </div>

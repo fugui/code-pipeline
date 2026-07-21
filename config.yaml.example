@@ -63,6 +63,7 @@ pipeline_system:
   rule_sets:
     GO: "rule_id_go_1"
     PYTHON: "rule_id_py_1"
+    JAVASCRIPT: "rule_id_js_1"
   pipeline_link_template: "http://192.168.56.18:9080/workspace/{OWNER_ID}/service/{SERVICE_ID}/pipeline/{PIPELINE_ID}"
   link_checker_task_url: "http://192.168.56.18:9080/shield/public/report/{TASK_ID}"
   get_webhooks_url: "http://192.168.56.18:8080/api/v1/projects/{REPO_ID}/hooks?page=1"          # 查询项目 Webhook 列表
