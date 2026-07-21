@@ -388,14 +388,95 @@ func ToggleGroupHide(c *gin.Context) {
 		return
 	}
 
+	tx := database.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
 	group.IsHidden = !group.IsHidden
-	if err := database.DB.Model(&group).Update("is_hidden", group.IsHidden).Error; err != nil {
+	updates := map[string]interface{}{
+		"is_hidden": group.IsHidden,
+	}
+	if group.IsHidden {
+		updates["synced_at"] = nil
+		group.SyncedAt = nil
+	}
+
+	if err := tx.Model(&group).Updates(updates).Error; err != nil {
+		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update group hide status"})
 		return
 	}
 
+	// 如果切换为隐藏，需要清理该分组及其所有子分组底下的全部数据，并清空同步时间
+	if group.IsHidden {
+		// 1. 查找所有子孙分组的 ID
+		var subGroupIDs []uint
+		likePattern := group.FullPath + "/%"
+		if err := tx.Model(&models.ManagedGroup{}).
+			Where("full_path LIKE ?", likePattern).
+			Pluck("id", &subGroupIDs).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query sub groups"})
+			return
+		}
+
+		// 2. 汇总当前分组 ID 及所有子孙分组 ID
+		allGroupIDs := append([]uint{group.ID}, subGroupIDs...)
+
+		// 3. 找出这些分组底下的所有仓库 ID
+		var repoIDs []uint
+		if err := tx.Model(&models.ManagedRepository{}).
+			Where("managed_group_id IN ?", allGroupIDs).
+			Pluck("id", &repoIDs).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query repositories"})
+			return
+		}
+
+		// 4. 清理仓库关联数据和仓库本身
+		if len(repoIDs) > 0 {
+			if err := tx.Where("managed_repository_id IN ?", repoIDs).Delete(&models.ManagedBranchMonitor{}).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete branch monitors"})
+				return
+			}
+			if err := tx.Where("source_type = 'repository' AND source_id IN ?", repoIDs).Delete(&models.ManagedMemberAccess{}).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete repository ACLs"})
+				return
+			}
+			if err := tx.Where("id IN ?", repoIDs).Delete(&models.ManagedRepository{}).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete repositories"})
+				return
+			}
+		}
+
+		// 5. 清理子群组的 ACL 策略并物理删除子孙分组本身（注意：当前分组 group 自身保留，只更新了 is_hidden = true 且 synced_at = nil）
+		if len(subGroupIDs) > 0 {
+			if err := tx.Where("source_type = 'group' AND source_id IN ?", subGroupIDs).Delete(&models.ManagedMemberAccess{}).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete group ACLs"})
+				return
+			}
+			if err := tx.Where("id IN ?", subGroupIDs).Delete(&models.ManagedGroup{}).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete sub groups"})
+				return
+			}
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"message":   "Group hide status toggled successfully",
+		"message":   "Group hide status toggled successfully and database cleaned",
 		"is_hidden": group.IsHidden,
 	})
 }
