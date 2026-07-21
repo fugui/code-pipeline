@@ -511,6 +511,12 @@ func SyncManagedGroup(c *gin.Context) {
 		}
 	}
 
+	// 4. 更新当前组的同步时间
+	now := time.Now()
+	if err := database.DB.Model(&startGroup).Update("synced_at", &now).Error; err != nil {
+		log.Printf("[SyncGroup] Failed to update synced_at for group %d: %v", startGroup.ID, err)
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Group direct sub-groups and repositories synchronized successfully"})
 }
 

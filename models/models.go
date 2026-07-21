@@ -127,6 +127,7 @@ type ManagedGroup struct {
 	FullPath  string        `gorm:"size:255;uniqueIndex;not null" json:"full_path"`  // 组完整路径，如 "tech/infra"
 	ParentID  *uint         `gorm:"index" json:"parent_id"`                         // 父组 ID (空代表根组)
 	Parent    *ManagedGroup `gorm:"foreignKey:ParentID" json:"-"`
+	SyncedAt  *time.Time    `json:"synced_at"`                                      // 最后的同步时间 (nil代表未同步)
 	CreatedAt time.Time     `json:"created_at"`
 }
 
