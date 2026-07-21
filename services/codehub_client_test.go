@@ -193,3 +193,96 @@ func TestGetMrListFromGitRemote(t *testing.T) {
 		})
 	}
 }
+
+func TestGetRemoteSubgroupsPagination(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		pageStr := r.URL.Query().Get("page")
+		if pageStr == "1" {
+			var list []string
+			for i := 0; i < 100; i++ {
+				list = append(list, `{"id":100, "name":"sub", "path":"sub", "full_path":"path"}`)
+			}
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("[" + stringJoin(list, ",") + "]"))
+			return
+		}
+		if pageStr == "2" {
+			var list []string
+			for i := 0; i < 5; i++ {
+				list = append(list, `{"id":200, "name":"sub", "path":"sub", "full_path":"path"}`)
+			}
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("[" + stringJoin(list, ",") + "]"))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("[]"))
+	}))
+	defer server.Close()
+
+	origBaseURL := GitPlatformBaseURL
+	GitPlatformBaseURL = server.URL
+	defer func() {
+		GitPlatformBaseURL = origBaseURL
+	}()
+
+	subgroups, err := GetRemoteSubgroups(context.Background(), 999)
+	if err != nil {
+		t.Fatalf("GetRemoteSubgroups failed: %v", err)
+	}
+	if len(subgroups) != 105 {
+		t.Errorf("Expected 105 subgroups, got %d", len(subgroups))
+	}
+}
+
+func TestGetRemoteProjectsPagination(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		pageStr := r.URL.Query().Get("page")
+		if pageStr == "1" {
+			var list []string
+			for i := 0; i < 100; i++ {
+				list = append(list, `{"id":100, "name":"repo", "ssh_url_to_repo":"git@git.local:repo.git"}`)
+			}
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status":"success", "result":[` + stringJoin(list, ",") + `]}`))
+			return
+		}
+		if pageStr == "2" {
+			var list []string
+			for i := 0; i < 5; i++ {
+				list = append(list, `{"id":200, "name":"repo", "ssh_url_to_repo":"git@git.local:repo.git"}`)
+			}
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status":"success", "result":[` + stringJoin(list, ",") + `]}`))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"success", "result":[]}`))
+	}))
+	defer server.Close()
+
+	origBaseURL := GitPlatformBaseURL
+	GitPlatformBaseURL = server.URL
+	defer func() {
+		GitPlatformBaseURL = origBaseURL
+	}()
+
+	projects, err := GetRemoteProjects(context.Background(), 999)
+	if err != nil {
+		t.Fatalf("GetRemoteProjects failed: %v", err)
+	}
+	if len(projects) != 105 {
+		t.Errorf("Expected 105 projects, got %d", len(projects))
+	}
+}
+
+func stringJoin(elems []string, sep string) string {
+	if len(elems) == 0 {
+		return ""
+	}
+	res := elems[0]
+	for _, s := range elems[1:] {
+		res += sep + s
+	}
+	return res
+}
