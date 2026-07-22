@@ -558,7 +558,6 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                               <input 
                                 type="checkbox"
                                 checked={checked}
-                                disabled={isView}
                                 style={{ width: 'auto', margin: 0 }}
                                 onChange={(e) => {
                                   let current = activeScheme.branchs ? activeScheme.branchs.split(',').filter(Boolean) : [];
@@ -569,7 +568,34 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                                   } else {
                                     current = current.filter((x: string) => x !== branch);
                                   }
-                                  onChange({ ...activeScheme, branchs: current.join(',') });
+                                  const updatedBranchs = current.join(',');
+                                  let parsed: Record<string, any> = {};
+                                  try {
+                                    parsed = JSON.parse(activeScheme.custom_attributes || '{}');
+                                  } catch (err) {
+                                    parsed = {};
+                                  }
+                                  let buildParameters = Array.isArray(parsed.buildParameters) ? parsed.buildParameters : [];
+                                  let found = false;
+                                  buildParameters = buildParameters.map((item: any) => {
+                                    if (item.name === 'selectedBranchs') {
+                                      found = true;
+                                      return { ...item, value: updatedBranchs };
+                                    }
+                                    return item;
+                                  });
+                                  if (!found) {
+                                    buildParameters.push({ name: 'selectedBranchs', value: updatedBranchs });
+                                  }
+                                  parsed.buildParameters = buildParameters;
+                                  const serialized = JSON.stringify(parsed);
+                                  lastCustomAttrsRef.current = serialized;
+
+                                  onChange({ 
+                                    ...activeScheme, 
+                                    branchs: updatedBranchs,
+                                    custom_attributes: serialized
+                                  });
                                 }}
                               />
                               {branch}

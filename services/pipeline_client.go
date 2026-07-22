@@ -553,6 +553,104 @@ func createMRBindingStep(ctx context.Context, pipelineBusinessID string, scheme 
 	return mrBindingID, nil
 }
 
+// SyncUpdateMRBindingRemote 同步调用三方系统 /modify 接口更新 MR 触发关联的分支及配置
+func SyncUpdateMRBindingRemote(ctx context.Context, scheme *models.ExecutionScheme, repoURL string, headers map[string]string) error {
+	if scheme == nil {
+		return fmt.Errorf("execution scheme is nil")
+	}
+
+	var pipeline models.Pipeline
+	var pipelineBusinessID string
+	if err := database.DB.First(&pipeline, scheme.LocalPipelineID).Error; err == nil {
+		pipelineBusinessID = pipeline.PipelineID
+	}
+
+	if scheme.MRBindingID == "" {
+		log.Printf("[SyncUpdateMRBinding] MRBindingID is empty for scheme %s, falling back to createMRBindingStep", scheme.Name)
+		newBindingID, err := createMRBindingStep(ctx, pipelineBusinessID, scheme, scheme.ExecutionSchemeID, repoURL, headers)
+		if err != nil {
+			return fmt.Errorf("fallback createMRBindingStep failed: %w", err)
+		}
+		scheme.MRBindingID = newBindingID
+		database.DB.Model(scheme).Update("mr_binding_id", newBindingID)
+		return nil
+	}
+
+	apiURLStr := models.AppConfig.PipelineSystem.CreateMRBindingURL
+	if apiURLStr == "" {
+		apiURLStr = models.AppConfig.PipelineSystem.GetMRBindingsURL
+	}
+	if apiURLStr == "" {
+		return fmt.Errorf("create_mr_binding_url not configured")
+	}
+
+	modifyURL := apiURLStr
+	if strings.HasSuffix(modifyURL, "/add") {
+		modifyURL = strings.TrimSuffix(modifyURL, "/add") + "/modify"
+	} else if !strings.HasSuffix(modifyURL, "/modify") {
+		modifyURL = strings.TrimSuffix(modifyURL, "/") + "/modify"
+	}
+
+	tmpl := models.AppConfig.PipelineSystem.CreateMRBindingBody
+	if tmpl == "" {
+		return fmt.Errorf("create_mr_binding_body not configured")
+	}
+
+	credentialID, err := CheckRepoAuthorized(ctx, repoURL, headers)
+	if err != nil {
+		log.Printf("[SyncUpdateMRBinding] Failed to check repo authorized: %v", err)
+		return fmt.Errorf("failed to check repo authorized: %w", err)
+	}
+
+	customAttributesJSON, err := json.Marshal(scheme.CustomAttributes)
+	if err != nil {
+		log.Printf("[SyncUpdateMRBinding] Failed to escape custom_attributes: %v", err)
+		return fmt.Errorf("failed to escape custom_attributes to JSON: %w", err)
+	}
+
+	escapedCustomAttributes := string(customAttributesJSON)
+	if len(escapedCustomAttributes) >= 2 && escapedCustomAttributes[0] == '"' && escapedCustomAttributes[len(escapedCustomAttributes)-1] == '"' {
+		escapedCustomAttributes = escapedCustomAttributes[1 : len(escapedCustomAttributes)-1]
+	}
+
+	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
+		"{NAME}":              scheme.Name,
+		"{REPO_URL}":          repoURL,
+		"{BRANCHES}":          scheme.Branch,
+		"{PIPELINE_ID}":       pipelineBusinessID,
+		"{SCHEME_ID}":         scheme.ExecutionSchemeID,
+		"{CREDENTIAL_ID}":     credentialID,
+		"{CUSTOM_ATTRIBUTES}": escapedCustomAttributes,
+	})
+
+	var postData []byte
+	var listPayload []map[string]interface{}
+	if err := json.Unmarshal([]byte(bodyStr), &listPayload); err == nil && len(listPayload) > 0 {
+		listPayload[0]["id"] = scheme.MRBindingID
+		postData, _ = json.Marshal(listPayload)
+	} else {
+		var singlePayload map[string]interface{}
+		if err := json.Unmarshal([]byte(bodyStr), &singlePayload); err == nil {
+			singlePayload["id"] = scheme.MRBindingID
+			postData, _ = json.Marshal([]map[string]interface{}{singlePayload})
+		} else {
+			postData = []byte(bodyStr)
+		}
+	}
+
+	log.Printf("[SyncUpdateMRBinding] Calling Modify MR Binding. URL: %s, Body: %s", modifyURL, string(postData))
+
+	_, err = utils.SendHTTPRequest(ctx, "POST", modifyURL, postData, utils.HTTPOptions{
+		Headers: headers,
+	}, []int{http.StatusOK, http.StatusCreated, http.StatusNoContent}, "SyncUpdateMRBindingRemote")
+	if err != nil {
+		log.Printf("[SyncUpdateMRBinding] Remote modify failed: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 // createExecutionPlanStep 步骤四：创建每日构建的执行计划
 func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, schemeID string, headers map[string]string) (string, error) {
 	log.Printf("[SyncCreateScheme] Enter createExecutionPlanStep: pipelineBusinessID=%s, scheme=%+v, schemeID=%s, headers=%v", pipelineBusinessID, scheme, schemeID, headers)

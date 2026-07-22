@@ -333,6 +333,33 @@ func UpdateExecutionScheme(c *gin.Context) {
 
 	database.DB.Preload("Repository").Preload("PipelineInfo").First(&scheme, scheme.ID)
 
+	// 若开启了 MR 触发，异步/同步调用三方系统 /modify 接口更新远端 MR 触发分支关联
+	if scheme.MRTrigger {
+		repoURL := ""
+		if scheme.Repository != nil {
+			repoURL = scheme.Repository.HTTPURL
+			if repoURL == "" {
+				repoURL = scheme.Repository.URL
+			}
+		}
+		if repoURL == "" {
+			var repo models.Repository
+			if err := database.DB.First(&repo, scheme.RepositoryID).Error; err == nil {
+				repoURL = repo.HTTPURL
+				if repoURL == "" {
+					repoURL = repo.URL
+				}
+			}
+		}
+		if repoURL != "" {
+			repoURL = utils.SSHToHTTPS(repoURL)
+			headers := prepareRequestHeaders(c)
+			if err := services.SyncUpdateMRBindingRemote(c.Request.Context(), &scheme, repoURL, headers); err != nil {
+				log.Printf("[UpdateExecutionScheme] Warning: failed to sync remote MR binding for scheme %d: %v\n", scheme.ID, err)
+			}
+		}
+	}
+
 	taskTemplate := models.AppConfig.PipelineSystem.LinkCheckerTaskURL
 	if taskTemplate != "" {
 		scheme.CodeCheckerTaskWebURL = generateTaskWebURL(scheme.CodeCheckerTaskID, taskTemplate)
