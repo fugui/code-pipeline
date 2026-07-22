@@ -640,7 +640,7 @@ func SyncUpdateMRBindingRemote(ctx context.Context, scheme *models.ExecutionSche
 
 	log.Printf("[SyncUpdateMRBinding] Calling Modify MR Binding. URL: %s, Body: %s", modifyURL, string(postData))
 
-	_, err = utils.SendHTTPRequest(ctx, "POST", modifyURL, json.RawMessage(postData), utils.HTTPOptions{
+	_, err = utils.SendHTTPRequest(ctx, "PUT", modifyURL, json.RawMessage(postData), utils.HTTPOptions{
 		Headers: headers,
 		QueryParams: map[string]string{
 			"isSingle": "true",
