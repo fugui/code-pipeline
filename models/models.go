@@ -5,33 +5,40 @@ import (
 )
 
 type User struct {
-	ID         uint       `gorm:"primaryKey" json:"id"`
-	Email      string     `gorm:"uniqueIndex;not null" json:"email"`
-	Name       string     `gorm:"not null;default:''" json:"name"`
-	EmployeeID string     `gorm:"index;default:''" json:"employee_id"`
-	Password   string     `gorm:"not null" json:"-"`
-	IsActive   bool       `gorm:"default:true" json:"is_active"`
-	IsAdmin    bool       `gorm:"default:false" json:"is_admin"`
-	LastLogin  *time.Time `json:"last_login"`
-	LastIP     string     `gorm:"default:''" json:"last_ip"`
-	CreatedAt  time.Time  `json:"created_at"`
+	ID           uint        `gorm:"primaryKey" json:"id"`
+	UniqueID     *string     `gorm:"uniqueIndex" json:"unique_id,omitempty"`
+	EmployeeID   string      `gorm:"index;default:''" json:"employee_id"`
+	EmployeeType string      `gorm:"default:''" json:"employee_type"`
+	Email        string      `gorm:"uniqueIndex;not null" json:"email"`
+	Username     string      `gorm:"index;default:''" json:"username"`
+	Name         string      `gorm:"not null;default:''" json:"name"`
+	Password     string      `gorm:"not null" json:"-"`
+	RegMethod    string      `gorm:"default:'local'" json:"reg_method"`
+	IsActive     bool        `gorm:"default:true" json:"is_active"`
+	IsAdmin      bool        `gorm:"default:false" json:"is_admin"`
+	LastLogin    *time.Time  `json:"last_login"`
+	LastIP       string      `gorm:"default:''" json:"last_ip"`
+	DepartmentID *uint       `json:"department_id"`
+	CreatedAt    time.Time   `json:"created_at"`
 }
 
 type Repository struct {
-	ID                uint              `gorm:"primaryKey;autoIncrement:false" json:"id"` // 对应 code-bench 中的仓库 ID
-	Name              string            `gorm:"uniqueIndex;not null" json:"name"`         // 仓库名称
-	URL               string            `gorm:"default:''" json:"url"`                    // Git 克隆地址
-	OwnerID           uint              `json:"owner_id"`                                 // 负责人 ID
-	IsActive          bool              `gorm:"index;default:true" json:"is_active"`            // 是否在宿主端被冻结
-	ProjectID         string            `gorm:"default:''" json:"project_id"`
-	HTTPURL           string            `gorm:"default:''" json:"http_url"`
-	ServiceGroup      string            `gorm:"index;default:''" json:"service_group"` // 归属子系统
-	OwnerName         string            `gorm:"index;default:''" json:"owner_name"`    // 负责人姓名
-	CreatedAt         time.Time         `json:"created_at"`
-	WebhookRegistered   bool              `gorm:"default:false" json:"webhook_registered"` // Webhook 是否已在托管平台注册
-	CodeCheckerTaskID   string            `gorm:"default:''" json:"code_checker_task_id"`   // 绑定的代码检查任务 ID
-	CodeCheckerTaskName string            `gorm:"default:''" json:"code_checker_task_name"` // 绑定的代码检查任务名称
+	ID                  uint              `gorm:"primaryKey" json:"id"`
+	DepartmentID        uint              `json:"department_id"`
+	Name                string            `gorm:"uniqueIndex;not null" json:"name"`
+	ProjectID           string            `gorm:"default:''" json:"project_id"`
+	URL                 string            `gorm:"default:''" json:"url"`
+	HTTPURL             string            `gorm:"default:''" json:"http_url"`
+	OwnerID             uint              `json:"owner_id"`
+	OwnerName           string            `gorm:"index;default:''" json:"owner_name"`
+	Branch              string            `gorm:"default:master" json:"branch"`
+	ServiceGroup        string            `gorm:"index;default:''" json:"service_group"`
+	IsActive            bool              `gorm:"index;default:true" json:"is_active"`
+	WebhookRegistered   bool              `gorm:"default:false" json:"webhook_registered"`
+	CodeCheckerTaskID   string            `gorm:"default:''" json:"code_checker_task_id"`
+	CodeCheckerTaskName string            `gorm:"default:''" json:"code_checker_task_name"`
 	Schemes             []ExecutionScheme `gorm:"foreignKey:RepositoryID" json:"schemes"`
+	CreatedAt           time.Time         `json:"created_at"`
 }
 
 type Pipeline struct {
