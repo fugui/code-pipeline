@@ -25,13 +25,13 @@ var frontendFS embed.FS
 func main() {
 	log.Println("[Server] Initializing code-pipeline...")
 
-	// 1. 初始化数据库
-	database.InitDB()
-
-	// 2. 加载配置文件
+	// 1. 加载配置文件
 	if err := models.LoadConfig("config.yaml"); err != nil {
 		log.Fatalf("[Server] Failed to load config.yaml: %v", err)
 	}
+
+	// 2. 初始化数据库
+	database.InitDB()
 
 	// 初始化 Git 平台基准地址配置
 	services.InitGitPlatform()
