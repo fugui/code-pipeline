@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -66,9 +67,32 @@ func GetRepos(c *gin.Context) {
 		return
 	}
 
+	// 动态关联 users 表按 owner_id 补全代码仓负责人姓名 OwnerName
+	userMap := make(map[uint]string)
+	var allUsers []models.User
+	if err := database.DB.Find(&allUsers).Error; err == nil {
+		for _, u := range allUsers {
+			name := u.Name
+			if name == "" {
+				name = u.Username
+			}
+			if name == "" {
+				name = u.Email
+			}
+			if name != "" {
+				userMap[u.ID] = name
+			}
+		}
+	}
+
 	template := models.AppConfig.PipelineSystem.PipelineLinkTemplate
 	taskTemplate := models.AppConfig.PipelineSystem.LinkCheckerTaskURL
 	for i := range repos {
+		if repos[i].OwnerName == "" && repos[i].OwnerID > 0 {
+			if name, ok := userMap[repos[i].OwnerID]; ok {
+				repos[i].OwnerName = name
+			}
+		}
 		for j := range repos[i].Schemes {
 			if template != "" && repos[i].Schemes[j].PipelineInfo != nil {
 				repos[i].Schemes[j].PipelineInfo.WebURL = generateWebURL(repos[i].Schemes[j].PipelineInfo, template)
@@ -96,12 +120,42 @@ func GetRepoFilterOptions(c *gin.Context) {
 		Order("service_group ASC").
 		Pluck("service_group", &serviceGroups)
 
+	var repos []models.Repository
+	database.DB.Select("owner_id, owner_name").Find(&repos)
+
+	userMap := make(map[uint]string)
+	var allUsers []models.User
+	if err := database.DB.Find(&allUsers).Error; err == nil {
+		for _, u := range allUsers {
+			name := u.Name
+			if name == "" {
+				name = u.Username
+			}
+			if name == "" {
+				name = u.Email
+			}
+			if name != "" {
+				userMap[u.ID] = name
+			}
+		}
+	}
+
+	ownerNameSet := make(map[string]bool)
+	for _, r := range repos {
+		name := r.OwnerName
+		if name == "" && r.OwnerID > 0 {
+			name = userMap[r.OwnerID]
+		}
+		if name != "" {
+			ownerNameSet[name] = true
+		}
+	}
+
 	var ownerNames []string
-	database.DB.Model(&models.Repository{}).
-		Distinct("owner_name").
-		Where("owner_name != ''").
-		Order("owner_name ASC").
-		Pluck("owner_name", &ownerNames)
+	for name := range ownerNameSet {
+		ownerNames = append(ownerNames, name)
+	}
+	sort.Strings(ownerNames)
 
 	c.JSON(http.StatusOK, gin.H{
 		"service_groups": serviceGroups,
