@@ -9,10 +9,10 @@ type User struct {
 	UniqueID     *string     `gorm:"uniqueIndex" json:"unique_id,omitempty"`
 	EmployeeID   string      `gorm:"index;default:''" json:"employee_id"`
 	EmployeeType string      `gorm:"default:''" json:"employee_type"`
-	Email        string      `gorm:"uniqueIndex;not null" json:"email"`
+	Email        string      `gorm:"uniqueIndex;not null;default:''" json:"email"`
 	Username     string      `gorm:"index;default:''" json:"username"`
 	Name         string      `gorm:"not null;default:''" json:"name"`
-	Password     string      `gorm:"not null" json:"-"`
+	Password     string      `gorm:"not null;default:''" json:"-"`
 	RegMethod    string      `gorm:"default:'local'" json:"reg_method"`
 	IsActive     bool        `gorm:"default:true" json:"is_active"`
 	IsAdmin      bool        `gorm:"default:false" json:"is_admin"`
@@ -25,7 +25,7 @@ type User struct {
 type Repository struct {
 	ID                  uint              `gorm:"primaryKey" json:"id"`
 	DepartmentID        uint              `json:"department_id"`
-	Name                string            `gorm:"uniqueIndex;not null" json:"name"`
+	Name                string            `gorm:"uniqueIndex;not null;default:''" json:"name"`
 	ProjectID           string            `gorm:"default:''" json:"project_id"`
 	URL                 string            `gorm:"default:''" json:"url"`
 	HTTPURL             string            `gorm:"default:''" json:"http_url"`
@@ -43,9 +43,9 @@ type Repository struct {
 
 type Pipeline struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
-	PipelineID  string    `gorm:"uniqueIndex;not null" json:"pipeline_id"` // 流水线 ID
-	Name        string    `gorm:"not null" json:"name"`                    // 名称
-	Type        string    `gorm:"not null" json:"type"`                    // 类型 (MR, 每日构建)
+	PipelineID  string    `gorm:"uniqueIndex;not null;default:''" json:"pipeline_id"` // 流水线 ID
+	Name        string    `gorm:"not null;default:''" json:"name"`                    // 名称
+	Type        string    `gorm:"not null;default:''" json:"type"`                    // 类型 (MR, 每日构建)
 	GroupName   string    `json:"group_name"`                              // 组名称
 	Description string    `json:"description"`                             // 描述
 	ServiceID   string    `json:"service_id"`                              // 第三方服务 ID
@@ -63,10 +63,10 @@ type ExecutionScheme struct {
 	Name         string      `json:"name"`                       // 统一关联对象的全局唯一名称
 	RepositoryID uint        `gorm:"index;index:idx_es_repo_branch" json:"repository_id"` // 关联本地只读 Repository 镜像表 ID
 	Repository   *Repository `gorm:"foreignKey:RepositoryID" json:"repository,omitempty"`
-	Branch       string      `gorm:"index:idx_es_repo_branch;not null" json:"branchs"` // 分支
+	Branch       string      `gorm:"index:idx_es_repo_branch;not null;default:''" json:"branchs"` // 分支
 	Languages    string      `json:"languages"`               // 编程语言 (如: "C/C++,Python,Java")
 
-	LocalPipelineID     uint      `gorm:"column:pipeline_id;index;not null" json:"pipeline_id"` // 关联的 Pipeline ID
+	LocalPipelineID     uint      `gorm:"column:pipeline_id;index;not null;default:0" json:"pipeline_id"` // 关联的 Pipeline ID
 	PipelineInfo        *Pipeline `gorm:"foreignKey:LocalPipelineID;references:ID" json:"pipeline,omitempty"`
 	Username            string    `json:"username"`               // 用户名
 	Password            string    `json:"password"`               // 密码
@@ -129,9 +129,9 @@ type MrEvent struct {
 // ManagedGroup 新系统独立的嵌套组表
 type ManagedGroup struct {
 	ID        uint          `gorm:"primaryKey" json:"id"`                           // 对应托管平台的 Group ID
-	Name      string        `gorm:"size:100;not null" json:"name"`                  // 组名称
-	Path      string        `gorm:"size:100;index;not null" json:"path"`            // 组相对路径
-	FullPath  string        `gorm:"size:255;uniqueIndex;not null" json:"full_path"`  // 组完整路径，如 "tech/infra"
+	Name      string        `gorm:"size:100;not null;default:''" json:"name"`                  // 组名称
+	Path      string        `gorm:"size:100;index;not null;default:''" json:"path"`            // 组相对路径
+	FullPath  string        `gorm:"size:255;uniqueIndex;not null;default:''" json:"full_path"`  // 组完整路径，如 "tech/infra"
 	ParentID  *uint         `gorm:"index" json:"parent_id"`                         // 父组 ID (空代表根组)
 	Parent    *ManagedGroup `gorm:"foreignKey:ParentID" json:"-"`
 	SyncedAt  *time.Time    `json:"synced_at"`                                      // 最后的同步时间 (nil代表未同步)
@@ -142,7 +142,7 @@ type ManagedGroup struct {
 // ManagedRepository 新系统独立的被管代码仓表
 type ManagedRepository struct {
 	ID                uint              `gorm:"primaryKey" json:"id"`                  // 对应托管平台的 Project ID
-	ManagedGroupID    uint              `gorm:"index;uniqueIndex:idx_mg_repo;not null" json:"managed_group_id"`// 关联被管组
+	ManagedGroupID    uint              `gorm:"index;uniqueIndex:idx_mg_repo;not null;default:0" json:"managed_group_id"`// 关联被管组
 	ManagedGroup      ManagedGroup      `gorm:"foreignKey:ManagedGroupID" json:"group"`
 	Name              string            `gorm:"uniqueIndex:idx_mg_repo;not null;default:''" json:"name"`
 	SSHURL            string            `gorm:"not null;default:''" json:"ssh_url"`               // SSH 克隆地址
@@ -163,10 +163,10 @@ type ManagedMemberAccess struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
 	SourceType    string    `gorm:"size:20;index:idx_mma_source;index:idx_mma_lookup"`    // "group" 或 "repository"
 	SourceID      uint      `gorm:"index:idx_mma_source;index:idx_mma_lookup"`            // 对应 ManagedGroupID 或 ManagedRepositoryID
-	PrincipalType string    `gorm:"size:20;index:idx_mma_lookup;not null" json:"principal_type"` // 授权主体类型: "user" 或 "user_group"
-	PrincipalID   uint      `gorm:"index;index:idx_mma_lookup;not null" json:"principal_id"`     // 对应的 User ID 或 外部 UserGroup ID
+	PrincipalType string    `gorm:"size:20;index:idx_mma_lookup;not null;default:''" json:"principal_type"` // 授权主体类型: "user" 或 "user_group"
+	PrincipalID   uint      `gorm:"index;index:idx_mma_lookup;not null;default:0" json:"principal_id"`     // 对应的 User ID 或 外部 UserGroup ID
 	PrincipalName string    `gorm:"size:100;default:''" json:"principal_name"` // 展示名缓存
-	AccessLevel   int       `gorm:"not null" json:"access_level"`    // 权限等级: 10(Reporter), 30(Developer), 50(Owner)
+	AccessLevel   int       `gorm:"not null;default:0" json:"access_level"`    // 权限等级: 10(Reporter), 30(Developer), 50(Owner)
 	SyncStatus    string    `gorm:"size:20;default:'pending'" json:"sync_status"` // "pending" | "synced" | "failed"
 	SyncError     string    `gorm:"type:text" json:"sync_error,omitempty"`
 	UpdatedAt     time.Time `json:"updated_at"`
@@ -175,8 +175,8 @@ type ManagedMemberAccess struct {
 // ManagedBranchMonitor 本地非活动分支监控表
 type ManagedBranchMonitor struct {
 	ID                  uint      `gorm:"primaryKey" json:"id"`
-	ManagedRepositoryID uint      `gorm:"index;index:idx_mbm_repo_status;not null" json:"managed_repository_id"`
-	BranchName          string    `gorm:"size:120;index;not null" json:"branch_name"`
+	ManagedRepositoryID uint      `gorm:"index;index:idx_mbm_repo_status;not null;default:0" json:"managed_repository_id"`
+	BranchName          string    `gorm:"size:120;index;not null;default:''" json:"branch_name"`
 	LastCommitHash      string    `gorm:"size:60" json:"last_commit_hash"`
 	LastCommitTime      time.Time `gorm:"index" json:"last_commit_time"`
 	LastAuthor          string    `gorm:"size:100" json:"last_author"`
