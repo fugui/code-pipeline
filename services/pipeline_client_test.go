@@ -424,5 +424,3 @@ func TestManagedGitPlatformAPI(t *testing.T) {
 		t.Errorf("unexpected projects result: %v", projects)
 	}
 }
-
-

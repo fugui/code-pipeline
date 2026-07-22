@@ -73,7 +73,6 @@ func main() {
 			api.GET("/mr/hook/:id", handlers.GetMrEventDetail)
 			api.GET("/mr/list", handlers.GetMrListFromGit)
 
-
 			// 仓库配置路由
 			api.GET("/repos", handlers.GetRepos)
 			api.GET("/repos/filter-options", handlers.GetRepoFilterOptions)

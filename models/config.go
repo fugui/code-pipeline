@@ -107,7 +107,6 @@ type Config struct {
 	} `yaml:"codehub"`
 }
 
-
 var AppConfig Config
 
 func LoadConfig(filename string) error {
@@ -207,4 +206,3 @@ func applyDefaults() {
 		}
 	}
 }
-

@@ -9,6 +9,7 @@ import (
 )
 
 func TestToggleGroupHideLogic(t *testing.T) {
+	_ = models.LoadConfig("../config.yaml")
 	InitDB()
 
 	// 清理旧的测试数据，以防冲突

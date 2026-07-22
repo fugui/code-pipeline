@@ -402,7 +402,6 @@ func CleanupManagedBranches(c *gin.Context) {
 	})
 }
 
-
 // SyncManagedGroup 接收嵌套组同步请求并加入后台异步任务队列
 func SyncManagedGroup(c *gin.Context) {
 	idStr := c.Param("id")
@@ -539,5 +538,3 @@ func ToggleGroupHide(c *gin.Context) {
 		"is_hidden": group.IsHidden,
 	})
 }
-
-

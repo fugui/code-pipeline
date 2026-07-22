@@ -145,7 +145,7 @@ func TestGetMrListFromGitRemote(t *testing.T) {
 			mockBody:      `[]`,
 			expectedCount: 0,
 			expectError:   true,
-			skipURLConfig:  true,
+			skipURLConfig: true,
 		},
 	}
 

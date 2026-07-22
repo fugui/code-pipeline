@@ -1106,4 +1106,3 @@ func UpdateRepoSettings(ctx context.Context, projectID string, headers map[strin
 
 	return nil
 }
-
