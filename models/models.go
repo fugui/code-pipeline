@@ -144,8 +144,8 @@ type ManagedRepository struct {
 	ID                uint              `gorm:"primaryKey" json:"id"`                  // 对应托管平台的 Project ID
 	ManagedGroupID    uint              `gorm:"index;uniqueIndex:idx_mg_repo;not null" json:"managed_group_id"`// 关联被管组
 	ManagedGroup      ManagedGroup      `gorm:"foreignKey:ManagedGroupID" json:"group"`
-	Name              string            `gorm:"uniqueIndex:idx_mg_repo;not null" json:"name"`
-	SSHURL            string            `gorm:"not null" json:"ssh_url"`               // SSH 克隆地址
+	Name              string            `gorm:"uniqueIndex:idx_mg_repo;not null;default:''" json:"name"`
+	SSHURL            string            `gorm:"not null;default:''" json:"ssh_url"`               // SSH 克隆地址
 	HTTPURL           string            `gorm:"default:''" json:"http_url"`            // HTTP 访问地址
 	OwnerID           uint              `json:"owner_id"`                              // 负责人 ID (系统 User)
 	IsActive          bool              `gorm:"default:true" json:"is_active"`
