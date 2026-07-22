@@ -1,5 +1,7 @@
 # Binaries
 /code-pipeline
+/code-pipeline-server
+/code_pipeline
 *.exe
 *.dll
 *.so
