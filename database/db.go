@@ -8,7 +8,6 @@ import (
 
 	"code-pipeline/models"
 
-	"github.com/glebarez/sqlite"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -39,18 +38,12 @@ func InitDB() {
 		},
 	)
 
-	var dialector gorm.Dialector
-	if models.AppConfig.Database.Driver == "sqlite" || models.AppConfig.Database.Host == "" {
-		log.Println("[Database] Connecting to SQLite in-memory database for testing/fallback...")
-		dialector = sqlite.Open("file::memory:?cache=shared")
-	} else {
-		dsn := models.AppConfig.Database.GetDSN()
-		log.Printf("[Database] Connecting to PostgreSQL database (%s)...", models.AppConfig.Database.DBName)
-		dialector = postgres.New(postgres.Config{
-			DSN:                  dsn,
-			PreferSimpleProtocol: true,
-		})
-	}
+	dsn := models.AppConfig.Database.GetDSN()
+	log.Printf("[Database] Connecting to PostgreSQL database (%s)...", models.AppConfig.Database.DBName)
+	dialector := postgres.New(postgres.Config{
+		DSN:                  dsn,
+		PreferSimpleProtocol: true,
+	})
 
 	DB, err = gorm.Open(dialector, &gorm.Config{
 		Logger:                                   newLogger,
