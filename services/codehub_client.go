@@ -62,20 +62,20 @@ func GetMrListFromGitRemote(ctx context.Context, projectID string, repoName stri
 	}
 
 	type rawGitMr struct {
-		ID                 interface{} `json:"id"`
-		Iid                int64       `json:"iid"`
-		Title              string      `json:"title"`
-		State              string      `json:"state"`
-		Description        string      `json:"description"`
-		TargetBranch       string      `json:"target_branch"`
-		TargetBranchCamel  string      `json:"targetBranch"`
-		SourceBranch       string      `json:"source_branch"`
-		SourceBranchCamel  string      `json:"sourceBranch"`
-		WebURL             string      `json:"web_url"`
-		WebURLCamel        string      `json:"webUrl"`
-		Author             GitMrAuthor `json:"author"`
-		CreatedAt          string      `json:"created_at"`
-		UpdatedAt          string      `json:"updated_at"`
+		ID                interface{} `json:"id"`
+		Iid               int64       `json:"iid"`
+		Title             string      `json:"title"`
+		State             string      `json:"state"`
+		Description       string      `json:"description"`
+		TargetBranch      string      `json:"target_branch"`
+		TargetBranchCamel string      `json:"targetBranch"`
+		SourceBranch      string      `json:"source_branch"`
+		SourceBranchCamel string      `json:"sourceBranch"`
+		WebURL            string      `json:"web_url"`
+		WebURLCamel       string      `json:"webUrl"`
+		Author            GitMrAuthor `json:"author"`
+		CreatedAt         string      `json:"created_at"`
+		UpdatedAt         string      `json:"updated_at"`
 	}
 
 	var rawList []rawGitMr
@@ -240,7 +240,6 @@ func DeleteRemoteBranch(ctx context.Context, projectID string, branchName string
 	return nil
 }
 
-
 // ConfigureBranchProtection 使用超级管理员权限在远程 Git 平台设置保护分支规则，并融合鉴权 Header
 func ConfigureBranchProtection(ctx context.Context, projectID string, branchPattern string) error {
 	apiURL := fmt.Sprintf("%s/projects/%s/protected_branches", GitPlatformBaseURL, projectID)
@@ -374,8 +373,8 @@ func GetRemoteBranchesDetail(ctx context.Context, projectID string, branchCount 
 		}
 
 		type RemoteResp struct {
-			Status string               `json:"status"`
-			Result []CodehubBranchResp  `json:"result"`
+			Status string              `json:"status"`
+			Result []CodehubBranchResp `json:"result"`
 		}
 
 		var pageItems []CodehubBranchResp

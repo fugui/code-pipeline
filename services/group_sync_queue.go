@@ -64,6 +64,7 @@ func StartGroupSyncQueue(ctx context.Context) {
 		}
 	}()
 }
+
 // syncGroupRecursive 递归同步组、子组和项目分支数据
 func syncGroupRecursive(ctx context.Context, groupID uint, userID uint) error {
 	select {

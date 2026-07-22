@@ -12,7 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-
 // GetMrEvents 获取合并请求推送事件列表（支持分页及多字段筛选）
 func GetMrEvents(c *gin.Context) {
 	pageStr := c.DefaultQuery("page", "1")
@@ -143,4 +142,3 @@ func GetMrListFromGit(c *gin.Context) {
 
 	c.JSON(http.StatusOK, allMRs)
 }
-

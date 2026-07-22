@@ -44,7 +44,7 @@ func AuditAllReposBranches(ctx context.Context) {
 // AuditSingleRepoBranches 审计单个被管仓库分支的活跃状态并缓存至本地
 func AuditSingleRepoBranches(ctx context.Context, repoID uint) error {
 	log.Printf("[BranchAudit] Auditing branches for repo ID %d...", repoID)
-	
+
 	repoStrID := strconv.Itoa(int(repoID))
 
 	// 1. 获取远程分支总数，并保存/更新到本地 ManagedRepository 的 BranchCount 字段
@@ -98,7 +98,7 @@ func AuditSingleRepoBranches(ctx context.Context, repoID uint) error {
 
 		if monitor, ok := localMap[br.Name]; ok {
 			// 更新
-			db.Model(monitor).Updates(map[string]interface{}{
+			if err := db.Model(monitor).Updates(map[string]interface{}{
 				"last_commit_hash": br.LastCommitHash,
 				"last_commit_time": br.LastCommitTime,
 				"last_author":      br.LastAuthor,
@@ -106,7 +106,9 @@ func AuditSingleRepoBranches(ctx context.Context, repoID uint) error {
 				"is_protected":     br.IsProtected,
 				"status":           status,
 				"updated_at":       now,
-			})
+			}).Error; err != nil {
+				log.Printf("[BranchAudit] Failed to update branch monitor %s: %v", br.Name, err)
+			}
 		} else {
 			// 新增
 			newMonitor := models.ManagedBranchMonitor{
@@ -120,15 +122,20 @@ func AuditSingleRepoBranches(ctx context.Context, repoID uint) error {
 				Status:              status,
 				UpdatedAt:           now,
 			}
-			db.Create(&newMonitor)
+			if err := db.Create(&newMonitor).Error; err != nil {
+				log.Printf("[BranchAudit] Failed to create branch monitor %s: %v", br.Name, err)
+			}
 		}
 	}
 
 	// 4. 清理在托管平台上已被物理删除、但本地 DB 缓存中仍存在的分支
-	for _, monitor := range existingMonitors {
+	for i := range existingMonitors {
+		monitor := &existingMonitors[i]
 		if !activeRemoteBranches[monitor.BranchName] {
 			log.Printf("[BranchAudit] Branch %s deleted in remote, cleaning local cache...", monitor.BranchName)
-			db.Delete(monitor)
+			if err := db.Delete(monitor).Error; err != nil {
+				log.Printf("[BranchAudit] Failed to delete stale branch monitor %s: %v", monitor.BranchName, err)
+			}
 		}
 	}
 
