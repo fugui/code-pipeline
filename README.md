@@ -10,24 +10,23 @@
 
 1. **内聚的流水线配置管理**：面向多分支研发场景，将流水线执行方案（Execution Scheme）与代码仓多分支进行精细化绑定，消除各独立子系统重复录入仓库数据的冗余。
 2. **轻量与高响应度**：本地不存储海量的执行日志，通过高性能 API 代理机制实时穿透查询第三方 CI/CD 系统的实际运行日志和输出流，极大地减轻本地数据库的存储负担。
-3. **数据一致性保护**：采用只读镜像同步机制。代码仓的主配置完全托管在 Portal 主应用中，子系统采用单向 Pull（拉取）缓存模式，确保全局主数据权威源唯一。
+3. **数据一致性保护**：采用 PostgreSQL 统一数据库共享架构。全平台微服务直连同一个数据库与 `repositories` / `users` / `departments` 共享主数据表，保障数据实时强一致。
 
 ---
 
-## 🧩 系统架构与同步机制
+## 🧩 系统架构与数据交互
 
 ```mermaid
 graph TD
-    CB[CodeBench Portal 主应用] -- "GET /api/repos (SSO 授信)" --> CP[code-pipeline 子系统]
-    CP -- "后台定时同步 (5 min)" --> CP_DB[(本地 SQLite 镜像)]
-    ES[Execution Scheme] -->|物理外键| CP_DB
+    CP[code-pipeline 子系统] -- "直连共享" --> PG[(PostgreSQL 数据库)]
+    ES[Execution Scheme] -->|物理外键| PG
     ES -->|物理外键| PL[(Pipeline 实体)]
     CP_Web[前端 Repos.tsx/Dashboard.tsx] -- "最新日志请求" --> CP_API[后端代理 Handler]
     CP_API -- "实时透传 API" --> Remote_CI[第三方 CI/CD 引擎]
 ```
 
-### 1. 数据同步流 (S2S SSO 鉴权)
-本系统后台挂载了常驻的定时同步器 (`StartRepoSyncTimer`)。每 5 分钟自动使用 Portal 间共享的对称密钥签发临时系统级 JWT，主动向 `code-bench` 拉取最新的代码仓数据，并增量更新到本地 `repositories` 只读缓存表中。对于未同步的代码仓，在操作执行方案时提供单条 Lazy Load 同步安全机制。
+### 1. 共享主数据模型
+本系统与其他微服务（如 `code-bench`、`code-shield`、`code-pdm`）共享同一个 PostgreSQL 数据库与基础主表。代码仓（`repositories`）与用户（`users`）修改由 Portal 统一写入后，全平台实时可见，无需通过 HTTP 或定时任务同步。
 
 ### 2. 实时代理透传日志
 为了避免数据库膨胀并保证日志的最新状态，系统设计了**零本地执行日志库架构**。用户在前端控制中心、历史详情中查看控制台日志时，后端 Handler 通过代理调用将请求透传至真正的第三方流水线控制台，并返回高保真的执行轨迹。
@@ -36,8 +35,8 @@ graph TD
 
 ## 💾 数据模型规范
 
-### 1. 代码仓镜像 (Repository)
-来自 `code-bench` 的只读主数据副本。
+### 1. 代码仓表 (Repository)
+全平台共享的 Repository 主数据实体。
 
 | 字段名称 | 类型 | 描述 |
 | :--- | :--- | :--- |
