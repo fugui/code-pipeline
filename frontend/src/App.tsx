@@ -285,8 +285,9 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     setIsSavingScheme(true)
     setSchemeError(null)
 
-    const method = 'POST'
-    const url = `${apiBase}/execution-schemes`
+    const isEdit = !!activeScheme.id
+    const method = isEdit ? 'PUT' : 'POST'
+    const url = isEdit ? `${apiBase}/execution-schemes/${activeScheme.id}` : `${apiBase}/execution-schemes`
 
     fetch(url, {
       method,
@@ -297,7 +298,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
       body: JSON.stringify(activeScheme)
     })
     .then(res => {
-      if (!res.ok) throw new Error('保存执行方案失败，请检查配置后重试')
+      if (!res.ok) throw new Error(isEdit ? '更新执行方案失败，请检查配置后重试' : '保存执行方案失败，请检查配置后重试')
       return res.json()
     })
     .then(() => {

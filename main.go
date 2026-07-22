@@ -107,6 +107,7 @@ func main() {
 			// 执行方案相关接口
 			api.GET("/execution-schemes", handlers.GetExecutionSchemes)
 			api.POST("/execution-schemes", handlers.CreateExecutionScheme)
+			api.PUT("/execution-schemes/:id", handlers.UpdateExecutionScheme)
 			api.DELETE("/execution-schemes/:id", handlers.DeleteExecutionScheme)
 			api.POST("/execution-schemes/:id/run", handlers.RunExecutionScheme)
 			api.POST("/execution-schemes/sync", handlers.SyncExecutionSchemes)

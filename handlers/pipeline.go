@@ -291,6 +291,56 @@ func CreateExecutionScheme(c *gin.Context) {
 	c.JSON(http.StatusCreated, scheme)
 }
 
+// UpdateExecutionScheme 更新执行方案（更新构建参数、触发参数等）
+func UpdateExecutionScheme(c *gin.Context) {
+	id := c.Param("id")
+	var scheme models.ExecutionScheme
+	if err := database.DB.First(&scheme, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Execution scheme not found"})
+		return
+	}
+
+	var req ExecutionSchemeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[UpdateExecutionScheme] Bind JSON failed: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	updates := map[string]interface{}{
+		"custom_attributes": req.CustomAttributes,
+	}
+	if req.Branchs != "" {
+		updates["branch"] = req.Branchs
+	}
+	if req.Languages != "" {
+		updates["languages"] = req.Languages
+	}
+	if req.MRTrigger != nil {
+		updates["mr_trigger"] = *req.MRTrigger
+	}
+	if req.DailyBuild != nil {
+		updates["daily_build"] = *req.DailyBuild
+	}
+	if req.DailyBuildTime != "" {
+		updates["daily_build_time"] = req.DailyBuildTime
+	}
+
+	if err := database.DB.Model(&scheme).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update execution scheme in local DB"})
+		return
+	}
+
+	database.DB.Preload("Repository").Preload("PipelineInfo").First(&scheme, scheme.ID)
+
+	taskTemplate := models.AppConfig.PipelineSystem.LinkCheckerTaskURL
+	if taskTemplate != "" {
+		scheme.CodeCheckerTaskWebURL = generateTaskWebURL(scheme.CodeCheckerTaskID, taskTemplate)
+	}
+
+	c.JSON(http.StatusOK, scheme)
+}
+
 // DeleteExecutionScheme 删除执行方案，并从三方流水线系统删除
 func DeleteExecutionScheme(c *gin.Context) {
 	id := c.Param("id")

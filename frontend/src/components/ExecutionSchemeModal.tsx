@@ -685,29 +685,27 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 200 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>构建参数</label>
-                {!isView && (
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      style={{ padding: '4px 10px', fontSize: 12, height: 'auto' }}
-                      onClick={() => setShowPasteModal(true)}
-                    >
-                      粘贴参数
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      style={{ padding: '4px 10px', fontSize: 12, height: 'auto' }}
-                      onClick={() => {
-                        const newList = [...customAttrs, { key: '', value: '' }];
-                        updateCustomAttrs(newList);
-                      }}
-                    >
-                      + 添加参数
-                    </button>
-                  </div>
-                )}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: 12, height: 'auto' }}
+                    onClick={() => setShowPasteModal(true)}
+                  >
+                    粘贴参数
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: 12, height: 'auto' }}
+                    onClick={() => {
+                      const newList = [...customAttrs, { key: '', value: '' }];
+                      updateCustomAttrs(newList);
+                    }}
+                  >
+                    + 添加参数
+                  </button>
+                </div>
               </div>
 
               <div style={{ 
@@ -722,15 +720,15 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', textAlign: 'left' }}>
-                        <th style={{ padding: '8px 12px', width: isView ? '50%' : '45%' }}>参数名 (Name)</th>
-                        <th style={{ padding: '8px 12px', width: isView ? '50%' : '45%' }}>参数值 (Value)</th>
-                        {!isView && <th style={{ padding: '8px 12px', width: '10%', textAlign: 'center' }}>操作</th>}
+                        <th style={{ padding: '8px 12px', width: '45%' }}>参数名 (Name)</th>
+                        <th style={{ padding: '8px 12px', width: '45%' }}>参数值 (Value)</th>
+                        <th style={{ padding: '8px 12px', width: '10%', textAlign: 'center' }}>操作</th>
                       </tr>
                     </thead>
                     <tbody>
                       {customAttrs.length === 0 ? (
                         <tr>
-                          <td colSpan={isView ? 2 : 3} style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+                          <td colSpan={3} style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
                             暂无构建参数，点击右上角“添加参数”新增
                           </td>
                         </tr>
@@ -742,7 +740,6 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                                 type="text"
                                 placeholder="例如: TIMEOUT"
                                 value={item.key}
-                                disabled={isView}
                                 style={{ width: '100%', padding: '6px 10px', fontSize: 13, height: 32 }}
                                 onChange={(e) => {
                                   const newList = [...customAttrs];
@@ -756,7 +753,6 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                                 type="text"
                                 placeholder="例如: 300"
                                 value={item.value}
-                                disabled={isView}
                                 style={{ width: '100%', padding: '6px 10px', fontSize: 13, height: 32 }}
                                 onChange={(e) => {
                                   const newList = [...customAttrs];
@@ -765,40 +761,38 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                                 }}
                               />
                             </td>
-                            {!isView && (
-                              <td style={{ padding: '4px 8px', textAlign: 'center' }}>
-                                <button
-                                  type="button"
-                                  style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: '#fda4af',
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    padding: '6px',
-                                    borderRadius: '4px',
-                                    transition: 'all 0.2s'
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.color = '#fb7185';
-                                    e.currentTarget.style.background = 'rgba(244, 63, 94, 0.1)';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.color = '#fda4af';
-                                    e.currentTarget.style.background = 'none';
-                                  }}
-                                  onClick={() => {
-                                    const newList = customAttrs.filter((_, i) => i !== index);
-                                    updateCustomAttrs(newList);
-                                  }}
-                                  title="删除"
-                                >
-                                  <Trash2 size={15} />
-                                </button>
-                              </td>
-                            )}
+                            <td style={{ padding: '4px 8px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#fda4af',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: '6px',
+                                  borderRadius: '4px',
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.color = '#fb7185';
+                                  e.currentTarget.style.background = 'rgba(244, 63, 94, 0.1)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.color = '#fda4af';
+                                  e.currentTarget.style.background = 'none';
+                                }}
+                                onClick={() => {
+                                  const newList = customAttrs.filter((_, i) => i !== index);
+                                  updateCustomAttrs(newList);
+                                }}
+                                title="删除"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </td>
                           </tr>
                         ))
                       )}
@@ -839,30 +833,28 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
             background: 'rgba(255, 255, 255, 0.01)'
           }}>
             <button type="button" className="btn btn-secondary" onClick={handleCloseWithAnimation} disabled={saving}>
-              {isView ? '关闭' : '取消'}
+              {isView ? '取消' : '取消'}
             </button>
-            {!isView && (
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={saving}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  opacity: saving ? 0.75 : 1,
-                  cursor: saving ? 'not-allowed' : 'pointer',
-                  transition: 'opacity 0.2s'
-                }}
-              >
-                {saving ? (
-                  <>
-                    <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
-                    创建中...
-                  </>
-                ) : '创建方案'}
-              </button>
-            )}
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={saving}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                opacity: saving ? 0.75 : 1,
+                cursor: saving ? 'not-allowed' : 'pointer',
+                transition: 'opacity 0.2s'
+              }}
+            >
+              {saving ? (
+                <>
+                  <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                  {isView ? '保存中...' : '创建中...'}
+                </>
+              ) : (isView ? '保存修改' : '创建方案')}
+            </button>
           </div>
 
           {/* 成功浮层横幅 */}
