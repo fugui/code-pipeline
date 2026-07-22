@@ -60,6 +60,9 @@ func InitDB() {
 		log.Println("[Database] Checked and removed unique index idx_mg_repo successfully")
 	}
 
+	// 补全已存在数据行中为空的 ssh_url，防止 AutoMigrate 增加 NOT NULL 约束失败
+	_ = DB.Exec("UPDATE managed_repositories SET ssh_url = '' WHERE ssh_url IS NULL").Error
+
 	log.Println("[Database] AutoMigrating database schema...")
 	err = DB.AutoMigrate(
 		&models.User{},
