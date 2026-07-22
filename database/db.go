@@ -60,8 +60,26 @@ func InitDB() {
 		log.Println("[Database] Checked and removed unique index idx_mg_repo successfully")
 	}
 
-	// 补全已存在数据行中为空的 ssh_url，防止 AutoMigrate 增加 NOT NULL 约束失败
-	_ = DB.Exec("UPDATE managed_repositories SET ssh_url = '' WHERE ssh_url IS NULL").Error
+	// 补全已存在数据行中为空或 NULL 的字段，防止 AutoMigrate 增加 NOT NULL 约束失败
+	_ = DB.Exec("UPDATE users SET email = '' WHERE email IS NULL")
+	_ = DB.Exec("UPDATE users SET password = '' WHERE password IS NULL")
+	_ = DB.Exec("UPDATE repositories SET name = '' WHERE name IS NULL")
+	_ = DB.Exec("UPDATE pipelines SET pipeline_id = '' WHERE pipeline_id IS NULL")
+	_ = DB.Exec("UPDATE pipelines SET name = '' WHERE name IS NULL")
+	_ = DB.Exec("UPDATE pipelines SET type = '' WHERE type IS NULL")
+	_ = DB.Exec("UPDATE execution_schemes SET branchs = '' WHERE branchs IS NULL")
+	_ = DB.Exec("UPDATE execution_schemes SET pipeline_id = 0 WHERE pipeline_id IS NULL")
+	_ = DB.Exec("UPDATE managed_groups SET name = '' WHERE name IS NULL")
+	_ = DB.Exec("UPDATE managed_groups SET path = '' WHERE path IS NULL")
+	_ = DB.Exec("UPDATE managed_groups SET full_path = '' WHERE full_path IS NULL")
+	_ = DB.Exec("UPDATE managed_repositories SET managed_group_id = 0 WHERE managed_group_id IS NULL")
+	_ = DB.Exec("UPDATE managed_repositories SET name = '' WHERE name IS NULL")
+	_ = DB.Exec("UPDATE managed_repositories SET ssh_url = '' WHERE ssh_url IS NULL")
+	_ = DB.Exec("UPDATE managed_member_accesses SET principal_type = '' WHERE principal_type IS NULL")
+	_ = DB.Exec("UPDATE managed_member_accesses SET principal_id = 0 WHERE principal_id IS NULL")
+	_ = DB.Exec("UPDATE managed_member_accesses SET access_level = 0 WHERE access_level IS NULL")
+	_ = DB.Exec("UPDATE managed_branch_monitors SET managed_repository_id = 0 WHERE managed_repository_id IS NULL")
+	_ = DB.Exec("UPDATE managed_branch_monitors SET branch_name = '' WHERE branch_name IS NULL")
 
 	log.Println("[Database] AutoMigrating database schema...")
 	err = DB.AutoMigrate(
