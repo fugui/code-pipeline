@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { 
-  GitBranch, Folder, Plus, Search, Users, AlertCircle, RefreshCw, Send, CheckCircle2, ChevronRight, ChevronDown, Eye, EyeOff, Trash2, Zap
+  GitBranch, Folder, Plus, Search, Users, AlertCircle, RefreshCw, Send, CheckCircle2, ChevronRight, ChevronDown, Eye, EyeOff, Trash2, Zap, X
 } from 'lucide-react'
 
 interface ManagedGroup {
@@ -966,8 +966,8 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                             fetchBranchAudits(r.id)
                             handleOpenAclManager('repository', r.id)
                             setActiveTab('branches')
-                          }} className="btn btn-secondary btn-small">
-                            <GitBranch size={13} /> 分支审计看板
+                          }} className="btn btn-secondary btn-small" title="查看仓库管控大盘与分支审计看板">
+                            <GitBranch size={13} /> 管控
                           </button>
                           <button 
                             disabled={isAuditing}
@@ -975,10 +975,11 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                             className="btn btn-secondary btn-small"
                             title="手动即时触发该代码仓的分支审计分析"
                           >
-                            <RefreshCw size={13} className={isAuditing ? 'animate-spin' : ''} /> 审计
+                            <RefreshCw size={13} className={isAuditing ? 'animate-spin' : ''} />
                           </button>
                         </div>
                       </td>
+
                     </tr>
                   ))
                 )}
@@ -1051,302 +1052,358 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
 
       {/* Branch Audit & ACL Sidebar Modal/Drawer */}
       {activeRepo && (
-        <div style={{
-          position: 'fixed', top: 0, right: 0, bottom: 0, width: 800,
-          background: 'var(--bg-secondary)', borderLeft: '1px solid var(--border-color)',
-          boxShadow: '-10px 0 30px rgba(0,0,0,0.15)', zIndex: 100, padding: 32,
-          display: 'flex', flexDirection: 'column', gap: 24,
-          animation: 'slideLeft 0.2s ease-out'
-        }}>
-          {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="badge badge-secondary" style={{ fontSize: 11 }}>Project ID: {activeRepo.id}</span>
-                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{activeRepo.group?.full_path}</span>
+        <>
+          {/* Backdrop Overlay to auto-close drawer when clicking outside */}
+          <div 
+            onClick={() => setActiveRepo(null)}
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0, 0, 0, 0.45)',
+              backdropFilter: 'blur(2px)',
+              zIndex: 99
+            }}
+            title="点击背景区域自动关闭"
+          />
+
+          <div style={{
+            position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(1040px, 94vw)',
+            background: 'var(--bg-secondary)', borderLeft: '1px solid var(--border-color)',
+            boxShadow: '-10px 0 30px rgba(0,0,0,0.2)', zIndex: 100, padding: 32,
+            display: 'flex', flexDirection: 'column', gap: 24,
+            animation: 'slideLeft 0.2s ease-out'
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="badge badge-secondary" style={{ fontSize: 11 }}>Project ID: {activeRepo.id}</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{activeRepo.group?.full_path}</span>
+                </div>
+                <h2 style={{ fontSize: 22, fontWeight: 700, margin: '6px 0 0 0' }}>仓库管控大盘: {activeRepo.name}</h2>
               </div>
-              <h2 style={{ fontSize: 22, fontWeight: 700, margin: '6px 0 0 0' }}>仓库管控大盘: {activeRepo.name}</h2>
+              <button 
+                onClick={() => setActiveRepo(null)} 
+                className="btn btn-secondary btn-small" 
+                style={{ padding: '6px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                title="关闭管控大盘 (或点击背景区域)"
+              >
+                <X size={16} />
+              </button>
             </div>
-            <button onClick={() => setActiveRepo(null)} className="btn btn-secondary btn-small" style={{ fontSize: 12 }}>
-              关闭
-            </button>
-          </div>
 
-          {/* Stale branch summaries */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-            <div className="glass-card" style={{ padding: '14px 20px', borderLeft: '4px solid #ef4444' }}>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>未合并僵尸分支</div>
-              <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{unmergedStale} 个</div>
+            {/* Stale branch summaries */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+              <div className="glass-card" style={{ padding: '14px 20px', borderLeft: '4px solid #ef4444' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>未合并僵尸分支</div>
+                <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{unmergedStale} 个</div>
+              </div>
+              <div className="glass-card" style={{ padding: '14px 20px', borderLeft: '4px solid #f59e0b' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>已合并待清理</div>
+                <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{mergedStale} 个</div>
+              </div>
+              <div className="glass-card" style={{ padding: '14px 20px', borderLeft: '4px solid #10b981' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>分支总存量</div>
+                <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{branches.length} 个</div>
+              </div>
             </div>
-            <div className="glass-card" style={{ padding: '14px 20px', borderLeft: '4px solid #f59e0b' }}>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>已合并待清理</div>
-              <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{mergedStale} 个</div>
+
+            {/* Tabs */}
+            <div style={{ display: 'flex', gap: 12, borderBottom: '1px solid var(--border-color)', paddingBottom: 8 }}>
+              <button 
+                onClick={() => setActiveTab('branches')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 6,
+                  border: '1px solid',
+                  borderColor: activeTab === 'branches' ? 'var(--border-color)' : 'transparent',
+                  background: activeTab === 'branches' ? 'var(--bg-primary)' : 'transparent',
+                  color: activeTab === 'branches' ? 'var(--text-main)' : 'var(--text-secondary)',
+                  fontWeight: activeTab === 'branches' ? 600 : 400,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13
+                }}
+              >
+                <GitBranch size={14} /> 分支审计 (Audits)
+              </button>
+              <button 
+                onClick={() => setActiveTab('acl')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 6,
+                  border: '1px solid',
+                  borderColor: activeTab === 'acl' ? 'var(--border-color)' : 'transparent',
+                  background: activeTab === 'acl' ? 'var(--bg-primary)' : 'transparent',
+                  color: activeTab === 'acl' ? 'var(--text-main)' : 'var(--text-secondary)',
+                  fontWeight: activeTab === 'acl' ? 600 : 400,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13
+                }}
+              >
+                <Users size={14} /> 权限同步 (ACLs)
+              </button>
             </div>
-            <div className="glass-card" style={{ padding: '14px 20px', borderLeft: '4px solid #10b981' }}>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>分支总存量</div>
-              <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{branches.length} 个</div>
-            </div>
-          </div>
 
-          {/* Tabs */}
-          <div style={{ display: 'flex', gap: 16, borderBottom: '1px solid var(--border-color)', paddingBottom: 8 }}>
-            <button 
-              onClick={() => setActiveTab('branches')}
-              className={`btn btn-small ${activeTab === 'branches' ? 'btn-primary' : 'btn-secondary'}`}
-            >
-              <GitBranch size={14} /> 分支审计与提醒 (Audits)
-            </button>
-            <button 
-              onClick={() => setActiveTab('acl')}
-              className={`btn btn-small ${activeTab === 'acl' ? 'btn-primary' : 'btn-secondary'}`}
-            >
-              <Users size={14} /> Git平台权限同步记录 (ACLs)
-            </button>
-          </div>
+            {/* TAB 1: Branch Auditing */}
+            {activeTab === 'branches' && (() => {
+              const selectableBranches = branches.filter(b => b.status !== 'active')
+              const allSelectableNames = selectableBranches.map(b => b.branch_name)
+              const isAllSelected = allSelectableNames.length > 0 && allSelectableNames.every(name => selectedBranchNames.includes(name))
+              
+              const mergedStaleBranches = branches.filter(b => b.status === 'merged_stale')
+              const unmergedStaleBranches = branches.filter(b => b.status === 'unmerged_stale')
+              const activeBranches = branches.filter(b => b.status === 'active')
 
-          {/* TAB 1: Branch Auditing */}
-          {activeTab === 'branches' && (() => {
-            const selectableBranches = branches.filter(b => b.status !== 'active')
-            const allSelectableNames = selectableBranches.map(b => b.branch_name)
-            const isAllSelected = allSelectableNames.length > 0 && allSelectableNames.every(name => selectedBranchNames.includes(name))
-            
-            const mergedStaleBranches = branches.filter(b => b.status === 'merged_stale')
-            const unmergedStaleBranches = branches.filter(b => b.status === 'unmerged_stale')
-            const activeBranches = branches.filter(b => b.status === 'active')
-
-            const handleToggleSelectAll = () => {
-              if (isAllSelected) {
-                setSelectedBranchNames([])
-              } else {
-                setSelectedBranchNames(allSelectableNames)
+              const handleToggleSelectAll = () => {
+                if (isAllSelected) {
+                  setSelectedBranchNames([])
+                } else {
+                  setSelectedBranchNames(allSelectableNames)
+                }
               }
-            }
 
-            const handleToggleSelectBranch = (branchName: string) => {
-              setSelectedBranchNames(prev => 
-                prev.includes(branchName) 
-                  ? prev.filter(name => name !== branchName)
-                  : [...prev, branchName]
+              const handleToggleSelectBranch = (branchName: string) => {
+                setSelectedBranchNames(prev => 
+                  prev.includes(branchName) 
+                    ? prev.filter(name => name !== branchName)
+                    : [...prev, branchName]
+                )
+              }
+
+              return (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16, overflow: 'hidden' }}>
+                  {/* Visual Stats Overview Cards */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                    <div style={{ background: 'var(--bg-primary)', padding: '10px 14px', borderRadius: 6, border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>已合并待清理 (Merged)</span>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                        <span style={{ fontSize: 20, fontWeight: 700, color: '#f59e0b' }}>{mergedStaleBranches.length}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>个分支</span>
+                      </div>
+                    </div>
+                    <div style={{ background: 'var(--bg-primary)', padding: '10px 14px', borderRadius: 6, border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>未合并僵尸 (Zombie)</span>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                        <span style={{ fontSize: 20, fontWeight: 700, color: '#ef4444' }}>{unmergedStaleBranches.length}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>个分支</span>
+                      </div>
+                    </div>
+                    <div style={{ background: 'var(--bg-primary)', padding: '10px 14px', borderRadius: 6, border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>安全活跃分支 (Active)</span>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                        <span style={{ fontSize: 20, fontWeight: 700, color: '#10b981' }}>{activeBranches.length}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>个分支</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>分支状态过滤:</span>
+                      <select 
+                        value={branchStatusFilter} 
+                        onChange={(e) => {
+                          setBranchStatusFilter(e.target.value)
+                          fetchBranchAudits(activeRepo.id, e.target.value)
+                        }}
+                        style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-color)', color: 'var(--text-main)', borderRadius: 4, padding: '4px 8px', fontSize: 13 }}
+                      >
+                        <option value="all">[全部存量分支]</option>
+                        <option value="active">🟢 活跃分支 (Active)</option>
+                        <option value="merged_stale">🟡 已合并待清理 (Merged)</option>
+                        <option value="unmerged_stale">🔴 未合并僵尸 (Zombie)</option>
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      {/* Quick One-Click Clean for Merged Branches */}
+                      <button 
+                        disabled={isCleaningBranches || mergedStaleBranches.length === 0} 
+                        onClick={() => handleCleanupBranches(mergedStaleBranches.map(b => b.branch_name))}
+                        style={{
+                          background: mergedStaleBranches.length > 0 ? 'rgba(245, 158, 11, 0.12)' : 'var(--bg-primary)',
+                          color: mergedStaleBranches.length > 0 ? '#d97706' : 'var(--text-secondary)',
+                          border: mergedStaleBranches.length > 0 ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid var(--border-color)',
+                          padding: '5px 10px', fontSize: 12, borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4
+                        }}
+                        title="一键物理删除所有已合入 master 的安全分支"
+                      >
+                        <Zap size={13} /> 
+                        一键清理 ({mergedStaleBranches.length})
+                      </button>
+
+                      {/* Batch Physical Delete */}
+                      <button 
+                        disabled={isCleaningBranches || selectedBranchNames.length === 0} 
+                        onClick={() => handleCleanupBranches(selectedBranchNames)}
+                        style={{
+                          background: selectedBranchNames.length > 0 ? 'rgba(239, 68, 68, 0.12)' : 'var(--bg-primary)',
+                          color: selectedBranchNames.length > 0 ? '#dc2626' : 'var(--text-secondary)',
+                          border: selectedBranchNames.length > 0 ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid var(--border-color)',
+                          padding: '5px 10px', fontSize: 12, borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4
+                        }}
+                        title="批量物理删除已选中的非活动分支"
+                      >
+                        <Trash2 size={13} /> 
+                        批量删除 ({selectedBranchNames.length})
+                      </button>
+
+                      <button onClick={() => setShowBranchModal(true)} className="btn btn-secondary btn-small" title="新建保护 feature 分支">
+                        <Plus size={13} /> 新建分支
+                      </button>
+                      <button 
+                        disabled={isAuditing} 
+                        onClick={() => handleTriggerAudit(activeRepo.id)} 
+                        className="btn btn-secondary btn-small"
+                        title="手动即时触发该代码仓的分支审计分析"
+                      >
+                        <RefreshCw size={13} className={isAuditing ? 'animate-spin' : ''} /> 审计
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Table list */}
+                  <div style={{ flex: 1, overflowY: 'auto' }}>
+                    <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: 12 }}>
+                          <th style={{ padding: '8px 4px', width: 32, textAlign: 'center' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={isAllSelected} 
+                              disabled={allSelectableNames.length === 0}
+                              onChange={handleToggleSelectAll}
+                            />
+                          </th>
+                          <th style={{ padding: '8px 4px' }}>分支名称</th>
+                          <th style={{ padding: '8px 4px' }}>最后提交人</th>
+                          <th style={{ padding: '8px 4px' }}>更新时间</th>
+                          <th style={{ padding: '8px 4px' }}>状态</th>
+                          <th style={{ padding: '8px 4px', textAlign: 'right' }}>建议操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {branches.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} style={{ textAlign: 'center', padding: 24, color: 'var(--text-secondary)', fontSize: 13 }}>
+                              无匹配的分支审计结果。
+                            </td>
+                          </tr>
+                        ) : (
+                          branches.map(b => (
+                            <tr key={b.id} style={{ borderBottom: '1px solid var(--border-color)', fontSize: 12 }}>
+                              <td style={{ padding: '10px 4px', textAlign: 'center' }}>
+                                {b.status !== 'active' ? (
+                                  <input 
+                                    type="checkbox" 
+                                    checked={selectedBranchNames.includes(b.branch_name)} 
+                                    onChange={() => handleToggleSelectBranch(b.branch_name)}
+                                  />
+                                ) : null}
+                              </td>
+                              <td style={{ padding: '10px 4px', fontFamily: 'monospace', fontWeight: 600 }}>{b.branch_name}</td>
+                              <td style={{ padding: '10px 4px' }}>{b.last_author || 'unknown'}</td>
+                              <td style={{ padding: '10px 4px', color: 'var(--text-secondary)' }}>
+                                {new Date(b.last_commit_time).toLocaleDateString()}
+                              </td>
+                              <td style={{ padding: '10px 4px' }}>
+                                {b.status === 'active' && <span style={{ color: '#10b981' }}>🟢 Active</span>}
+                                {b.status === 'merged_stale' && <span style={{ color: '#f59e0b', fontWeight: 600 }}>🟡 已合并待删</span>}
+                                {b.status === 'unmerged_stale' && <span style={{ color: '#ef4444', fontWeight: 600 }}>🔴 僵尸分支</span>}
+                              </td>
+                              <td style={{ padding: '10px 4px', textAlign: 'right' }}>
+                                {b.status !== 'active' ? (
+                                  <div style={{ display: 'inline-flex', gap: 6 }}>
+                                    <button 
+                                      onClick={() => handleNotifyOwner(activeRepo.id, b.branch_name, b.last_author)}
+                                      className="btn btn-secondary btn-small" 
+                                      style={{ padding: '2px 6px', fontSize: 11 }}
+                                      title="提醒分支负责人清理"
+                                    >
+                                      <Send size={10} />
+                                    </button>
+                                    <button 
+                                      onClick={() => handleCleanupBranches([b.branch_name])}
+                                      disabled={isCleaningBranches}
+                                      className="btn btn-secondary btn-small" 
+                                      style={{ padding: '2px 6px', fontSize: 11, color: '#ef4444', borderColor: 'var(--border-color)' }}
+                                      title="在远程 Git 平台物理删除该分支"
+                                    >
+                                      <Trash2 size={10} />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span style={{ color: 'var(--text-secondary)', fontSize: 11 }}>已安全保护</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', background: 'var(--bg-primary)', padding: 12, borderRadius: 6, border: '1px solid var(--border-color)' }}>
+                    💡 <b>安全清理原则说明：</b>系统支持【一键清理已合并分支】与在线【批量物理删除】。未合并的僵尸分支强行物理删除时须输入 <code>DELETE</code> 二次确认。删除后会自动同步清空远程 Git 平台及本地审计数据。
+                  </div>
+                </div>
               )
-            }
+            })()}
 
-            return (
+            {/* TAB 2: ACL Configuration Cache */}
+            {activeTab === 'acl' && (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16, overflow: 'hidden' }}>
-                {/* Visual Stats Overview Cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                  <div style={{ background: 'var(--bg-primary)', padding: '10px 14px', borderRadius: 6, border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>已合并待清理 (Merged)</span>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                      <span style={{ fontSize: 20, fontWeight: 700, color: '#f59e0b' }}>{mergedStaleBranches.length}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>个分支</span>
-                    </div>
-                  </div>
-                  <div style={{ background: 'var(--bg-primary)', padding: '10px 14px', borderRadius: 6, border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>未合并僵尸 (Zombie)</span>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                      <span style={{ fontSize: 20, fontWeight: 700, color: '#ef4444' }}>{unmergedStaleBranches.length}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>个分支</span>
-                    </div>
-                  </div>
-                  <div style={{ background: 'var(--bg-primary)', padding: '10px 14px', borderRadius: 6, border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>安全活跃分支 (Active)</span>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                      <span style={{ fontSize: 20, fontWeight: 700, color: '#10b981' }}>{activeBranches.length}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>个分支</span>
-                    </div>
-                  </div>
-                </div>
-
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>分支状态过滤:</span>
-                    <select 
-                      value={branchStatusFilter} 
-                      onChange={(e) => {
-                        setBranchStatusFilter(e.target.value)
-                        fetchBranchAudits(activeRepo.id, e.target.value)
-                      }}
-                      style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-color)', color: 'var(--text-main)', borderRadius: 4, padding: '4px 8px', fontSize: 13 }}
-                    >
-                      <option value="all">[全部存量分支]</option>
-                      <option value="active">🟢 活跃分支 (Active)</option>
-                      <option value="merged_stale">🟡 已合并待清理 (Merged)</option>
-                      <option value="unmerged_stale">🔴 未合并僵尸 (Zombie)</option>
-                    </select>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    {/* Quick One-Click Clean for Merged Branches */}
-                    <button 
-                      disabled={isCleaningBranches || mergedStaleBranches.length === 0} 
-                      onClick={() => handleCleanupBranches(mergedStaleBranches.map(b => b.branch_name))}
-                      className="btn btn-small"
-                      style={{ background: mergedStaleBranches.length > 0 ? '#f59e0b' : 'var(--bg-secondary)', color: mergedStaleBranches.length > 0 ? '#fff' : 'var(--text-secondary)', border: 'none' }}
-                      title="快速物理删除所有已合入 master 的安全分支"
-                    >
-                      <Zap size={13} /> 
-                      一键清理已合并 ({mergedStaleBranches.length})
-                    </button>
-
-                    {/* Batch Physical Delete */}
-                    <button 
-                      disabled={isCleaningBranches || selectedBranchNames.length === 0} 
-                      onClick={() => handleCleanupBranches(selectedBranchNames)}
-                      className="btn btn-secondary btn-small"
-                      style={{ color: selectedBranchNames.length > 0 ? '#ef4444' : undefined, borderColor: selectedBranchNames.length > 0 ? '#ef4444' : undefined }}
-                    >
-                      <Trash2 size={13} /> 
-                      批量物理删除 ({selectedBranchNames.length})
-                    </button>
-
-                    <button onClick={() => setShowBranchModal(true)} className="btn btn-primary btn-small">
-                      <Plus size={13} /> 新建保护 feature 分支
-                    </button>
-                    <button 
-                      disabled={isAuditing} 
-                      onClick={() => handleTriggerAudit(activeRepo.id)} 
-                      className="btn btn-secondary btn-small"
-                    >
-                      <RefreshCw size={13} className={isAuditing ? 'animate-spin' : ''} /> 
-                      {isAuditing ? '分析中...' : '启动增量审计'}
-                    </button>
-                  </div>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                    以下记录了本系统成功配置并下发至 Git 托管平台的成员与群组授权明细：
+                  </span>
+                  <button onClick={() => setShowAddAclModal(true)} className="btn btn-secondary btn-small" title="添加成员/群组授权记录">
+                    <Plus size={13} /> 添加授权
+                  </button>
                 </div>
 
-                {/* Table list */}
                 <div style={{ flex: 1, overflowY: 'auto' }}>
                   <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: 12 }}>
-                        <th style={{ padding: '8px 4px', width: 32, textAlign: 'center' }}>
-                          <input 
-                            type="checkbox" 
-                            checked={isAllSelected} 
-                            disabled={allSelectableNames.length === 0}
-                            onChange={handleToggleSelectAll}
-                          />
-                        </th>
-                        <th style={{ padding: '8px 4px' }}>分支名称</th>
-                        <th style={{ padding: '8px 4px' }}>最后提交人</th>
-                        <th style={{ padding: '8px 4px' }}>更新时间</th>
-                        <th style={{ padding: '8px 4px' }}>状态</th>
-                        <th style={{ padding: '8px 4px', textAlign: 'right' }}>建议操作</th>
+                        <th style={{ padding: '8px 4px' }}>主体类型</th>
+                        <th style={{ padding: '8px 4px' }}>成员/群组名称</th>
+                        <th style={{ padding: '8px 4px' }}>本地角色/权限</th>
+                        <th style={{ padding: '8px 4px' }}>同步状态</th>
+                        <th style={{ padding: '8px 4px' }}>最后变更时间</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {branches.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} style={{ textAlign: 'center', padding: 24, color: 'var(--text-secondary)', fontSize: 13 }}>
-                            无匹配的分支审计结果。
+                      {acls.map(a => (
+                        <tr key={a.id} style={{ borderBottom: '1px solid var(--border-color)', fontSize: 12 }}>
+                          <td style={{ padding: '10px 4px' }}>
+                            <span className="badge badge-secondary" style={{ fontSize: 10 }}>
+                              {a.principal_type === 'user' ? '👤 个人' : '👥 用户组'}
+                            </span>
                           </td>
+                          <td style={{ padding: '10px 4px', fontWeight: 600 }}>{a.principal_name}</td>
+                          <td style={{ padding: '10px 4px' }}>
+                            {a.access_level === 50 ? '👑 Owner' : a.access_level === 30 ? '🛠️ Developer' : '📖 Reporter'}
+                          </td>
+                          <td style={{ padding: '10px 4px' }}>
+                            <span style={{ color: '#10b981', fontWeight: 600 }}>🟢 已同步</span>
+                          </td>
+                          <td style={{ padding: '10px 4px', color: 'var(--text-secondary)' }}>{a.updated_at}</td>
                         </tr>
-                      ) : (
-                        branches.map(b => (
-                          <tr key={b.id} style={{ borderBottom: '1px solid var(--border-color)', fontSize: 12 }}>
-                            <td style={{ padding: '10px 4px', textAlign: 'center' }}>
-                              {b.status !== 'active' ? (
-                                <input 
-                                  type="checkbox" 
-                                  checked={selectedBranchNames.includes(b.branch_name)} 
-                                  onChange={() => handleToggleSelectBranch(b.branch_name)}
-                                />
-                              ) : null}
-                            </td>
-                            <td style={{ padding: '10px 4px', fontFamily: 'monospace', fontWeight: 600 }}>{b.branch_name}</td>
-                            <td style={{ padding: '10px 4px' }}>{b.last_author || 'unknown'}</td>
-                            <td style={{ padding: '10px 4px', color: 'var(--text-secondary)' }}>
-                              {new Date(b.last_commit_time).toLocaleDateString()}
-                            </td>
-                            <td style={{ padding: '10px 4px' }}>
-                              {b.status === 'active' && <span style={{ color: '#10b981' }}>🟢 Active</span>}
-                              {b.status === 'merged_stale' && <span style={{ color: '#f59e0b', fontWeight: 600 }}>🟡 已合并待删</span>}
-                              {b.status === 'unmerged_stale' && <span style={{ color: '#ef4444', fontWeight: 600 }}>🔴 僵尸分支</span>}
-                            </td>
-                            <td style={{ padding: '10px 4px', textAlign: 'right' }}>
-                              {b.status !== 'active' ? (
-                                <div style={{ display: 'inline-flex', gap: 6 }}>
-                                  <button 
-                                    onClick={() => handleNotifyOwner(activeRepo.id, b.branch_name, b.last_author)}
-                                    className="btn btn-secondary btn-small" 
-                                    style={{ padding: '2px 6px', fontSize: 11 }}
-                                  >
-                                    <Send size={10} /> 提醒
-                                  </button>
-                                  <button 
-                                    onClick={() => handleCleanupBranches([b.branch_name])}
-                                    disabled={isCleaningBranches}
-                                    className="btn btn-secondary btn-small" 
-                                    style={{ padding: '2px 6px', fontSize: 11, color: '#ef4444', borderColor: 'var(--border-color)' }}
-                                  >
-                                    <Trash2 size={10} /> 物理删除
-                                  </button>
-                                </div>
-                              ) : (
-                                <span style={{ color: 'var(--text-secondary)', fontSize: 11 }}>已安全保护</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))
-                      )}
+                      ))}
                     </tbody>
                   </table>
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)', background: 'var(--bg-primary)', padding: 12, borderRadius: 6, border: '1px solid var(--border-color)' }}>
-                  💡 <b>安全清理原则说明：</b>系统支持【一键清理已合并分支】与在线【批量物理删除】。未合并的僵尸分支强行物理删除时须输入 <code>DELETE</code> 二次确认。删除后会自动同步清空远程 Git 平台及本地审计数据。
-                </div>
               </div>
-            )
-          })()}
-
-
-          {/* TAB 2: ACL Configuration Cache */}
-          {activeTab === 'acl' && (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16, overflow: 'hidden' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                  以下记录了本系统成功配置并下发至 Git 托管平台的成员与群组授权明细：
-                </span>
-                <button onClick={() => setShowAddAclModal(true)} className="btn btn-primary btn-small">
-                  <Plus size={13} /> 添加成员/群组授权
-                </button>
-              </div>
-
-              <div style={{ flex: 1, overflowY: 'auto' }}>
-                <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: 12 }}>
-                      <th style={{ padding: '8px 4px' }}>主体类型</th>
-                      <th style={{ padding: '8px 4px' }}>成员/群组名称</th>
-                      <th style={{ padding: '8px 4px' }}>本地角色/权限</th>
-                      <th style={{ padding: '8px 4px' }}>同步状态</th>
-                      <th style={{ padding: '8px 4px' }}>最后变更时间</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {acls.map(a => (
-                      <tr key={a.id} style={{ borderBottom: '1px solid var(--border-color)', fontSize: 12 }}>
-                        <td style={{ padding: '10px 4px' }}>
-                          <span className="badge badge-secondary" style={{ fontSize: 10 }}>
-                            {a.principal_type === 'user' ? '👤 个人' : '👥 用户组'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '10px 4px', fontWeight: 600 }}>{a.principal_name}</td>
-                        <td style={{ padding: '10px 4px' }}>
-                          {a.access_level === 50 ? '👑 Owner' : a.access_level === 30 ? '🛠️ Developer' : '📖 Reporter'}
-                        </td>
-                        <td style={{ padding: '10px 4px' }}>
-                          <span style={{ color: '#10b981', fontWeight: 600 }}>🟢 已同步</span>
-                        </td>
-                        <td style={{ padding: '10px 4px', color: 'var(--text-secondary)' }}>{a.updated_at}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </>
       )}
+
 
       {/* MODAL 1: Create Group */}
       {showGroupModal && (
