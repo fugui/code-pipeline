@@ -40,9 +40,6 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// 3. 启动后台只读代码仓 Pull 同步任务
-	services.StartRepoSyncTimer(ctx)
-
 	// 启动被管仓历史非活动分支定时巡检任务
 	services.StartBranchAuditTimer(ctx)
 

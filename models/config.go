@@ -55,13 +55,12 @@ func (d *DatabaseConfig) GetDSN() string {
 
 type Config struct {
 	Server struct {
-		Port           string        `yaml:"port"`
-		GinLog         bool          `yaml:"gin_log"`
-		ReadTimeout    time.Duration `yaml:"read_timeout"`
-		WriteTimeout   time.Duration `yaml:"write_timeout"`
-		WorkerCount    int           `yaml:"worker_count"`
-		SandboxDir     string        `yaml:"sandbox_dir"`
-		RepoSyncServer string        `yaml:"repo_sync_server"`
+		Port         string        `yaml:"port"`
+		GinLog       bool          `yaml:"gin_log"`
+		ReadTimeout  time.Duration `yaml:"read_timeout"`
+		WriteTimeout time.Duration `yaml:"write_timeout"`
+		WorkerCount  int           `yaml:"worker_count"`
+		SandboxDir   string        `yaml:"sandbox_dir"`
 	} `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
 	Auth     struct {
@@ -186,9 +185,6 @@ func applyDefaults() {
 	}
 	if AppConfig.Server.SandboxDir == "" {
 		AppConfig.Server.SandboxDir = "./workspace"
-	}
-	if AppConfig.Server.RepoSyncServer == "" {
-		AppConfig.Server.RepoSyncServer = "http://localhost:8000"
 	}
 	if AppConfig.Auth.SystemUserID == 0 {
 		AppConfig.Auth.SystemUserID = 1
