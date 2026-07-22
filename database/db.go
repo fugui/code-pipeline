@@ -79,6 +79,10 @@ func InitDB() {
 	_ = DB.Exec("UPDATE managed_member_accesses SET principal_type = '' WHERE principal_type IS NULL")
 	_ = DB.Exec("UPDATE managed_member_accesses SET principal_id = 0 WHERE principal_id IS NULL")
 	_ = DB.Exec("UPDATE managed_member_accesses SET access_level = 0 WHERE access_level IS NULL")
+	// 迁移旧版 managed_branch_monitors 表中的遗留列 branch，并清理该列及其 NOT NULL 约束
+	_ = DB.Exec("UPDATE managed_branch_monitors SET branch_name = branch WHERE (branch_name IS NULL OR branch_name = '') AND branch IS NOT NULL AND branch != ''")
+	_ = DB.Exec("ALTER TABLE managed_branch_monitors DROP COLUMN IF EXISTS branch")
+
 	_ = DB.Exec("UPDATE managed_branch_monitors SET managed_repository_id = 0 WHERE managed_repository_id IS NULL")
 	_ = DB.Exec("UPDATE managed_branch_monitors SET branch_name = '' WHERE branch_name IS NULL")
 
