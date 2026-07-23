@@ -2,6 +2,7 @@ import React from 'react'
 import { Trash2, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 
 interface ExecutionSchemeModalProps {
+  isAdmin?: boolean
   visible: boolean
   activeScheme: any | null
   onChange: (scheme: any) => void
@@ -17,6 +18,7 @@ interface ExecutionSchemeModalProps {
 }
 
 export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
+  isAdmin = true,
   visible,
   activeScheme,
   onChange,
@@ -859,28 +861,30 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
             background: 'rgba(255, 255, 255, 0.01)'
           }}>
             <button type="button" className="btn btn-secondary" onClick={handleCloseWithAnimation} disabled={saving}>
-              {isView ? '取消' : '取消'}
+              {isAdmin ? '取消' : '关闭'}
             </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={saving}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                opacity: saving ? 0.75 : 1,
-                cursor: saving ? 'not-allowed' : 'pointer',
-                transition: 'opacity 0.2s'
-              }}
-            >
-              {saving ? (
-                <>
-                  <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
-                  {isView ? '保存中...' : '创建中...'}
-                </>
-              ) : (isView ? '保存修改' : '创建方案')}
-            </button>
+            {isAdmin && (
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={saving}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  opacity: saving ? 0.75 : 1,
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  transition: 'opacity 0.2s'
+                }}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                    {isView ? '保存中...' : '创建中...'}
+                  </>
+                ) : (isView ? '保存修改' : '创建方案')}
+              </button>
+            )}
           </div>
 
           {/* 成功浮层横幅 */}

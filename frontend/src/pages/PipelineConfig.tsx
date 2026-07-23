@@ -3,6 +3,7 @@ import { Plus, Search, Edit, Trash2, Activity, RefreshCw, ChevronLeft, ChevronRi
 import { Pipeline, ExecutionScheme } from '../types'
 
 interface PipelineConfigProps {
+  isAdmin?: boolean
   pipelines: Pipeline[]
   selectedPipeline: Pipeline | null
   schemes: ExecutionScheme[]
@@ -19,6 +20,7 @@ interface PipelineConfigProps {
 }
 
 export const PipelineConfig: React.FC<PipelineConfigProps> = ({
+  isAdmin = true,
   pipelines,
   selectedPipeline,
   schemes,
@@ -70,9 +72,11 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
           <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>流水线与执行方案配置</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>配置持续集成流水线，并绑定仓库执行方案，支持同步三方流水线控制台。</p>
         </div>
-        <button className="btn btn-primary" onClick={onAddPipeline}>
-          <Plus size={16} /> 导入流水线
-        </button>
+        {isAdmin && (
+          <button className="btn btn-primary" onClick={onAddPipeline}>
+            <Plus size={16} /> 导入流水线
+          </button>
+        )}
       </div>
 
       {/* Search filter */}
@@ -119,22 +123,24 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                         </div>
                         <h4 style={{ fontSize: 15, fontWeight: 600, marginTop: 4 }}>{p.name}</h4>
                       </div>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        <button 
-                          className="btn btn-secondary btn-small" 
-                          style={{ padding: 4 }}
-                          onClick={(e) => { e.stopPropagation(); onEditPipeline(p); }}
-                        >
-                          <Edit size={11} />
-                        </button>
-                        <button 
-                          className="btn btn-secondary btn-small" 
-                          style={{ padding: 4, color: '#fb7185' }}
-                          onClick={(e) => { e.stopPropagation(); p.id && onDeletePipeline(p.id); }}
-                        >
-                          <Trash2 size={11} />
-                        </button>
-                      </div>
+                      {isAdmin && (
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <button 
+                            className="btn btn-secondary btn-small" 
+                            style={{ padding: 4 }}
+                            onClick={(e) => { e.stopPropagation(); onEditPipeline(p); }}
+                          >
+                            <Edit size={11} />
+                          </button>
+                          <button 
+                            className="btn btn-secondary btn-small" 
+                            style={{ padding: 4, color: '#fb7185' }}
+                            onClick={(e) => { e.stopPropagation(); p.id && onDeletePipeline(p.id); }}
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--text-secondary)' }}>
                       <span>分组: {p.group_name || '默认组'}</span>
@@ -166,7 +172,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                   <h3 style={{ fontSize: 16, fontWeight: 700 }}>执行方案（{selectedPipeline.name}）</h3>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  {onSyncPipeline && (
+                  {isAdmin && onSyncPipeline && (
                     <button className="btn btn-secondary btn-small" onClick={() => onSyncPipeline(selectedPipeline)}>
                       <RefreshCw size={13} style={{ marginRight: 4 }} /> 同步
                     </button>
@@ -225,19 +231,21 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                                 onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-main)'}
                                 onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
                                 onClick={() => onEditScheme(scheme)}
-                                title="查看"
+                                title={isAdmin ? "查看/编辑" : "查看详情"}
                               >
                                 <Eye size={14} />
                               </button>
-                              <button 
-                                style={{ background: 'none', border: 'none', color: '#fda4af', padding: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', transition: 'color 0.2s' }} 
-                                onMouseEnter={(e) => e.currentTarget.style.color = '#fb7185'}
-                                onMouseLeave={(e) => e.currentTarget.style.color = '#fda4af'}
-                                onClick={() => scheme.id && onDeleteScheme(scheme.id)}
-                                title="删除"
-                              >
-                                <Trash2 size={14} />
-                              </button>
+                              {isAdmin && (
+                                <button 
+                                  style={{ background: 'none', border: 'none', color: '#fda4af', padding: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', transition: 'color 0.2s' }} 
+                                  onMouseEnter={(e) => e.currentTarget.style.color = '#fb7185'}
+                                  onMouseLeave={(e) => e.currentTarget.style.color = '#fda4af'}
+                                  onClick={() => scheme.id && onDeleteScheme(scheme.id)}
+                                  title="删除"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>

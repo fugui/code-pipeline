@@ -8,12 +8,13 @@ import {
 import { ExecutionScheme } from '../types'
 
 interface ReposProps {
+  isAdmin?: boolean
   onAddScheme: (repo: Repo) => void
   onEditScheme: (scheme: ExecutionScheme) => void
   onDeleteScheme: (id: number) => void
   token: string | null
   apiBase: string
-  schemeUpdateKey?: number   // 每次方案变更后从外部递增，触发展开行刷新
+  schemeUpdateKey?: number
 }
 
 interface Repo {
@@ -42,6 +43,7 @@ interface FilterOptions {
 const PAGE_SIZE = 20
 
 export const Repos: React.FC<ReposProps> = ({
+  isAdmin = true,
   onAddScheme,
   onEditScheme,
   onDeleteScheme,
@@ -51,16 +53,13 @@ export const Repos: React.FC<ReposProps> = ({
 }) => {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // 局部搜索输入状态，用于防抖
   const [search, setSearch] = useState(() => searchParams.get('search') || '')
 
-  // 从 URL query 中直接读取其他过滤状态
   const serviceGroup = searchParams.get('service_group') || ''
   const ownerName = searchParams.get('owner_name') || ''
   const hasScheme = searchParams.get('has_scheme') || 'all'
   const page = parseInt(searchParams.get('page') || '1', 10)
 
-  // 当 URL params 变化时，同步局部搜索输入框内容
   useEffect(() => {
     setSearch(searchParams.get('search') || '')
   }, [searchParams])
@@ -79,12 +78,10 @@ export const Repos: React.FC<ReposProps> = ({
     })
   }
 
-  // 数据
   const [result, setResult] = useState<PagedResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [filterOpts, setFilterOpts] = useState<FilterOptions>({ service_groups: [], owner_names: [] })
 
-  // 展开的行及其 scheme 缓存
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
   const [repoSchemes, setRepoSchemes] = useState<Record<number, ExecutionScheme[]>>({})
   const [schemesLoading, setSchemesLoading] = useState<Record<number, boolean>>({})
@@ -116,10 +113,8 @@ export const Repos: React.FC<ReposProps> = ({
     })
   }
 
-  // 搜索防抖
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // ---- 拉取过滤选项（只拉一次）----
   useEffect(() => {
     if (!token) return
     fetch(`${apiBase}/repos/filter-options`, {
@@ -130,7 +125,6 @@ export const Repos: React.FC<ReposProps> = ({
       .catch(err => console.error('fetch filter options failed', err))
   }, [token, apiBase])
 
-  // ---- 拉取仓库列表 ----
   const fetchRepos = useCallback(() => {
     if (!token) return
     setLoading(true)
@@ -156,12 +150,10 @@ export const Repos: React.FC<ReposProps> = ({
     fetchRepos()
   }, [fetchRepos])
 
-  // ---- 切换过滤条件时重置到第 1 页 ----
   const resetAndFilter = (key: string) => (v: string) => {
     updateQueryParams({ [key]: v, page: 1 })
   }
 
-  // ---- 搜索防抖 ----
   const handleSearchChange = (v: string) => {
     setSearch(v)
     if (searchTimer.current) clearTimeout(searchTimer.current)
@@ -170,7 +162,6 @@ export const Repos: React.FC<ReposProps> = ({
     }, 400)
   }
 
-  // ---- 拉取某仓库的方案 ----
   const fetchSchemesForRepo = useCallback((repoId: number) => {
     if (!token) return
     setSchemesLoading(prev => ({ ...prev, [repoId]: true }))
@@ -185,14 +176,12 @@ export const Repos: React.FC<ReposProps> = ({
       .finally(() => setSchemesLoading(prev => ({ ...prev, [repoId]: false })))
   }, [token, apiBase])
 
-  // ---- schemeUpdateKey 变化时刷新已展开的行和列表 ----
   useEffect(() => {
     if (schemeUpdateKey === 0) return
     fetchRepos()
     expandedIds.forEach(id => fetchSchemesForRepo(id))
-  }, [schemeUpdateKey])  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [schemeUpdateKey])
 
-  // ---- 展开/折叠行 ----
   const toggleExpand = (repoId: number) => {
     const next = new Set(expandedIds)
     if (next.has(repoId)) {
@@ -210,7 +199,6 @@ export const Repos: React.FC<ReposProps> = ({
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* 页面标题 */}
       <div>
         <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>代码仓全览</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
@@ -218,10 +206,7 @@ export const Repos: React.FC<ReposProps> = ({
         </p>
       </div>
 
-      {/* 过滤工具栏 */}
       <div className="glass-card" style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-
-        {/* 子系统 */}
         <div style={{ position: 'relative' }}>
           <select
             value={serviceGroup}
@@ -234,8 +219,6 @@ export const Repos: React.FC<ReposProps> = ({
             ))}
           </select>
         </div>
-
-        {/* 负责人 */}
         <div>
           <select
             value={ownerName}
@@ -248,8 +231,6 @@ export const Repos: React.FC<ReposProps> = ({
             ))}
           </select>
         </div>
-
-        {/* 流水线状态 */}
         <div>
           <select
             value={hasScheme}
@@ -261,8 +242,6 @@ export const Repos: React.FC<ReposProps> = ({
             <option value="no">未配置方案</option>
           </select>
         </div>
-
-        {/* 搜索框 */}
         <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
           <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <input
@@ -273,8 +252,6 @@ export const Repos: React.FC<ReposProps> = ({
             style={{ paddingLeft: 32, fontSize: 13, height: 36, width: '100%' }}
           />
         </div>
-
-        {/* 刷新 */}
         <button
           className="btn btn-secondary"
           style={{ padding: '0 12px', height: 36, fontSize: 13 }}
@@ -283,14 +260,11 @@ export const Repos: React.FC<ReposProps> = ({
         >
           <RefreshCw size={13} />
         </button>
-
-        {/* 统计 */}
         <span style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
           共 <strong style={{ color: 'var(--text-main)' }}>{result?.total ?? '-'}</strong> 个仓库
         </span>
       </div>
 
-      {/* 主表格 */}
       <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
@@ -321,6 +295,7 @@ export const Repos: React.FC<ReposProps> = ({
               result?.items?.map(repo => (
                 <RepoRow
                   key={repo.id}
+                  isAdmin={isAdmin}
                   repo={repo}
                   isExpanded={expandedIds.has(repo.id)}
                   schemes={repoSchemes[repo.id] !== undefined ? repoSchemes[repo.id] : repo.schemes}
@@ -339,7 +314,6 @@ export const Repos: React.FC<ReposProps> = ({
           </tbody>
         </table>
 
-        {/* 分页条 */}
         {totalPages > 1 && (
           <div style={{
             display: 'flex',
@@ -379,8 +353,8 @@ export const Repos: React.FC<ReposProps> = ({
   )
 }
 
-// ---- 单行组件 ----
 interface RepoRowProps {
+  isAdmin?: boolean
   repo: Repo
   isExpanded: boolean
   schemes?: ExecutionScheme[]
@@ -396,15 +370,14 @@ interface RepoRowProps {
 }
 
 const RepoRow: React.FC<RepoRowProps> = ({
+  isAdmin = true,
   repo, isExpanded, schemes, schemesLoading,
   onToggle, onAddScheme, onEditScheme, onDeleteScheme,
   onRunScheme, runningSchemes, token, apiBase
 }) => {
-  // Webhook 状态管理
   const [webhookStatus, setWebhookStatus] = useState<'idle' | 'checking' | 'registering'>('idle')
   const [webhookRegistered, setWebhookRegistered] = useState(repo.webhook_registered ?? false)
 
-  // 同步外部数据刷新
   useEffect(() => {
     setWebhookRegistered(repo.webhook_registered ?? false)
   }, [repo.webhook_registered])
@@ -442,7 +415,6 @@ const RepoRow: React.FC<RepoRowProps> = ({
 
   const schemeBadge = () => {
     if (schemeCount === null && !isExpanded) {
-      // 未展开时不显示 scheme 数（懒加载）
       return <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>-</span>
     }
     if (schemesLoading) {
@@ -474,7 +446,6 @@ const RepoRow: React.FC<RepoRowProps> = ({
 
   return (
     <>
-      {/* 主行 */}
       <tr
         style={{
           borderBottom: isExpanded ? 'none' : '1px solid var(--border-color)',
@@ -486,7 +457,6 @@ const RepoRow: React.FC<RepoRowProps> = ({
         onMouseLeave={e => { if (!isExpanded) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
         onClick={onToggle}
       >
-        {/* 展开箭头 */}
         <td style={{ padding: '12px 8px 12px 16px', color: 'var(--text-muted)', width: 40 }}>
           {isExpanded
             ? <ChevronDown size={15} style={{ color: '#6366f1' }} />
@@ -494,7 +464,6 @@ const RepoRow: React.FC<RepoRowProps> = ({
           }
         </td>
 
-        {/* 仓库名 */}
         <td style={{ padding: '12px 8px', fontWeight: 600, color: 'var(--text-main)' }}>
           {repo.http_url ? (
             <a 
@@ -524,25 +493,20 @@ const RepoRow: React.FC<RepoRowProps> = ({
           )}
         </td>
 
-        {/* 子系统 */}
         <td style={{ padding: '12px 8px', color: 'var(--text-secondary)', fontSize: 13 }}>
           {repo.service_group || <span style={{ color: 'var(--text-muted)' }}>-</span>}
         </td>
 
-        {/* 负责人 */}
         <td style={{ padding: '12px 8px', color: 'var(--text-secondary)', fontSize: 13 }}>
           {repo.owner_name || <span style={{ color: 'var(--text-muted)' }}>-</span>}
         </td>
 
-        {/* 执行方案状态 */}
         <td style={{ padding: '12px 8px' }}>
           {schemeBadge()}
         </td>
 
-        {/* 操作 */}
         <td style={{ padding: '12px 16px 12px 8px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
           <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-            {/* Webhook 状态指示器 */}
             {webhookStatus !== 'idle' ? (
               <span title="检查中...">
                 <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', color: '#6366f1' }} />
@@ -557,31 +521,35 @@ const RepoRow: React.FC<RepoRowProps> = ({
                 <Zap size={14} />
               </button>
             ) : (
+              isAdmin && (
+                <button
+                  className="btn-action-add"
+                  onClick={handleRegisterWebhook}
+                  title="Webhook 未注册，点击注册"
+                  style={{ color: '#f59e0b' }}
+                >
+                  <Zap size={14} />
+                </button>
+              )
+            )}
+            {isAdmin && (
               <button
                 className="btn-action-add"
-                onClick={handleRegisterWebhook}
-                title="Webhook 未注册，点击注册"
-                style={{ color: '#f59e0b' }}
+                onClick={onAddScheme}
+                title="为该仓库新增执行方案"
               >
-                <Zap size={14} />
+                <Plus size={14} />
               </button>
             )}
-            <button
-              className="btn-action-add"
-              onClick={onAddScheme}
-              title="为该仓库新增执行方案"
-            >
-              <Plus size={14} />
-            </button>
           </div>
         </td>
       </tr>
 
-      {/* 子表格展开区域 */}
       {isExpanded && (
         <tr>
           <td colSpan={6} style={{ padding: 0, borderBottom: '1px solid var(--border-color)' }}>
             <SubSchemeTable
+              isAdmin={isAdmin}
               schemes={schemes}
               loading={schemesLoading}
               onEditScheme={onEditScheme}
@@ -596,8 +564,8 @@ const RepoRow: React.FC<RepoRowProps> = ({
   )
 }
 
-// ---- 子方案表格 ----
 interface SubSchemeTableProps {
+  isAdmin?: boolean
   schemes?: ExecutionScheme[]
   loading: boolean
   onEditScheme: (scheme: ExecutionScheme) => void
@@ -607,6 +575,7 @@ interface SubSchemeTableProps {
 }
 
 const SubSchemeTable: React.FC<SubSchemeTableProps> = ({ 
+  isAdmin = true,
   schemes, 
   loading, 
   onEditScheme, 
@@ -666,12 +635,10 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.04)'}
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
           >
-            {/* 缩进占位 */}
             <td style={{ padding: '10px 0 10px 40px', width: 40 }}>
               <GitBranch size={12} style={{ color: '#6366f1', opacity: 0.6 }} />
             </td>
 
-            {/* 分支 */}
             <td style={{ padding: '10px 8px' }}>
               <div
                 title={scheme.branchs || undefined}
@@ -690,7 +657,6 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
               </div>
             </td>
 
-            {/* 流水线名 */}
             <td style={{ padding: '10px 8px', color: 'var(--text-secondary)' }}>
               {scheme.pipeline?.web_url ? (
                 <a
@@ -717,7 +683,6 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
               )}
             </td>
 
-            {/* 语言 */}
             <td style={{ padding: '10px 8px', color: 'var(--text-secondary)' }}>
               {scheme.languages
                 ? scheme.languages.split(',').map(l => (
@@ -732,7 +697,6 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
               }
             </td>
 
-            {/* 触发配置 */}
             <td style={{ padding: '10px 8px' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {scheme.mr_binding_id && (
@@ -755,17 +719,14 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
               </div>
             </td>
 
-            {/* 检查任务 */}
             <td style={{ padding: '10px 8px' }}>
               <NameCell name={scheme.code_checker_task_name} id={scheme.code_checker_task_id} linkUrl={scheme.code_checker_task_web_url} />
             </td>
 
-            {/* 执行方案 */}
             <td style={{ padding: '10px 8px' }}>
               <NameCell name={scheme.execution_scheme_name} id={scheme.execution_scheme_id} />
             </td>
 
-            {/* 操作 */}
             <td style={{ padding: '10px 16px 10px 8px', textAlign: 'right' }}>
               <div style={{ display: 'inline-flex', gap: 6 }}>
                 <button
@@ -789,14 +750,16 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
                 >
                   <Eye size={12} />
                 </button>
-                <button
-                  className="btn btn-secondary btn-small"
-                  style={{ padding: '6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, color: '#fb7185' }}
-                  title="删除执行方案"
-                  onClick={() => scheme.id && onDeleteScheme(scheme.id)}
-                >
-                  <Trash2 size={12} />
-                </button>
+                {isAdmin && (
+                  <button
+                    className="btn btn-secondary btn-small"
+                    style={{ padding: '6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, color: '#fb7185' }}
+                    title="删除执行方案"
+                    onClick={() => scheme.id && onDeleteScheme(scheme.id)}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
               </div>
             </td>
           </tr>
