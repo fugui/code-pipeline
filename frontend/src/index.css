@@ -210,7 +210,7 @@ body {
 }
 
 /* Forms and inputs */
-input, textarea, select {
+input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]), textarea, select {
   background: var(--portal-bg-color, rgba(255, 255, 255, 0.03));
   border: 1px solid var(--border-color);
   color: var(--text-main);
@@ -222,7 +222,7 @@ input, textarea, select {
   width: 100%;
 }
 
-input:focus, textarea:focus, select:focus {
+input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]):focus, textarea:focus, select:focus {
   border-color: #6366f1;
   background: rgba(255, 255, 255, 0.06);
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
