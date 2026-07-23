@@ -50,6 +50,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     return localStorage.getItem('code_shield_token') || localStorage.getItem(AUTH_TOKEN_KEY);
   })
   const [user, setUser] = useState<User | null>(null)
+  const isAdmin = !!(user?.is_admin || (Array.isArray(user?.roles) && (user.roles.includes('super_admin') || user.roles.includes('pipeline_admin'))))
   const [currentView, setCurrentView] = useState<'dashboard' | 'repos' | 'managed-repos' | 'pipeline-config' | 'mr-hook' | 'mr-list'>('dashboard')
   
   // Data lists — repos 仅用于 ExecutionSchemeModal 的候选项
@@ -606,6 +607,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         {/* VIEW 2: REPOS 代码仓全览 */}
         {currentView === 'repos' && (
           <Repos
+            isAdmin={isAdmin}
             onAddScheme={(repo) => {
               const firstPipeline = pipelines[0]
               setActiveScheme({
@@ -636,6 +638,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         {/* VIEW 3: MANAGED REPOS 代码仓与分支管理 */}
         {currentView === 'managed-repos' && (
           <ManagedRepos 
+            isAdmin={isAdmin}
             apiBase={apiBase}
             token={token}
           />
@@ -644,6 +647,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         {/* VIEW 4: PIPELINE CONFIG */}
         {currentView === 'pipeline-config' && (
           <PipelineConfig 
+            isAdmin={isAdmin}
             pipelines={pipelines}
             selectedPipeline={selectedPipeline}
             schemes={schemes}
@@ -680,6 +684,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
 
       {/* Pipeline metadata Modal */}
       <PipelineModal 
+        isAdmin={isAdmin}
         visible={showPipelineModal}
         activePipeline={activePipeline}
         onChange={setActivePipeline}
@@ -692,6 +697,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
 
       {/* Execution Scheme Modal */}
       <ExecutionSchemeModal 
+        isAdmin={isAdmin}
         visible={showSchemeModal}
         activeScheme={activeScheme}
         onChange={setActiveScheme}

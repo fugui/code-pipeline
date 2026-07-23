@@ -95,11 +95,12 @@ const isAnyAncestorHidden = (group: ManagedGroup, allGroups: ManagedGroup[]): bo
 }
 
 interface ManagedReposProps {
+  isAdmin?: boolean
   apiBase: string
   token: string
 }
 
-export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) => {
+export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiBase, token }) => {
   const formatLastCommitTime = (timeStr?: string) => {
     if (!timeStr || timeStr.startsWith('0001-01-01')) return '-'
     try {
@@ -717,9 +718,11 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
               style={{ cursor: 'pointer', width: 15, height: 15, margin: 0 }}
               title="显示已隐藏嵌套组"
             />
-            <button onClick={() => setShowGroupModal(true)} className="btn btn-secondary btn-small" style={{ padding: '4px 8px' }}>
-              <Plus size={14} /> 新建组
-            </button>
+            {isAdmin && (
+              <button onClick={() => setShowGroupModal(true)} className="btn btn-secondary btn-small" style={{ padding: '4px 8px' }}>
+                <Plus size={14} /> 新建组
+              </button>
+            )}
           </div>
         </div>
         
@@ -835,7 +838,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
             </p>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            {selectedGroup && (
+            {isAdmin && selectedGroup && (
               <>
                 <button 
                   onClick={() => handleToggleGroupHide(selectedGroup)} 
@@ -858,16 +861,18 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ apiBase, token }) =>
                 </button>
               </>
             )}
-            <button onClick={() => {
-              if (groups.length === 0) {
-                showToast('error', '请先创建一个嵌套组！')
-                return
-              }
-              setNewRepoGroup(selectedGroup?.id || groups[0]?.id || 0)
-              setShowRepoModal(true)
-            }} className="btn btn-primary">
-              <Plus size={16} /> 创建被管代码仓
-            </button>
+            {isAdmin && (
+              <button onClick={() => {
+                if (groups.length === 0) {
+                  showToast('error', '请先创建一个嵌套组！')
+                  return
+                }
+                setNewRepoGroup(selectedGroup?.id || groups[0]?.id || 0)
+                setShowRepoModal(true)
+              }} className="btn btn-primary">
+                <Plus size={16} /> 创建被管代码仓
+              </button>
+            )}
           </div>
         </div>
 

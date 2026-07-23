@@ -3,6 +3,7 @@ import { Loader2, HelpCircle } from 'lucide-react'
 import { Pipeline } from '../types'
 
 interface PipelineModalProps {
+  isAdmin?: boolean
   visible: boolean
   activePipeline: Pipeline | null
   onChange: (pipeline: Pipeline) => void
@@ -14,6 +15,7 @@ interface PipelineModalProps {
 }
 
 export const PipelineModal: React.FC<PipelineModalProps> = ({
+  isAdmin = true,
   visible,
   activePipeline,
   onChange,
@@ -29,7 +31,7 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }}>
       <div className="glass-card" style={{ width: '100%', maxWidth: 540, display: 'flex', flexDirection: 'column', gap: 20 }}>
         <h3 style={{ fontSize: 18, fontWeight: 700 }}>
-          {activePipeline.id ? '编辑流水线元数据' : '导入流水线'}
+          {activePipeline.id ? (isAdmin ? '编辑流水线元数据' : '查看流水线元数据 (只读)') : '导入流水线'}
         </h3>
 
         <form onSubmit={onSave} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -47,10 +49,10 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
                 value={activePipeline.pipeline_id || ''} 
                 onChange={(e) => onChange({ ...activePipeline, pipeline_id: e.target.value })}
                 onBlur={() => !activePipeline.id && onFetchRemoteInfo(activePipeline.pipeline_id)}
-                disabled={!!activePipeline.id}
+                disabled={!!activePipeline.id || !isAdmin}
                 required 
               />
-              {!activePipeline.id && (
+              {!activePipeline.id && isAdmin && (
                 <button 
                   type="button" 
                   className="btn btn-secondary btn-small"
@@ -76,6 +78,7 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
               placeholder="例如: 每日合并扫描流水线"
               value={activePipeline.name || ''} 
               onChange={(e) => onChange({ ...activePipeline, name: e.target.value })}
+              disabled={!isAdmin}
               required 
             />
           </div>
@@ -88,6 +91,7 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
                   <input 
                     type="checkbox" 
                     checked={(activePipeline.type || '').includes('MR')} 
+                    disabled={!isAdmin}
                     style={{ width: 'auto', cursor: 'pointer' }}
                     onChange={(e) => {
                       const currentTypes = activePipeline.type ? activePipeline.type.split(',').filter(Boolean) : []
@@ -100,12 +104,13 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
                       onChange({ ...activePipeline, type: newTypes.join(',') })
                     }}
                   />
-                  MR
+                  MR 定时看护
                 </label>
                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
                   <input 
                     type="checkbox" 
                     checked={(activePipeline.type || '').includes('每日构建')} 
+                    disabled={!isAdmin}
                     style={{ width: 'auto', cursor: 'pointer' }}
                     onChange={(e) => {
                       const currentTypes = activePipeline.type ? activePipeline.type.split(',').filter(Boolean) : []
@@ -123,19 +128,20 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
               </div>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>组名称 (GroupName)</label>
+              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>所属分组</label>
               <input 
                 type="text" 
-                placeholder="例如: 效能研发组"
+                placeholder="例如: 基础架构组"
                 value={activePipeline.group_name || ''} 
                 onChange={(e) => onChange({ ...activePipeline, group_name: e.target.value })}
+                disabled={!isAdmin}
               />
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>微服务 ID (Service ID - 只读)</label>
+              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>三方服务 ID (ServiceID - 只读)</label>
               <input 
                 type="text" 
                 value={activePipeline.service_id || '未拉取'} 
@@ -143,7 +149,7 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>工作区 ID (Workspace ID - 只读)</label>
+              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>三方 Workspace ID (只读)</label>
               <input 
                 type="text" 
                 value={activePipeline.workspace_id || '未拉取'} 
@@ -152,18 +158,9 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
             </div>
           </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>微服务名称 (Service Name - 只读)</label>
-            <input 
-              type="text" 
-              value={activePipeline.service_name || '未拉取'} 
-              disabled 
-            />
-          </div>
-
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>三方项目 (OwnerID - 只读)</label>
+              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>三方项目 ID (OwnerID - 只读)</label>
               <input 
                 type="text" 
                 value={activePipeline.owner_id || '未拉取'} 
@@ -187,16 +184,19 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
               rows={3}
               value={activePipeline.description || ''} 
               onChange={(e) => onChange({ ...activePipeline, description: e.target.value })}
+              disabled={!isAdmin}
             />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
             <button type="button" className="btn btn-secondary" onClick={onClose}>
-              取消
+              {isAdmin ? '取消' : '关闭'}
             </button>
-            <button type="submit" className="btn btn-primary" disabled={isFetchingPipeline}>
-              {activePipeline.id ? '保存' : '导入'}
-            </button>
+            {isAdmin && (
+              <button type="submit" className="btn btn-primary" disabled={isFetchingPipeline}>
+                {activePipeline.id ? '保存' : '导入'}
+              </button>
+            )}
           </div>
         </form>
       </div>
