@@ -786,7 +786,6 @@ func SyncUpdateExecutionSchemeRemote(ctx context.Context, scheme *models.Executi
 	if err := json.Unmarshal([]byte(bodyStr), &singlePayload); err == nil {
 		if scheme.ExecutionSchemeID != "" {
 			singlePayload["id"] = scheme.ExecutionSchemeID
-			singlePayload["scheme_id"] = scheme.ExecutionSchemeID
 		}
 		postData, _ = json.Marshal(singlePayload)
 	} else {
