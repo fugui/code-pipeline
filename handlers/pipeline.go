@@ -307,6 +307,9 @@ func UpdateExecutionScheme(c *gin.Context) {
 		return
 	}
 
+	oldBranch := scheme.Branch
+	oldCustomAttrs := scheme.CustomAttributes
+
 	updates := map[string]interface{}{
 		"custom_attributes": req.CustomAttributes,
 	}
@@ -333,30 +336,41 @@ func UpdateExecutionScheme(c *gin.Context) {
 
 	database.DB.Preload("Repository").Preload("PipelineInfo").First(&scheme, scheme.ID)
 
-	// 若开启了 MR 触发，异步/同步调用三方系统 /modify 接口更新远端 MR 触发分支关联
-	if scheme.MRTrigger {
-		repoURL := ""
-		if scheme.Repository != nil {
-			repoURL = scheme.Repository.HTTPURL
-			if repoURL == "" {
-				repoURL = scheme.Repository.URL
-			}
-		}
+	repoURL := ""
+	if scheme.Repository != nil {
+		repoURL = scheme.Repository.HTTPURL
 		if repoURL == "" {
-			var repo models.Repository
-			if err := database.DB.First(&repo, scheme.RepositoryID).Error; err == nil {
-				repoURL = repo.HTTPURL
-				if repoURL == "" {
-					repoURL = repo.URL
-				}
+			repoURL = scheme.Repository.URL
+		}
+	}
+	if repoURL == "" {
+		var repo models.Repository
+		if err := database.DB.First(&repo, scheme.RepositoryID).Error; err == nil {
+			repoURL = repo.HTTPURL
+			if repoURL == "" {
+				repoURL = repo.URL
 			}
 		}
-		if repoURL != "" {
-			repoURL = utils.SSHToHTTPS(repoURL)
-			headers := prepareRequestHeaders(c)
-			if err := services.SyncUpdateMRBindingRemote(c.Request.Context(), &scheme, repoURL, headers); err != nil {
-				log.Printf("[UpdateExecutionScheme] Warning: failed to sync remote MR binding for scheme %d: %v\n", scheme.ID, err)
-			}
+	}
+	if repoURL != "" {
+		repoURL = utils.SSHToHTTPS(repoURL)
+	}
+
+	headers := prepareRequestHeaders(c)
+
+	// 1. 若修改了构建参数，同步修改三方 ExecutionScheme
+	customAttrsChanged := req.CustomAttributes != oldCustomAttrs
+	if customAttrsChanged && repoURL != "" {
+		if err := services.SyncUpdateExecutionSchemeRemote(c.Request.Context(), &scheme, repoURL, headers); err != nil {
+			log.Printf("[UpdateExecutionScheme] Warning: failed to sync remote ExecutionScheme for scheme %d: %v\n", scheme.ID, err)
+		}
+	}
+
+	// 2. 若修改了分支，且开启了 MR 触发，才同步修改三方 MRBinding
+	branchChanged := (req.Branchs != "" && req.Branchs != oldBranch) || scheme.Branch != oldBranch
+	if branchChanged && scheme.MRTrigger && repoURL != "" {
+		if err := services.SyncUpdateMRBindingRemote(c.Request.Context(), &scheme, repoURL, headers); err != nil {
+			log.Printf("[UpdateExecutionScheme] Warning: failed to sync remote MR binding for scheme %d: %v\n", scheme.ID, err)
 		}
 	}
 
