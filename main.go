@@ -63,7 +63,7 @@ func main() {
 		api.POST("/login", handlers.Login)
 		api.POST("/webhook", handlers.HandleWebhook)
 
-		// 受保护路由
+		// 受保护路由 (全员登录可访问)
 		api.Use(handlers.AuthMiddleware())
 		{
 			api.GET("/me", handlers.GetMe)
@@ -81,39 +81,50 @@ func main() {
 			api.GET("/repos/:id/latest-log", handlers.GetRepoLatestLog)
 			api.GET("/repos/:id/branches", handlers.GetRepoBranches)
 			api.GET("/repos/:id/webhook", handlers.CheckRepoWebhook)
-			api.POST("/repos/:id/webhook", handlers.RegisterRepoWebhook)
 
-			// 独立被管代码仓与嵌套组管理路由
-			api.POST("/managed-groups", handlers.CreateManagedGroup)
+			// 独立被管代码仓与嵌套组管理路由 (只读与催办类全员接口)
 			api.GET("/managed-groups", handlers.GetManagedGroups)
-			api.POST("/managed-groups/:id/sync", handlers.SyncManagedGroup)
-			api.POST("/managed-groups/:id/toggle-hide", handlers.ToggleGroupHide)
-			api.POST("/managed-repos", handlers.CreateManagedRepo)
 			api.GET("/managed-repos", handlers.GetManagedRepos)
-			api.POST("/managed-repos/:id/branches", handlers.CreateManagedBranch)
-			api.POST("/managed-acl", handlers.ConfigureManagedACL)
 			api.GET("/managed-repos/:id/branches_audit", handlers.GetManagedRepoBranchAudit)
-			api.POST("/managed-repos/:id/branches_audit/trigger", handlers.TriggerManagedRepoBranchAudit)
 			api.POST("/managed-repos/:id/branches_audit/notify", handlers.NotifyBranchOwner)
-			api.POST("/managed-repos/:id/branches/cleanup", handlers.CleanupManagedBranches)
 
-			// 流水线配置相关接口
+			// 流水线配置与方案只读/触发接口
 			api.GET("/pipelines", handlers.GetPipelines)
-			api.POST("/pipelines", handlers.CreatePipeline)
-			api.PUT("/pipelines/:id", handlers.UpdatePipeline)
-			api.DELETE("/pipelines/:id", handlers.DeletePipeline)
-			api.GET("/pipelines/fetch-info", handlers.FetchPipelineInfoFromRemote)
-
-			// 执行方案相关接口
 			api.GET("/execution-schemes", handlers.GetExecutionSchemes)
-			api.POST("/execution-schemes", handlers.CreateExecutionScheme)
-			api.PUT("/execution-schemes/:id", handlers.UpdateExecutionScheme)
-			api.DELETE("/execution-schemes/:id", handlers.DeleteExecutionScheme)
 			api.POST("/execution-schemes/:id/run", handlers.RunExecutionScheme)
-			api.POST("/execution-schemes/sync", handlers.SyncExecutionSchemes)
 
 			// 看板状态大屏接口
 			api.GET("/dashboard/stats", handlers.GetDashboardStats)
+
+			// 管理员专属路由 (需要超级管理员或 pipeline_admin 权限)
+			admin := api.Group("")
+			admin.Use(handlers.AdminMiddleware())
+			{
+				// 仓库 Webhook 注册
+				admin.POST("/repos/:id/webhook", handlers.RegisterRepoWebhook)
+
+				// 独立被管代码仓与嵌套组写/管控路由
+				admin.POST("/managed-groups", handlers.CreateManagedGroup)
+				admin.POST("/managed-groups/:id/sync", handlers.SyncManagedGroup)
+				admin.POST("/managed-groups/:id/toggle-hide", handlers.ToggleGroupHide)
+				admin.POST("/managed-repos", handlers.CreateManagedRepo)
+				admin.POST("/managed-repos/:id/branches", handlers.CreateManagedBranch)
+				admin.POST("/managed-acl", handlers.ConfigureManagedACL)
+				admin.POST("/managed-repos/:id/branches_audit/trigger", handlers.TriggerManagedRepoBranchAudit)
+				admin.POST("/managed-repos/:id/branches/cleanup", handlers.CleanupManagedBranches)
+
+				// 流水线配置写/管控接口
+				admin.POST("/pipelines", handlers.CreatePipeline)
+				admin.PUT("/pipelines/:id", handlers.UpdatePipeline)
+				admin.DELETE("/pipelines/:id", handlers.DeletePipeline)
+				admin.GET("/pipelines/fetch-info", handlers.FetchPipelineInfoFromRemote)
+
+				// 执行方案写/管控接口
+				admin.POST("/execution-schemes", handlers.CreateExecutionScheme)
+				admin.PUT("/execution-schemes/:id", handlers.UpdateExecutionScheme)
+				admin.DELETE("/execution-schemes/:id", handlers.DeleteExecutionScheme)
+				admin.POST("/execution-schemes/sync", handlers.SyncExecutionSchemes)
+			}
 		}
 	}
 
