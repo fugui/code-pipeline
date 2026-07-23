@@ -654,6 +654,156 @@ func SyncUpdateMRBindingRemote(ctx context.Context, scheme *models.ExecutionSche
 	return nil
 }
 
+// SyncUpdateExecutionSchemeRemote 同步调用三方系统接口修改 ExecutionScheme（构建参数更新）
+func SyncUpdateExecutionSchemeRemote(ctx context.Context, scheme *models.ExecutionScheme, repoURL string, headers map[string]string) error {
+	if scheme == nil {
+		return fmt.Errorf("execution scheme is nil")
+	}
+
+	var pipeline models.Pipeline
+	var pipelineBusinessID string
+	if err := database.DB.First(&pipeline, scheme.LocalPipelineID).Error; err == nil {
+		pipelineBusinessID = pipeline.PipelineID
+	}
+
+	apiURLStr := models.AppConfig.PipelineSystem.CreateExecutionSchemeURL
+	if apiURLStr == "" {
+		return fmt.Errorf("create_execution_scheme_url not configured")
+	}
+
+	modifyURL := apiURLStr
+	if strings.HasSuffix(modifyURL, "/add") {
+		modifyURL = strings.TrimSuffix(modifyURL, "/add") + "/modify"
+	} else if !strings.HasSuffix(modifyURL, "/modify") {
+		modifyURL = strings.TrimSuffix(modifyURL, "/") + "/modify"
+	}
+
+	tmpl := models.AppConfig.PipelineSystem.CreateExecutionSchemeBody
+	if tmpl == "" {
+		return fmt.Errorf("create_execution_scheme_body not configured")
+	}
+
+	schemeName := scheme.Name
+
+	type CustomAttr struct {
+		Name  string      `json:"name"`
+		Value interface{} `json:"value"`
+	}
+
+	var cp struct {
+		BuildParameters                 []CustomAttr `json:"buildParameters"`
+		GateEnabled                     *bool        `json:"gateEnabled"`
+		CoverChildrenPipelineParameters *bool        `json:"coverChildrenPipelineParameters"`
+	}
+
+	if scheme.CustomAttributes != "" {
+		if err := json.Unmarshal([]byte(scheme.CustomAttributes), &cp); err != nil {
+			log.Printf("[SyncUpdateExecutionScheme] Failed to unmarshal custom_attributes: %v", err)
+			return fmt.Errorf("failed to parse custom_attributes JSON: %w", err)
+		}
+	}
+
+	gateEnabled := true
+	if cp.GateEnabled != nil {
+		gateEnabled = *cp.GateEnabled
+	}
+
+	coverChildrenPipelineParameters := false
+	if cp.CoverChildrenPipelineParameters != nil {
+		coverChildrenPipelineParameters = *cp.CoverChildrenPipelineParameters
+	}
+
+	customAttrMap := make(map[string]interface{})
+	for _, param := range cp.BuildParameters {
+		if param.Name != "" {
+			customAttrMap[param.Name] = param.Value
+		}
+	}
+
+	customAttrMap["code_checker_task_id"] = scheme.CodeCheckerTaskID
+	customAttrMap["codehubTargetRepoHttpUrl"] = repoURL
+	customAttrMap["selectedBranchs"] = scheme.Branch
+	customAttrMap["languages"] = scheme.Languages
+
+	var keys []string
+	for k := range customAttrMap {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	customAttrList := make([]CustomAttr, 0, len(keys))
+	for _, k := range keys {
+		customAttrList = append(customAttrList, CustomAttr{
+			Name:  k,
+			Value: customAttrMap[k],
+		})
+	}
+
+	var finalObj struct {
+		BuildParameters                 []CustomAttr `json:"buildParameters"`
+		GateEnabled                     bool         `json:"gateEnabled"`
+		CoverChildrenPipelineParameters bool         `json:"coverChildrenPipelineParameters"`
+	}
+	finalObj.BuildParameters = customAttrList
+	finalObj.GateEnabled = gateEnabled
+	finalObj.CoverChildrenPipelineParameters = coverChildrenPipelineParameters
+
+	mergedBytes, err := json.Marshal(finalObj)
+	if err != nil {
+		log.Printf("[SyncUpdateExecutionScheme] Failed to marshal merged custom_attributes: %v", err)
+		return fmt.Errorf("failed to marshal custom_attributes to JSON: %w", err)
+	}
+
+	customAttributesJSON, err := json.Marshal(string(mergedBytes))
+	if err != nil {
+		log.Printf("[SyncUpdateExecutionScheme] Failed to escape custom_attributes: %v", err)
+		return fmt.Errorf("failed to escape custom_attributes to JSON: %w", err)
+	}
+
+	escapedCustomAttributes := string(customAttributesJSON)
+	if len(escapedCustomAttributes) >= 2 && escapedCustomAttributes[0] == '"' && escapedCustomAttributes[len(escapedCustomAttributes)-1] == '"' {
+		escapedCustomAttributes = escapedCustomAttributes[1 : len(escapedCustomAttributes)-1]
+	}
+
+	empID, _ := ctx.Value("employeeID").(string)
+	formattedEmpID := utils.FormatEmployeeID(empID)
+	if formattedEmpID == "" {
+		formattedEmpID = "system"
+	}
+
+	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
+		"{SCHEME_NAME}":       schemeName,
+		"{NAME}":              schemeName,
+		"{PIPELINE_ID}":       pipelineBusinessID,
+		"{USER_EMAIL}":        formattedEmpID,
+		"{CUSTOM_ATTRIBUTES}": escapedCustomAttributes,
+	})
+
+	var postData []byte
+	var singlePayload map[string]interface{}
+	if err := json.Unmarshal([]byte(bodyStr), &singlePayload); err == nil {
+		if scheme.ExecutionSchemeID != "" {
+			singlePayload["id"] = scheme.ExecutionSchemeID
+			singlePayload["scheme_id"] = scheme.ExecutionSchemeID
+		}
+		postData, _ = json.Marshal(singlePayload)
+	} else {
+		postData = []byte(bodyStr)
+	}
+
+	log.Printf("[SyncUpdateExecutionScheme] Calling Modify Execution Scheme. URL: %s, Body: %s", modifyURL, string(postData))
+
+	_, err = utils.SendHTTPRequest(ctx, "PUT", modifyURL, json.RawMessage(postData), utils.HTTPOptions{
+		Headers: headers,
+	}, []int{http.StatusOK, http.StatusCreated, http.StatusNoContent}, "SyncUpdateExecutionSchemeRemote")
+	if err != nil {
+		log.Printf("[SyncUpdateExecutionScheme] Remote modify failed: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 // createExecutionPlanStep 步骤四：创建每日构建的执行计划
 func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, schemeID string, headers map[string]string) (string, error) {
 	log.Printf("[SyncCreateScheme] Enter createExecutionPlanStep: pipelineBusinessID=%s, scheme=%+v, schemeID=%s, headers=%v", pipelineBusinessID, scheme, schemeID, headers)

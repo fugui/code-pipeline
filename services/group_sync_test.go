@@ -12,6 +12,7 @@ import (
 )
 
 func TestSyncGroupRecursiveSkipHidden(t *testing.T) {
+	_ = models.LoadConfig("../config.yaml")
 	database.InitDB()
 
 	// 1. 在本地数据库存入一个 is_hidden = true 的分组
@@ -46,6 +47,7 @@ func TestSyncGroupRecursiveSkipHidden(t *testing.T) {
 }
 
 func TestSyncGroupRecursiveUpdatesSubgroupTime(t *testing.T) {
+	_ = models.LoadConfig("../config.yaml")
 	database.InitDB()
 
 	// 1. 本地数据库中创建测试组
