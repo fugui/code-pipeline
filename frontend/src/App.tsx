@@ -252,8 +252,15 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
       },
       body: JSON.stringify(activePipeline)
     })
-    .then(res => {
-      if (!res.ok) throw new Error('保存流水线失败，该流水线 ID 可能已存在')
+    .then(async res => {
+      if (!res.ok) {
+        let msg = res.status === 403 ? '操作失败：需要管理员权限' : '保存流水线失败，该流水线 ID 可能已存在'
+        try {
+          const data = await res.json()
+          if (data && data.error) msg = data.error
+        } catch (e) {}
+        throw new Error(msg)
+      }
       return res.json()
     })
     .then(() => {
@@ -271,8 +278,15 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     })
-    .then(res => {
-      if (!res.ok) throw new Error('删除流水线失败')
+    .then(async res => {
+      if (!res.ok) {
+        let msg = res.status === 403 ? '操作失败：需要管理员权限' : '删除流水线失败'
+        try {
+          const data = await res.json()
+          if (data && data.error) msg = data.error
+        } catch (e) {}
+        throw new Error(msg)
+      }
       fetchPipelines()
     })
     .catch(err => alert(err.message))
@@ -297,8 +311,15 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
       },
       body: JSON.stringify(activeScheme)
     })
-    .then(res => {
-      if (!res.ok) throw new Error(isEdit ? '更新执行方案失败，请检查配置后重试' : '保存执行方案失败，请检查配置后重试')
+    .then(async res => {
+      if (!res.ok) {
+        let msg = res.status === 403 ? '操作失败：需要管理员权限' : (isEdit ? '更新执行方案失败，请检查配置后重试' : '保存执行方案失败，请检查配置后重试')
+        try {
+          const data = await res.json()
+          if (data && data.error) msg = data.error
+        } catch (e) {}
+        throw new Error(msg)
+      }
       return res.json()
     })
     .then(() => {
@@ -323,8 +344,15 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     })
-    .then(res => {
-      if (!res.ok) throw new Error('删除执行方案失败')
+    .then(async res => {
+      if (!res.ok) {
+        let msg = res.status === 403 ? '操作失败：需要管理员权限' : '删除执行方案失败'
+        try {
+          const data = await res.json()
+          if (data && data.error) msg = data.error
+        } catch (e) {}
+        throw new Error(msg)
+      }
       setSchemeUpdateKey(k => k + 1)
       if (selectedPipeline && selectedPipeline.id) {
         fetchSchemes(selectedPipeline.id)
