@@ -672,10 +672,12 @@ func SyncUpdateExecutionSchemeRemote(ctx context.Context, scheme *models.Executi
 	}
 
 	modifyURL := apiURLStr
-	if strings.HasSuffix(modifyURL, "/add") {
-		modifyURL = strings.TrimSuffix(modifyURL, "/add") + "/modify"
-	} else if !strings.HasSuffix(modifyURL, "/modify") {
-		modifyURL = strings.TrimSuffix(modifyURL, "/") + "/modify"
+	if strings.HasSuffix(modifyURL, "/post") {
+		modifyURL = strings.TrimSuffix(modifyURL, "/post") + "/put"
+	} else if strings.HasSuffix(modifyURL, "/add") {
+		modifyURL = strings.TrimSuffix(modifyURL, "/add") + "/put"
+	} else if !strings.HasSuffix(modifyURL, "/put") {
+		modifyURL = strings.TrimSuffix(modifyURL, "/") + "/put"
 	}
 
 	tmpl := models.AppConfig.PipelineSystem.CreateExecutionSchemeBody
