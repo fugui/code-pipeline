@@ -120,8 +120,15 @@ export const Repos: React.FC<ReposProps> = ({
     fetch(`${apiBase}/repos/filter-options`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(r => r.json())
-      .then(data => setFilterOpts(data))
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && (Array.isArray(data.service_groups) || Array.isArray(data.owner_names))) {
+          setFilterOpts({
+            service_groups: Array.isArray(data.service_groups) ? data.service_groups : [],
+            owner_names: Array.isArray(data.owner_names) ? data.owner_names : []
+          })
+        }
+      })
       .catch(err => console.error('fetch filter options failed', err))
   }, [token, apiBase])
 
@@ -140,9 +147,18 @@ export const Repos: React.FC<ReposProps> = ({
     fetch(`${apiBase}/repos?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(r => r.json())
-      .then((data: PagedResult) => setResult(data))
-      .catch(err => console.error('fetch repos failed', err))
+      .then(r => r.ok ? r.json() : null)
+      .then((data: PagedResult | null) => {
+        if (data && Array.isArray(data.items)) {
+          setResult(data)
+        } else {
+          setResult({ items: [], total: 0, page: 1, page_size: PAGE_SIZE })
+        }
+      })
+      .catch(err => {
+        console.error('fetch repos failed', err)
+        setResult({ items: [], total: 0, page: 1, page_size: PAGE_SIZE })
+      })
       .finally(() => setLoading(false))
   }, [token, apiBase, page, searchParams, serviceGroup, ownerName, hasScheme])
 
@@ -214,7 +230,7 @@ export const Repos: React.FC<ReposProps> = ({
             style={selectStyle}
           >
             <option value="">全部子系统</option>
-            {filterOpts.service_groups.map(g => (
+            {(filterOpts?.service_groups || []).map(g => (
               <option key={g} value={g}>{g}</option>
             ))}
           </select>
@@ -226,7 +242,7 @@ export const Repos: React.FC<ReposProps> = ({
             style={selectStyle}
           >
             <option value="">全部负责人</option>
-            {filterOpts.owner_names.map(o => (
+            {(filterOpts?.owner_names || []).map(o => (
               <option key={o} value={o}>{o}</option>
             ))}
           </select>
