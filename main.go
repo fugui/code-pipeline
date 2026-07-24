@@ -109,6 +109,8 @@ func main() {
 				admin.POST("/managed-groups/:id/toggle-hide", handlers.ToggleGroupHide)
 				admin.POST("/managed-repos", handlers.CreateManagedRepo)
 				admin.POST("/managed-repos/:id/branches", handlers.CreateManagedBranch)
+				admin.POST("/managed-repos/:id/toggle-archive", handlers.ToggleRepoArchive)
+				admin.POST("/managed-repos/:id/toggle-hide", handlers.ToggleRepoHide)
 				admin.POST("/managed-acl", handlers.ConfigureManagedACL)
 				admin.POST("/managed-repos/:id/branches_audit/trigger", handlers.TriggerManagedRepoBranchAudit)
 				admin.POST("/managed-repos/:id/branches/cleanup", handlers.CleanupManagedBranches)

@@ -203,12 +203,18 @@ func syncSingleGroupDirect(ctx context.Context, groupID uint, userID uint) error
 		var existing models.ManagedRepository
 		errDb := tx.Where("id = ?", rp.ID).First(&existing).Error
 		if errDb == nil {
-			if err := tx.Model(&existing).Updates(models.ManagedRepository{
-				Name:           rp.Name,
-				SSHURL:         sshURL,
-				HTTPURL:        httpURL,
-				ManagedGroupID: startGroup.ID,
-			}).Error; err != nil {
+			updates := map[string]interface{}{
+				"name":             rp.Name,
+				"ssh_url":          sshURL,
+				"http_url":         httpURL,
+				"managed_group_id": startGroup.ID,
+			}
+			if rp.Archived {
+				updates["is_archived"] = true
+				updates["is_active"] = false
+				updates["is_hidden"] = true
+			}
+			if err := tx.Model(&existing).Updates(updates).Error; err != nil {
 				tx.Rollback()
 				return err
 			}
@@ -220,7 +226,9 @@ func syncSingleGroupDirect(ctx context.Context, groupID uint, userID uint) error
 				SSHURL:         sshURL,
 				HTTPURL:        httpURL,
 				OwnerID:        userID,
-				IsActive:       true,
+				IsActive:       !rp.Archived,
+				IsArchived:     rp.Archived,
+				IsHidden:       rp.Archived,
 				CreatedAt:      time.Now(),
 			}
 			if err := tx.Create(&newRepo).Error; err != nil {

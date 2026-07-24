@@ -152,6 +152,8 @@ type ManagedRepository struct {
 	HTTPURL            string       `gorm:"default:''" json:"http_url"`         // HTTP 访问地址
 	OwnerID            uint         `json:"owner_id"`                           // 负责人 ID (系统 User)
 	IsActive           bool         `gorm:"default:true" json:"is_active"`
+	IsArchived         bool         `gorm:"default:false;index" json:"is_archived"` // 是否已被归档 (归档时 IsActive=false, IsHidden=true)
+	IsHidden           bool         `gorm:"default:false;index" json:"is_hidden"`   // 是否已被隐藏
 	WebhookRegistered  bool         `gorm:"default:false" json:"webhook_registered"`
 	BranchCount        int          `gorm:"default:0" json:"branch_count"`         // 仓库分支总数
 	ActiveCount        int          `gorm:"default:0" json:"active_count"`         // 活跃分支数
