@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/datatypes"
 )
 
 type PortalClaims struct {
@@ -100,12 +101,11 @@ func AuthMiddleware() gin.HandlerFunc {
 			if user.ID != 0 {
 				claims.UserID = user.ID
 				rolesJSON, _ := json.Marshal(claims.Roles)
-				rolesStr := string(rolesJSON)
-				if user.IsAdmin != claims.IsAdmin || user.Name != claims.Name || user.EmployeeID != claims.EmployeeID || user.Roles != rolesStr {
+				if user.IsAdmin != claims.IsAdmin || user.Name != claims.Name || user.EmployeeID != claims.EmployeeID || string(user.Roles) != string(rolesJSON) {
 					user.IsAdmin = claims.IsAdmin
 					user.Name = claims.Name
 					user.EmployeeID = claims.EmployeeID
-					user.Roles = rolesStr
+					user.Roles = datatypes.JSON(rolesJSON)
 					_ = database.DB.Save(&user).Error
 				}
 			}
@@ -256,8 +256,8 @@ func GetMe(c *gin.Context) {
 		return
 	}
 	var roles []string
-	if user.Roles != "" {
-		_ = json.Unmarshal([]byte(user.Roles), &roles)
+	if len(user.Roles) > 0 {
+		_ = json.Unmarshal(user.Roles, &roles)
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"id":       user.ID,
