@@ -99,11 +99,13 @@ func AuthMiddleware() gin.HandlerFunc {
 			_ = database.DB.Where("email = ?", claims.Email).First(&user).Error
 			if user.ID != 0 {
 				claims.UserID = user.ID
-				// 同步更新本地用户角色和姓名等，以保证与 SSO 端保持最新状态同步
-				if user.IsAdmin != claims.IsAdmin || user.Name != claims.Name || user.EmployeeID != claims.EmployeeID {
+				rolesJSON, _ := json.Marshal(claims.Roles)
+				rolesStr := string(rolesJSON)
+				if user.IsAdmin != claims.IsAdmin || user.Name != claims.Name || user.EmployeeID != claims.EmployeeID || user.Roles != rolesStr {
 					user.IsAdmin = claims.IsAdmin
 					user.Name = claims.Name
 					user.EmployeeID = claims.EmployeeID
+					user.Roles = rolesStr
 					_ = database.DB.Save(&user).Error
 				}
 			}
@@ -253,10 +255,15 @@ func GetMe(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
+	var roles []string
+	if user.Roles != "" {
+		_ = json.Unmarshal([]byte(user.Roles), &roles)
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"id":       user.ID,
 		"email":    user.Email,
 		"name":     user.Name,
 		"is_admin": user.IsAdmin,
+		"roles":    roles,
 	})
 }
