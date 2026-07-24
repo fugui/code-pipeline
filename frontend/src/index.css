@@ -25,14 +25,14 @@
   --radius: 12px;
 }
 
-* {
+.pipeline-app * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
   outline: none;
 }
 
-body {
+.pipeline-app {
   font-family: var(--font-sans);
   background-color: var(--bg-primary);
   background-image: 
@@ -45,18 +45,18 @@ body {
 }
 
 /* Scrollbar styling */
-::-webkit-scrollbar {
+.pipeline-app ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-::-webkit-scrollbar-track {
+.pipeline-app ::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.02);
 }
-::-webkit-scrollbar-thumb {
+.pipeline-app ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
 }
-::-webkit-scrollbar-thumb:hover {
+.pipeline-app ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
 
@@ -210,7 +210,9 @@ body {
 }
 
 /* Forms and inputs */
-input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]), textarea, select {
+.pipeline-app input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]),
+.pipeline-app textarea,
+.pipeline-app select {
   background: var(--portal-bg-color, rgba(255, 255, 255, 0.03));
   border: 1px solid var(--border-color);
   color: var(--text-main);
@@ -222,14 +224,16 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type=
   width: 100%;
 }
 
-input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]):focus, textarea:focus, select:focus {
+.pipeline-app input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]):focus,
+.pipeline-app textarea:focus,
+.pipeline-app select:focus {
   border-color: #6366f1;
   background: rgba(255, 255, 255, 0.06);
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
 /* Beautiful buttons */
-.btn {
+.pipeline-app .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -244,38 +248,38 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type=
   color: white;
 }
 
-.btn-primary {
+.pipeline-app .btn-primary {
   background: var(--accent-primary);
   box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.3);
 }
 
-.btn-primary:hover {
+.pipeline-app .btn-primary:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.4);
 }
 
-.btn-secondary {
+.pipeline-app .btn-secondary {
   background: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-main);
 }
 
-.btn-secondary:hover {
+.pipeline-app .btn-secondary:hover {
   background: rgba(148, 163, 184, 0.1);
   border-color: var(--border-active);
 }
 
-.btn-danger {
+.pipeline-app .btn-danger {
   background: var(--accent-error);
   box-shadow: 0 4px 14px 0 rgba(244, 63, 94, 0.3);
 }
 
-.btn-danger:hover {
+.pipeline-app .btn-danger:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 20px 0 rgba(244, 63, 94, 0.4);
 }
 
-.btn-small {
+.pipeline-app .btn-small {
   padding: 6px 12px;
   font-size: 12px;
   border-radius: 6px;

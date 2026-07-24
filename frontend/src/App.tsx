@@ -500,7 +500,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
       window.location.href = '/'
     }
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <div className="pipeline-app" style={{ display: 'flex', flexDirection: 'column', gap: 16, justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <Loader2 className="animate-spin" size={48} color="#6366f1" />
         <p style={{ color: 'var(--text-secondary)' }}>登录凭证已失效，正在重定向至统一登录页面...</p>
       </div>
@@ -508,8 +508,9 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
   }
 
   return (
-    <ToastProvider>
-      <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div className="pipeline-app">
+      <ToastProvider>
+        <div style={{ display: 'flex', minHeight: '100vh' }}>
       {/* Sidebar */}
       {!isEmbedded && (
         <aside className="glass-card" style={{ width: 260, borderRadius: 0, borderTop: 'none', borderBottom: 'none', borderLeft: 'none', padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -720,6 +721,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
       />
     </div>
     </ToastProvider>
+    </div>
   )
 }
 
