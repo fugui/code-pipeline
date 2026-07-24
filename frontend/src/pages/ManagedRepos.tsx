@@ -902,15 +902,28 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
         <div className="glass-card" style={{ flex: 1, padding: 24, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>被管仓明细</h3>
-            <div style={{ position: 'relative', width: 280 }}>
-              <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: 'var(--text-secondary)' }} />
-              <input 
-                type="text" 
-                placeholder="检索仓库名称或 SSHURL..." 
-                value={repoSearchQuery}
-                onChange={(e) => setRepoSearchQuery(e.target.value)}
-                style={{ width: '100%', padding: '6px 12px 6px 30px', fontSize: 13, background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
-              />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}>
+                <input 
+                  type="checkbox" 
+                  checked={showArchived}
+                  onChange={(e) => {
+                    setShowArchived(e.target.checked)
+                    fetchRepos(selectedGroup?.id, e.target.checked)
+                  }}
+                />
+                显示已归档代码仓
+              </label>
+              <div style={{ position: 'relative', width: 260 }}>
+                <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: 'var(--text-secondary)' }} />
+                <input 
+                  type="text" 
+                  placeholder="检索仓库名称或 SSHURL..." 
+                  value={repoSearchQuery}
+                  onChange={(e) => setRepoSearchQuery(e.target.value)}
+                  style={{ width: '100%', padding: '6px 12px 6px 30px', fontSize: 13, background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+                />
+              </div>
             </div>
           </div>
 
