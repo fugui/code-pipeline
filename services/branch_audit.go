@@ -20,7 +20,7 @@ func StartBranchAuditTimer(ctx context.Context) {
 func AuditAllReposBranches(ctx context.Context) {
 	log.Println("[BranchAudit] Triggering stale branch audit for all managed repositories...")
 	var repos []models.ManagedRepository
-	if err := database.DB.Find(&repos).Error; err != nil {
+	if err := database.DB.Where("is_active = ? AND is_archived = ?", true, false).Find(&repos).Error; err != nil {
 		log.Printf("[BranchAudit] Failed to query managed repositories: %v", err)
 		return
 	}

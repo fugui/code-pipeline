@@ -424,6 +424,7 @@ type RemoteProject struct {
 	HTTPURL       string `json:"http_url"`
 	SSHURLToRepo  string `json:"ssh_url_to_repo"`
 	HTTPURLToRepo string `json:"http_url_to_repo"`
+	Archived      bool   `json:"archived"`
 }
 
 // GetRemoteGroupDetails 获取远程 Group 详情，用于转换本地自增 ID 为 Codehub 真实 ID

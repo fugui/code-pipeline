@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { 
-  GitBranch, Folder, Plus, Search, Users, AlertCircle, RefreshCw, Send, CheckCircle2, ChevronRight, ChevronDown, Eye, EyeOff, Trash2, Zap, X
+  GitBranch, Folder, Plus, Search, Users, AlertCircle, RefreshCw, Send, CheckCircle2, ChevronRight, ChevronDown, Eye, EyeOff, Trash2, Zap, X, Archive
 } from 'lucide-react'
 
 interface ManagedGroup {
@@ -23,6 +23,8 @@ interface ManagedRepository {
   http_url: string
   owner_id: number
   is_active: boolean
+  is_archived?: boolean
+  is_hidden?: boolean
   webhook_registered: boolean
   branch_count?: number
   active_count?: number
@@ -298,10 +300,13 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
     .catch(err => showToast('error', `获取 Group 失败: ${err.message}`))
   }
 
-  const fetchRepos = (groupId?: number) => {
-    let url = `${apiBase}/managed-repos`
+  const [showArchived, setShowArchived] = useState(false)
+
+  const fetchRepos = (groupId?: number, includeArchivedOverride?: boolean) => {
+    const incArchived = includeArchivedOverride !== undefined ? includeArchivedOverride : showArchived
+    let url = `${apiBase}/managed-repos?include_archived=${incArchived}`
     if (groupId) {
-      url += `?group_id=${groupId}`
+      url += `&group_id=${groupId}`
     }
     fetch(url, {
       headers: { 'Authorization': `Bearer ${token}` }
@@ -420,6 +425,23 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
     .finally(() => setIsCleaningBranches(false))
   }
 
+
+  const handleToggleRepoArchive = (repo: ManagedRepository) => {
+    fetch(`${apiBase}/managed-repos/${repo.id}/toggle-archive`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) {
+        showToast('error', data.error)
+      } else {
+        showToast('success', repo.is_archived ? '已成功解档代码仓' : '已成功归档代码仓（自动置为非活跃与隐藏）')
+        fetchRepos(selectedGroup?.id)
+      }
+    })
+    .catch(err => showToast('error', `更新归档状态失败: ${err.message}`))
+  }
 
   // Sync Group subgroups & repos from remote CodeHub
   const handleSyncGroup = () => {
@@ -932,9 +954,18 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                   </tr>
                 ) : (
                   paginatedRepos.map(r => (
-                    <tr key={r.id} style={{ borderBottom: '1px solid var(--border-color)', fontSize: 13 }}>
+                    <tr key={r.id} style={{ borderBottom: '1px solid var(--border-color)', fontSize: 13, opacity: r.is_archived ? 0.65 : 1 }}>
                       <td style={{ padding: '14px 8px', color: 'var(--text-secondary)' }}>{r.id}</td>
-                      <td style={{ padding: '14px 8px', fontWeight: 600 }}>{r.name}</td>
+                      <td style={{ padding: '14px 8px', fontWeight: 600 }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <span>{r.name}</span>
+                          {r.is_archived && (
+                            <span className="badge" style={{ padding: '1px 6px', borderRadius: 4, background: 'rgba(148, 163, 184, 0.2)', color: '#94a3b8', fontSize: 11, fontWeight: 500 }}>
+                              已归档
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td style={{ padding: '14px 8px' }}>
                         <span className="badge badge-secondary" style={{ background: 'rgba(129, 138, 248, 0.1)', color: '#818cf8' }}>
                           {r.group?.full_path || 'Default'}
@@ -975,13 +1006,23 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                             <GitBranch size={13} /> 管控
                           </button>
                           <button 
-                            disabled={isAuditing}
+                            disabled={isAuditing || r.is_archived}
                             onClick={() => handleTriggerAudit(r.id)} 
                             className="btn btn-secondary btn-small"
-                            title="手动即时触发该代码仓的分支审计分析"
+                            title={r.is_archived ? '已归档仓库无法审计分析' : '手动即时触发该代码仓的分支审计分析'}
                           >
                             <RefreshCw size={13} className={isAuditing ? 'animate-spin' : ''} />
                           </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => handleToggleRepoArchive(r)}
+                              className="btn btn-secondary btn-small"
+                              title={r.is_archived ? '解除归档，恢复活跃管控' : '将代码仓归档（自动置为非活跃与隐藏）'}
+                              style={{ color: r.is_archived ? '#10b981' : '#64748b' }}
+                            >
+                              <Archive size={13} /> {r.is_archived ? '解档' : '归档'}
+                            </button>
+                          )}
                         </div>
                       </td>
 

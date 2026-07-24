@@ -143,9 +143,12 @@ func CreateManagedRepo(c *gin.Context) {
 	c.JSON(http.StatusCreated, repo)
 }
 
-// GetManagedRepos 获取被管代码仓列表
+// GetManagedRepos 获取被管代码仓列表 (默认排除归档和隐藏的仓库)
 func GetManagedRepos(c *gin.Context) {
 	groupIDStr := c.Query("group_id")
+	includeArchived := c.Query("include_archived") == "true"
+	includeHidden := c.Query("include_hidden") == "true"
+
 	query := database.DB.Model(&models.ManagedRepository{})
 
 	if groupIDStr != "" {
@@ -153,6 +156,14 @@ func GetManagedRepos(c *gin.Context) {
 		if err == nil {
 			query = query.Where("managed_group_id = ?", groupID)
 		}
+	}
+
+	if !includeArchived {
+		query = query.Where("is_archived = ?", false)
+	}
+
+	if !includeHidden {
+		query = query.Where("is_hidden = ?", false)
 	}
 
 	var repos []models.ManagedRepository
@@ -536,5 +547,75 @@ func ToggleGroupHide(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "Group hide status toggled successfully and database cleaned",
 		"is_hidden": group.IsHidden,
+	})
+}
+
+// ToggleRepoArchive 切换仓库归档状态 (归档时自动设为非活跃和隐藏状态)
+func ToggleRepoArchive(c *gin.Context) {
+	idStr := c.Param("id")
+	repoID, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid repository ID"})
+		return
+	}
+
+	var repo models.ManagedRepository
+	if err := database.DB.First(&repo, repoID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Repository not found"})
+		return
+	}
+
+	newArchived := !repo.IsArchived
+	updates := map[string]interface{}{
+		"is_archived": newArchived,
+	}
+
+	if newArchived {
+		// 归档代码仓必定不处于活跃状态，且默认隐藏
+		updates["is_active"] = false
+		updates["is_hidden"] = true
+	} else {
+		// 解档时恢复为活跃且解除隐藏
+		updates["is_active"] = true
+		updates["is_hidden"] = false
+	}
+
+	if err := database.DB.Model(&repo).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update repository archived status"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Repository archive status updated successfully",
+		"is_archived": newArchived,
+		"is_active":   updates["is_active"],
+		"is_hidden":   updates["is_hidden"],
+	})
+}
+
+// ToggleRepoHide 切换仓库单独的隐藏状态
+func ToggleRepoHide(c *gin.Context) {
+	idStr := c.Param("id")
+	repoID, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid repository ID"})
+		return
+	}
+
+	var repo models.ManagedRepository
+	if err := database.DB.First(&repo, repoID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Repository not found"})
+		return
+	}
+
+	newHidden := !repo.IsHidden
+	if err := database.DB.Model(&repo).Update("is_hidden", newHidden).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update repository hidden status"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "Repository hidden status updated successfully",
+		"is_hidden": newHidden,
 	})
 }
