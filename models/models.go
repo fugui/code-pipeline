@@ -2,22 +2,24 @@ package models
 
 import (
 	"time"
+
+	"gorm.io/datatypes"
 )
 
 type User struct {
-	ID           uint       `gorm:"primaryKey" json:"id"`
-	UniqueID     *string    `gorm:"uniqueIndex" json:"unique_id,omitempty"`
-	EmployeeID   string     `gorm:"index;default:''" json:"employee_id"`
-	EmployeeType string     `gorm:"default:''" json:"employee_type"`
-	Email        string     `gorm:"uniqueIndex;not null;default:''" json:"email"`
-	Username     string     `gorm:"index;default:''" json:"username"`
-	Name         string     `gorm:"not null;default:''" json:"name"`
-	Password     string     `gorm:"not null;default:''" json:"-"`
-	RegMethod    string     `gorm:"default:'local'" json:"reg_method"`
-	IsActive     bool       `gorm:"default:true" json:"is_active"`
-	IsAdmin      bool       `gorm:"default:false" json:"is_admin"`
-	Roles        string     `gorm:"type:text;default:'[]'" json:"roles"`
-	LastLogin    *time.Time `json:"last_login"`
+	ID           uint           `gorm:"primaryKey" json:"id"`
+	UniqueID     *string        `gorm:"uniqueIndex" json:"unique_id,omitempty"`
+	EmployeeID   string         `gorm:"index;default:''" json:"employee_id"`
+	EmployeeType string         `gorm:"default:''" json:"employee_type"`
+	Email        string         `gorm:"uniqueIndex;not null;default:''" json:"email"`
+	Username     string         `gorm:"index;default:''" json:"username"`
+	Name         string         `gorm:"not null;default:''" json:"name"`
+	Password     string         `gorm:"not null;default:''" json:"-"`
+	RegMethod    string         `gorm:"default:'local'" json:"reg_method"`
+	IsActive     bool           `gorm:"default:true" json:"is_active"`
+	IsAdmin      bool           `gorm:"default:false" json:"is_admin"`
+	Roles        datatypes.JSON `gorm:"type:text" json:"roles"`
+	LastLogin    *time.Time     `json:"last_login"`
 	LastIP       string     `gorm:"default:''" json:"last_ip"`
 	DepartmentID *uint      `json:"department_id"`
 	CreatedAt    time.Time  `json:"created_at"`
