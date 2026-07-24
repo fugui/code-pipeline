@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
 
-:root {
+.pipeline-app {
   --bg-primary: var(--portal-bg-color, #090d16);
   --bg-secondary: var(--portal-bg-color, #111827);
   --bg-card: var(--portal-card-bg, rgba(22, 28, 45, 0.4));
@@ -23,16 +23,7 @@
   --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
   --radius: 12px;
-}
 
-.pipeline-app * {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  outline: none;
-}
-
-.pipeline-app {
   font-family: var(--font-sans);
   background-color: var(--bg-primary);
   background-image: 
@@ -42,6 +33,13 @@
   color: var(--text-main);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+}
+
+.pipeline-app * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  outline: none;
 }
 
 /* Scrollbar styling */
@@ -61,7 +59,7 @@
 }
 
 /* Glass Card */
-.glass-card {
+.pipeline-app .glass-card {
   background: var(--bg-card);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -72,12 +70,12 @@
   transition: var(--transition);
 }
 
-.glass-card:hover {
+.pipeline-app .glass-card:hover {
   border-color: rgba(255, 255, 255, 0.15);
 }
 
 /* Animation utilities */
-@keyframes pulse {
+@keyframes pipeline-pulse {
   0%, 100% {
     opacity: 1;
     transform: scale(1);
@@ -88,35 +86,35 @@
   }
 }
 
-@keyframes spin {
+@keyframes pipeline-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-@keyframes slideIn {
+@keyframes pipeline-slide-in {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes fadeIn {
+@keyframes pipeline-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
-.animate-pulse {
-  animation: pulse 2s infinite ease-in-out;
+.pipeline-app .animate-pulse {
+  animation: pipeline-pulse 2s infinite ease-in-out;
 }
 
-.animate-spin {
-  animation: spin 1.2s linear infinite;
+.pipeline-app .animate-spin {
+  animation: pipeline-spin 1.2s linear infinite;
 }
 
-.animate-slide-in {
-  animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+.pipeline-app .animate-slide-in {
+  animation: pipeline-slide-in 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
+.pipeline-app .animate-fade-in {
+  animation: pipeline-fade-in 0.4s ease-out forwards;
 }
 
 /* Terminal style for build/check outputs */
