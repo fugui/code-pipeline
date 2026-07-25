@@ -10,6 +10,7 @@ import (
 	"code-pipeline/models"
 
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/datatypes"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -157,7 +158,7 @@ func InitDB() {
 			Email:    "admin@code-shield.com",
 			Name:     "管理员",
 			Password: string(hashed),
-			IsAdmin:  true,
+			Roles:    datatypes.JSON([]byte("[\"super_admin\"]")),
 			IsActive: true,
 		}
 		if err := DB.Create(&admin).Error; err != nil {
