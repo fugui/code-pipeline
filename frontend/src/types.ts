@@ -17,22 +17,48 @@ export interface Repository {
   owner_name?: string
 }
 
+export interface CodeCheckDetails {
+  gate_status?: string
+  lines_scanned?: number
+  files_scanned?: number
+  total_issues?: number
+  fatal_issues?: number
+  critical_issues?: number
+  major_issues?: number
+  minor_issues?: number
+  code_duplication_rate?: string
+  cyclomatic_complexity?: number
+  checker_report_url?: string
+}
+
 export interface ExecutionLog {
   id: number
-  plan_id: string
-  pipeline_id: string
-  repo_id: number
+  task_id?: string
+  task_type?: string
+  code_checker_task_id?: string
+  plan_id?: string
+  pipeline_id?: string
+  repo_id?: number
   repo_name: string
+  repo_url?: string
   branch: string
+  commit_id?: string
+  execution_scheme_id?: string
   trigger_type: string
+  trigger_user?: string
   status: string
-  build_log: string
-  check_log: string
-  error_msg: string
   start_time: string
-  end_time: string | null
+  end_time?: string | null
   duration_sec: number
+  code_check_details?: CodeCheckDetails | string
+  build_details?: any
+  log_content?: string
+  external_log_url?: string
+  build_log?: string
+  check_log?: string
+  error_msg?: string
 }
+
 
 export interface DashboardStats {
   total_repos: number
