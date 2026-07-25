@@ -22,7 +22,6 @@ type PortalClaims struct {
 	Email      string   `json:"email"`
 	Name       string   `json:"name"`
 	EmployeeID string   `json:"employee_id"`
-	IsAdmin    bool     `json:"is_admin"`
 	Roles      []string `json:"roles"`
 	jwt.RegisteredClaims
 	SSOUserID string `json:"-"`
@@ -101,8 +100,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			if user.ID != 0 {
 				claims.UserID = user.ID
 				rolesJSON, _ := json.Marshal(claims.Roles)
-				if user.IsAdmin != claims.IsAdmin || user.Name != claims.Name || user.EmployeeID != claims.EmployeeID || string(user.Roles) != string(rolesJSON) {
-					user.IsAdmin = claims.IsAdmin
+				if user.Name != claims.Name || user.EmployeeID != claims.EmployeeID || string(user.Roles) != string(rolesJSON) {
 					user.Name = claims.Name
 					user.EmployeeID = claims.EmployeeID
 					user.Roles = datatypes.JSON(rolesJSON)
@@ -123,7 +121,6 @@ func AuthMiddleware() gin.HandlerFunc {
 				Email:      claims.Email,
 				Name:       claims.Name,
 				EmployeeID: claims.EmployeeID,
-				IsAdmin:    claims.IsAdmin,
 				IsActive:   true,
 				Password:   "SSO_USER_NO_PASSWORD",
 			}
@@ -144,7 +141,6 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		c.Set("userID", user.ID)
 		c.Set("email", user.Email)
-		c.Set("isAdmin", user.IsAdmin)
 		c.Set("roles", claims.Roles)
 		c.Set("employeeID", user.EmployeeID)
 
@@ -218,10 +214,10 @@ func Login(c *gin.Context) {
 	// 生成 JWT
 	expirationTime := time.Now().Add(6 * time.Hour)
 	claims := &PortalClaims{
-		UserID:  user.ID,
-		Email:   user.Email,
-		Name:    user.Name,
-		IsAdmin: user.IsAdmin,
+		UserID: user.ID,
+		Email:  user.Email,
+		Name:   user.Name,
+		Roles:  user.GetRoles(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -244,10 +240,10 @@ func Login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"token": tokenString,
 		"user": gin.H{
-			"id":       user.ID,
-			"email":    user.Email,
-			"name":     user.Name,
-			"is_admin": user.IsAdmin,
+			"id":    user.ID,
+			"email": user.Email,
+			"name":  user.Name,
+			"roles": user.GetRoles(),
 		},
 	})
 }
@@ -264,10 +260,9 @@ func GetMe(c *gin.Context) {
 		_ = json.Unmarshal(user.Roles, &roles)
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"id":       user.ID,
-		"email":    user.Email,
-		"name":     user.Name,
-		"is_admin": user.IsAdmin,
-		"roles":    roles,
+		"id":    user.ID,
+		"email": user.Email,
+		"name":  user.Name,
+		"roles": roles,
 	})
 }

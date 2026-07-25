@@ -50,7 +50,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     return localStorage.getItem('code_shield_token') || localStorage.getItem(AUTH_TOKEN_KEY);
   })
   const [user, setUser] = useState<User | null>(null)
-  const isAdmin = !!(user?.is_admin || (Array.isArray(user?.roles) && (user.roles.includes('super_admin') || user.roles.includes('pipeline_admin'))))
+  const isAdmin = !!(Array.isArray(user?.roles) && (user.roles.includes('super_admin') || user.roles.includes('pipeline_admin')))
   const [currentView, setCurrentView] = useState<'dashboard' | 'repos' | 'managed-repos' | 'pipeline-config' | 'mr-hook' | 'mr-list'>('dashboard')
   
   // Data lists — repos 仅用于 ExecutionSchemeModal 的候选项
