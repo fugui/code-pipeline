@@ -6,6 +6,7 @@ import {
   ExternalLink, Eye, Play, Zap
 } from 'lucide-react'
 import { ExecutionScheme } from '../types'
+import { useToast } from '../components/Toast'
 
 interface ReposProps {
   isAdmin?: boolean
@@ -51,6 +52,7 @@ export const Repos: React.FC<ReposProps> = ({
   apiBase,
   schemeUpdateKey = 0,
 }) => {
+  const { showToast } = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [search, setSearch] = useState(() => searchParams.get('search') || '')
@@ -103,10 +105,10 @@ export const Repos: React.FC<ReposProps> = ({
         throw new Error(data.error || '启动流水线失败')
       }
       const msg = data.job_id ? `流水线启动成功！任务 ID: ${data.job_id}` : (data.message || '流水线启动成功！')
-      alert(msg)
+      showToast(msg, 'success')
     })
     .catch(err => {
-      alert(err.message || '启动流水线失败，网络错误')
+      showToast(err.message || '启动流水线失败，网络错误', 'error')
     })
     .finally(() => {
       setRunningSchemes(prev => ({ ...prev, [schemeId]: false }))
@@ -391,6 +393,7 @@ const RepoRow: React.FC<RepoRowProps> = ({
   onToggle, onAddScheme, onEditScheme, onDeleteScheme,
   onRunScheme, runningSchemes, token, apiBase
 }) => {
+  const { showToast } = useToast()
   const [webhookStatus, setWebhookStatus] = useState<'idle' | 'checking' | 'registering'>('idle')
   const [webhookRegistered, setWebhookRegistered] = useState(repo.webhook_registered ?? false)
 
@@ -423,8 +426,9 @@ const RepoRow: React.FC<RepoRowProps> = ({
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || '注册 Webhook 失败')
         setWebhookRegistered(true)
+        showToast('Webhook 注册成功！', 'success')
       })
-      .catch(err => alert(err.message || '注册 Webhook 失败'))
+      .catch(err => showToast(err.message || '注册 Webhook 失败', 'error'))
       .finally(() => setWebhookStatus('idle'))
   }
   const schemeCount = schemes?.length ?? null
