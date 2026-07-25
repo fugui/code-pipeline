@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
 	"gorm.io/datatypes"
@@ -20,9 +21,49 @@ type User struct {
 	IsAdmin      bool           `gorm:"default:false" json:"is_admin"`
 	Roles        datatypes.JSON `gorm:"type:text" json:"roles"`
 	LastLogin    *time.Time     `json:"last_login"`
-	LastIP       string     `gorm:"default:''" json:"last_ip"`
-	DepartmentID *uint      `json:"department_id"`
-	CreatedAt    time.Time  `json:"created_at"`
+	LastIP       string         `gorm:"default:''" json:"last_ip"`
+	DepartmentID *uint          `json:"department_id"`
+	CreatedAt    time.Time      `json:"created_at"`
+}
+
+func (u *User) GetRoles() []string {
+	var roles []string
+	if len(u.Roles) > 0 {
+		_ = json.Unmarshal(u.Roles, &roles)
+	}
+	if u.IsAdmin {
+		hasSuper := false
+		for _, r := range roles {
+			if r == "super_admin" {
+				hasSuper = true
+				break
+			}
+		}
+		if !hasSuper {
+			roles = append([]string{"super_admin"}, roles...)
+		}
+	}
+	return roles
+}
+
+func (u *User) HasRole(targetRole string) bool {
+	roles := u.GetRoles()
+	for _, r := range roles {
+		if r == "super_admin" || r == targetRole {
+			return true
+		}
+	}
+	return false
+}
+
+func (u *User) IsSuperAdmin() bool {
+	roles := u.GetRoles()
+	for _, r := range roles {
+		if r == "super_admin" {
+			return true
+		}
+	}
+	return false
 }
 
 type Repository struct {
