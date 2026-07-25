@@ -69,9 +69,9 @@ export const ExecutionLogModal: React.FC<ExecutionLogModalProps> = ({
           </div>
         )}
 
-        {/* Build Log Terminal */}
+        {/* Execution Log Terminal */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>步骤 1: 编译构建 (Build Outputs)</h4>
+          <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>控制台日志输出 (Execution Console Output)</h4>
           <div className="terminal">
             <div className="terminal-header">
               <div className="terminal-dots">
@@ -79,25 +79,9 @@ export const ExecutionLogModal: React.FC<ExecutionLogModalProps> = ({
                 <div className="terminal-dot dot-yellow"></div>
                 <div className="terminal-dot dot-green"></div>
               </div>
-              <span>bash -c "{activeExec.build_log ? 'completed' : 'waiting'}"</span>
+              <span>bash -c "{activeExec.log_content || activeExec.build_log || activeExec.check_log ? 'completed' : 'waiting'}"</span>
             </div>
-            {activeExec.build_log || '$ (No build logs recorded)'}
-          </div>
-        </div>
-
-        {/* Check Log Terminal */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>步骤 2: 静态检查/测试 (Check Outputs)</h4>
-          <div className="terminal">
-            <div className="terminal-header">
-              <div className="terminal-dots">
-                <div className="terminal-dot dot-red"></div>
-                <div className="terminal-dot dot-yellow"></div>
-                <div className="terminal-dot dot-green"></div>
-              </div>
-              <span>bash -c "{activeExec.check_log ? 'completed' : 'waiting'}"</span>
-            </div>
-            {activeExec.check_log || '$ (No check logs recorded)'}
+            {activeExec.log_content || activeExec.build_log || activeExec.check_log || '$ (无控制台日志上报内容 / No execution log content)'}
           </div>
         </div>
       </div>
