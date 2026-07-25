@@ -111,6 +111,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 const isCodeCheck = run.task_type === 'code_check' || !!run.code_checker_task_id || !!run.code_check_details
                 const ccDetails = parseCodeCheckDetails(run.code_check_details)
                 const reportURL = ccDetails?.checker_report_url || run.external_log_url
+                const isGatePassed = ccDetails?.gate_status && ['passed', 'success', 'ok', 'pass', 'true'].includes(ccDetails.gate_status.toLowerCase())
 
                 return (
                   <tr key={run.id || run.task_id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)' }}>
@@ -152,9 +153,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             padding: '1px 5px',
                             borderRadius: 3,
                             fontWeight: 600,
-                            background: ccDetails.gate_status === 'passed' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                            color: ccDetails.gate_status === 'passed' ? '#34d399' : '#f87171',
-                            border: ccDetails.gate_status === 'passed' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'
+                            background: isGatePassed ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                            color: isGatePassed ? '#34d399' : '#f87171',
+                            border: isGatePassed ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'
                           }}>
                             门禁: {ccDetails.gate_status.toUpperCase()}
                           </span>
