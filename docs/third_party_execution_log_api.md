@@ -110,12 +110,11 @@
     "lines_scanned": 15420,
     "files_scanned": 86,
     "total_issues": 4,
-    "fatal_issues": 0,
     "critical_issues": 1,
     "major_issues": 3,
     "minor_issues": 0,
+    "suggest_issues": 0,
     "code_duplication_rate": "1.2%",
-    "cyclomatic_complexity": 3.8,
     "checker_report_url": "http://192.168.56.18:9080/shield/public/report/checker_task_8891"
   },
   "log_content": "2026-07-24 14:00:01 [INFO] Starting static code analysis...\n2026-07-24 14:01:28 [INFO] Scan finished. Total issues found: 4.",
