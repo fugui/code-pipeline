@@ -63,6 +63,14 @@ func main() {
 		api.POST("/login", handlers.Login)
 		api.POST("/webhook", handlers.HandleWebhook)
 
+		// 第三方任务日志上报免密端点
+		api.POST("/report/execution-log", handlers.ReportExecutionLog)
+		api.POST("/report/build-log", handlers.ReportExecutionLog)
+		api.POST("/report/code-check-log", handlers.ReportExecutionLog)
+		api.POST("/v1/report/execution-log", handlers.ReportExecutionLog)
+		api.POST("/v1/report/build-log", handlers.ReportExecutionLog)
+		api.POST("/v1/report/code-check-log", handlers.ReportExecutionLog)
+
 		// 受保护路由 (全员登录可访问)
 		api.Use(handlers.AuthMiddleware())
 		{

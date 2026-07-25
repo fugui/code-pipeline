@@ -98,6 +98,7 @@ func InitDB() {
 		&models.ManagedRepository{},
 		&models.ManagedMemberAccess{},
 		&models.ManagedBranchMonitor{},
+		&models.ExecutionReport{},
 	)
 	if err != nil {
 		log.Fatalf("[Database] Migration failed: %v", err)
@@ -119,6 +120,8 @@ func InitDB() {
 		"CREATE INDEX IF NOT EXISTS idx_mbm_repo_status ON managed_branch_monitors(managed_repository_id, status)",
 		"CREATE INDEX IF NOT EXISTS idx_mma_lookup ON managed_member_accesses(source_type, source_id, principal_type, principal_id)",
 		"CREATE UNIQUE INDEX IF NOT EXISTS idx_mg_repo ON managed_repositories(managed_group_id, name)",
+		"CREATE INDEX IF NOT EXISTS idx_er_task_type ON execution_reports(task_type)",
+		"CREATE INDEX IF NOT EXISTS idx_er_status ON execution_reports(status)",
 	}
 	for _, sqlIdx := range sqlIndices {
 		if err := DB.Exec(sqlIdx).Error; err != nil {
@@ -140,6 +143,7 @@ func InitDB() {
 			"managed_repositories",
 			"managed_member_accesses",
 			"managed_branch_monitors",
+			"execution_reports",
 		}
 		for _, tbl := range tables {
 			seqSQL := fmt.Sprintf("SELECT setval(pg_get_serial_sequence('%s', 'id'), COALESCE((SELECT MAX(id) FROM %s), 1), (SELECT COUNT(*) > 0 FROM %s))", tbl, tbl, tbl)

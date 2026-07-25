@@ -225,3 +225,30 @@ type ManagedBranchMonitor struct {
 	Status              string    `gorm:"size:20;index:idx_mbm_repo_status" json:"status"` // "active" | "merged_stale" | "unmerged_stale"
 	UpdatedAt           time.Time `json:"updated_at"`
 }
+
+// ExecutionReport 第三方构建/代码检查任务日志上报记录表
+type ExecutionReport struct {
+	ID                uint           `gorm:"primaryKey" json:"id"`
+	TaskID            string         `gorm:"size:120;uniqueIndex;not null;default:''" json:"task_id"`
+	TaskType          string         `gorm:"size:50;index;not null;default:'build'" json:"task_type"` // build | code_check
+	CodeCheckerTaskID string         `gorm:"size:100;default:''" json:"code_checker_task_id"`
+	RepoURL           string         `gorm:"size:1024;not null;default:''" json:"repo_url"`
+	RepoName          string         `gorm:"size:255;index;default:''" json:"repo_name"`
+	Branch            string         `gorm:"size:255;not null;default:''" json:"branch"`
+	CommitID          string         `gorm:"size:100;default:''" json:"commit_id"`
+	ExecutionSchemeID string         `gorm:"size:100;default:''" json:"execution_scheme_id"`
+	PipelineID        string         `gorm:"size:100;default:''" json:"pipeline_id"`
+	Status            string         `gorm:"size:50;index;not null;default:'running'" json:"status"` // running, success, failed, cancelled, timeout
+	StartTime         *time.Time     `json:"start_time"`
+	EndTime           *time.Time     `json:"end_time"`
+	DurationSec       int64          `gorm:"default:0" json:"duration_sec"`
+	TriggerType       string         `gorm:"size:50;default:'webhook'" json:"trigger_type"` // manual, mr, daily_build, webhook
+	TriggerUser       string         `gorm:"size:100;default:''" json:"trigger_user"`
+	BuildDetails      datatypes.JSON `gorm:"type:text" json:"build_details,omitempty"`
+	CodeCheckDetails  datatypes.JSON `gorm:"type:text" json:"code_check_details,omitempty"`
+	LogContent        string         `gorm:"type:text" json:"log_content,omitempty"`
+	ExternalLogURL    string         `gorm:"size:1024;default:''" json:"external_log_url,omitempty"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
+}
+
