@@ -221,58 +221,8 @@ func GetDashboardStats(c *gin.Context) {
 	var pendingCount int64
 	database.DB.Model(&models.ExecutionReport{}).Where("status = ?", "pending").Count(&pendingCount)
 
-	var reports []models.ExecutionReport
+	reports := make([]models.ExecutionReport, 0)
 	database.DB.Order("created_at DESC").Limit(20).Find(&reports)
-
-	// 若无数据库上报数据，回退构造初始化示范数据
-	if len(reports) == 0 {
-		var repos []models.Repository
-		database.DB.Limit(5).Find(&repos)
-
-		if totalRepos == 0 {
-			totalRepos = 12
-		}
-		totalRuns = totalRepos * 4
-		successfulRuns = int64(float64(totalRuns) * 0.85)
-		failedRuns = totalRuns - successfulRuns
-
-		for i, repo := range repos {
-			st := "success"
-			if i == 1 {
-				st = "failed"
-			}
-			taskType := "build"
-			if i%2 == 1 {
-				taskType = "code_check"
-			}
-			stTime := time.Now().Add(-time.Duration(i*30) * time.Minute)
-			endTime := stTime.Add(time.Duration(90) * time.Second)
-
-			ccDetails := ""
-			if taskType == "code_check" {
-				ccDetails = `{"gate_status":"passed","lines_scanned":15420,"files_scanned":86,"total_issues":4,"fatal_issues":0,"critical_issues":1,"major_issues":3,"minor_issues":0,"code_duplication_rate":"1.2%","checker_report_url":"http://192.168.56.18:9080/shield/public/report/checker_task_8891"}`
-			}
-
-			reports = append(reports, models.ExecutionReport{
-				ID:                uint(200 + i),
-				TaskID:            fmt.Sprintf("check_task_sample_%d", repo.ID),
-				TaskType:          taskType,
-				CodeCheckerTaskID: fmt.Sprintf("checker_task_%d", repo.ID),
-				RepoURL:           repo.URL,
-				RepoName:          repo.Name,
-				Branch:            repo.Branch,
-				Status:            st,
-				StartTime:         &stTime,
-				EndTime:           &endTime,
-				DurationSec:       int64(90 + i*15),
-				TriggerType:       "webhook",
-				TriggerUser:       "ci_system",
-				CodeCheckDetails:  datatypes.JSON(ccDetails),
-				LogContent:        "Sample execution log content...",
-				ExternalLogURL:    fmt.Sprintf("http://192.168.56.18:9080/pipelines/logs/%d", repo.ID),
-			})
-		}
-	}
 
 	successRate := 0.0
 	if totalRuns > 0 {
