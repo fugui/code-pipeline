@@ -157,9 +157,6 @@ func AuthMiddleware() gin.HandlerFunc {
 
 func AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		isAdminVal, exists := c.Get("isAdmin")
-		isAdmin := exists && isAdminVal.(bool)
-
 		rolesVal, rolesExists := c.Get("roles")
 		hasRole := false
 		if rolesExists {
@@ -173,7 +170,14 @@ func AdminMiddleware() gin.HandlerFunc {
 			}
 		}
 
-		if !isAdmin && !hasRole {
+		userVal, userExists := c.Get("user")
+		if userExists {
+			if user, ok := userVal.(models.User); ok && user.HasRole("pipeline_admin") {
+				hasRole = true
+			}
+		}
+
+		if !hasRole {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Admin privilege required"})
 			c.Abort()
 			return
