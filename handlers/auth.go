@@ -14,7 +14,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/datatypes"
 )
 
 type PortalClaims struct {
@@ -96,22 +95,27 @@ func AuthMiddleware() gin.HandlerFunc {
 		// 只要有 Email，就应该优先在 code-pipeline 数据库中按 Email 定位本地自增 uint ID。
 		// 这是因为不同微服务系统的自增 ID 是独立的，需要通过全局唯一的 Email 字段来进行分布式映射。
 		if claims.Email != "" {
-			_ = database.DB.Where("email = ?", claims.Email).First(&user).Error
+			_ = database.DB.Where("LOWER(email) = LOWER(?)", claims.Email).First(&user).Error
 			if user.ID != 0 {
 				claims.UserID = user.ID
-				rolesJSON, _ := json.Marshal(claims.Roles)
-				if user.Name != claims.Name || user.EmployeeID != claims.EmployeeID || string(user.Roles) != string(rolesJSON) {
+				updates := map[string]interface{}{}
+				if claims.Name != "" && user.Name != claims.Name {
+					updates["name"] = claims.Name
 					user.Name = claims.Name
+				}
+				if claims.EmployeeID != "" && user.EmployeeID != claims.EmployeeID {
+					updates["employee_id"] = claims.EmployeeID
 					user.EmployeeID = claims.EmployeeID
-					user.Roles = datatypes.JSON(rolesJSON)
-					_ = database.DB.Save(&user).Error
+				}
+				if len(updates) > 0 {
+					_ = database.DB.Model(&user).Updates(updates).Error
 				}
 			}
 		}
 
-		if claims.UserID != 0 {
+		if claims.UserID != 0 && user.ID == 0 {
 			findErr = database.DB.First(&user, claims.UserID).Error
-		} else {
+		} else if user.ID == 0 {
 			findErr = fmt.Errorf("user not found by email or userID")
 		}
 
@@ -139,9 +143,18 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		effectiveRoles := claims.Roles
+		if user.ID != 0 {
+			dbRoles := user.GetRoles()
+			if len(dbRoles) > 0 {
+				effectiveRoles = dbRoles
+			}
+		}
+
 		c.Set("userID", user.ID)
 		c.Set("email", user.Email)
-		c.Set("roles", claims.Roles)
+		c.Set("roles", effectiveRoles)
+		c.Set("user", user)
 		c.Set("employeeID", user.EmployeeID)
 
 		ctx := context.WithValue(c.Request.Context(), "employeeID", user.EmployeeID)
