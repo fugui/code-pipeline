@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"path"
 	"strings"
 	"time"
@@ -39,8 +42,17 @@ type ExecutionReportRequest struct {
 
 // ReportExecutionLog 处理第三方构建与代码检查日志上报 (POST /api/v1/report/execution-log, /build-log, /code-check-log)
 func ReportExecutionLog(c *gin.Context) {
+	rawData, err := c.GetRawData()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":  4001,
+			"error": fmt.Sprintf("Failed to read request body: %v", err),
+		})
+		return
+	}
+
 	var req ExecutionReportRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := json.Unmarshal(rawData, &req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":  4001,
 			"error": fmt.Sprintf("Invalid request body: %v", err),
@@ -90,6 +102,9 @@ func ReportExecutionLog(c *gin.Context) {
 		return
 	}
 
+	// 校验通过，将三方系统上报的完整信息持久化保存至本地 log 文件
+	saveExecutionReportToFile(rawData, &req)
+
 	// 从 RepoURL 中提取 RepoName
 	repoName := path.Base(req.RepoURL)
 	repoName = strings.TrimSuffix(repoName, ".git")
@@ -112,7 +127,7 @@ func ReportExecutionLog(c *gin.Context) {
 
 	// Upsert 事务/持久化逻辑
 	var report models.ExecutionReport
-	err := database.DB.Where("task_id = ?", req.TaskID).First(&report).Error
+	err = database.DB.Where("task_id = ?", req.TaskID).First(&report).Error
 	if err != nil {
 		// 不存在，创建新记录
 		report = models.ExecutionReport{
@@ -196,6 +211,69 @@ func ReportExecutionLog(c *gin.Context) {
 			"created_at": report.CreatedAt,
 		},
 	})
+}
+
+// sanitizeFilename 净化文件名中的非法字符
+func sanitizeFilename(name string) string {
+	name = strings.ReplaceAll(name, "/", "_")
+	name = strings.ReplaceAll(name, "\\", "_")
+	name = strings.ReplaceAll(name, "..", "_")
+	if name == "" {
+		return "unknown_task"
+	}
+	return name
+}
+
+// saveExecutionReportToFile 将第三方系统上报的完整信息保存到本地 log 文件中
+func saveExecutionReportToFile(rawData []byte, req *ExecutionReportRequest) {
+	logDir := "logs/build_logs"
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		log.Printf("[ExecutionReport] Failed to create log directory %s: %v", logDir, err)
+		return
+	}
+
+	// 格式化 JSON 数据，保证格式整齐易读
+	var prettyJSON bytes.Buffer
+	if err := json.Indent(&prettyJSON, rawData, "", "  "); err != nil {
+		prettyJSON.Write(rawData)
+	}
+
+	// 按 TaskID 独立存储 log 文件
+	filename := path.Join(logDir, fmt.Sprintf("%s.log", sanitizeFilename(req.TaskID)))
+	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		log.Printf("[ExecutionReport] Failed to open log file %s: %v", filename, err)
+		return
+	}
+	defer f.Close()
+
+	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	entry := fmt.Sprintf("\n=================== Execution Report [%s] ===================\n"+
+		"Report Time : %s\n"+
+		"Task ID     : %s\n"+
+		"Task Type   : %s\n"+
+		"Status      : %s\n"+
+		"Repo URL    : %s\n"+
+		"Branch      : %s\n"+
+		"Commit ID   : %s\n"+
+		"------------------- Raw Request Payload (JSON) -------------------\n"+
+		"%s\n"+
+		"=================================================================\n",
+		timestamp, timestamp, req.TaskID, req.TaskType, req.Status, req.RepoURL, req.Branch, req.CommitID, prettyJSON.String())
+
+	if _, err := f.WriteString(entry); err != nil {
+		log.Printf("[ExecutionReport] Failed to write log to %s: %v", filename, err)
+	}
+
+	// 同时追加写到汇总日志 logs/execution_reports.log 中
+	summaryLogPath := "logs/execution_reports.log"
+	sf, err := os.OpenFile(summaryLogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err == nil {
+		defer sf.Close()
+		summaryEntry := fmt.Sprintf("[%s] TaskID=%s Type=%s Status=%s Repo=%s Branch=%s LogFile=%s\n",
+			timestamp, req.TaskID, req.TaskType, req.Status, req.RepoURL, req.Branch, filename)
+		_, _ = sf.WriteString(summaryEntry)
+	}
 }
 
 // GetDashboardStats 获取 Dashboard 看板数据与最新执行轨迹

@@ -15,6 +15,8 @@
 
 # Log files
 *.log
+logs/
+/logs
 
 # Frontend build products
 /frontend/dist
