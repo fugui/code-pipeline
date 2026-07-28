@@ -158,7 +158,7 @@ func SyncUpdateMRBindingRemoteAPIG(ctx context.Context, pipelineBusinessID strin
 	}
 	bodyMap["id"] = scheme.MRBindingID
 
-	_, err = utils.SendHTTPRequest(ctx, "POST", apiURLStr, bodyMap, utils.HTTPOptions{
+	_, err = utils.SendHTTPRequest(ctx, "PUT", apiURLStr, bodyMap, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusAccepted}, "APIGUpdateMRBinding")
 	if err != nil {
