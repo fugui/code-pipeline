@@ -1137,8 +1137,9 @@ func CheckRepoAuthorized(ctx context.Context, repository string, headers map[str
 		return "", fmt.Errorf("auth check failed with status: %s", resp.Status)
 	}
 
-	if len(resp.Entities) == 0 {
-		return "", nil // 未授权，返回空字符串
+	if len(resp.Entities) == 0 || resp.Entities[0].ID == "" {
+		log.Printf("[checkRepoAuthorized] Authorized entity or credential ID is empty for repository=%s", repository)
+		return "", nil // 未授权或凭证 ID 为空，返回空字符串
 	}
 
 	return resp.Entities[0].ID, nil
