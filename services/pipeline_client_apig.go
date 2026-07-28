@@ -58,41 +58,22 @@ func CreateMRBindingAPIG(ctx context.Context, pipelineBusinessID string, scheme 
 		"{CUSTOM_ATTRIBUTES}": escapedCustomAttributes,
 	})
 
-	var bodyMap map[string]interface{}
-	if err := json.Unmarshal([]byte(bodyStr), &bodyMap); err != nil {
+	var bodyPayload interface{}
+	if err := json.Unmarshal([]byte(bodyStr), &bodyPayload); err != nil {
 		log.Printf("[APIG] Step 3: Failed to unmarshal json body string: %v, raw: %s", err, bodyStr)
 		return "", fmt.Errorf("failed to unmarshal request body json: %w", err)
 	}
 
-	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, bodyMap, utils.HTTPOptions{
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, bodyPayload, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated}, "APIGCreateMRBinding")
 	if err != nil {
 		return "", err
 	}
 
-	type RemoteResp struct {
-		ID     string `json:"id"`
-		Entity struct {
-			ID string `json:"id"`
-		} `json:"entity"`
-		Result struct {
-			ID string `json:"id"`
-		} `json:"result"`
-	}
-
-	var resp RemoteResp
-	if err := json.Unmarshal(body, &resp); err != nil {
-		log.Printf("[APIG] Step 3: Failed to parse MR binding response: %v, raw body: %s", err, string(body))
-		return "", fmt.Errorf("failed to parse MR binding response: %w", err)
-	}
-
-	bindingID := resp.ID
+	bindingID := parseMRBindingID(body)
 	if bindingID == "" {
-		bindingID = resp.Entity.ID
-	}
-	if bindingID == "" {
-		bindingID = resp.Result.ID
+		log.Printf("[APIG] Step 3: Could not parse MR binding ID from response: %s", string(body))
 	}
 
 	log.Printf("[APIG] Step 3: Successfully created MR binding, bindingID=%s", bindingID)
@@ -154,13 +135,21 @@ func SyncUpdateMRBindingRemoteAPIG(ctx context.Context, pipelineBusinessID strin
 		"{CUSTOM_ATTRIBUTES}": escapedCustomAttributes,
 	})
 
-	var bodyMap map[string]interface{}
-	if err := json.Unmarshal([]byte(bodyStr), &bodyMap); err != nil {
+	var bodyPayload interface{}
+	if err := json.Unmarshal([]byte(bodyStr), &bodyPayload); err != nil {
 		return fmt.Errorf("failed to unmarshal request body json: %w", err)
 	}
-	bodyMap["id"] = scheme.MRBindingID
 
-	_, err = utils.SendHTTPRequest(ctx, "PUT", apiURLStr, bodyMap, utils.HTTPOptions{
+	// 自动注入 id 属性（适配 对象 或 数组）
+	if m, ok := bodyPayload.(map[string]interface{}); ok {
+		m["id"] = scheme.MRBindingID
+	} else if arr, ok := bodyPayload.([]interface{}); ok && len(arr) > 0 {
+		if m, ok := arr[0].(map[string]interface{}); ok {
+			m["id"] = scheme.MRBindingID
+		}
+	}
+
+	_, err = utils.SendHTTPRequest(ctx, "PUT", apiURLStr, bodyPayload, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusAccepted}, "APIGUpdateMRBinding")
 	if err != nil {
@@ -170,6 +159,50 @@ func SyncUpdateMRBindingRemoteAPIG(ctx context.Context, pipelineBusinessID strin
 
 	log.Printf("[APIG] Successfully updated remote MR binding: %s", scheme.MRBindingID)
 	return nil
+}
+
+func parseMRBindingID(body []byte) string {
+	type RemoteResp struct {
+		ID     string `json:"id"`
+		Entity struct {
+			ID string `json:"id"`
+		} `json:"entity"`
+		Result struct {
+			ID string `json:"id"`
+		} `json:"result"`
+	}
+
+	// 优先尝试按单个对象解析
+	var single RemoteResp
+	if err := json.Unmarshal(body, &single); err == nil {
+		id := single.ID
+		if id == "" {
+			id = single.Entity.ID
+		}
+		if id == "" {
+			id = single.Result.ID
+		}
+		if id != "" {
+			return id
+		}
+	}
+
+	// 尝试按数组解析
+	var list []RemoteResp
+	if err := json.Unmarshal(body, &list); err == nil && len(list) > 0 {
+		id := list[0].ID
+		if id == "" {
+			id = list[0].Entity.ID
+		}
+		if id == "" {
+			id = list[0].Result.ID
+		}
+		if id != "" {
+			return id
+		}
+	}
+
+	return ""
 }
 
 // SyncDeleteMRBindingAPIG 在 APIG 模式下同步删除 MR 触发关联
