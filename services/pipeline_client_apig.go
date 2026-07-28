@@ -12,7 +12,7 @@ import (
 )
 
 // CreateMRBindingAPIG 步骤三：在 APIG 模式下创建 MR 触发关联
-func CreateMRBindingAPIG(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, schemeID string, repoURL string) (string, error) {
+func CreateMRBindingAPIG(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, schemeID string, repoURL string, userHeaders map[string]string) (string, error) {
 	log.Printf("[APIG] Enter CreateMRBindingAPIG: pipelineBusinessID=%s, schemeID=%s, repoURL=%s", pipelineBusinessID, schemeID, repoURL)
 
 	apiURLStr := models.AppConfig.PipelineSystem.APIG.MRBindingURL
@@ -30,7 +30,8 @@ func CreateMRBindingAPIG(ctx context.Context, pipelineBusinessID string, scheme 
 		return "", fmt.Errorf("failed to get APIG headers: %w", err)
 	}
 
-	credentialID, err := CheckRepoAuthorized(ctx, repoURL, headers)
+	// 仓库授权检查使用传统用户 Cookie/Session Headers
+	credentialID, err := CheckRepoAuthorized(ctx, repoURL, userHeaders)
 	if err != nil {
 		log.Printf("[APIG] Step 3: Failed to check repo authorized: %v", err)
 		return "", fmt.Errorf("failed to check repo authorized: %w", err)
@@ -99,7 +100,7 @@ func CreateMRBindingAPIG(ctx context.Context, pipelineBusinessID string, scheme 
 }
 
 // SyncUpdateMRBindingRemoteAPIG 在 APIG 模式下同步更新 MR 触发关联
-func SyncUpdateMRBindingRemoteAPIG(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, repoURL string) error {
+func SyncUpdateMRBindingRemoteAPIG(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, repoURL string, userHeaders map[string]string) error {
 	log.Printf("[APIG] Enter SyncUpdateMRBindingRemoteAPIG: pipelineBusinessID=%s, schemeID=%s, bindingID=%s", pipelineBusinessID, scheme.ExecutionSchemeID, scheme.MRBindingID)
 
 	headers, err := GetAPIGHeaders(ctx)
@@ -108,7 +109,7 @@ func SyncUpdateMRBindingRemoteAPIG(ctx context.Context, pipelineBusinessID strin
 	}
 
 	if scheme.MRBindingID == "" {
-		newBindingID, err := CreateMRBindingAPIG(ctx, pipelineBusinessID, scheme, scheme.ExecutionSchemeID, repoURL)
+		newBindingID, err := CreateMRBindingAPIG(ctx, pipelineBusinessID, scheme, scheme.ExecutionSchemeID, repoURL, userHeaders)
 		if err != nil {
 			return fmt.Errorf("failed to create MR binding during update: %w", err)
 		}
@@ -126,7 +127,8 @@ func SyncUpdateMRBindingRemoteAPIG(ctx context.Context, pipelineBusinessID strin
 		return fmt.Errorf("create_mr_binding_body not configured")
 	}
 
-	credentialID, err := CheckRepoAuthorized(ctx, repoURL, headers)
+	// 仓库授权检查使用传统用户 Cookie/Session Headers
+	credentialID, err := CheckRepoAuthorized(ctx, repoURL, userHeaders)
 	if err != nil {
 		log.Printf("[APIG] Update MR Binding: Failed to check repo authorized: %v", err)
 		return fmt.Errorf("failed to check repo authorized: %w", err)
