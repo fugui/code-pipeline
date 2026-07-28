@@ -94,6 +94,10 @@ func SendHTTPRequest(ctx context.Context, method, rawURL string, payload interfa
 		req.Header.Set(k, v)
 	}
 
+	if req.Header.Get("Accept") == "" {
+		req.Header.Set("Accept", "application/json, text/plain, */*")
+	}
+
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
