@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 
 	"code-pipeline/models"
 	"code-pipeline/utils"
@@ -189,8 +188,7 @@ func SyncDeleteMRBindingAPIG(ctx context.Context, pipelineBusinessID string, mrB
 		return fmt.Errorf("failed to get APIG headers: %w", err)
 	}
 
-	deleteURL := strings.TrimSuffix(apiURLStr, "/") + "/delete"
-	_, err = utils.SendHTTPRequest(ctx, "DELETE", deleteURL, nil, utils.HTTPOptions{
+	_, err = utils.SendHTTPRequest(ctx, "DELETE", apiURLStr, nil, utils.HTTPOptions{
 		Headers: headers,
 		QueryParams: map[string]string{
 			"pipelineId": pipelineBusinessID,
