@@ -1101,17 +1101,23 @@ func CheckRepoAuthorized(ctx context.Context, repository string, headers map[str
 		return "", fmt.Errorf("repo_auth_check_url not configured")
 	}
 
+	fuzzyPath := utils.ExtractRepoPath(repository)
+	log.Printf("[checkRepoAuthorized] Checking repo auth for repository=%s (fuzzyMatch=%s), headersCount=%d", repository, fuzzyPath, len(headers))
+
 	body, err := utils.SendHTTPRequest(ctx, "GET", apiURLStr, nil, utils.HTTPOptions{
 		Headers: headers,
 		QueryParams: map[string]string{
-			"fuzzyMatch": utils.ExtractRepoPath(repository),
+			"fuzzyMatch": fuzzyPath,
 			"filterType": "allTeam",
 			"page-size":  "10",
 			"page-no":    "1"},
 	}, []int{http.StatusOK}, "checkRepoAuthorized")
 	if err != nil {
+		log.Printf("[checkRepoAuthorized] HTTP request failed for repository=%s: %v", repository, err)
 		return "", err
 	}
+
+	log.Printf("[checkRepoAuthorized] Remote response for repository=%s: %s", repository, string(body))
 
 	var responseData map[string]interface{}
 	if err := json.Unmarshal(body, &responseData); err != nil {
@@ -1120,42 +1126,65 @@ func CheckRepoAuthorized(ctx context.Context, repository string, headers map[str
 	}
 
 	status, _ := responseData["status"].(string)
-	if status != "success" {
+	if status != "success" && status != "ok" && status != "200" {
 		return "", fmt.Errorf("auth check failed with status: %s", status)
 	}
 
 	entitiesVal, exists := responseData["entities"]
 	if !exists {
-		return "", fmt.Errorf("auth check response does not contain entities")
+		entitiesVal, exists = responseData["data"]
+	}
+	if !exists {
+		log.Printf("[checkRepoAuthorized] Response does not contain entities or data field: %s", string(body))
+		return "", nil
 	}
 
 	entities, ok := entitiesVal.([]interface{})
-	if !ok {
-		return "", fmt.Errorf("entities in auth check response is not an array")
+	if !ok || len(entities) == 0 {
+		log.Printf("[checkRepoAuthorized] No authorized entities found for repository=%s (entities count=0)", repository)
+		return "", nil
 	}
 
-	if len(entities) == 0 {
-		return "", nil // 未授权，返回空字符串
+	// 优先遍历查找精准匹配当前仓库的实体，否则使用第一个实体
+	var targetEntity map[string]interface{}
+	for _, item := range entities {
+		entityMap, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if targetEntity == nil {
+			targetEntity = entityMap // 默认备选第一个 valid entity
+		}
+
+		// 检查实体的仓库地址字段是否匹配
+		for _, urlKey := range []string{"repositoryUrl", "repoUrl", "codeUrl", "url", "path", "repository"} {
+			if uVal, has := entityMap[urlKey].(string); has && uVal != "" {
+				if strings.Contains(uVal, fuzzyPath) || (fuzzyPath != "" && strings.Contains(fuzzyPath, utils.ExtractRepoPath(uVal))) {
+					targetEntity = entityMap
+					break
+				}
+			}
+		}
 	}
 
-	firstEntity, ok := entities[0].(map[string]interface{})
-	if !ok {
-		return "", fmt.Errorf("first entity in auth check response is not an object")
+	if targetEntity == nil {
+		log.Printf("[checkRepoAuthorized] No valid entity object found in entities array for repository=%s", repository)
+		return "", nil
 	}
 
-	idVal, exists := firstEntity["id"]
-	if !exists {
-		return "", fmt.Errorf("first entity does not contain id")
+	// 尝试从不同的 ID 字段提取凭证 ID
+	for _, idKey := range []string{"id", "credentialId", "credential_id", "authId"} {
+		if idVal, has := targetEntity[idKey]; has && idVal != nil {
+			idStr := fmt.Sprintf("%v", idVal)
+			if idStr != "" && idStr != "<nil>" {
+				log.Printf("[checkRepoAuthorized] Successfully found credentialID=%s (from key %s) for repository=%s", idStr, idKey, repository)
+				return idStr, nil
+			}
+		}
 	}
 
-	// TODO： firstEntity["repositoryUrl"] 是代码仓的真实URL， 后续考虑是否回填回去？
-
-	authID, ok := idVal.(string)
-	if !ok {
-		return "", fmt.Errorf("first entity id is not a string")
-	}
-
-	return authID, nil
+	log.Printf("[checkRepoAuthorized] Target entity found but does not contain a valid ID field for repository=%s, entity=%+v", repository, targetEntity)
+	return "", nil
 }
 
 // FetchRemoteMRBindings 从三方系统获取指定流水线的 MR 绑定列表
