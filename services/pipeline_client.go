@@ -1117,74 +1117,31 @@ func CheckRepoAuthorized(ctx context.Context, repository string, headers map[str
 		return "", err
 	}
 
-	log.Printf("[checkRepoAuthorized] Remote response for repository=%s: %s", repository, string(body))
+	type RepoAuthCheckResp struct {
+		Status   string `json:"status"`
+		Count    int    `json:"count"`
+		Entities []struct {
+			ID            string `json:"id"`
+			Name          string `json:"name"`
+			RepositoryURL string `json:"repositoryUrl"`
+		} `json:"entities"`
+	}
 
-	var responseData map[string]interface{}
-	if err := json.Unmarshal(body, &responseData); err != nil {
+	var resp RepoAuthCheckResp
+	if err := json.Unmarshal(body, &resp); err != nil {
 		log.Printf("[checkRepoAuthorized] Failed to parse JSON: %v, Body: %s", err, string(body))
 		return "", fmt.Errorf("failed to parse auth check response JSON: %v", err)
 	}
 
-	status, _ := responseData["status"].(string)
-	if status != "success" && status != "ok" && status != "200" {
-		return "", fmt.Errorf("auth check failed with status: %s", status)
+	if resp.Status != "success" {
+		return "", fmt.Errorf("auth check failed with status: %s", resp.Status)
 	}
 
-	entitiesVal, exists := responseData["entities"]
-	if !exists {
-		entitiesVal, exists = responseData["data"]
-	}
-	if !exists {
-		log.Printf("[checkRepoAuthorized] Response does not contain entities or data field: %s", string(body))
-		return "", nil
+	if len(resp.Entities) == 0 {
+		return "", nil // 未授权，返回空字符串
 	}
 
-	entities, ok := entitiesVal.([]interface{})
-	if !ok || len(entities) == 0 {
-		log.Printf("[checkRepoAuthorized] No authorized entities found for repository=%s (entities count=0)", repository)
-		return "", nil
-	}
-
-	// 优先遍历查找精准匹配当前仓库的实体，否则使用第一个实体
-	var targetEntity map[string]interface{}
-	for _, item := range entities {
-		entityMap, ok := item.(map[string]interface{})
-		if !ok {
-			continue
-		}
-		if targetEntity == nil {
-			targetEntity = entityMap // 默认备选第一个 valid entity
-		}
-
-		// 检查实体的仓库地址字段是否匹配
-		for _, urlKey := range []string{"repositoryUrl", "repoUrl", "codeUrl", "url", "path", "repository"} {
-			if uVal, has := entityMap[urlKey].(string); has && uVal != "" {
-				if strings.Contains(uVal, fuzzyPath) || (fuzzyPath != "" && strings.Contains(fuzzyPath, utils.ExtractRepoPath(uVal))) {
-					targetEntity = entityMap
-					break
-				}
-			}
-		}
-	}
-
-	if targetEntity == nil {
-		log.Printf("[checkRepoAuthorized] No valid entity object found in entities array for repository=%s", repository)
-		return "", nil
-	}
-
-	// 尝试从不同的 ID 字段提取凭证 ID
-	for _, idKey := range []string{"id", "credentialId", "credential_id", "authId"} {
-		if idVal, has := targetEntity[idKey]; has && idVal != nil {
-			idStr := fmt.Sprintf("%v", idVal)
-			if idStr != "" && idStr != "<nil>" {
-				log.Printf("[checkRepoAuthorized] Successfully found credentialID=%s (from key %s) for repository=%s", idStr, idKey, repository)
-				return idStr, nil
-			}
-		}
-	}
-
-	log.Printf("[checkRepoAuthorized] Target entity found but does not contain a valid ID field for repository=%s, entity=%+v", repository, targetEntity)
-	return "", nil
+	return resp.Entities[0].ID, nil
 }
 
 // FetchRemoteMRBindings 从三方系统获取指定流水线的 MR 绑定列表
