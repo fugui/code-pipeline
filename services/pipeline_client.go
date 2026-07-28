@@ -484,7 +484,7 @@ func createMRBindingStep(ctx context.Context, pipelineBusinessID string, scheme 
 
 	if models.AppConfig.PipelineSystem.EnableAPIGAuth {
 		log.Println("[SyncCreateScheme] Using APIG Token Authentication for createMRBindingStep")
-		return CreateMRBindingAPIG(ctx, pipelineBusinessID, scheme, schemeID, repoURL)
+		return CreateMRBindingAPIG(ctx, pipelineBusinessID, scheme, schemeID, repoURL, headers)
 	}
 
 	apiURLStr := models.AppConfig.PipelineSystem.CreateMRBindingURL
@@ -573,7 +573,7 @@ func SyncUpdateMRBindingRemote(ctx context.Context, scheme *models.ExecutionSche
 
 	if models.AppConfig.PipelineSystem.EnableAPIGAuth {
 		log.Println("[SyncUpdateMRBinding] Using APIG Token Authentication for SyncUpdateMRBindingRemote")
-		return SyncUpdateMRBindingRemoteAPIG(ctx, pipelineBusinessID, scheme, repoURL)
+		return SyncUpdateMRBindingRemoteAPIG(ctx, pipelineBusinessID, scheme, repoURL, headers)
 	}
 
 	if scheme.MRBindingID == "" {
