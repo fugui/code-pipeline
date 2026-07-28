@@ -53,6 +53,15 @@ func (d *DatabaseConfig) GetDSN() string {
 		host, user, d.Password, dbname, port, sslmode, timezone)
 }
 
+type APIGConfig struct {
+	TokenURL       string            `yaml:"token_url"`
+	TokenAccount   string            `yaml:"token_account"`
+	TokenPassword  string            `yaml:"token_password"`
+	TokenHeaders   map[string]string `yaml:"token_headers"`
+	MRBindingURL   string            `yaml:"mr_binding_url"`
+	ServiceHeaders map[string]string `yaml:"service_headers"`
+}
+
 type Config struct {
 	Server struct {
 		Port         string        `yaml:"port"`
@@ -69,6 +78,8 @@ type Config struct {
 		SystemUserID         uint   `yaml:"system_user_id"`
 	} `yaml:"auth"`
 	PipelineSystem struct {
+		EnableAPIGAuth            bool              `yaml:"enable_apig_auth"`
+		APIG                      APIGConfig        `yaml:"apig"`
 		GetPipelineURL            string            `yaml:"get_pipeline_url"`
 		GetExecutionSchemeURL     string            `yaml:"get_execution_scheme_url"`
 		CreateExecutionSchemeURL  string            `yaml:"create_execution_scheme_url"`

@@ -59,7 +59,7 @@ func TestReportExecutionLogAndDashboardStats(t *testing.T) {
 		"trigger_user":         "lisi",
 		"code_check_details": map[string]interface{}{
 			"gate_status":           "passed",
-			"lines_scanned":          15420,
+			"lines_scanned":         15420,
 			"files_scanned":         86,
 			"total_issues":          4,
 			"fatal_issues":          0,

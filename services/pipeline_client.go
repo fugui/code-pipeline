@@ -481,6 +481,12 @@ func createExecutionSchemeStep(ctx context.Context, pipelineBusinessID string, s
 // createMRBindingStep 步骤三：创建 MR 触发关联
 func createMRBindingStep(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, schemeID string, repoURL string, headers map[string]string) (string, error) {
 	log.Printf("[SyncCreateScheme] Enter createMRBindingStep: pipelineBusinessID=%s, scheme=%+v, schemeID=%s, repoURL=%s, headers=%v", pipelineBusinessID, scheme, schemeID, repoURL, headers)
+
+	if models.AppConfig.PipelineSystem.EnableAPIGAuth {
+		log.Println("[SyncCreateScheme] Using APIG Token Authentication for createMRBindingStep")
+		return CreateMRBindingAPIG(ctx, pipelineBusinessID, scheme, schemeID, repoURL)
+	}
+
 	apiURLStr := models.AppConfig.PipelineSystem.CreateMRBindingURL
 	if apiURLStr == "" {
 		apiURLStr = models.AppConfig.PipelineSystem.GetMRBindingsURL
@@ -563,6 +569,11 @@ func SyncUpdateMRBindingRemote(ctx context.Context, scheme *models.ExecutionSche
 	var pipelineBusinessID string
 	if err := database.DB.First(&pipeline, scheme.LocalPipelineID).Error; err == nil {
 		pipelineBusinessID = pipeline.PipelineID
+	}
+
+	if models.AppConfig.PipelineSystem.EnableAPIGAuth {
+		log.Println("[SyncUpdateMRBinding] Using APIG Token Authentication for SyncUpdateMRBindingRemote")
+		return SyncUpdateMRBindingRemoteAPIG(ctx, pipelineBusinessID, scheme, repoURL)
 	}
 
 	if scheme.MRBindingID == "" {
@@ -1026,26 +1037,32 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[
 
 	// 2. 删除 MR 触发
 	if scheme.MRBindingID != "" {
-		apiURLStr := models.AppConfig.PipelineSystem.GetMRBindingsURL
-		if apiURLStr != "" {
-			deleteURL := strings.TrimSuffix(apiURLStr, "/") + "/delete"
+		var pipeline models.Pipeline
+		var pipelineBusinessID string
+		if err := database.DB.First(&pipeline, scheme.LocalPipelineID).Error; err == nil {
+			pipelineBusinessID = pipeline.PipelineID
+		}
 
-			var pipeline models.Pipeline
-			var pipelineBusinessID string
-			if err := database.DB.First(&pipeline, scheme.LocalPipelineID).Error; err == nil {
-				pipelineBusinessID = pipeline.PipelineID
+		if models.AppConfig.PipelineSystem.EnableAPIGAuth {
+			log.Printf("[SyncDelete] Using APIG Token Authentication to delete MR binding %s", scheme.MRBindingID)
+			if err := SyncDeleteMRBindingAPIG(context.Background(), pipelineBusinessID, scheme.MRBindingID); err != nil {
+				log.Printf("[SyncDelete] Failed to delete mr binding %s via APIG: %v\n", scheme.MRBindingID, err)
 			}
-
-			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", deleteURL, nil, utils.HTTPOptions{
-				Headers: headers,
-				QueryParams: map[string]string{
-					"pipelineId": pipelineBusinessID,
-					"configId":   scheme.MRBindingID,
-					"isSingle":   "true",
-				},
-			}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteMRBinding")
-			if err != nil {
-				log.Printf("[SyncDelete] Failed to delete mr binding %s: %v\n", scheme.MRBindingID, err)
+		} else {
+			apiURLStr := models.AppConfig.PipelineSystem.GetMRBindingsURL
+			if apiURLStr != "" {
+				deleteURL := strings.TrimSuffix(apiURLStr, "/") + "/delete"
+				_, err := utils.SendHTTPRequest(context.Background(), "DELETE", deleteURL, nil, utils.HTTPOptions{
+					Headers: headers,
+					QueryParams: map[string]string{
+						"pipelineId": pipelineBusinessID,
+						"configId":   scheme.MRBindingID,
+						"isSingle":   "true",
+					},
+				}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteMRBinding")
+				if err != nil {
+					log.Printf("[SyncDelete] Failed to delete mr binding %s: %v\n", scheme.MRBindingID, err)
+				}
 			}
 		}
 	}
