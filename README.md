@@ -111,6 +111,13 @@ code_bench:
 
 ## 🏷️ 版本历史 (Release History)
 
+### v0.5.0 (2026-07-28)
+*   **APIG 统一账号 Token 认证与 MR 绑定双轨并行**：
+    - 新增 `enable_apig_auth` 全局双轨控制开关与 `apig` 配置节点，支持配置统一 Token 获取参数（`token_url`, `token_account`, `token_password`, `token_headers`）。
+    - 引入 [token_manager.go](file:///home/fugui/codes/code-pipeline/services/token_manager.go) 实现 Token 内存缓存（1 小时有效期）与并发安全的提前 5 分钟自动刷新。
+    - 新增 [pipeline_client_apig.go](file:///home/fugui/codes/code-pipeline/services/pipeline_client_apig.go) 独立解耦 APIG 规范下的 MR 绑定（使用统一 `mr_binding_url` 进行创建、更新与删除操作）。
+    - 挂载 `x-auth-token` 鉴权与 `service_headers` 扩展 Header，老透传方案逻辑完全保留实现无风险平滑过渡。
+
 ### v0.4.1 (2026-07-22)
 *   **支持在“查看执行方案”中在线编辑并保存构建参数**：解锁查看执行方案弹窗中的构建参数编辑功能，允许新增、修改、批量粘贴与删除参数，并通过 `PUT /execution-schemes/:id` 路由同步更新本地持久化数据。
 

@@ -24,6 +24,16 @@ auth:
   system_user_id: 1 # 用于系统间调用的虚拟或物理系统用户 ID
 
 pipeline_system:
+  enable_apig_auth: false                   # 双轨开关：true 启用 APIG 统一账号 Token 认证，false 为老透传方案
+  apig:
+    token_url: "http://192.168.56.18:9080/api/v1/apig/auth/token"
+    token_account: "pipeline_system_admin"
+    token_password: "YourSecretPassword123"
+    token_headers:
+      x-apig-appcode: "APIG_APPCODE_SECRET_KEY"
+    mr_binding_url: "http://192.168.56.18:9080/api/v1/apig/mr-bindings"
+    service_headers:
+      X-Custom-Client-Id: "CodePipelineService"
   get_pipeline_url: "http://192.168.56.18:8080/api/external/pipeline"
   get_execution_scheme_url: "http://192.168.56.18:8080/api/external/execution-plans"
   create_execution_scheme_url: "http://192.168.56.18:8080/api/external/execution-plans"
