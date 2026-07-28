@@ -31,7 +31,7 @@ func LogHTTPErrorDetails(contextMsg string, req *http.Request, statusCode int, r
 	for name, values := range req.Header {
 		for _, value := range values {
 			escapedValue := strings.ReplaceAll(value, "'", "'\\''")
-			curlHeaders = append(curlHeaders, fmt.Sprintf("-H '%s: %s'", name, escapedValue))
+			curlHeaders = append(curlHeaders, fmt.Sprintf("-H '%s: %s'", strings.ToLower(name), escapedValue))
 		}
 	}
 
@@ -86,16 +86,17 @@ func SendHTTPRequest(ctx context.Context, method, rawURL string, payload interfa
 		return nil, fmt.Errorf("failed to create HTTP request: %v", err)
 	}
 
+	req.Header = make(http.Header)
 	if payload != nil {
-		req.Header.Set("Content-Type", "application/json")
+		req.Header["content-type"] = []string{"application/json"}
 	}
 
 	for k, v := range opt.Headers {
-		req.Header.Set(k, v)
+		req.Header[strings.ToLower(k)] = []string{v}
 	}
 
-	if req.Header.Get("Accept") == "" {
-		req.Header.Set("Accept", "application/json, text/plain, */*")
+	if len(req.Header["accept"]) == 0 {
+		req.Header["accept"] = []string{"application/json, text/plain, */*"}
 	}
 
 	tr := &http.Transport{
