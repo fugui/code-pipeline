@@ -487,6 +487,10 @@ func CalculateExecutionSchemeDiff(c *gin.Context) {
 	resp.PipelineID = pipeline.ID
 	resp.PipelineCode = pipeline.PipelineID
 	resp.PipelineName = pipeline.Name
+	resp.DiffDetails.AddList = make([]AddDiffItem, 0)
+	resp.DiffDetails.UpdateList = make([]UpdateDiffItem, 0)
+	resp.DiffDetails.DeleteList = make([]DeleteDiffItem, 0)
+	resp.DiffDetails.UnchangedList = make([]UnchangedDiffItem, 0)
 
 	for _, r := range remoteSchemes {
 		var matchedLocal *models.ExecutionScheme

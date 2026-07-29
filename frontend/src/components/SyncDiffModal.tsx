@@ -101,10 +101,21 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
   const [submitting, setSubmitting] = useState<boolean>(false)
   const [activeTab, setActiveTab] = useState<'add' | 'update' | 'delete' | 'unchanged'>('update')
 
+  const details = diffResult?.diff_details
+
+  // Helper lists with null fallback protection
+  const addList = details?.add_list || []
+  const updateList = details?.update_list || []
+  const deleteList = details?.delete_list || []
+  const unchangedList = details?.unchanged_list || []
+
   // Auto initialize selection when diffResult arrives
   useEffect(() => {
     if (diffResult?.diff_details) {
-      const { add_list, update_list, delete_list } = diffResult.diff_details
+      const add_list = diffResult.diff_details.add_list || []
+      const update_list = diffResult.diff_details.update_list || []
+      const delete_list = diffResult.diff_details.delete_list || []
+
       setSelectedAddIndex(new Set(add_list.map((_, i) => i)))
       setSelectedUpdateIndex(new Set(update_list.map((_, i) => i)))
       setSelectedDeleteIndex(new Set(delete_list.map((_, i) => i)))
@@ -124,7 +135,6 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
 
   if (!visible) return null
 
-  const details = diffResult?.diff_details
   const summary = diffResult?.summary
 
   // Selection Toggles
@@ -156,15 +166,15 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
 
     try {
       const add_schemes = Array.from(selectedAddIndex)
-        .map(i => details?.add_list[i]?.scheme_data)
+        .map(i => addList[i]?.scheme_data)
         .filter(Boolean)
 
       const update_schemes = Array.from(selectedUpdateIndex)
-        .map(i => details?.update_list[i]?.new_scheme_data)
+        .map(i => updateList[i]?.new_scheme_data)
         .filter(Boolean)
 
       const delete_local_ids: number[] = Array.from(selectedDeleteIndex)
-        .map(i => details?.delete_list[i]?.local_id)
+        .map(i => deleteList[i]?.local_id)
         .filter((id): id is number => typeof id === 'number')
 
       await onConfirmSync({
@@ -352,23 +362,23 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                 {activeTab === 'update' && (
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>属性与配置更替列表 ({details?.update_list.length || 0})</span>
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>属性与配置更替列表 ({updateList.length})</span>
                       <button 
                         style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: 12, cursor: 'pointer' }}
                         onClick={() => {
-                          if (selectedUpdateIndex.size === details?.update_list.length) {
+                          if (selectedUpdateIndex.size === updateList.length) {
                             setSelectedUpdateIndex(new Set())
                           } else {
-                            setSelectedUpdateIndex(new Set(details?.update_list.map((_, i) => i)))
+                            setSelectedUpdateIndex(new Set(updateList.map((_, i) => i)))
                           }
                         }}
                       >
-                        {selectedUpdateIndex.size === details?.update_list.length ? '取消全选' : '全选变动项'}
+                        {selectedUpdateIndex.size === updateList.length ? '取消全选' : '全选变动项'}
                       </button>
                     </div>
-                    {details && details.update_list.length > 0 ? (
+                    {updateList.length > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {details.update_list.map((item, idx) => (
+                        {updateList.map((item, idx) => (
                           <div 
                             key={item.local_id || idx}
                             style={{ 
@@ -395,7 +405,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
 
                             {/* Changes diff list */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 24 }}>
-                              {item.changes.map((change, cIdx) => (
+                              {(item.changes || []).map((change, cIdx) => (
                                 <div key={cIdx} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12 }}>
                                   {getCategoryBadge(change.category)}
                                   <span style={{ color: 'var(--text-secondary)', minWidth: 90 }}>{change.field_name}:</span>
@@ -420,23 +430,23 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                 {activeTab === 'add' && (
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>三方控制台拟新增执行方案 ({details?.add_list.length || 0})</span>
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>三方控制台拟新增执行方案 ({addList.length})</span>
                       <button 
                         style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: 12, cursor: 'pointer' }}
                         onClick={() => {
-                          if (selectedAddIndex.size === details?.add_list.length) {
+                          if (selectedAddIndex.size === addList.length) {
                             setSelectedAddIndex(new Set())
                           } else {
-                            setSelectedAddIndex(new Set(details?.add_list.map((_, i) => i)))
+                            setSelectedAddIndex(new Set(addList.map((_, i) => i)))
                           }
                         }}
                       >
-                        {selectedAddIndex.size === details?.add_list.length ? '取消全选' : '全选新增项'}
+                        {selectedAddIndex.size === addList.length ? '取消全选' : '全选新增项'}
                       </button>
                     </div>
-                    {details && details.add_list.length > 0 ? (
+                    {addList.length > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {details.add_list.map((item, idx) => (
+                        {addList.map((item, idx) => (
                           <div 
                             key={item.remote_scheme_id || idx}
                             style={{ 
@@ -482,23 +492,23 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                 {activeTab === 'delete' && (
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>本地拟废弃/移除的执行方案 ({details?.delete_list.length || 0})</span>
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>本地拟废弃/移除的执行方案 ({deleteList.length})</span>
                       <button 
                         style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: 12, cursor: 'pointer' }}
                         onClick={() => {
-                          if (selectedDeleteIndex.size === details?.delete_list.length) {
+                          if (selectedDeleteIndex.size === deleteList.length) {
                             setSelectedDeleteIndex(new Set())
                           } else {
-                            setSelectedDeleteIndex(new Set(details?.delete_list.map((_, i) => i)))
+                            setSelectedDeleteIndex(new Set(deleteList.map((_, i) => i)))
                           }
                         }}
                       >
-                        {selectedDeleteIndex.size === details?.delete_list.length ? '取消全选' : '全选移除项'}
+                        {selectedDeleteIndex.size === deleteList.length ? '取消全选' : '全选移除项'}
                       </button>
                     </div>
-                    {details && details.delete_list.length > 0 ? (
+                    {deleteList.length > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {details.delete_list.map((item, idx) => (
+                        {deleteList.map((item, idx) => (
                           <div 
                             key={item.local_id || idx}
                             style={{ 
@@ -542,10 +552,10 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                 {/* 4. UNCHANGED TAB */}
                 {activeTab === 'unchanged' && (
                   <div>
-                    <div style={{ marginBottom: 10, fontSize: 13, fontWeight: 600 }}>两端保持完全一致的方案 ({details?.unchanged_list.length || 0})</div>
-                    {details && details.unchanged_list.length > 0 ? (
+                    <div style={{ marginBottom: 10, fontSize: 13, fontWeight: 600 }}>两端保持完全一致的方案 ({unchangedList.length})</div>
+                    {unchangedList.length > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {details.unchanged_list.map((item, idx) => (
+                        {unchangedList.map((item, idx) => (
                           <div 
                             key={item.local_id || idx}
                             style={{ 
