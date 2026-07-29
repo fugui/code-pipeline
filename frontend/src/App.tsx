@@ -649,6 +649,8 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         {currentView === 'pipeline-config' && (
           <PipelineConfig 
             isAdmin={isAdmin}
+            apiBase={apiBase}
+            token={token}
             pipelines={pipelines}
             selectedPipeline={selectedPipeline}
             schemes={schemes}

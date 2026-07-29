@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { 
   Plus, 
   Search, 
@@ -10,13 +10,16 @@ import {
   ExternalLink,
   Layers,
   Box,
-  Server,
-  Filter
+  GitBranch,
+  Filter,
+  Code
 } from 'lucide-react'
 import { Pipeline, ExecutionScheme } from '../types'
 
 export interface PipelineConfigProps {
   isAdmin?: boolean
+  apiBase?: string
+  token?: string
   pipelines: Pipeline[]
   selectedPipeline?: Pipeline | null
   schemes?: ExecutionScheme[]
@@ -34,6 +37,8 @@ export interface PipelineConfigProps {
 
 export const PipelineConfig: React.FC<PipelineConfigProps> = ({
   isAdmin = true,
+  apiBase = '/api',
+  token = '',
   pipelines = [],
   loading = false,
   searchQuery,
@@ -48,6 +53,58 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [pageSize, setPageSize] = useState<number>(10)
   const [syncingId, setSyncingId] = useState<number | null>(null)
+  const [allSchemes, setAllSchemes] = useState<ExecutionScheme[]>([])
+
+  // Fetch all execution schemes
+  const fetchAllSchemes = async () => {
+    try {
+      const res = await fetch(`${apiBase}/execution-schemes`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setAllSchemes(Array.isArray(data) ? data : [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch all execution schemes', err)
+    }
+  }
+
+  useEffect(() => {
+    fetchAllSchemes()
+  }, [apiBase, token])
+
+  // Group schemes by pipeline ID
+  const schemesByPipelineId = useMemo(() => {
+    const map = new Map<number, ExecutionScheme[]>()
+    const strMap = new Map<string, ExecutionScheme[]>()
+
+    allSchemes.forEach(s => {
+      if (s.pipeline_id) {
+        const existing = map.get(s.pipeline_id) || []
+        existing.push(s)
+        map.set(s.pipeline_id, existing)
+      }
+      if (s.pipeline?.pipeline_id) {
+        const existing = strMap.get(s.pipeline.pipeline_id) || []
+        existing.push(s)
+        strMap.set(s.pipeline.pipeline_id, existing)
+      }
+    })
+
+    return { map, strMap }
+  }, [allSchemes])
+
+  // Get schemes for a specific pipeline
+  const getSchemesForPipeline = (p: Pipeline): ExecutionScheme[] => {
+    if (p.id && schemesByPipelineId.map.has(p.id)) {
+      return schemesByPipelineId.map.get(p.id) || []
+    }
+    if (p.pipeline_id && schemesByPipelineId.strMap.has(p.pipeline_id)) {
+      return schemesByPipelineId.strMap.get(p.pipeline_id) || []
+    }
+    return []
+  }
 
   // Distinct groups & types for filter dropdowns
   const availableTypes = useMemo(() => {
@@ -68,19 +125,17 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
     const dailyCount = pipelines.filter(p => p.type === '每日构建').length
     const mrCount = pipelines.filter(p => p.type === 'MR触发' || p.type?.toLowerCase().includes('mr')).length
     const manualCount = pipelines.filter(p => p.type === '手动触发').length
-    const otherCount = total - dailyCount - mrCount - manualCount
-    const boundServicesCount = pipelines.filter(p => p.service_name).length
+    const totalSchemesBound = allSchemes.length
 
     return {
       total,
       dailyCount,
       mrCount,
       manualCount,
-      otherCount,
-      boundServicesCount,
+      totalSchemesBound,
       groupCount: availableGroups.length
     }
-  }, [pipelines, availableGroups])
+  }, [pipelines, availableGroups, allSchemes])
 
   // Filtered Pipelines
   const filteredPipelines = useMemo(() => {
@@ -93,7 +148,15 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
         const matchGroup = p.group_name?.toLowerCase().includes(q)
         const matchService = p.service_name?.toLowerCase().includes(q)
         const matchDesc = p.description?.toLowerCase().includes(q)
-        if (!matchId && !matchName && !matchGroup && !matchService && !matchDesc) {
+        
+        // Also match scheme repo or branch
+        const pSchemes = getSchemesForPipeline(p)
+        const matchScheme = pSchemes.some(s => 
+          s.repository?.name?.toLowerCase().includes(q) || 
+          s.branchs?.toLowerCase().includes(q)
+        )
+
+        if (!matchId && !matchName && !matchGroup && !matchService && !matchDesc && !matchScheme) {
           return false
         }
       }
@@ -110,10 +173,10 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
 
       return true
     })
-  }, [pipelines, searchQuery, selectedType, selectedGroup])
+  }, [pipelines, searchQuery, selectedType, selectedGroup, schemesByPipelineId])
 
   // Reset page when filters change
-  React.useEffect(() => {
+  useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery, selectedType, selectedGroup, pageSize])
 
@@ -130,6 +193,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
     setSyncingId(p.id)
     try {
       await onSyncPipeline(p)
+      await fetchAllSchemes()
     } finally {
       setTimeout(() => setSyncingId(null), 600)
     }
@@ -202,12 +266,12 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
 
         <div className="glass-card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ padding: 12, borderRadius: 10, background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
-            <Server size={22} />
+            <GitBranch size={22} />
           </div>
           <div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>服务与分组归属</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>绑定执行方案数</div>
             <div style={{ fontSize: 24, fontWeight: 700, marginTop: 2 }}>
-              {stats.boundServicesCount} <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>服务 / {stats.groupCount} 分组</span>
+              {stats.totalSchemesBound} <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>个方案 / {stats.groupCount} 分组</span>
             </div>
           </div>
         </div>
@@ -221,7 +285,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
             <Search style={{ position: 'absolute', left: 12, top: 11, color: 'var(--text-muted)' }} size={16} />
             <input 
               type="text" 
-              placeholder="搜索流水线 ID、名称、分组、关联服务或描述..." 
+              placeholder="搜索流水线 ID、名称、分组、关联仓库或分支..." 
               style={{ paddingLeft: 40, width: '100%', height: 38, fontSize: 13, borderRadius: 8 }}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -302,7 +366,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 <th style={{ padding: '14px 16px', fontWeight: 600, minWidth: 200 }}>流水线名称</th>
                 <th style={{ padding: '14px 16px', fontWeight: 600, width: 120 }}>触发类型</th>
                 <th style={{ padding: '14px 16px', fontWeight: 600, width: 130 }}>所属分组</th>
-                <th style={{ padding: '14px 16px', fontWeight: 600, minWidth: 160 }}>关联服务 / 项目</th>
+                <th style={{ padding: '14px 16px', fontWeight: 600, minWidth: 200 }}>包含执行方案</th>
                 <th style={{ padding: '14px 16px', fontWeight: 600 }}>详细描述</th>
                 <th style={{ padding: '14px 16px', fontWeight: 600, textAlign: 'right', width: 140 }}>操作</th>
               </tr>
@@ -319,6 +383,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 paginatedPipelines.map((p) => {
                   const badgeStyle = getTypeBadgeStyle(p.type)
                   const isSyncing = syncingId === p.id
+                  const pSchemes = getSchemesForPipeline(p)
 
                   return (
                     <tr 
@@ -369,17 +434,42 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                         </span>
                       </td>
 
-                      {/* Service / Owner */}
+                      {/* Execution Schemes Column */}
                       <td style={{ padding: '14px 16px', fontSize: 13 }}>
-                        {p.service_name ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <span style={{ fontWeight: 500, color: 'var(--text-main)' }}>{p.service_name}</span>
-                            {p.owner_id && (
-                              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>项目 ID: {p.owner_id}</span>
-                            )}
+                        {pSchemes.length > 0 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ 
+                                background: 'rgba(56, 189, 248, 0.15)', 
+                                color: '#38bdf8', 
+                                border: '1px solid rgba(56, 189, 248, 0.3)',
+                                fontSize: 11, 
+                                fontWeight: 600,
+                                padding: '1px 7px', 
+                                borderRadius: 10,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}>
+                                <Code size={11} /> {pSchemes.length} 个执行方案
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                              {pSchemes.slice(0, 2).map((scheme, idx) => (
+                                <span key={scheme.id || idx} style={{ fontSize: 11, color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.04)', padding: '1px 6px', borderRadius: 4 }} title={`仓库: ${scheme.repository?.name || scheme.repository_id}, 分支: ${scheme.branchs}`}>
+                                  {scheme.repository?.name ? `${scheme.repository.name}` : `仓:${scheme.repository_id}`}
+                                  {scheme.branchs ? ` (${scheme.branchs.length > 12 ? scheme.branchs.substring(0, 12) + '...' : scheme.branchs})` : ''}
+                                </span>
+                              ))}
+                              {pSchemes.length > 2 && (
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)', padding: '1px 4px' }}>
+                                  +{pSchemes.length - 2}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         ) : (
-                          <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>未关联服务</span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>暂无关联方案</span>
                         )}
                       </td>
 
@@ -530,4 +620,5 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
     </div>
   )
 }
+
 
