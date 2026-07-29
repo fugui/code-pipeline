@@ -29,13 +29,9 @@ type HTTPOptions struct {
 func LogHTTPErrorDetails(contextMsg string, req *http.Request, statusCode int, respBody []byte) {
 	var curlHeaders []string
 	for name, values := range req.Header {
-		headerName := strings.ToLower(name)
-		if strings.EqualFold(name, "host") {
-			headerName = "Host"
-		}
 		for _, value := range values {
 			escapedValue := strings.ReplaceAll(value, "'", "'\\''")
-			curlHeaders = append(curlHeaders, fmt.Sprintf("-H '%s: %s'", headerName, escapedValue))
+			curlHeaders = append(curlHeaders, fmt.Sprintf("-H '%s: %s'", name, escapedValue))
 		}
 	}
 
