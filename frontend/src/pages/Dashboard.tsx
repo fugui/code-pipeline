@@ -125,29 +125,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </span>
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>任务平均运行时间</span>
         </div>
-        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>并发 / 排队等待</span>
-          <span style={{ fontSize: 30, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: '#60a5fa' }}>{stats.running_count}</span>
-            <span style={{ color: 'var(--text-muted)', fontSize: 20 }}>/</span>
-            <span style={{ color: 'var(--text-secondary)' }}>{stats.pending_count}</span>
-          </span>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>实时节点执行引擎</span>
-        </div>
       </div>
-
-      {/* Concurrent load and queues */}
-      {(stats.running_count > 0 || stats.pending_count > 0) && (
-        <div className="glass-card" style={{ background: 'rgba(99, 102, 241, 0.05)', borderColor: 'rgba(99, 102, 241, 0.2)', display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Loader2 className="animate-spin" color="#6366f1" />
-          <div>
-            <span style={{ fontWeight: 600, fontSize: 14, display: 'block' }}>流水线引擎执行中</span>
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-              正在并发处理 {stats.running_count} 个任务，剩余 {stats.pending_count} 个任务在排队等待队列中。
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Top Failed Repos Alert Card */}
       {stats.top_failed_repos && stats.top_failed_repos.length > 0 && stats.top_failed_repos.some(r => r.failed_count > 0) && (
