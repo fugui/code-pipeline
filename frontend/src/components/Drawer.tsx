@@ -51,7 +51,7 @@ export const Drawer: React.FC<DrawerProps> = ({
   }
 
   return createPortal(
-    <>
+    <div className="pipeline-app">
       {/* 1. Backdrop Overlay — Portal 到 body 以突破宿主 header 的层叠上下文 */}
       <div
         onClick={handleClose}
@@ -160,7 +160,7 @@ export const Drawer: React.FC<DrawerProps> = ({
           </div>
         )}
       </div>
-    </>,
+    </div>,
     document.body
   )
 }
