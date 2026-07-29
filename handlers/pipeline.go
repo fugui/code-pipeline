@@ -168,11 +168,6 @@ func GetExecutionSchemes(c *gin.Context) {
 	pipelineIDStr := c.Query("pipeline_id")
 	repoIDStr := c.Query("repository_id")
 
-	if pipelineIDStr == "" && repoIDStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "pipeline_id or repository_id query parameter is required"})
-		return
-	}
-
 	query := database.DB.Preload("Repository").Preload("PipelineInfo")
 
 	if pipelineIDStr != "" {
