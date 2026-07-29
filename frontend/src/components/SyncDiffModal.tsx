@@ -226,7 +226,8 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
       <div className="animate-fade-in" style={{
         width: '100%',
         maxWidth: 840,
-        height: '100%',
+        marginTop: 'var(--portal-header-height, 60px)',
+        height: 'calc(100vh - var(--portal-header-height, 60px))',
         display: 'flex',
         flexDirection: 'column',
         boxShadow: '-12px 0 36px rgba(0, 0, 0, 0.3)',
