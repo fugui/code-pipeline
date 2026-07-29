@@ -538,20 +538,7 @@ func createMRBindingStep(ctx context.Context, pipelineBusinessID string, scheme 
 		return "", err
 	}
 
-	var responseData struct {
-		Status string `json:"status"`
-		Result []struct {
-			ID      string `json:"id"`
-			Creator string `json:"creator"`
-		} `json:"result"`
-	}
-	_ = json.Unmarshal(body, &responseData)
-
-	var mrBindingID string
-	if len(responseData.Result) > 0 {
-		mrBindingID = responseData.Result[0].ID
-	}
-
+	mrBindingID := ParseMRBindingID(body)
 	if mrBindingID == "" {
 		return "", fmt.Errorf("failed to fetch created mr binding ID, response: %s", string(body))
 	}
