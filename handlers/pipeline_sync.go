@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"code-pipeline/database"
 	"code-pipeline/models"
@@ -323,7 +324,13 @@ func CalculateExecutionSchemeDiff(c *gin.Context) {
 	}
 
 	var pipeline models.Pipeline
-	if err := database.DB.Where("pipeline_id = ? OR id = ?", pipelineIDStr, pipelineIDStr).First(&pipeline).Error; err != nil {
+	query := database.DB.Model(&models.Pipeline{})
+	if numID, err := strconv.ParseUint(pipelineIDStr, 10, 64); err == nil {
+		query = query.Where("pipeline_id = ? OR id = ?", pipelineIDStr, uint(numID))
+	} else {
+		query = query.Where("pipeline_id = ?", pipelineIDStr)
+	}
+	if err := query.First(&pipeline).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Pipeline not found"})
 		return
 	}
