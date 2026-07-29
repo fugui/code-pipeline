@@ -55,6 +55,13 @@ func GetPipelines(c *gin.Context) {
 		return
 	}
 
+	template := models.AppConfig.PipelineSystem.PipelineLinkTemplate
+	if template != "" {
+		for i := range pipelines {
+			pipelines[i].WebURL = generateWebURL(&pipelines[i], template)
+		}
+	}
+
 	c.JSON(http.StatusOK, pipelines)
 }
 
@@ -82,6 +89,11 @@ func CreatePipeline(c *gin.Context) {
 	if err := database.DB.Create(&pipeline).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create pipeline. Pipeline ID might already exist."})
 		return
+	}
+
+	template := models.AppConfig.PipelineSystem.PipelineLinkTemplate
+	if template != "" {
+		pipeline.WebURL = generateWebURL(&pipeline, template)
 	}
 
 	c.JSON(http.StatusCreated, pipeline)
@@ -116,6 +128,11 @@ func UpdatePipeline(c *gin.Context) {
 	if err := database.DB.Save(&pipeline).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update pipeline"})
 		return
+	}
+
+	template := models.AppConfig.PipelineSystem.PipelineLinkTemplate
+	if template != "" {
+		pipeline.WebURL = generateWebURL(&pipeline, template)
 	}
 
 	c.JSON(http.StatusOK, pipeline)
