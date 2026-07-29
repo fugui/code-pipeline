@@ -218,7 +218,7 @@ export const Repos: React.FC<ReposProps> = ({
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div>
-        <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>代码仓全览</h2>
+        <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>流水线配置</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
           完整浏览全量代码仓，按部门、子系统、责任人过滤，并在线管理各仓库的流水线执行方案。
         </p>

@@ -536,7 +536,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
                 className={`btn ${currentView === 'repos' ? 'btn-primary' : 'btn-secondary'}`} 
                 style={{ justifyContent: 'flex-start', width: '100%' }}
               >
-                <GitBranch size={16} /> 仓库流配置
+                <GitBranch size={16} /> 流水线配置
               </button>
               <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
 
@@ -575,7 +575,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
                 className={`btn ${currentView === 'pipeline-config' ? 'btn-primary' : 'btn-secondary'}`} 
                 style={{ justifyContent: 'flex-start', width: '100%' }}
               >
-                <Activity size={16} /> 流水线配置
+                <Activity size={16} /> 系统配置
               </button>
             </nav>
           </div>
@@ -605,7 +605,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
           />
         )}
 
-        {/* VIEW 2: REPOS 代码仓全览 */}
+        {/* VIEW 2: REPOS 流水线配置 */}
         {currentView === 'repos' && (
           <Repos
             isAdmin={isAdmin}
