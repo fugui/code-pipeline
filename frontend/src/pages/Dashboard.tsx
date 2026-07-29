@@ -19,6 +19,33 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'success' | 'failed'>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
+  // Filtered runs calculation (Must be called before any early return)
+  const filteredRuns = useMemo(() => {
+    if (!stats || !stats.recent_runs) return []
+    return stats.recent_runs.filter(run => {
+      const isCodeCheck = run.task_type === 'code_check' || !!run.code_checker_task_id || !!run.code_check_details
+      if (taskTypeFilter === 'build' && isCodeCheck) return false
+      if (taskTypeFilter === 'code_check' && !isCodeCheck) return false
+
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'running' && run.status !== 'running' && run.status !== 'pending') return false
+        if (statusFilter === 'success' && run.status !== 'success') return false
+        if (statusFilter === 'failed' && run.status !== 'failed') return false
+      }
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim()
+        const repoNameMatch = run.repo_name ? run.repo_name.toLowerCase().includes(q) : false
+        const branchMatch = run.branch ? run.branch.toLowerCase().includes(q) : false
+        const taskIdMatch = (run.task_id || run.id?.toString())?.toLowerCase().includes(q)
+        const triggerUserMatch = run.trigger_user ? run.trigger_user.toLowerCase().includes(q) : false
+        if (!repoNameMatch && !branchMatch && !taskIdMatch && !triggerUserMatch) return false
+      }
+
+      return true
+    })
+  }, [stats, taskTypeFilter, statusFilter, searchQuery])
+
   if (!stats) return null
 
   const formatTime = (isoString: string | null | undefined) => {
@@ -44,33 +71,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
       return null
     }
   }
-
-  // Filtered runs calculation
-  const filteredRuns = useMemo(() => {
-    if (!stats.recent_runs) return []
-    return stats.recent_runs.filter(run => {
-      const isCodeCheck = run.task_type === 'code_check' || !!run.code_checker_task_id || !!run.code_check_details
-      if (taskTypeFilter === 'build' && isCodeCheck) return false
-      if (taskTypeFilter === 'code_check' && !isCodeCheck) return false
-
-      if (statusFilter !== 'all') {
-        if (statusFilter === 'running' && run.status !== 'running' && run.status !== 'pending') return false
-        if (statusFilter === 'success' && run.status !== 'success') return false
-        if (statusFilter === 'failed' && run.status !== 'failed') return false
-      }
-
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim()
-        const repoNameMatch = run.repo_name ? run.repo_name.toLowerCase().includes(q) : false
-        const branchMatch = run.branch ? run.branch.toLowerCase().includes(q) : false
-        const taskIdMatch = (run.task_id || run.id?.toString())?.toLowerCase().includes(q)
-        const triggerUserMatch = run.trigger_user ? run.trigger_user.toLowerCase().includes(q) : false
-        if (!repoNameMatch && !branchMatch && !taskIdMatch && !triggerUserMatch) return false
-      }
-
-      return true
-    })
-  }, [stats.recent_runs, taskTypeFilter, statusFilter, searchQuery])
 
   const gatePassPercentage = ((stats.gate_pass_rate ?? 1) * 100).toFixed(1)
   const successPercentage = (stats.success_rate * 100).toFixed(1)
