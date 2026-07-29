@@ -450,19 +450,29 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                       </td>
 
                       {/* Name */}
-                      <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-main)' }}>
+                      <td style={{ padding: '14px 16px', fontWeight: 600 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span>{p.name}</span>
-                          {p.web_url && (
+                          {p.web_url ? (
                             <a 
                               href={p.web_url} 
                               target="_blank" 
                               rel="noopener noreferrer" 
-                              style={{ color: '#818cf8', display: 'inline-flex', alignItems: 'center', transition: 'color 0.2s' }}
-                              title="打开三方流水线控制台"
+                              style={{ color: '#e0e7ff', textDecoration: 'none', transition: 'color 0.2s', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.color = '#818cf8'
+                                e.currentTarget.style.textDecoration = 'underline'
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.color = '#e0e7ff'
+                                e.currentTarget.style.textDecoration = 'none'
+                              }}
+                              title="点击快速跳转至三方流水线控制台"
                             >
-                              <ExternalLink size={13} />
+                              <span>{p.name}</span>
+                              <ExternalLink size={13} style={{ color: '#818cf8', flexShrink: 0 }} />
                             </a>
+                          ) : (
+                            <span style={{ color: 'var(--text-main)' }}>{p.name}</span>
                           )}
                         </div>
                       </td>
