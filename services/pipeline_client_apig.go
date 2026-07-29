@@ -71,7 +71,7 @@ func CreateMRBindingAPIG(ctx context.Context, pipelineBusinessID string, scheme 
 		return "", err
 	}
 
-	bindingID := parseMRBindingID(body)
+	bindingID := ParseMRBindingID(body)
 	if bindingID == "" {
 		log.Printf("[APIG] Step 3: Could not parse MR binding ID from response: %s", string(body))
 	}
@@ -161,44 +161,49 @@ func SyncUpdateMRBindingRemoteAPIG(ctx context.Context, pipelineBusinessID strin
 	return nil
 }
 
-func parseMRBindingID(body []byte) string {
-	type RemoteResp struct {
-		ID     string `json:"id"`
-		Entity struct {
-			ID string `json:"id"`
-		} `json:"entity"`
-		Result struct {
-			ID string `json:"id"`
-		} `json:"result"`
+func ParseMRBindingID(body []byte) string {
+	var genericData interface{}
+	if err := json.Unmarshal(body, &genericData); err != nil {
+		return ""
 	}
 
-	// 优先尝试按单个对象解析
-	var single RemoteResp
-	if err := json.Unmarshal(body, &single); err == nil {
-		id := single.ID
-		if id == "" {
-			id = single.Entity.ID
-		}
-		if id == "" {
-			id = single.Result.ID
-		}
-		if id != "" {
-			return id
-		}
+	return extractIDFromValue(genericData)
+}
+
+func extractIDFromValue(val interface{}) string {
+	if val == nil {
+		return ""
 	}
 
-	// 尝试按数组解析
-	var list []RemoteResp
-	if err := json.Unmarshal(body, &list); err == nil && len(list) > 0 {
-		id := list[0].ID
-		if id == "" {
-			id = list[0].Entity.ID
-		}
-		if id == "" {
-			id = list[0].Result.ID
-		}
-		if id != "" {
+	switch v := val.(type) {
+	case map[string]interface{}:
+		// 1. 尝试直接取 "id"
+		if id, ok := v["id"].(string); ok && id != "" {
 			return id
+		}
+
+		// 2. 尝试从 "result" 嵌套节点提取（支持 对象 或 数组）
+		if res, exists := v["result"]; exists {
+			if id := extractIDFromValue(res); id != "" {
+				return id
+			}
+		}
+
+		// 3. 尝试从 "entity", "entities", "data" 嵌套节点提取
+		for _, key := range []string{"entity", "entities", "data"} {
+			if item, exists := v[key]; exists {
+				if id := extractIDFromValue(item); id != "" {
+					return id
+				}
+			}
+		}
+
+	case []interface{}:
+		// 如果是数组，递归遍历每一个元素
+		for _, item := range v {
+			if id := extractIDFromValue(item); id != "" {
+				return id
+			}
 		}
 	}
 
