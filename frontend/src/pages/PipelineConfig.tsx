@@ -69,7 +69,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 20, height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>流水线与执行方案配置</h2>
+          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>系统配置</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>配置持续集成流水线，并绑定仓库执行方案，支持同步三方流水线控制台。</p>
         </div>
         {isAdmin && (
