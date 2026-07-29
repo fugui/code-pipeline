@@ -198,11 +198,11 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
   const getCategoryBadge = (category: string) => {
     switch (category) {
       case 'mr_binding':
-        return <span style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 500 }}>🔀 MR 触发</span>
+        return <span style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#a855f7', border: '1px solid rgba(168, 85, 247, 0.3)', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>🔀 MR 触发</span>
       case 'execution_plan':
-        return <span style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 500 }}>📅 执行计划</span>
+        return <span style={{ background: 'rgba(14, 165, 233, 0.12)', color: '#0284c7', border: '1px solid rgba(14, 165, 233, 0.3)', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>📅 执行计划</span>
       default:
-        return <span style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.3)', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 500 }}>⚙️ 执行方案</span>
+        return <span style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#6366f1', border: '1px solid rgba(99, 102, 241, 0.3)', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>⚙️ 执行方案</span>
     }
   }
 
@@ -217,45 +217,45 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
       backdropFilter: 'blur(5px)',
       display: 'flex',
       justifyContent: 'flex-end',
-      zIndex: 1000
+      zIndex: 99999
     }}>
       {/* Backdrop click to close */}
       <div style={{ flex: 1 }} onClick={onClose} />
 
       {/* Slide-in Drawer Container */}
-      <div className="glass-card animate-fade-in" style={{
+      <div className="animate-fade-in" style={{
         width: '100%',
-        maxWidth: 820,
+        maxWidth: 840,
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        borderRadius: 0,
-        boxShadow: '-12px 0 36px rgba(0, 0, 0, 0.6)',
+        boxShadow: '-12px 0 36px rgba(0, 0, 0, 0.3)',
         borderLeft: '1px solid var(--border-color)',
         overflow: 'hidden',
-        background: 'var(--bg-main, #0f172a)'
+        background: 'var(--bg-secondary)',
+        color: 'var(--text-main)'
       }}>
         {/* Header */}
         <div style={{ 
-          padding: '20px 24px', 
+          padding: '24px 28px', 
           borderBottom: '1px solid var(--border-color)', 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center',
-          background: 'rgba(255, 255, 255, 0.02)'
+          background: 'var(--bg-primary)'
         }}>
           <div>
-            <h3 style={{ fontSize: 18, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <RefreshCw size={20} className={loading ? 'spin' : ''} style={{ color: '#818cf8' }} />
+            <h3 style={{ fontSize: 18, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-main)' }}>
+              <RefreshCw size={20} className={loading ? 'spin' : ''} style={{ color: 'var(--border-active, #6366f1)' }} />
               流水线同步差异比对与二次确认
             </h3>
-            <div style={{ display: 'flex', gap: 16, color: 'var(--text-secondary)', fontSize: 13, marginTop: 6, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 16, color: 'var(--text-secondary)', fontSize: 13, marginTop: 8, alignItems: 'center' }}>
               <span>流水线：<strong style={{ color: 'var(--text-main)' }}>{pipeline?.name}</strong></span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, background: 'rgba(99, 102, 241, 0.12)', color: '#a5b4fc', padding: '2px 8px', borderRadius: 4 }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, background: 'rgba(99, 102, 241, 0.12)', color: '#6366f1', padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>
                 ID: {pipeline?.pipeline_id}
               </span>
               {pipeline?.group_name && (
-                <span style={{ fontSize: 12, background: 'rgba(255, 255, 255, 0.06)', padding: '2px 8px', borderRadius: 4 }}>
+                <span style={{ fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: 4 }}>
                   分组: {pipeline.group_name}
                 </span>
               )}
@@ -263,11 +263,11 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
           </div>
           <button 
             style={{ 
-              background: 'rgba(255, 255, 255, 0.05)', 
+              background: 'var(--bg-card)', 
               border: '1px solid var(--border-color)', 
               color: 'var(--text-secondary)', 
               cursor: 'pointer', 
-              padding: 6,
+              padding: 8,
               borderRadius: 6,
               display: 'flex',
               alignItems: 'center',
@@ -285,7 +285,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
         <div style={{ flex: 1, padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
           {loading ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 360, gap: 14, color: 'var(--text-secondary)' }}>
-              <RefreshCw size={36} className="spin" style={{ color: '#818cf8' }} />
+              <RefreshCw size={36} className="spin" style={{ color: 'var(--border-active, #6366f1)' }} />
               <div style={{ fontSize: 14, fontWeight: 500 }}>正在抓取第三方控制台与本地数据库，比对【执行方案 + MR触发 + 执行计划】全量差异...</div>
             </div>
           ) : diffResult ? (
@@ -298,7 +298,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                     padding: '12px 14px', 
                     borderRadius: 10, 
                     cursor: 'pointer',
-                    background: activeTab === 'update' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255,255,255,0.03)',
+                    background: activeTab === 'update' ? 'rgba(245, 158, 11, 0.12)' : 'var(--bg-card)',
                     border: activeTab === 'update' ? '1px solid rgba(245, 158, 11, 0.5)' : '1px solid var(--border-color)',
                     display: 'flex',
                     alignItems: 'center',
@@ -306,10 +306,10 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                     transition: 'all 0.2s'
                   }}
                 >
-                  <RefreshCw size={20} style={{ color: '#fbbf24' }} />
+                  <RefreshCw size={20} style={{ color: '#d97706' }} />
                   <div>
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>属性与配置更替</div>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: '#fbbf24', marginTop: 2 }}>{summary?.update_count || 0} <span style={{ fontSize: 11, fontWeight: 400 }}>项</span></div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: '#d97706', marginTop: 2 }}>{summary?.update_count || 0} <span style={{ fontSize: 11, fontWeight: 400 }}>项</span></div>
                   </div>
                 </div>
 
@@ -319,7 +319,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                     padding: '12px 14px', 
                     borderRadius: 10, 
                     cursor: 'pointer',
-                    background: activeTab === 'add' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.03)',
+                    background: activeTab === 'add' ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-card)',
                     border: activeTab === 'add' ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid var(--border-color)',
                     display: 'flex',
                     alignItems: 'center',
@@ -327,10 +327,10 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                     transition: 'all 0.2s'
                   }}
                 >
-                  <PlusCircle size={20} style={{ color: '#34d399' }} />
+                  <PlusCircle size={20} style={{ color: '#059669' }} />
                   <div>
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>三方拟新增方案</div>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: '#34d399', marginTop: 2 }}>+{summary?.add_count || 0} <span style={{ fontSize: 11, fontWeight: 400 }}>个</span></div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: '#059669', marginTop: 2 }}>+{summary?.add_count || 0} <span style={{ fontSize: 11, fontWeight: 400 }}>个</span></div>
                   </div>
                 </div>
 
@@ -340,7 +340,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                     padding: '12px 14px', 
                     borderRadius: 10, 
                     cursor: 'pointer',
-                    background: activeTab === 'delete' ? 'rgba(244, 63, 94, 0.15)' : 'rgba(255,255,255,0.03)',
+                    background: activeTab === 'delete' ? 'rgba(244, 63, 94, 0.12)' : 'var(--bg-card)',
                     border: activeTab === 'delete' ? '1px solid rgba(244, 63, 94, 0.5)' : '1px solid var(--border-color)',
                     display: 'flex',
                     alignItems: 'center',
@@ -348,10 +348,10 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                     transition: 'all 0.2s'
                   }}
                 >
-                  <AlertTriangle size={20} style={{ color: '#fb7185' }} />
+                  <AlertTriangle size={20} style={{ color: '#e11d48' }} />
                   <div>
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>本地拟移除方案</div>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: '#fb7185', marginTop: 2 }}>-{summary?.delete_count || 0} <span style={{ fontSize: 11, fontWeight: 400 }}>个</span></div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: '#e11d48', marginTop: 2 }}>-{summary?.delete_count || 0} <span style={{ fontSize: 11, fontWeight: 400 }}>个</span></div>
                   </div>
                 </div>
 
@@ -361,7 +361,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                     padding: '12px 14px', 
                     borderRadius: 10, 
                     cursor: 'pointer',
-                    background: activeTab === 'unchanged' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(255,255,255,0.03)',
+                    background: activeTab === 'unchanged' ? 'rgba(148, 163, 184, 0.15)' : 'var(--bg-card)',
                     border: activeTab === 'unchanged' ? '1px solid rgba(148, 163, 184, 0.5)' : '1px solid var(--border-color)',
                     display: 'flex',
                     alignItems: 'center',
@@ -369,10 +369,10 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                     transition: 'all 0.2s'
                   }}
                 >
-                  <CheckCircle2 size={20} style={{ color: '#94a3b8' }} />
+                  <CheckCircle2 size={20} style={{ color: '#64748b' }} />
                   <div>
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>保持一致无变化</div>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: '#94a3b8', marginTop: 2 }}>{summary?.unchanged_count || 0} <span style={{ fontSize: 11, fontWeight: 400 }}>个</span></div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: '#64748b', marginTop: 2 }}>{summary?.unchanged_count || 0} <span style={{ fontSize: 11, fontWeight: 400 }}>个</span></div>
                   </div>
                 </div>
               </div>
@@ -383,11 +383,11 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                 {activeTab === 'update' && (
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        属性与配置更替列表 <span style={{ color: '#fbbf24', fontSize: 12 }}>({updateList.length} 个方案变动)</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-main)' }}>
+                        属性与配置更替列表 <span style={{ color: '#d97706', fontSize: 12 }}>({updateList.length} 个方案变动)</span>
                       </span>
                       <button 
-                        style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}
+                        style={{ background: 'none', border: 'none', color: '#6366f1', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
                         onClick={() => {
                           if (selectedUpdateIndex.size === updateList.length) {
                             setSelectedUpdateIndex(new Set())
@@ -407,8 +407,8 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                             style={{ 
                               padding: 16, 
                               borderRadius: 10, 
-                              background: 'rgba(255, 255, 255, 0.02)', 
-                              border: '1px solid rgba(245, 158, 11, 0.3)',
+                              background: 'var(--bg-card)', 
+                              border: '1px solid rgba(245, 158, 11, 0.4)',
                               display: 'flex',
                               flexDirection: 'column',
                               gap: 12
@@ -421,10 +421,10 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                                   type="checkbox" 
                                   checked={selectedUpdateIndex.has(idx)} 
                                   onChange={() => toggleUpdate(idx)} 
-                                  style={{ width: 16, height: 16, accentColor: '#818cf8', cursor: 'pointer' }}
+                                  style={{ width: 16, height: 16, accentColor: '#6366f1', cursor: 'pointer' }}
                                 />
                                 <span style={{ color: 'var(--text-main)', fontSize: 15 }}>{item.repository_name}</span>
-                                <span style={{ fontSize: 12, color: '#a5b4fc', fontFamily: 'var(--font-mono)', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 8px', borderRadius: 4 }}>
+                                <span style={{ fontSize: 12, color: '#6366f1', fontFamily: 'var(--font-mono)', background: 'rgba(99, 102, 241, 0.12)', padding: '2px 8px', borderRadius: 4, fontWeight: 500 }}>
                                   分支: {item.branchs || '未设置'}
                                 </span>
                               </label>
@@ -435,18 +435,18 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                             </div>
 
                             {/* Detailed Tabular Diff Matrix */}
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, background: 'rgba(0, 0, 0, 0.25)', borderRadius: 8, overflow: 'hidden' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, background: 'var(--bg-primary)', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border-color)' }}>
                               <thead>
-                                <tr style={{ background: 'rgba(255, 255, 255, 0.04)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
-                                  <th style={{ padding: '8px 12px', width: 120 }}>变更模块</th>
-                                  <th style={{ padding: '8px 12px', width: 120 }}>对比属性/字段</th>
-                                  <th style={{ padding: '8px 12px', color: '#fb7185' }}>
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                      <Database size={13} /> 本地数据库 (Current DB)
+                                <tr style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
+                                  <th style={{ padding: '10px 12px', width: 120 }}>变更模块</th>
+                                  <th style={{ padding: '10px 12px', width: 120 }}>对比属性/字段</th>
+                                  <th style={{ padding: '10px 12px', color: '#e11d48' }}>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                                      <Database size={13} /> 本地数据库 (Local DB)
                                     </span>
                                   </th>
-                                  <th style={{ padding: '8px 12px', color: '#34d399' }}>
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                  <th style={{ padding: '10px 12px', color: '#059669' }}>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
                                       <Cloud size={13} /> 第三方控制台 (Remote System)
                                     </span>
                                   </th>
@@ -454,16 +454,16 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                               </thead>
                               <tbody>
                                 {(item.changes || []).map((change, cIdx) => (
-                                  <tr key={cIdx} style={{ borderBottom: cIdx < item.changes.length - 1 ? '1px solid rgba(255, 255, 255, 0.04)' : 'none' }}>
+                                  <tr key={cIdx} style={{ borderBottom: cIdx < item.changes.length - 1 ? '1px solid var(--border-color)' : 'none' }}>
                                     <td style={{ padding: '10px 12px' }}>{getCategoryBadge(change.category)}</td>
                                     <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-main)' }}>{change.field_name}</td>
                                     <td style={{ padding: '10px 12px' }}>
-                                      <span style={{ color: '#fb7185', background: 'rgba(244, 63, 94, 0.12)', border: '1px solid rgba(244, 63, 94, 0.25)', padding: '2px 8px', borderRadius: 4, display: 'inline-block' }}>
+                                      <span style={{ color: '#e11d48', background: 'rgba(225, 29, 72, 0.08)', border: '1px solid rgba(225, 29, 72, 0.25)', padding: '3px 8px', borderRadius: 4, display: 'inline-block', fontWeight: 500 }}>
                                         {change.old_value || '无'}
                                       </span>
                                     </td>
                                     <td style={{ padding: '10px 12px' }}>
-                                      <span style={{ color: '#34d399', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '2px 8px', borderRadius: 4, display: 'inline-block' }}>
+                                      <span style={{ color: '#059669', background: 'rgba(5, 150, 105, 0.08)', border: '1px solid rgba(5, 150, 105, 0.25)', padding: '3px 8px', borderRadius: 4, display: 'inline-block', fontWeight: 500 }}>
                                         {change.new_value || '无'}
                                       </span>
                                     </td>
@@ -475,7 +475,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                         ))}
                       </div>
                     ) : (
-                      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, background: 'rgba(255, 255, 255, 0.01)', borderRadius: 10, border: '1px dashed var(--border-color)' }}>
+                      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, background: 'var(--bg-card)', borderRadius: 10, border: '1px dashed var(--border-color)' }}>
                         暂无属性或配置发生更替的执行方案
                       </div>
                     )}
@@ -486,11 +486,11 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                 {activeTab === 'add' && (
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        三方控制台拟新增执行方案 <span style={{ color: '#34d399', fontSize: 12 }}>({addList.length} 个新方案)</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-main)' }}>
+                        三方控制台拟新增执行方案 <span style={{ color: '#059669', fontSize: 12 }}>({addList.length} 个新方案)</span>
                       </span>
                       <button 
-                        style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}
+                        style={{ background: 'none', border: 'none', color: '#6366f1', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
                         onClick={() => {
                           if (selectedAddIndex.size === addList.length) {
                             setSelectedAddIndex(new Set())
@@ -503,10 +503,10 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                       </button>
                     </div>
                     {addList.length > 0 ? (
-                      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid rgba(16, 185, 129, 0.3)', background: 'rgba(255, 255, 255, 0.01)' }}>
+                      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid rgba(16, 185, 129, 0.4)', background: 'var(--bg-card)' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
                           <thead>
-                            <tr style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#34d399', borderBottom: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                            <tr style={{ background: 'rgba(16, 185, 129, 0.08)', color: '#059669', borderBottom: '1px solid rgba(16, 185, 129, 0.2)' }}>
                               <th style={{ padding: '10px 14px', width: 40 }}>勾选</th>
                               <th style={{ padding: '10px 14px' }}>代码仓 / 方案名称</th>
                               <th style={{ padding: '10px 14px', width: 120 }}>生效分支</th>
@@ -517,30 +517,30 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                           </thead>
                           <tbody>
                             {addList.map((item, idx) => (
-                              <tr key={item.remote_scheme_id || idx} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
+                              <tr key={item.remote_scheme_id || idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
                                 <td style={{ padding: '12px 14px', textAlign: 'center' }}>
                                   <input 
                                     type="checkbox" 
                                     checked={selectedAddIndex.has(idx)} 
                                     onChange={() => toggleAdd(idx)} 
-                                    style={{ width: 16, height: 16, accentColor: '#34d399', cursor: 'pointer' }}
+                                    style={{ width: 16, height: 16, accentColor: '#059669', cursor: 'pointer' }}
                                   />
                                 </td>
                                 <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text-main)' }}>
                                   <div>{item.repository_name}</div>
                                   <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>{item.name}</div>
                                 </td>
-                                <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', color: '#a5b4fc' }}>
+                                <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', color: '#6366f1', fontWeight: 500 }}>
                                   {item.branchs || '未指定'}
                                 </td>
                                 <td style={{ padding: '12px 14px' }}>
                                   {item.mr_trigger 
-                                    ? <span style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', fontSize: 11, padding: '2px 6px', borderRadius: 4 }}>含 MR 触发</span>
+                                    ? <span style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#a855f7', fontSize: 11, padding: '2px 6px', borderRadius: 4, fontWeight: 500 }}>含 MR 触发</span>
                                     : <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>未开启</span>}
                                 </td>
                                 <td style={{ padding: '12px 14px' }}>
                                   {item.daily_build 
-                                    ? <span style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', fontSize: 11, padding: '2px 6px', borderRadius: 4 }}>含 每日构建</span>
+                                    ? <span style={{ background: 'rgba(14, 165, 233, 0.12)', color: '#0284c7', fontSize: 11, padding: '2px 6px', borderRadius: 4, fontWeight: 500 }}>含 每日构建</span>
                                     : <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>未开启</span>}
                                 </td>
                                 <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
@@ -552,7 +552,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                         </table>
                       </div>
                     ) : (
-                      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, background: 'rgba(255, 255, 255, 0.01)', borderRadius: 10, border: '1px dashed var(--border-color)' }}>
+                      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, background: 'var(--bg-card)', borderRadius: 10, border: '1px dashed var(--border-color)' }}>
                         未发现需要新增的三方执行方案
                       </div>
                     )}
@@ -563,11 +563,11 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                 {activeTab === 'delete' && (
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        本地拟废弃/移除的执行方案 <span style={{ color: '#fb7185', fontSize: 12 }}>({deleteList.length} 个废弃方案)</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-main)' }}>
+                        本地拟废弃/移除的执行方案 <span style={{ color: '#e11d48', fontSize: 12 }}>({deleteList.length} 个废弃方案)</span>
                       </span>
                       <button 
-                        style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}
+                        style={{ background: 'none', border: 'none', color: '#6366f1', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
                         onClick={() => {
                           if (selectedDeleteIndex.size === deleteList.length) {
                             setSelectedDeleteIndex(new Set())
@@ -580,10 +580,10 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                       </button>
                     </div>
                     {deleteList.length > 0 ? (
-                      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid rgba(244, 63, 94, 0.3)', background: 'rgba(244, 63, 94, 0.03)' }}>
+                      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid rgba(244, 63, 94, 0.4)', background: 'var(--bg-card)' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
                           <thead>
-                            <tr style={{ background: 'rgba(244, 63, 94, 0.1)', color: '#fb7185', borderBottom: '1px solid rgba(244, 63, 94, 0.2)' }}>
+                            <tr style={{ background: 'rgba(244, 63, 94, 0.08)', color: '#e11d48', borderBottom: '1px solid rgba(244, 63, 94, 0.2)' }}>
                               <th style={{ padding: '10px 14px', width: 40 }}>勾选</th>
                               <th style={{ padding: '10px 14px' }}>代码仓 / 方案名称</th>
                               <th style={{ padding: '10px 14px', width: 120 }}>生效分支</th>
@@ -593,16 +593,16 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                           </thead>
                           <tbody>
                             {deleteList.map((item, idx) => (
-                              <tr key={item.local_id || idx} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
+                              <tr key={item.local_id || idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
                                 <td style={{ padding: '12px 14px', textAlign: 'center' }}>
                                   <input 
                                     type="checkbox" 
                                     checked={selectedDeleteIndex.has(idx)} 
                                     onChange={() => toggleDelete(idx)} 
-                                    style={{ width: 16, height: 16, accentColor: '#fb7185', cursor: 'pointer' }}
+                                    style={{ width: 16, height: 16, accentColor: '#e11d48', cursor: 'pointer' }}
                                   />
                                 </td>
-                                <td style={{ padding: '12px 14px', fontWeight: 600, color: '#fb7185' }}>
+                                <td style={{ padding: '12px 14px', fontWeight: 600, color: '#e11d48' }}>
                                   <div>{item.repository_name}</div>
                                   <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>{item.name}</div>
                                 </td>
@@ -612,7 +612,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                                 <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
                                   {item.local_id}
                                 </td>
-                                <td style={{ padding: '12px 14px', fontSize: 12, color: '#fb7185' }}>
+                                <td style={{ padding: '12px 14px', fontSize: 12, color: '#e11d48', fontWeight: 500 }}>
                                   ⚠️ 三方控制台已删除该方案，应用后本地数据库记录将被物理下架
                                 </td>
                               </tr>
@@ -621,7 +621,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                         </table>
                       </div>
                     ) : (
-                      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, background: 'rgba(255, 255, 255, 0.01)', borderRadius: 10, border: '1px dashed var(--border-color)' }}>
+                      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, background: 'var(--bg-card)', borderRadius: 10, border: '1px dashed var(--border-color)' }}>
                         未发现需要废弃或移除的本地方案记录
                       </div>
                     )}
@@ -631,12 +631,12 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                 {/* 4. UNCHANGED TAB */}
                 {activeTab === 'unchanged' && (
                   <div>
-                    <div style={{ marginBottom: 12, fontSize: 14, fontWeight: 600 }}>两端保持完全一致的方案 ({unchangedList.length} 个一致项)</div>
+                    <div style={{ marginBottom: 12, fontSize: 14, fontWeight: 600, color: 'var(--text-main)' }}>两端保持完全一致的方案 ({unchangedList.length} 个一致项)</div>
                     {unchangedList.length > 0 ? (
-                      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border-color)', background: 'rgba(255, 255, 255, 0.01)' }}>
+                      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--bg-card)' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
                           <thead>
-                            <tr style={{ background: 'rgba(255, 255, 255, 0.03)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)' }}>
+                            <tr style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)' }}>
                               <th style={{ padding: '10px 14px' }}>代码仓名称</th>
                               <th style={{ padding: '10px 14px', width: 130 }}>生效分支</th>
                               <th style={{ padding: '10px 14px', width: 120 }}>本地 DB ID</th>
@@ -646,7 +646,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                           </thead>
                           <tbody>
                             {unchangedList.map((item, idx) => (
-                              <tr key={item.local_id || idx} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)' }}>
+                              <tr key={item.local_id || idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
                                 <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text-secondary)' }}>
                                   {item.repository_name}
                                 </td>
@@ -659,7 +659,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                                 <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)' }}>
                                   {item.remote_scheme_id}
                                 </td>
-                                <td style={{ padding: '12px 14px', textAlign: 'right', color: '#34d399', fontSize: 12, fontWeight: 500 }}>
+                                <td style={{ padding: '12px 14px', textAlign: 'right', color: '#059669', fontSize: 12, fontWeight: 500 }}>
                                   ✓ 两端配置一致
                                 </td>
                               </tr>
@@ -668,7 +668,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                         </table>
                       </div>
                     ) : (
-                      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, background: 'rgba(255, 255, 255, 0.01)', borderRadius: 10, border: '1px dashed var(--border-color)' }}>
+                      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, background: 'var(--bg-card)', borderRadius: 10, border: '1px dashed var(--border-color)' }}>
                         无完全一致的方案
                       </div>
                     )}
@@ -688,10 +688,10 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center',
-          background: 'rgba(255, 255, 255, 0.02)'
+          background: 'var(--bg-primary)'
         }}>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-            拟应用变更：已勾选 <strong style={{ color: '#818cf8', fontSize: 15 }}>{totalSelectedChanges}</strong> 项同步操作
+            拟应用变更：已勾选 <strong style={{ color: 'var(--border-active, #6366f1)', fontSize: 15 }}>{totalSelectedChanges}</strong> 项同步操作
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
             <button className="btn btn-secondary" onClick={onClose} disabled={submitting}>
