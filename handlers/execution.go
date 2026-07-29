@@ -328,19 +328,31 @@ func GetDashboardStats(c *gin.Context) {
 	var totalGateChecks int64
 	var gatePassedCount int64
 	var codeCheckReports []models.ExecutionReport
-	database.DB.Where("task_type = ? AND code_check_details IS NOT NULL", "code_check").Find(&codeCheckReports)
+	database.DB.Where("task_type = ? OR (code_checker_task_id IS NOT NULL AND code_checker_task_id != '') OR (code_check_details IS NOT NULL AND code_check_details != '' AND code_check_details != 'null')", "code_check").Find(&codeCheckReports)
+
 	for _, r := range codeCheckReports {
-		if len(r.CodeCheckDetails) > 0 {
+		totalGateChecks++
+		isPassed := false
+		if len(r.CodeCheckDetails) > 0 && string(r.CodeCheckDetails) != "null" {
 			var details map[string]interface{}
 			if err := json.Unmarshal(r.CodeCheckDetails, &details); err == nil {
 				if gs, ok := details["gate_status"].(string); ok && gs != "" {
-					totalGateChecks++
 					gsLower := strings.ToLower(gs)
 					if gsLower == "passed" || gsLower == "success" || gsLower == "ok" || gsLower == "pass" || gsLower == "true" {
-						gatePassedCount++
+						isPassed = true
 					}
+				} else if r.Status == "success" {
+					isPassed = true
 				}
+			} else if r.Status == "success" {
+				isPassed = true
 			}
+		} else if r.Status == "success" {
+			isPassed = true
+		}
+
+		if isPassed {
+			gatePassedCount++
 		}
 	}
 
