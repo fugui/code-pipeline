@@ -631,16 +631,17 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
 
   return (
     <div style={{ overflowX: 'auto' }}>
-    <table style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse', fontSize: 12 }}>
+    <table style={{ width: '100%', minWidth: 860, borderCollapse: 'collapse', fontSize: 12 }}>
       <thead>
         <tr style={{ background: 'rgba(99,102,241,0.06)', borderBottom: '1px solid rgba(99,102,241,0.12)' }}>
           <th style={subThStyle({ width: 40 })}></th>
-          <th style={subThStyle({ width: 120 })}>分支</th>
-          <th style={subThStyle({ width: 160 })}>所属流水线</th>
-          <th style={subThStyle({ width: 100 })}>语言</th>
-          <th style={subThStyle({ width: 160 })}>触发配置</th>
-          <th style={subThStyle({ width: 140 })}>检查任务</th>
-          <th style={subThStyle({ width: 140 })}>执行方案</th>
+          <th style={subThStyle({ width: 110 })}>分支</th>
+          <th style={subThStyle({ width: 140 })}>所属流水线</th>
+          <th style={subThStyle({ width: 80 })}>语言</th>
+          <th style={subThStyle({ width: 130 })}>MR触发</th>
+          <th style={subThStyle({ width: 130 })}>每日构建</th>
+          <th style={subThStyle({ width: 130 })}>检查任务</th>
+          <th style={subThStyle({ width: 130 })}>执行方案</th>
           <th style={subThStyle({ width: 100, textAlign: 'right' })}>操作</th>
         </tr>
       </thead>
@@ -666,7 +667,7 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
                   fontFamily: 'var(--font-mono)',
                   fontWeight: 600,
                   color: 'var(--text-main)',
-                  maxWidth: 110,
+                  maxWidth: 100,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
@@ -718,25 +719,47 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
             </td>
 
             <td style={{ padding: '10px 8px' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {scheme.mr_binding_id && (
-                  <TriggerTag 
-                    active={!!scheme.mr_trigger} 
-                    label="MR触发" 
-                    title={scheme.mr_binding_name ? `绑定名称: ${scheme.mr_binding_name}\nID: ${scheme.mr_binding_id}` : `ID: ${scheme.mr_binding_id}`} 
-                  />
-                )}
-                {scheme.execution_plan_id && (
-                  <TriggerTag 
-                    active={!!scheme.daily_build} 
-                    label={`每日 ${scheme.daily_build_time || '00:30'}`} 
-                    title={scheme.execution_plan_name ? `计划名称: ${scheme.execution_plan_name}\nID: ${scheme.execution_plan_id}` : `ID: ${scheme.execution_plan_id}`} 
-                  />
-                )}
-                {!scheme.mr_binding_id && !scheme.execution_plan_id && (
-                  <span style={{ color: 'var(--text-muted)' }}>-</span>
-                )}
-              </div>
+              {scheme.mr_binding_id ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 120 }}>
+                  <div>
+                    <TriggerTag 
+                      active={!!scheme.mr_trigger} 
+                      label={scheme.mr_trigger ? "MR触发" : "已关闭"} 
+                      title={scheme.mr_binding_name ? `绑定名称: ${scheme.mr_binding_name}` : undefined} 
+                    />
+                  </div>
+                  <span 
+                    style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} 
+                    title={scheme.mr_binding_id}
+                  >
+                    ID: {scheme.mr_binding_id}
+                  </span>
+                </div>
+              ) : (
+                <span style={{ color: 'var(--text-muted)' }}>-</span>
+              )}
+            </td>
+
+            <td style={{ padding: '10px 8px' }}>
+              {scheme.execution_plan_id ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 120 }}>
+                  <div>
+                    <TriggerTag 
+                      active={!!scheme.daily_build} 
+                      label={scheme.daily_build ? `每日 ${scheme.daily_build_time || '00:30'}` : "已关闭"} 
+                      title={scheme.execution_plan_name ? `计划名称: ${scheme.execution_plan_name}` : undefined} 
+                    />
+                  </div>
+                  <span 
+                    style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} 
+                    title={scheme.execution_plan_id}
+                  >
+                    ID: {scheme.execution_plan_id}
+                  </span>
+                </div>
+              ) : (
+                <span style={{ color: 'var(--text-muted)' }}>-</span>
+              )}
             </td>
 
             <td style={{ padding: '10px 8px' }}>
