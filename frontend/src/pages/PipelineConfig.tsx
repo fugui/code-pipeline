@@ -166,6 +166,14 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
     return []
   }
 
+  // Get webURL for a pipeline with fallback to schemes
+  const getPipelineWebURL = (p: Pipeline): string => {
+    if (p.web_url) return p.web_url
+    const pSchemes = getSchemesForPipeline(p)
+    const schemeWithUrl = pSchemes.find(s => s.pipeline?.web_url)
+    return schemeWithUrl?.pipeline?.web_url || ''
+  }
+
   // Distinct groups & types for filter dropdowns
   const availableTypes = useMemo(() => {
     const types = new Set<string>()
@@ -431,6 +439,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 paginatedPipelines.map((p) => {
                   const badgeStyle = getTypeBadgeStyle(p.type)
                   const pSchemes = getSchemesForPipeline(p)
+                  const webURL = getPipelineWebURL(p)
 
                   return (
                     <tr 
@@ -452,9 +461,9 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                       {/* Name */}
                       <td style={{ padding: '14px 16px', fontWeight: 600 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {p.web_url ? (
+                          {webURL ? (
                             <a 
-                              href={p.web_url} 
+                              href={webURL} 
                               target="_blank" 
                               rel="noopener noreferrer" 
                               style={{ color: '#e0e7ff', textDecoration: 'none', transition: 'color 0.2s', display: 'inline-flex', alignItems: 'center', gap: 6 }}
