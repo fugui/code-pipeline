@@ -465,20 +465,34 @@ func CalculateExecutionSchemeDiff(c *gin.Context) {
 			}
 		}
 
-		if scheme.RepositoryID != 0 {
-			remoteSchemes = append(remoteSchemes, scheme)
-		}
+		// 保留所有远程方案（即便 RepositoryID 暂未关联到本地镜像仓，也不能直接丢弃，以便后续多维度匹配）
+		remoteSchemes = append(remoteSchemes, scheme)
 	}
 
 	// 5. 比对计算 (Diff Computation)
-	localBySchemeID := make(map[string]models.ExecutionScheme)
-	localByRepoBranch := make(map[string]models.ExecutionScheme)
-	for _, l := range localSchemes {
+	localBySchemeID := make(map[string]*models.ExecutionScheme)
+	localByRepoBranch := make(map[string]*models.ExecutionScheme)
+	localByRepoURLBranch := make(map[string]*models.ExecutionScheme)
+	localByName := make(map[string]*models.ExecutionScheme)
+
+	for i := range localSchemes {
+		l := &localSchemes[i]
 		if l.ExecutionSchemeID != "" {
 			localBySchemeID[l.ExecutionSchemeID] = l
 		}
-		key := fmt.Sprintf("%d_%s", l.RepositoryID, l.Branch)
-		localByRepoBranch[key] = l
+		if l.RepositoryID != 0 && l.Branch != "" {
+			key := fmt.Sprintf("%d_%s", l.RepositoryID, l.Branch)
+			localByRepoBranch[key] = l
+		}
+		if l.Repository != nil && l.Repository.URL != "" && l.Branch != "" {
+			normURL := utils.NormalizeGitURL(l.Repository.URL)
+			if normURL != "" {
+				localByRepoURLBranch[fmt.Sprintf("%s_%s", normURL, l.Branch)] = l
+			}
+		}
+		if l.Name != "" {
+			localByName[l.Name] = l
+		}
 	}
 
 	matchedLocalIDs := make(map[uint]bool)
@@ -495,18 +509,65 @@ func CalculateExecutionSchemeDiff(c *gin.Context) {
 	for _, r := range remoteSchemes {
 		var matchedLocal *models.ExecutionScheme
 
-		if l, found := localBySchemeID[r.ExecutionSchemeID]; found {
-			matchedLocal = &l
-		} else {
-			key := fmt.Sprintf("%d_%s", r.RepositoryID, r.Branch)
-			if l, found := localByRepoBranch[key]; found {
-				matchedLocal = &l
+		// 多级匹配策略：
+		// 1. 优先按 Remote ExecutionSchemeID 匹配
+		if r.ExecutionSchemeID != "" {
+			if l, found := localBySchemeID[r.ExecutionSchemeID]; found {
+				matchedLocal = l
 			}
 		}
 
-		repoName := fmt.Sprintf("仓 ID: %d", r.RepositoryID)
+		// 2. 次优先按 (RepositoryID, Branch) 匹配
+		if matchedLocal == nil && r.RepositoryID != 0 && r.Branch != "" {
+			key := fmt.Sprintf("%d_%s", r.RepositoryID, r.Branch)
+			if l, found := localByRepoBranch[key]; found {
+				matchedLocal = l
+			}
+		}
+
+		// 3. 按 (Normalized Git URL, Branch) 匹配
+		if matchedLocal == nil && r.Branch != "" {
+			codeURL := ""
+			if r.MRBindingID != "" {
+				for _, mb := range mrBindings {
+					if mb.ID == r.MRBindingID {
+						codeURL = mb.CodeURL
+						break
+					}
+				}
+			}
+			if codeURL != "" {
+				normURL := utils.NormalizeGitURL(codeURL)
+				if normURL != "" {
+					key := fmt.Sprintf("%s_%s", normURL, r.Branch)
+					if l, found := localByRepoURLBranch[key]; found {
+						matchedLocal = l
+					}
+				}
+			}
+		}
+
+		// 4. 按方案名称匹配
+		if matchedLocal == nil && r.Name != "" {
+			if l, found := localByName[r.Name]; found {
+				matchedLocal = l
+			}
+		}
+
+		// 若匹配到本地方案，且远程未查到 Repository 关联，则继承本地方案的代码仓配置信息
+		if matchedLocal != nil {
+			matchedLocalIDs[matchedLocal.ID] = true
+			if r.RepositoryID == 0 && matchedLocal.RepositoryID != 0 {
+				r.RepositoryID = matchedLocal.RepositoryID
+				r.Repository = matchedLocal.Repository
+			}
+		}
+
+		repoName := "未知代码仓"
 		if r.Repository != nil && r.Repository.Name != "" {
 			repoName = r.Repository.Name
+		} else if r.RepositoryID != 0 {
+			repoName = fmt.Sprintf("仓 ID: %d", r.RepositoryID)
 		}
 
 		if matchedLocal == nil {
