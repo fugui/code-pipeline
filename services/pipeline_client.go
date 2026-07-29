@@ -1041,6 +1041,11 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[
 		var pipelineBusinessID string
 		if err := database.DB.First(&pipeline, scheme.LocalPipelineID).Error; err == nil {
 			pipelineBusinessID = pipeline.PipelineID
+		} else if scheme.LocalPipelineID != 0 {
+			// 若主线程异步软删除了数据库记录，使用 Unscoped 恢复读取 PipelineID
+			if err := database.DB.Unscoped().First(&pipeline, scheme.LocalPipelineID).Error; err == nil {
+				pipelineBusinessID = pipeline.PipelineID
+			}
 		}
 
 		if models.AppConfig.PipelineSystem.EnableAPIGAuth {
