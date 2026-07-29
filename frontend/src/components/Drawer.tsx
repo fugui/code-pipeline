@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
 export interface DrawerProps {
@@ -49,9 +50,9 @@ export const Drawer: React.FC<DrawerProps> = ({
     }, 300)
   }
 
-  return (
+  return createPortal(
     <>
-      {/* 1. Backdrop Overlay (Sibling fixed full screen with backdrop-filter blur) */}
+      {/* 1. Backdrop Overlay — Portal 到 body 以突破宿主 header 的层叠上下文 */}
       <div
         onClick={handleClose}
         style={{
@@ -71,7 +72,7 @@ export const Drawer: React.FC<DrawerProps> = ({
         title="点击背景区域自动关闭"
       />
 
-      {/* 2. Slide-in Drawer Container (Full height top:0 to bottom:0, overlaying on top of host header completely) */}
+      {/* 2. Slide-in Drawer Container */}
       <div
         style={{
           position: 'fixed',
@@ -159,6 +160,7 @@ export const Drawer: React.FC<DrawerProps> = ({
           </div>
         )}
       </div>
-    </>
+    </>,
+    document.body
   )
 }
