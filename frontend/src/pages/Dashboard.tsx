@@ -62,6 +62,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return `${mins} 分 ${secs} 秒`
   }
 
+  const getRepoWebUrl = (url?: string) => {
+    if (!url) return null
+    let cleanUrl = url.trim()
+    if (cleanUrl.endsWith('.git')) {
+      cleanUrl = cleanUrl.slice(0, -4)
+    }
+    if (cleanUrl.startsWith('git@')) {
+      cleanUrl = cleanUrl.replace(/^git@([^:]+):/, 'http://$1/')
+    }
+    return cleanUrl
+  }
+
   const parseCodeCheckDetails = (details: any): CodeCheckDetails | null => {
     if (!details) return null
     if (typeof details === 'object') return details as CodeCheckDetails
@@ -316,7 +328,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <thead>
             <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
               <th style={{ padding: '12px 8px' }}>任务类型</th>
-              <th style={{ padding: '12px 8px' }}>项目名称</th>
+              <th style={{ padding: '12px 8px' }}>代码仓</th>
               <th style={{ padding: '12px 8px' }}>分支</th>
               <th style={{ padding: '12px 8px' }}>触发源</th>
               <th style={{ padding: '12px 8px' }}>状态 / 门禁</th>
@@ -332,6 +344,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 const ccDetails = parseCodeCheckDetails(run.code_check_details)
                 const reportURL = ccDetails?.checker_report_url || run.external_log_url
                 const isGatePassed = ccDetails?.gate_status && ['passed', 'success', 'ok', 'pass', 'true'].includes(ccDetails.gate_status.toLowerCase())
+                const repoWebUrl = getRepoWebUrl(run.repo_url)
 
                 return (
                   <tr key={run.id || run.task_id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)' }}>
@@ -349,7 +362,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>#{run.task_id || run.id}</span>
                       </div>
                     </td>
-                    <td style={{ padding: '12px 8px', fontWeight: 500 }}>{run.repo_name}</td>
+                    <td style={{ padding: '12px 8px', fontWeight: 500 }}>
+                      {repoWebUrl ? (
+                        <a
+                          href={repoWebUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            color: '#60a5fa',
+                            textDecoration: 'none',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                        >
+                          {run.repo_name}
+                          <ExternalLink size={11} style={{ opacity: 0.7 }} />
+                        </a>
+                      ) : (
+                        <span>{run.repo_name}</span>
+                      )}
+                    </td>
                     <td style={{ padding: '12px 8px' }}>
                       <span style={{ fontFamily: 'monospace', fontSize: 13, background: 'rgba(255, 255, 255, 0.05)', padding: '2px 6px', borderRadius: 4 }}>
                         {run.branch}
