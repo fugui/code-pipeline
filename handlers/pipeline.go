@@ -276,6 +276,8 @@ func CreateExecutionScheme(c *gin.Context) {
 	scheme.ExecutionSchemeID = extID
 
 	if err := database.DB.Create(&scheme).Error; err != nil {
+		log.Printf("[Pipeline] DB.Create failed for scheme %s: %v. Rolling back remote objects...", scheme.Name, err)
+		go services.SyncDeleteExecutionSchemeRemote(scheme, headers)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create execution scheme in local DB"})
 		return
 	}
