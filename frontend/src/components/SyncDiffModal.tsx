@@ -5,7 +5,8 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   RefreshCw, 
-  ArrowRight
+  Database,
+  Cloud
 } from 'lucide-react'
 import { Pipeline } from '../types'
 
@@ -99,7 +100,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
   const [selectedUpdateIndex, setSelectedUpdateIndex] = useState<Set<number>>(new Set())
   const [selectedDeleteIndex, setSelectedDeleteIndex] = useState<Set<number>>(new Set())
   const [submitting, setSubmitting] = useState<boolean>(false)
-  const [activeTab, setActiveTab] = useState<'add' | 'update' | 'delete' | 'unchanged'>('update')
+  const [activeTab, setActiveTab] = useState<'update' | 'add' | 'delete' | 'unchanged'>('update')
 
   const details = diffResult?.diff_details
 
@@ -197,11 +198,11 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
   const getCategoryBadge = (category: string) => {
     switch (category) {
       case 'mr_binding':
-        return <span style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)', fontSize: 10, padding: '1px 6px', borderRadius: 4 }}>MR 触发变动</span>
+        return <span style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 500 }}>🔀 MR 触发</span>
       case 'execution_plan':
-        return <span style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)', fontSize: 10, padding: '1px 6px', borderRadius: 4 }}>执行计划变动</span>
+        return <span style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 500 }}>📅 执行计划</span>
       default:
-        return <span style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.3)', fontSize: 10, padding: '1px 6px', borderRadius: 4 }}>方案配置变动</span>
+        return <span style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.3)', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 500 }}>⚙️ 执行方案</span>
     }
   }
 
@@ -212,27 +213,31 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
       left: 0,
       right: 0,
       bottom: 0,
-      background: 'rgba(0, 0, 0, 0.75)',
-      backdropFilter: 'blur(6px)',
+      background: 'rgba(0, 0, 0, 0.65)',
+      backdropFilter: 'blur(5px)',
       display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: 20
+      justifyContent: 'flex-end',
+      zIndex: 1000
     }}>
+      {/* Backdrop click to close */}
+      <div style={{ flex: 1 }} onClick={onClose} />
+
+      {/* Slide-in Drawer Container */}
       <div className="glass-card animate-fade-in" style={{
         width: '100%',
         maxWidth: 820,
-        maxHeight: '88vh',
+        height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        borderRadius: 14,
-        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)',
-        overflow: 'hidden'
+        borderRadius: 0,
+        boxShadow: '-12px 0 36px rgba(0, 0, 0, 0.6)',
+        borderLeft: '1px solid var(--border-color)',
+        overflow: 'hidden',
+        background: 'var(--bg-main, #0f172a)'
       }}>
         {/* Header */}
         <div style={{ 
-          padding: '18px 24px', 
+          padding: '20px 24px', 
           borderBottom: '1px solid var(--border-color)', 
           display: 'flex', 
           justifyContent: 'space-between', 
@@ -240,131 +245,149 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
           background: 'rgba(255, 255, 255, 0.02)'
         }}>
           <div>
-            <h3 style={{ fontSize: 18, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <RefreshCw size={18} className={loading ? 'spin' : ''} style={{ color: '#818cf8' }} />
+            <h3 style={{ fontSize: 18, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <RefreshCw size={20} className={loading ? 'spin' : ''} style={{ color: '#818cf8' }} />
               流水线同步差异比对与二次确认
             </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 4 }}>
-              对应流水线：<strong>{pipeline?.name}</strong> (ID: {pipeline?.pipeline_id})
-            </p>
+            <div style={{ display: 'flex', gap: 16, color: 'var(--text-secondary)', fontSize: 13, marginTop: 6, alignItems: 'center' }}>
+              <span>流水线：<strong style={{ color: 'var(--text-main)' }}>{pipeline?.name}</strong></span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, background: 'rgba(99, 102, 241, 0.12)', color: '#a5b4fc', padding: '2px 8px', borderRadius: 4 }}>
+                ID: {pipeline?.pipeline_id}
+              </span>
+              {pipeline?.group_name && (
+                <span style={{ fontSize: 12, background: 'rgba(255, 255, 255, 0.06)', padding: '2px 8px', borderRadius: 4 }}>
+                  分组: {pipeline.group_name}
+                </span>
+              )}
+            </div>
           </div>
           <button 
-            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 4 }}
+            style={{ 
+              background: 'rgba(255, 255, 255, 0.05)', 
+              border: '1px solid var(--border-color)', 
+              color: 'var(--text-secondary)', 
+              cursor: 'pointer', 
+              padding: 6,
+              borderRadius: 6,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s'
+            }}
             onClick={onClose}
+            title="关闭抽屉"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div style={{ flex: 1, padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Drawer Scrollable Body */}
+        <div style={{ flex: 1, padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
           {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 12, color: 'var(--text-secondary)' }}>
-              <RefreshCw size={32} className="spin" style={{ color: '#818cf8' }} />
-              <div>正在对比第三方控制台与本地数据库的全量差异 (Schemes + MR + Plans)...</div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 360, gap: 14, color: 'var(--text-secondary)' }}>
+              <RefreshCw size={36} className="spin" style={{ color: '#818cf8' }} />
+              <div style={{ fontSize: 14, fontWeight: 500 }}>正在抓取第三方控制台与本地数据库，比对【执行方案 + MR触发 + 执行计划】全量差异...</div>
             </div>
           ) : diffResult ? (
             <>
-              {/* Summary Badges */}
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <div 
-                  onClick={() => setActiveTab('add')}
-                  style={{ 
-                    flex: 1, 
-                    minWidth: 120,
-                    padding: '10px 14px', 
-                    borderRadius: 8, 
-                    cursor: 'pointer',
-                    background: activeTab === 'add' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.03)',
-                    border: activeTab === 'add' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid var(--border-color)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10
-                  }}
-                >
-                  <PlusCircle size={20} style={{ color: '#34d399' }} />
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>拟新增方案</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: '#34d399' }}>+{summary?.add_count || 0}</div>
-                  </div>
-                </div>
-
+              {/* Top Overview Cards / Tabs */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
                 <div 
                   onClick={() => setActiveTab('update')}
                   style={{ 
-                    flex: 1, 
-                    minWidth: 120,
-                    padding: '10px 14px', 
-                    borderRadius: 8, 
+                    padding: '12px 14px', 
+                    borderRadius: 10, 
                     cursor: 'pointer',
                     background: activeTab === 'update' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255,255,255,0.03)',
-                    border: activeTab === 'update' ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid var(--border-color)',
+                    border: activeTab === 'update' ? '1px solid rgba(245, 158, 11, 0.5)' : '1px solid var(--border-color)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 10
+                    gap: 10,
+                    transition: 'all 0.2s'
                   }}
                 >
                   <RefreshCw size={20} style={{ color: '#fbbf24' }} />
                   <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>属性与配置变动</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: '#fbbf24' }}>{summary?.update_count || 0}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>属性与配置更替</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: '#fbbf24', marginTop: 2 }}>{summary?.update_count || 0} <span style={{ fontSize: 11, fontWeight: 400 }}>项</span></div>
+                  </div>
+                </div>
+
+                <div 
+                  onClick={() => setActiveTab('add')}
+                  style={{ 
+                    padding: '12px 14px', 
+                    borderRadius: 10, 
+                    cursor: 'pointer',
+                    background: activeTab === 'add' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.03)',
+                    border: activeTab === 'add' ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid var(--border-color)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <PlusCircle size={20} style={{ color: '#34d399' }} />
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>三方拟新增方案</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: '#34d399', marginTop: 2 }}>+{summary?.add_count || 0} <span style={{ fontSize: 11, fontWeight: 400 }}>个</span></div>
                   </div>
                 </div>
 
                 <div 
                   onClick={() => setActiveTab('delete')}
                   style={{ 
-                    flex: 1, 
-                    minWidth: 120,
-                    padding: '10px 14px', 
-                    borderRadius: 8, 
+                    padding: '12px 14px', 
+                    borderRadius: 10, 
                     cursor: 'pointer',
                     background: activeTab === 'delete' ? 'rgba(244, 63, 94, 0.15)' : 'rgba(255,255,255,0.03)',
-                    border: activeTab === 'delete' ? '1px solid rgba(244, 63, 94, 0.4)' : '1px solid var(--border-color)',
+                    border: activeTab === 'delete' ? '1px solid rgba(244, 63, 94, 0.5)' : '1px solid var(--border-color)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 10
+                    gap: 10,
+                    transition: 'all 0.2s'
                   }}
                 >
                   <AlertTriangle size={20} style={{ color: '#fb7185' }} />
                   <div>
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>本地拟移除方案</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: '#fb7185' }}>-{summary?.delete_count || 0}</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: '#fb7185', marginTop: 2 }}>-{summary?.delete_count || 0} <span style={{ fontSize: 11, fontWeight: 400 }}>个</span></div>
                   </div>
                 </div>
 
                 <div 
                   onClick={() => setActiveTab('unchanged')}
                   style={{ 
-                    flex: 1, 
-                    minWidth: 120,
-                    padding: '10px 14px', 
-                    borderRadius: 8, 
+                    padding: '12px 14px', 
+                    borderRadius: 10, 
                     cursor: 'pointer',
                     background: activeTab === 'unchanged' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(255,255,255,0.03)',
-                    border: activeTab === 'unchanged' ? '1px solid rgba(148, 163, 184, 0.4)' : '1px solid var(--border-color)',
+                    border: activeTab === 'unchanged' ? '1px solid rgba(148, 163, 184, 0.5)' : '1px solid var(--border-color)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 10
+                    gap: 10,
+                    transition: 'all 0.2s'
                   }}
                 >
                   <CheckCircle2 size={20} style={{ color: '#94a3b8' }} />
                   <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>无变化一致项</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: '#94a3b8' }}>{summary?.unchanged_count || 0}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>保持一致无变化</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: '#94a3b8', marginTop: 2 }}>{summary?.unchanged_count || 0} <span style={{ fontSize: 11, fontWeight: 400 }}>个</span></div>
                   </div>
                 </div>
               </div>
 
               {/* Tab Content List */}
-              <div style={{ minHeight: 240, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ minHeight: 300, display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {/* 1. UPDATE TAB */}
                 {activeTab === 'update' && (
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>属性与配置更替列表 ({updateList.length})</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        属性与配置更替列表 <span style={{ color: '#fbbf24', fontSize: 12 }}>({updateList.length} 个方案变动)</span>
+                      </span>
                       <button 
-                        style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: 12, cursor: 'pointer' }}
+                        style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}
                         onClick={() => {
                           if (selectedUpdateIndex.size === updateList.length) {
                             setSelectedUpdateIndex(new Set())
@@ -377,49 +400,82 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                       </button>
                     </div>
                     {updateList.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                         {updateList.map((item, idx) => (
                           <div 
                             key={item.local_id || idx}
                             style={{ 
-                              padding: 14, 
-                              borderRadius: 8, 
+                              padding: 16, 
+                              borderRadius: 10, 
                               background: 'rgba(255, 255, 255, 0.02)', 
-                              border: '1px solid rgba(245, 158, 11, 0.25)',
+                              border: '1px solid rgba(245, 158, 11, 0.3)',
                               display: 'flex',
                               flexDirection: 'column',
-                              gap: 8
+                              gap: 12
                             }}
                           >
+                            {/* Card Top Title Bar */}
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                               <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
                                 <input 
                                   type="checkbox" 
                                   checked={selectedUpdateIndex.has(idx)} 
                                   onChange={() => toggleUpdate(idx)} 
+                                  style={{ width: 16, height: 16, accentColor: '#818cf8', cursor: 'pointer' }}
                                 />
-                                <span>{item.repository_name} <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>({item.branchs})</span></span>
+                                <span style={{ color: 'var(--text-main)', fontSize: 15 }}>{item.repository_name}</span>
+                                <span style={{ fontSize: 12, color: '#a5b4fc', fontFamily: 'var(--font-mono)', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 8px', borderRadius: 4 }}>
+                                  分支: {item.branchs || '未设置'}
+                                </span>
                               </label>
-                              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>ID: {item.remote_scheme_id}</span>
+                              <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 12 }}>
+                                <span>本地 DB ID: <strong>{item.local_id}</strong></span>
+                                <span>三方 Scheme ID: <strong style={{ fontFamily: 'var(--font-mono)' }}>{item.remote_scheme_id}</strong></span>
+                              </div>
                             </div>
 
-                            {/* Changes diff list */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 24 }}>
-                              {(item.changes || []).map((change, cIdx) => (
-                                <div key={cIdx} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12 }}>
-                                  {getCategoryBadge(change.category)}
-                                  <span style={{ color: 'var(--text-secondary)', minWidth: 90 }}>{change.field_name}:</span>
-                                  <span style={{ color: '#fb7185', background: 'rgba(244, 63, 94, 0.1)', padding: '1px 6px', borderRadius: 4 }}>{change.old_value}</span>
-                                  <ArrowRight size={12} style={{ color: 'var(--text-muted)' }} />
-                                  <span style={{ color: '#34d399', background: 'rgba(16, 185, 129, 0.1)', padding: '1px 6px', borderRadius: 4 }}>{change.new_value}</span>
-                                </div>
-                              ))}
-                            </div>
+                            {/* Detailed Tabular Diff Matrix */}
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, background: 'rgba(0, 0, 0, 0.25)', borderRadius: 8, overflow: 'hidden' }}>
+                              <thead>
+                                <tr style={{ background: 'rgba(255, 255, 255, 0.04)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
+                                  <th style={{ padding: '8px 12px', width: 120 }}>变更模块</th>
+                                  <th style={{ padding: '8px 12px', width: 120 }}>对比属性/字段</th>
+                                  <th style={{ padding: '8px 12px', color: '#fb7185' }}>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                      <Database size={13} /> 本地数据库 (Current DB)
+                                    </span>
+                                  </th>
+                                  <th style={{ padding: '8px 12px', color: '#34d399' }}>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                      <Cloud size={13} /> 第三方控制台 (Remote System)
+                                    </span>
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(item.changes || []).map((change, cIdx) => (
+                                  <tr key={cIdx} style={{ borderBottom: cIdx < item.changes.length - 1 ? '1px solid rgba(255, 255, 255, 0.04)' : 'none' }}>
+                                    <td style={{ padding: '10px 12px' }}>{getCategoryBadge(change.category)}</td>
+                                    <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-main)' }}>{change.field_name}</td>
+                                    <td style={{ padding: '10px 12px' }}>
+                                      <span style={{ color: '#fb7185', background: 'rgba(244, 63, 94, 0.12)', border: '1px solid rgba(244, 63, 94, 0.25)', padding: '2px 8px', borderRadius: 4, display: 'inline-block' }}>
+                                        {change.old_value || '无'}
+                                      </span>
+                                    </td>
+                                    <td style={{ padding: '10px 12px' }}>
+                                      <span style={{ color: '#34d399', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '2px 8px', borderRadius: 4, display: 'inline-block' }}>
+                                        {change.new_value || '无'}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, background: 'rgba(255, 255, 255, 0.01)', borderRadius: 10, border: '1px dashed var(--border-color)' }}>
                         暂无属性或配置发生更替的执行方案
                       </div>
                     )}
@@ -429,10 +485,12 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                 {/* 2. ADD TAB */}
                 {activeTab === 'add' && (
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>三方控制台拟新增执行方案 ({addList.length})</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        三方控制台拟新增执行方案 <span style={{ color: '#34d399', fontSize: 12 }}>({addList.length} 个新方案)</span>
+                      </span>
                       <button 
-                        style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: 12, cursor: 'pointer' }}
+                        style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}
                         onClick={() => {
                           if (selectedAddIndex.size === addList.length) {
                             setSelectedAddIndex(new Set())
@@ -445,44 +503,57 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                       </button>
                     </div>
                     {addList.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {addList.map((item, idx) => (
-                          <div 
-                            key={item.remote_scheme_id || idx}
-                            style={{ 
-                              padding: 14, 
-                              borderRadius: 8, 
-                              background: 'rgba(255, 255, 255, 0.02)', 
-                              border: '1px solid rgba(16, 185, 129, 0.25)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between'
-                            }}
-                          >
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
-                              <input 
-                                type="checkbox" 
-                                checked={selectedAddIndex.has(idx)} 
-                                onChange={() => toggleAdd(idx)} 
-                              />
-                              <div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <span>{item.repository_name}</span>
-                                  <span style={{ fontSize: 12, color: '#818cf8' }}>({item.branchs})</span>
-                                </div>
-                                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                                  {item.mr_trigger && <span style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', fontSize: 10, padding: '1px 6px', borderRadius: 4 }}>含 MR 触发</span>}
-                                  {item.daily_build && <span style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', fontSize: 10, padding: '1px 6px', borderRadius: 4 }}>含 每日构建</span>}
-                                </div>
-                              </div>
-                            </label>
-                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>ID: {item.remote_scheme_id}</span>
-                          </div>
-                        ))}
+                      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid rgba(16, 185, 129, 0.3)', background: 'rgba(255, 255, 255, 0.01)' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
+                          <thead>
+                            <tr style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#34d399', borderBottom: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                              <th style={{ padding: '10px 14px', width: 40 }}>勾选</th>
+                              <th style={{ padding: '10px 14px' }}>代码仓 / 方案名称</th>
+                              <th style={{ padding: '10px 14px', width: 120 }}>生效分支</th>
+                              <th style={{ padding: '10px 14px', width: 110 }}>MR 触发状态</th>
+                              <th style={{ padding: '10px 14px', width: 110 }}>每日构建状态</th>
+                              <th style={{ padding: '10px 14px', width: 160 }}>三方 Scheme ID</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {addList.map((item, idx) => (
+                              <tr key={item.remote_scheme_id || idx} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
+                                <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                                  <input 
+                                    type="checkbox" 
+                                    checked={selectedAddIndex.has(idx)} 
+                                    onChange={() => toggleAdd(idx)} 
+                                    style={{ width: 16, height: 16, accentColor: '#34d399', cursor: 'pointer' }}
+                                  />
+                                </td>
+                                <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text-main)' }}>
+                                  <div>{item.repository_name}</div>
+                                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>{item.name}</div>
+                                </td>
+                                <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', color: '#a5b4fc' }}>
+                                  {item.branchs || '未指定'}
+                                </td>
+                                <td style={{ padding: '12px 14px' }}>
+                                  {item.mr_trigger 
+                                    ? <span style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', fontSize: 11, padding: '2px 6px', borderRadius: 4 }}>含 MR 触发</span>
+                                    : <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>未开启</span>}
+                                </td>
+                                <td style={{ padding: '12px 14px' }}>
+                                  {item.daily_build 
+                                    ? <span style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', fontSize: 11, padding: '2px 6px', borderRadius: 4 }}>含 每日构建</span>
+                                    : <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>未开启</span>}
+                                </td>
+                                <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
+                                  {item.remote_scheme_id}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     ) : (
-                      <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                        未发现需要新增的执行方案
+                      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, background: 'rgba(255, 255, 255, 0.01)', borderRadius: 10, border: '1px dashed var(--border-color)' }}>
+                        未发现需要新增的三方执行方案
                       </div>
                     )}
                   </div>
@@ -491,10 +562,12 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                 {/* 3. DELETE TAB */}
                 {activeTab === 'delete' && (
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>本地拟废弃/移除的执行方案 ({deleteList.length})</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        本地拟废弃/移除的执行方案 <span style={{ color: '#fb7185', fontSize: 12 }}>({deleteList.length} 个废弃方案)</span>
+                      </span>
                       <button 
-                        style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: 12, cursor: 'pointer' }}
+                        style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}
                         onClick={() => {
                           if (selectedDeleteIndex.size === deleteList.length) {
                             setSelectedDeleteIndex(new Set())
@@ -507,42 +580,48 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                       </button>
                     </div>
                     {deleteList.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {deleteList.map((item, idx) => (
-                          <div 
-                            key={item.local_id || idx}
-                            style={{ 
-                              padding: 14, 
-                              borderRadius: 8, 
-                              background: 'rgba(244, 63, 94, 0.05)', 
-                              border: '1px solid rgba(244, 63, 94, 0.25)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between'
-                            }}
-                          >
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
-                              <input 
-                                type="checkbox" 
-                                checked={selectedDeleteIndex.has(idx)} 
-                                onChange={() => toggleDelete(idx)} 
-                              />
-                              <div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fb7185' }}>
-                                  <span>{item.repository_name}</span>
-                                  <span style={{ fontSize: 12 }}>({item.branchs})</span>
-                                </div>
-                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                                  警告：三方系统已不存在此方案，应用后本地对应记录将被物理删除
-                                </div>
-                              </div>
-                            </label>
-                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>本地 ID: {item.local_id}</span>
-                          </div>
-                        ))}
+                      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid rgba(244, 63, 94, 0.3)', background: 'rgba(244, 63, 94, 0.03)' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
+                          <thead>
+                            <tr style={{ background: 'rgba(244, 63, 94, 0.1)', color: '#fb7185', borderBottom: '1px solid rgba(244, 63, 94, 0.2)' }}>
+                              <th style={{ padding: '10px 14px', width: 40 }}>勾选</th>
+                              <th style={{ padding: '10px 14px' }}>代码仓 / 方案名称</th>
+                              <th style={{ padding: '10px 14px', width: 120 }}>生效分支</th>
+                              <th style={{ padding: '10px 14px', width: 110 }}>本地 DB ID</th>
+                              <th style={{ padding: '10px 14px' }}>物理删除说明</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {deleteList.map((item, idx) => (
+                              <tr key={item.local_id || idx} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
+                                <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                                  <input 
+                                    type="checkbox" 
+                                    checked={selectedDeleteIndex.has(idx)} 
+                                    onChange={() => toggleDelete(idx)} 
+                                    style={{ width: 16, height: 16, accentColor: '#fb7185', cursor: 'pointer' }}
+                                  />
+                                </td>
+                                <td style={{ padding: '12px 14px', fontWeight: 600, color: '#fb7185' }}>
+                                  <div>{item.repository_name}</div>
+                                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>{item.name}</div>
+                                </td>
+                                <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
+                                  {item.branchs || '未指定'}
+                                </td>
+                                <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                                  {item.local_id}
+                                </td>
+                                <td style={{ padding: '12px 14px', fontSize: 12, color: '#fb7185' }}>
+                                  ⚠️ 三方控制台已删除该方案，应用后本地数据库记录将被物理下架
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     ) : (
-                      <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, background: 'rgba(255, 255, 255, 0.01)', borderRadius: 10, border: '1px dashed var(--border-color)' }}>
                         未发现需要废弃或移除的本地方案记录
                       </div>
                     )}
@@ -552,34 +631,44 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                 {/* 4. UNCHANGED TAB */}
                 {activeTab === 'unchanged' && (
                   <div>
-                    <div style={{ marginBottom: 10, fontSize: 13, fontWeight: 600 }}>两端保持完全一致的方案 ({unchangedList.length})</div>
+                    <div style={{ marginBottom: 12, fontSize: 14, fontWeight: 600 }}>两端保持完全一致的方案 ({unchangedList.length} 个一致项)</div>
                     {unchangedList.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {unchangedList.map((item, idx) => (
-                          <div 
-                            key={item.local_id || idx}
-                            style={{ 
-                              padding: '10px 14px', 
-                              borderRadius: 6, 
-                              background: 'rgba(255, 255, 255, 0.015)', 
-                              border: '1px solid rgba(255, 255, 255, 0.04)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              fontSize: 13,
-                              color: 'var(--text-secondary)'
-                            }}
-                          >
-                            <div>
-                              <span>{item.repository_name}</span>
-                              <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 8 }}>({item.branchs})</span>
-                            </div>
-                            <span style={{ fontSize: 11, color: '#34d399' }}>✓ 数据一致</span>
-                          </div>
-                        ))}
+                      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border-color)', background: 'rgba(255, 255, 255, 0.01)' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
+                          <thead>
+                            <tr style={{ background: 'rgba(255, 255, 255, 0.03)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)' }}>
+                              <th style={{ padding: '10px 14px' }}>代码仓名称</th>
+                              <th style={{ padding: '10px 14px', width: 130 }}>生效分支</th>
+                              <th style={{ padding: '10px 14px', width: 120 }}>本地 DB ID</th>
+                              <th style={{ padding: '10px 14px', width: 160 }}>三方 Scheme ID</th>
+                              <th style={{ padding: '10px 14px', width: 110, textAlign: 'right' }}>同步状态</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {unchangedList.map((item, idx) => (
+                              <tr key={item.local_id || idx} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)' }}>
+                                <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                  {item.repository_name}
+                                </td>
+                                <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)' }}>
+                                  {item.branchs || '-'}
+                                </td>
+                                <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)' }}>
+                                  {item.local_id}
+                                </td>
+                                <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)' }}>
+                                  {item.remote_scheme_id}
+                                </td>
+                                <td style={{ padding: '12px 14px', textAlign: 'right', color: '#34d399', fontSize: 12, fontWeight: 500 }}>
+                                  ✓ 两端配置一致
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     ) : (
-                      <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, background: 'rgba(255, 255, 255, 0.01)', borderRadius: 10, border: '1px dashed var(--border-color)' }}>
                         无完全一致的方案
                       </div>
                     )}
@@ -588,11 +677,11 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
               </div>
             </>
           ) : (
-            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>未检索到差异数据</div>
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>未检索到差异数据</div>
           )}
         </div>
 
-        {/* Modal Footer */}
+        {/* Drawer Fixed Footer */}
         <div style={{ 
           padding: '16px 24px', 
           borderTop: '1px solid var(--border-color)', 
@@ -601,10 +690,10 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
           alignItems: 'center',
           background: 'rgba(255, 255, 255, 0.02)'
         }}>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            拟应用变更：已勾选 <strong>{totalSelectedChanges}</strong> 项变动操作
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            拟应用变更：已勾选 <strong style={{ color: '#818cf8', fontSize: 15 }}>{totalSelectedChanges}</strong> 项同步操作
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 12 }}>
             <button className="btn btn-secondary" onClick={onClose} disabled={submitting}>
               取消
             </button>
@@ -612,10 +701,10 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
               className="btn btn-primary" 
               onClick={handleConfirm}
               disabled={submitting || loading || totalSelectedChanges === 0}
-              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 18px' }}
             >
-              {submitting ? <RefreshCw size={14} className="spin" /> : null}
-              {submitting ? '正在应用变更...' : `确认应用同步变更 (${totalSelectedChanges})`}
+              {submitting ? <RefreshCw size={15} className="spin" /> : null}
+              {submitting ? '正在更新应用...' : `确认应用同步变更 (${totalSelectedChanges})`}
             </button>
           </div>
         </div>
