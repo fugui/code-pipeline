@@ -276,6 +276,12 @@ func saveExecutionReportToFile(rawData []byte, req *ExecutionReportRequest) {
 	}
 }
 
+// FailedRepoStat 高频失败仓库统计结构
+type FailedRepoStat struct {
+	RepoName    string `json:"repo_name"`
+	FailedCount int64  `json:"failed_count"`
+}
+
 // GetDashboardStats 获取 Dashboard 看板数据与最新执行轨迹
 func GetDashboardStats(c *gin.Context) {
 	var totalRepos int64
@@ -283,6 +289,12 @@ func GetDashboardStats(c *gin.Context) {
 	if totalRepos == 0 {
 		database.DB.Model(&models.Repository{}).Count(&totalRepos)
 	}
+
+	// 真实查询活跃定时任务数 (已勾选 daily_build 或绑定了 execution_plan_id 的执行方案)
+	var activeSchedulers int64
+	database.DB.Model(&models.ExecutionScheme{}).
+		Where("daily_build = ? OR (execution_plan_id IS NOT NULL AND execution_plan_id != '')", true).
+		Count(&activeSchedulers)
 
 	var totalRuns int64
 	database.DB.Model(&models.ExecutionReport{}).Count(&totalRuns)
@@ -299,8 +311,59 @@ func GetDashboardStats(c *gin.Context) {
 	var pendingCount int64
 	database.DB.Model(&models.ExecutionReport{}).Where("status = ?", "pending").Count(&pendingCount)
 
+	var buildCount int64
+	database.DB.Model(&models.ExecutionReport{}).Where("task_type = ? OR task_type = '' OR task_type IS NULL", "build").Count(&buildCount)
+
+	var codeCheckCount int64
+	database.DB.Model(&models.ExecutionReport{}).Where("task_type = ?", "code_check").Count(&codeCheckCount)
+
+	// 计算平均运行耗时 (仅针对已结束任务)
+	var avgDuration float64
+	database.DB.Model(&models.ExecutionReport{}).
+		Where("duration_sec > 0 AND status IN (?)", []string{"success", "failed"}).
+		Select("COALESCE(AVG(duration_sec), 0)").
+		Scan(&avgDuration)
+
+	// 计算代码检查质量门禁通过率
+	var totalGateChecks int64
+	var gatePassedCount int64
+	var codeCheckReports []models.ExecutionReport
+	database.DB.Where("task_type = ? AND code_check_details IS NOT NULL", "code_check").Find(&codeCheckReports)
+	for _, r := range codeCheckReports {
+		if len(r.CodeCheckDetails) > 0 {
+			var details map[string]interface{}
+			if err := json.Unmarshal(r.CodeCheckDetails, &details); err == nil {
+				if gs, ok := details["gate_status"].(string); ok && gs != "" {
+					totalGateChecks++
+					gsLower := strings.ToLower(gs)
+					if gsLower == "passed" || gsLower == "success" || gsLower == "ok" || gsLower == "pass" || gsLower == "true" {
+						gatePassedCount++
+					}
+				}
+			}
+		}
+	}
+
+	gatePassRate := 1.0
+	if totalGateChecks > 0 {
+		gatePassRate = float64(gatePassedCount) / float64(totalGateChecks)
+	}
+
+	// 统计高频失败仓库 Top 5
+	var topFailedRepos []FailedRepoStat
+	database.DB.Model(&models.ExecutionReport{}).
+		Select("repo_name, COUNT(*) as failed_count").
+		Where("status = ?", "failed").
+		Group("repo_name").
+		Order("failed_count DESC").
+		Limit(5).
+		Scan(&topFailedRepos)
+	if topFailedRepos == nil {
+		topFailedRepos = []FailedRepoStat{}
+	}
+
 	reports := make([]models.ExecutionReport, 0)
-	database.DB.Order("created_at DESC").Limit(20).Find(&reports)
+	database.DB.Order("created_at DESC").Limit(50).Find(&reports)
 
 	successRate := 0.0
 	if totalRuns > 0 {
@@ -309,12 +372,18 @@ func GetDashboardStats(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"total_repos":       totalRepos,
-		"active_schedulers": totalRepos,
+		"active_schedulers": activeSchedulers,
 		"total_runs":        totalRuns,
 		"failed_runs":       failedRuns,
 		"success_rate":      successRate,
 		"running_count":     runningCount,
 		"pending_count":     pendingCount,
+		"build_count":       buildCount,
+		"code_check_count":  codeCheckCount,
+		"avg_duration_sec":  int64(avgDuration),
+		"gate_pass_rate":    gatePassRate,
+		"top_failed_repos":  topFailedRepos,
 		"recent_runs":       reports,
 	})
 }
+

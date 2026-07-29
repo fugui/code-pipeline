@@ -60,6 +60,11 @@ export interface ExecutionLog {
 }
 
 
+export interface FailedRepoStat {
+  repo_name: string
+  failed_count: number
+}
+
 export interface DashboardStats {
   total_repos: number
   active_schedulers: number
@@ -68,6 +73,11 @@ export interface DashboardStats {
   success_rate: number
   running_count: number
   pending_count: number
+  build_count?: number
+  code_check_count?: number
+  avg_duration_sec?: number
+  gate_pass_rate?: number
+  top_failed_repos?: FailedRepoStat[]
   recent_runs: ExecutionLog[]
 }
 
