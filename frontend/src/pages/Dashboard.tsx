@@ -185,16 +185,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   paddingTop: 6,
                   paddingBottom: 6,
                   borderRadius: 6,
-                  background: 'rgba(255, 255, 255, 0.05)',
+                  background: 'rgba(125, 125, 125, 0.08)',
                   border: '1px solid var(--border-color)',
-                  color: 'var(--text-primary)',
+                  color: 'var(--text-main)',
                   fontSize: 13
                 }}
               />
             </div>
 
             {/* Task Type Filter */}
-            <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.05)', borderRadius: 6, padding: 2, border: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', background: 'rgba(125, 125, 125, 0.1)', borderRadius: 6, padding: 2, border: '1px solid var(--border-color)' }}>
               <button
                 onClick={() => setTaskTypeFilter('all')}
                 style={{
@@ -203,8 +203,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   borderRadius: 4,
                   border: 'none',
                   cursor: 'pointer',
-                  background: taskTypeFilter === 'all' ? 'rgba(99, 102, 241, 0.3)' : 'transparent',
-                  color: taskTypeFilter === 'all' ? '#fff' : 'var(--text-secondary)',
+                  background: taskTypeFilter === 'all' ? '#6366f1' : 'transparent',
+                  color: taskTypeFilter === 'all' ? '#ffffff' : 'var(--text-secondary)',
                   fontWeight: taskTypeFilter === 'all' ? 600 : 400
                 }}
               >
@@ -218,8 +218,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   borderRadius: 4,
                   border: 'none',
                   cursor: 'pointer',
-                  background: taskTypeFilter === 'build' ? 'rgba(59, 130, 246, 0.3)' : 'transparent',
-                  color: taskTypeFilter === 'build' ? '#60a5fa' : 'var(--text-secondary)',
+                  background: taskTypeFilter === 'build' ? '#3b82f6' : 'transparent',
+                  color: taskTypeFilter === 'build' ? '#ffffff' : 'var(--text-secondary)',
                   fontWeight: taskTypeFilter === 'build' ? 600 : 400
                 }}
               >
@@ -233,8 +233,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   borderRadius: 4,
                   border: 'none',
                   cursor: 'pointer',
-                  background: taskTypeFilter === 'code_check' ? 'rgba(129, 140, 248, 0.3)' : 'transparent',
-                  color: taskTypeFilter === 'code_check' ? '#818cf8' : 'var(--text-secondary)',
+                  background: taskTypeFilter === 'code_check' ? '#818cf8' : 'transparent',
+                  color: taskTypeFilter === 'code_check' ? '#ffffff' : 'var(--text-secondary)',
                   fontWeight: taskTypeFilter === 'code_check' ? 600 : 400
                 }}
               >
@@ -243,7 +243,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             {/* Status Filter */}
-            <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.05)', borderRadius: 6, padding: 2, border: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', background: 'rgba(125, 125, 125, 0.1)', borderRadius: 6, padding: 2, border: '1px solid var(--border-color)' }}>
               <button
                 onClick={() => setStatusFilter('all')}
                 style={{
@@ -252,8 +252,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   borderRadius: 4,
                   border: 'none',
                   cursor: 'pointer',
-                  background: statusFilter === 'all' ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
-                  color: statusFilter === 'all' ? '#fff' : 'var(--text-secondary)'
+                  background: statusFilter === 'all' ? '#6366f1' : 'transparent',
+                  color: statusFilter === 'all' ? '#ffffff' : 'var(--text-secondary)',
+                  fontWeight: statusFilter === 'all' ? 600 : 400
                 }}
               >
                 全部状态
@@ -266,8 +267,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   borderRadius: 4,
                   border: 'none',
                   cursor: 'pointer',
-                  background: statusFilter === 'running' ? 'rgba(99, 102, 241, 0.3)' : 'transparent',
-                  color: statusFilter === 'running' ? '#818cf8' : 'var(--text-secondary)'
+                  background: statusFilter === 'running' ? '#3b82f6' : 'transparent',
+                  color: statusFilter === 'running' ? '#ffffff' : 'var(--text-secondary)',
+                  fontWeight: statusFilter === 'running' ? 600 : 400
                 }}
               >
                 运行中
@@ -280,8 +282,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   borderRadius: 4,
                   border: 'none',
                   cursor: 'pointer',
-                  background: statusFilter === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'transparent',
-                  color: statusFilter === 'success' ? '#34d399' : 'var(--text-secondary)'
+                  background: statusFilter === 'success' ? '#10b981' : 'transparent',
+                  color: statusFilter === 'success' ? '#ffffff' : 'var(--text-secondary)',
+                  fontWeight: statusFilter === 'success' ? 600 : 400
                 }}
               >
                 成功
@@ -294,8 +297,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   borderRadius: 4,
                   border: 'none',
                   cursor: 'pointer',
-                  background: statusFilter === 'failed' ? 'rgba(239, 68, 68, 0.3)' : 'transparent',
-                  color: statusFilter === 'failed' ? '#f87171' : 'var(--text-secondary)'
+                  background: statusFilter === 'failed' ? '#ef4444' : 'transparent',
+                  color: statusFilter === 'failed' ? '#ffffff' : 'var(--text-secondary)',
+                  fontWeight: statusFilter === 'failed' ? 600 : 400
                 }}
               >
                 失败
