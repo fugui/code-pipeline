@@ -134,6 +134,8 @@ func main() {
 				admin.PUT("/execution-schemes/:id", handlers.UpdateExecutionScheme)
 				admin.DELETE("/execution-schemes/:id", handlers.DeleteExecutionScheme)
 				admin.POST("/execution-schemes/sync", handlers.SyncExecutionSchemes)
+				admin.POST("/execution-schemes/diff", handlers.CalculateExecutionSchemeDiff)
+				admin.POST("/execution-schemes/sync-confirm", handlers.ConfirmSyncExecutionSchemes)
 			}
 		}
 	}

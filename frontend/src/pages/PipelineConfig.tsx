@@ -14,6 +14,7 @@ import {
   Filter
 } from 'lucide-react'
 import { Pipeline, ExecutionScheme } from '../types'
+import { SyncDiffModal, CalculateDiffResponse } from '../components/SyncDiffModal'
 
 export interface PipelineConfigProps {
   isAdmin?: boolean
@@ -44,15 +45,19 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
   setSearchQuery,
   onAddPipeline,
   onEditPipeline,
-  onDeletePipeline,
-  onSyncPipeline
+  onDeletePipeline
 }) => {
   const [selectedType, setSelectedType] = useState<string>('ALL')
   const [selectedGroup, setSelectedGroup] = useState<string>('ALL')
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [pageSize, setPageSize] = useState<number>(10)
-  const [syncingId, setSyncingId] = useState<number | null>(null)
   const [allSchemes, setAllSchemes] = useState<ExecutionScheme[]>([])
+
+  // Diff Modal States
+  const [diffModalVisible, setDiffModalVisible] = useState<boolean>(false)
+  const [diffLoading, setDiffLoading] = useState<boolean>(false)
+  const [diffResult, setDiffResult] = useState<CalculateDiffResponse | null>(null)
+  const [syncTargetPipeline, setSyncTargetPipeline] = useState<Pipeline | null>(null)
 
   // Fetch all execution schemes
   const fetchAllSchemes = async () => {
@@ -72,6 +77,62 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
   useEffect(() => {
     fetchAllSchemes()
   }, [apiBase, token])
+
+  // Trigger Diff calculation modal
+  const handleTriggerSync = async (p: Pipeline) => {
+    setSyncTargetPipeline(p)
+    setDiffModalVisible(true)
+    setDiffLoading(true)
+    setDiffResult(null)
+
+    try {
+      const res = await fetch(`${apiBase}/execution-schemes/diff?pipeline_id=${encodeURIComponent(p.pipeline_id || p.id || '')}`, {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setDiffResult(data)
+      } else {
+        const errData = await res.json().catch(() => ({}))
+        alert(`差异计算失败: ${errData.error || res.statusText}`)
+        setDiffModalVisible(false)
+      }
+    } catch (err) {
+      console.error('Failed to calculate diff', err)
+      alert('计算流水线同步差异失败')
+      setDiffModalVisible(false)
+    } finally {
+      setDiffLoading(false)
+    }
+  }
+
+  // Confirm Sync Submit
+  const handleConfirmSync = async (payload: {
+    pipeline_id: number
+    add_schemes: any[]
+    update_schemes: any[]
+    delete_local_ids: number[]
+  }) => {
+    const res = await fetch(`${apiBase}/execution-schemes/sync-confirm`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(payload)
+    })
+
+    if (res.ok) {
+      const data = await res.json()
+      alert(data.message || '同步更新已成功应用！')
+      await fetchAllSchemes()
+    } else {
+      const errData = await res.json().catch(() => ({}))
+      throw new Error(errData.error || '同步应用失败')
+    }
+  }
 
   // Group schemes by pipeline ID
   const schemesByPipelineId = useMemo(() => {
@@ -185,18 +246,6 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
     const start = (currentPage - 1) * pageSize
     return filteredPipelines.slice(start, start + pageSize)
   }, [filteredPipelines, currentPage, pageSize])
-
-  // Handle single sync trigger
-  const handleSync = async (p: Pipeline) => {
-    if (!onSyncPipeline || !p.id) return
-    setSyncingId(p.id)
-    try {
-      await onSyncPipeline(p)
-      await fetchAllSchemes()
-    } finally {
-      setTimeout(() => setSyncingId(null), 600)
-    }
-  }
 
   // Type badge styling helper
   const getTypeBadgeStyle = (type: string) => {
@@ -381,7 +430,6 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
               ) : paginatedPipelines.length > 0 ? (
                 paginatedPipelines.map((p) => {
                   const badgeStyle = getTypeBadgeStyle(p.type)
-                  const isSyncing = syncingId === p.id
                   const pSchemes = getSchemesForPipeline(p)
 
                   return (
@@ -448,18 +496,15 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                       {/* Actions */}
                       <td style={{ padding: '14px 16px', textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
-                          {onSyncPipeline && (
-                            <button 
-                              className="btn btn-secondary btn-small"
-                              style={{ padding: '5px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                              onClick={() => handleSync(p)}
-                              title="从控制台同步最新数据"
-                              disabled={isSyncing}
-                            >
-                              <RefreshCw size={13} className={isSyncing ? 'spin' : ''} />
-                              {isSyncing ? '同步中' : '同步'}
-                            </button>
-                          )}
+                          <button 
+                            className="btn btn-secondary btn-small"
+                            style={{ padding: '5px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                            onClick={() => handleTriggerSync(p)}
+                            title="比对并同步最新三方配置"
+                          >
+                            <RefreshCw size={13} />
+                            同步
+                          </button>
                           {isAdmin && (
                             <>
                               <button 
@@ -582,6 +627,16 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
           </div>
         )}
       </div>
+
+      {/* Sync Diff Modal */}
+      <SyncDiffModal 
+        visible={diffModalVisible}
+        pipeline={syncTargetPipeline}
+        loading={diffLoading}
+        diffResult={diffResult}
+        onClose={() => setDiffModalVisible(false)}
+        onConfirmSync={handleConfirmSync}
+      />
     </div>
   )
 }
