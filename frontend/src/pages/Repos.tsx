@@ -720,7 +720,7 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
 
             <td style={{ padding: '10px 8px' }}>
               {scheme.mr_binding_id ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 120 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 120 }}>
                   <div>
                     <TriggerTag 
                       active={!!scheme.mr_trigger} 
@@ -732,7 +732,7 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
                     style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} 
                     title={scheme.mr_binding_id}
                   >
-                    ID: {scheme.mr_binding_id}
+                    ({scheme.mr_binding_id})
                   </span>
                 </div>
               ) : (
@@ -742,7 +742,7 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
 
             <td style={{ padding: '10px 8px' }}>
               {scheme.execution_plan_id ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 120 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 120 }}>
                   <div>
                     <TriggerTag 
                       active={!!scheme.daily_build} 
@@ -754,7 +754,7 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
                     style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} 
                     title={scheme.execution_plan_id}
                   >
-                    ID: {scheme.execution_plan_id}
+                    ({scheme.execution_plan_id})
                   </span>
                 </div>
               ) : (
