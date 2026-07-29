@@ -1,5 +1,5 @@
-import React from 'react'
-import { Loader2, RefreshCw, CheckCircle, XCircle, Terminal, Square, ExternalLink, ShieldCheck, Hammer } from 'lucide-react'
+import React, { useState, useMemo } from 'react'
+import { Loader2, RefreshCw, CheckCircle, XCircle, Terminal, Square, ExternalLink, ShieldCheck, Hammer, AlertTriangle, Search, Clock } from 'lucide-react'
 import { DashboardStats, ExecutionLog, CodeCheckDetails } from '../types'
 
 interface DashboardProps {
@@ -15,12 +15,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onCancelExecution,
   onRefresh
 }) => {
+  const [taskTypeFilter, setTaskTypeFilter] = useState<'all' | 'build' | 'code_check'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'success' | 'failed'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+
   if (!stats) return null
 
   const formatTime = (isoString: string | null | undefined) => {
     if (!isoString) return '-'
     const date = new Date(isoString)
     return date.toLocaleString('zh-CN', { hour12: false })
+  }
+
+  const formatDuration = (seconds?: number) => {
+    if (!seconds || seconds <= 0) return '-'
+    if (seconds < 60) return `${seconds} 秒`
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins} 分 ${secs} 秒`
   }
 
   const parseCodeCheckDetails = (details: any): CodeCheckDetails | null => {
@@ -33,40 +45,94 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
   }
 
+  // Filtered runs calculation
+  const filteredRuns = useMemo(() => {
+    if (!stats.recent_runs) return []
+    return stats.recent_runs.filter(run => {
+      const isCodeCheck = run.task_type === 'code_check' || !!run.code_checker_task_id || !!run.code_check_details
+      if (taskTypeFilter === 'build' && isCodeCheck) return false
+      if (taskTypeFilter === 'code_check' && !isCodeCheck) return false
+
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'running' && run.status !== 'running' && run.status !== 'pending') return false
+        if (statusFilter === 'success' && run.status !== 'success') return false
+        if (statusFilter === 'failed' && run.status !== 'failed') return false
+      }
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim()
+        const repoNameMatch = run.repo_name ? run.repo_name.toLowerCase().includes(q) : false
+        const branchMatch = run.branch ? run.branch.toLowerCase().includes(q) : false
+        const taskIdMatch = (run.task_id || run.id?.toString())?.toLowerCase().includes(q)
+        const triggerUserMatch = run.trigger_user ? run.trigger_user.toLowerCase().includes(q) : false
+        if (!repoNameMatch && !branchMatch && !taskIdMatch && !triggerUserMatch) return false
+      }
+
+      return true
+    })
+  }, [stats.recent_runs, taskTypeFilter, statusFilter, searchQuery])
+
+  const gatePassPercentage = ((stats.gate_pass_rate ?? 1) * 100).toFixed(1)
+  const successPercentage = (stats.success_rate * 100).toFixed(1)
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
       <div>
         <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>流水线控制中心</h2>
-        <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>实时观测 300+ 个应用服务的持续集成运行现状</p>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+          实时观测 {stats.total_repos} 个应用服务的持续集成与代码质量数据现状
+        </p>
       </div>
 
       {/* Metrics cards grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>接入项目数</span>
-          <span style={{ fontSize: 32, fontWeight: 700 }}>{stats.total_repos}</span>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>接入项目总数</span>
+          <span style={{ fontSize: 30, fontWeight: 700 }}>{stats.total_repos}</span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>已被管代码仓</span>
         </div>
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>活跃定时任务</span>
-          <span style={{ fontSize: 32, fontWeight: 700, color: '#3b82f6' }}>{stats.active_schedulers}</span>
+          <span style={{ fontSize: 30, fontWeight: 700, color: '#3b82f6' }}>{stats.active_schedulers}</span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>每日构建/定时计划</span>
         </div>
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>流水线运行总数</span>
-          <span style={{ fontSize: 32, fontWeight: 700 }}>{stats.total_runs}</span>
-        </div>
-        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>构建成功率</span>
-          <span style={{ fontSize: 32, fontWeight: 700, color: '#10b981' }}>
-            {(stats.success_rate * 100).toFixed(1)}%
+          <span style={{ fontSize: 30, fontWeight: 700 }}>{stats.total_runs}</span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            构建:{stats.build_count ?? 0} | 检查:{stats.code_check_count ?? 0}
           </span>
         </div>
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>并发任务 / 排队等待</span>
-          <span style={{ fontSize: 32, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>构建成功率</span>
+          <span style={{ fontSize: 30, fontWeight: 700, color: '#10b981' }}>
+            {successPercentage}%
+          </span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>失败次数: {stats.failed_runs ?? 0}</span>
+        </div>
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>门禁合规率</span>
+          <span style={{ fontSize: 30, fontWeight: 700, color: Number(gatePassPercentage) >= 80 ? '#34d399' : '#f59e0b' }}>
+            {gatePassPercentage}%
+          </span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>代码质量门禁</span>
+        </div>
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>平均构建耗时</span>
+          <span style={{ fontSize: 30, fontWeight: 700, color: '#a855f7', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Clock size={20} />
+            {formatDuration(stats.avg_duration_sec)}
+          </span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>任务平均运行时间</span>
+        </div>
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>并发 / 排队等待</span>
+          <span style={{ fontSize: 30, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ color: '#60a5fa' }}>{stats.running_count}</span>
             <span style={{ color: 'var(--text-muted)', fontSize: 20 }}>/</span>
             <span style={{ color: 'var(--text-secondary)' }}>{stats.pending_count}</span>
           </span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>实时节点执行引擎</span>
         </div>
       </div>
 
@@ -83,13 +149,185 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       )}
 
+      {/* Top Failed Repos Alert Card */}
+      {stats.top_failed_repos && stats.top_failed_repos.length > 0 && stats.top_failed_repos.some(r => r.failed_count > 0) && (
+        <div className="glass-card" style={{ background: 'rgba(239, 68, 68, 0.05)', borderColor: 'rgba(239, 68, 68, 0.2)', padding: '16px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <AlertTriangle size={18} color="#ef4444" />
+            <h4 style={{ fontSize: 15, fontWeight: 600, color: '#f87171' }}>高风险仓告警（近期失败频次最高 Top 5）</h4>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+            {stats.top_failed_repos.filter(r => r.failed_count > 0).map((item, idx) => (
+              <div 
+                key={idx} 
+                style={{ 
+                  background: 'rgba(239, 68, 68, 0.1)', 
+                  border: '1px solid rgba(239, 68, 68, 0.2)', 
+                  borderRadius: 6, 
+                  padding: '6px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: 13
+                }}
+              >
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.repo_name}</span>
+                <span style={{ background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 10 }}>
+                  失败 {item.failed_count} 次
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Recent executions table */}
       <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600 }}>最近执行轨迹</h3>
-          <button className="btn btn-secondary btn-small" onClick={onRefresh}>
-            <RefreshCw size={12} /> 刷新
-          </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600 }}>最近执行轨迹</h3>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              (共 {filteredRuns.length} 条记录)
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            {/* Search Input */}
+            <div style={{ position: 'relative', width: 200 }}>
+              <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <input
+                type="text"
+                placeholder="搜索项目/分支/TaskID..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  paddingLeft: 30,
+                  paddingRight: 10,
+                  paddingTop: 6,
+                  paddingBottom: 6,
+                  borderRadius: 6,
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-primary)',
+                  fontSize: 13
+                }}
+              />
+            </div>
+
+            {/* Task Type Filter */}
+            <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.05)', borderRadius: 6, padding: 2, border: '1px solid var(--border-color)' }}>
+              <button
+                onClick={() => setTaskTypeFilter('all')}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: 12,
+                  borderRadius: 4,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: taskTypeFilter === 'all' ? 'rgba(99, 102, 241, 0.3)' : 'transparent',
+                  color: taskTypeFilter === 'all' ? '#fff' : 'var(--text-secondary)',
+                  fontWeight: taskTypeFilter === 'all' ? 600 : 400
+                }}
+              >
+                全部类型
+              </button>
+              <button
+                onClick={() => setTaskTypeFilter('build')}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: 12,
+                  borderRadius: 4,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: taskTypeFilter === 'build' ? 'rgba(59, 130, 246, 0.3)' : 'transparent',
+                  color: taskTypeFilter === 'build' ? '#60a5fa' : 'var(--text-secondary)',
+                  fontWeight: taskTypeFilter === 'build' ? 600 : 400
+                }}
+              >
+                构建
+              </button>
+              <button
+                onClick={() => setTaskTypeFilter('code_check')}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: 12,
+                  borderRadius: 4,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: taskTypeFilter === 'code_check' ? 'rgba(129, 140, 248, 0.3)' : 'transparent',
+                  color: taskTypeFilter === 'code_check' ? '#818cf8' : 'var(--text-secondary)',
+                  fontWeight: taskTypeFilter === 'code_check' ? 600 : 400
+                }}
+              >
+                代码检查
+              </button>
+            </div>
+
+            {/* Status Filter */}
+            <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.05)', borderRadius: 6, padding: 2, border: '1px solid var(--border-color)' }}>
+              <button
+                onClick={() => setStatusFilter('all')}
+                style={{
+                  padding: '4px 8px',
+                  fontSize: 12,
+                  borderRadius: 4,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: statusFilter === 'all' ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
+                  color: statusFilter === 'all' ? '#fff' : 'var(--text-secondary)'
+                }}
+              >
+                全部状态
+              </button>
+              <button
+                onClick={() => setStatusFilter('running')}
+                style={{
+                  padding: '4px 8px',
+                  fontSize: 12,
+                  borderRadius: 4,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: statusFilter === 'running' ? 'rgba(99, 102, 241, 0.3)' : 'transparent',
+                  color: statusFilter === 'running' ? '#818cf8' : 'var(--text-secondary)'
+                }}
+              >
+                运行中
+              </button>
+              <button
+                onClick={() => setStatusFilter('success')}
+                style={{
+                  padding: '4px 8px',
+                  fontSize: 12,
+                  borderRadius: 4,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: statusFilter === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'transparent',
+                  color: statusFilter === 'success' ? '#34d399' : 'var(--text-secondary)'
+                }}
+              >
+                成功
+              </button>
+              <button
+                onClick={() => setStatusFilter('failed')}
+                style={{
+                  padding: '4px 8px',
+                  fontSize: 12,
+                  borderRadius: 4,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: statusFilter === 'failed' ? 'rgba(239, 68, 68, 0.3)' : 'transparent',
+                  color: statusFilter === 'failed' ? '#f87171' : 'var(--text-secondary)'
+                }}
+              >
+                失败
+              </button>
+            </div>
+
+            <button className="btn btn-secondary btn-small" onClick={onRefresh}>
+              <RefreshCw size={12} /> 刷新
+            </button>
+          </div>
         </div>
 
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
@@ -106,8 +344,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </tr>
           </thead>
           <tbody>
-            {stats.recent_runs && stats.recent_runs.length > 0 ? (
-              stats.recent_runs.map((run) => {
+            {filteredRuns && filteredRuns.length > 0 ? (
+              filteredRuns.map((run) => {
                 const isCodeCheck = run.task_type === 'code_check' || !!run.code_checker_task_id || !!run.code_check_details
                 const ccDetails = parseCodeCheckDetails(run.code_check_details)
                 const reportURL = ccDetails?.checker_report_url || run.external_log_url
@@ -213,7 +451,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             ) : (
               <tr>
                 <td colSpan={8} style={{ textAlign: 'center', padding: 24, color: 'var(--text-secondary)' }}>
-                  暂无任何执行日志记录
+                  暂无匹配的执行日志记录
                 </td>
               </tr>
             )}
