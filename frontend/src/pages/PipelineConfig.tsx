@@ -11,8 +11,7 @@ import {
   Layers,
   Box,
   GitBranch,
-  Filter,
-  Code
+  Filter
 } from 'lucide-react'
 import { Pipeline, ExecutionScheme } from '../types'
 
@@ -366,7 +365,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 <th style={{ padding: '14px 16px', fontWeight: 600, minWidth: 200 }}>流水线名称</th>
                 <th style={{ padding: '14px 16px', fontWeight: 600, width: 120 }}>触发类型</th>
                 <th style={{ padding: '14px 16px', fontWeight: 600, width: 130 }}>所属分组</th>
-                <th style={{ padding: '14px 16px', fontWeight: 600, minWidth: 200 }}>包含执行方案</th>
+                <th style={{ padding: '14px 16px', fontWeight: 600, width: 110 }}>执行方案数</th>
                 <th style={{ padding: '14px 16px', fontWeight: 600 }}>详细描述</th>
                 <th style={{ padding: '14px 16px', fontWeight: 600, textAlign: 'right', width: 140 }}>操作</th>
               </tr>
@@ -435,42 +434,8 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                       </td>
 
                       {/* Execution Schemes Column */}
-                      <td style={{ padding: '14px 16px', fontSize: 13 }}>
-                        {pSchemes.length > 0 ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ 
-                                background: 'rgba(56, 189, 248, 0.15)', 
-                                color: '#38bdf8', 
-                                border: '1px solid rgba(56, 189, 248, 0.3)',
-                                fontSize: 11, 
-                                fontWeight: 600,
-                                padding: '1px 7px', 
-                                borderRadius: 10,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4
-                              }}>
-                                <Code size={11} /> {pSchemes.length} 个执行方案
-                              </span>
-                            </div>
-                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                              {pSchemes.slice(0, 2).map((scheme, idx) => (
-                                <span key={scheme.id || idx} style={{ fontSize: 11, color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.04)', padding: '1px 6px', borderRadius: 4 }} title={`仓库: ${scheme.repository?.name || scheme.repository_id}, 分支: ${scheme.branchs}`}>
-                                  {scheme.repository?.name ? `${scheme.repository.name}` : `仓:${scheme.repository_id}`}
-                                  {scheme.branchs ? ` (${scheme.branchs.length > 12 ? scheme.branchs.substring(0, 12) + '...' : scheme.branchs})` : ''}
-                                </span>
-                              ))}
-                              {pSchemes.length > 2 && (
-                                <span style={{ fontSize: 11, color: 'var(--text-muted)', padding: '1px 4px' }}>
-                                  +{pSchemes.length - 2}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>暂无关联方案</span>
-                        )}
+                      <td style={{ padding: '14px 16px', fontSize: 14, fontWeight: 500, color: pSchemes.length > 0 ? 'var(--text-main)' : 'var(--text-muted)' }}>
+                        {pSchemes.length}
                       </td>
 
                       {/* Description */}
