@@ -328,12 +328,17 @@ func GetDashboardStats(c *gin.Context) {
 	var totalGateChecks int64
 	var gatePassedCount int64
 	var codeCheckReports []models.ExecutionReport
-	database.DB.Where("task_type = ? OR (code_checker_task_id IS NOT NULL AND code_checker_task_id != '') OR (code_check_details IS NOT NULL AND code_check_details != '' AND code_check_details != 'null')", "code_check").Find(&codeCheckReports)
+	database.DB.Where("task_type = ? OR (code_checker_task_id IS NOT NULL AND code_checker_task_id != '') OR code_check_details IS NOT NULL", "code_check").Find(&codeCheckReports)
 
 	for _, r := range codeCheckReports {
+		// 在内存中过滤非代码检查且 JSON 细节为空的记录
+		if r.TaskType != "code_check" && r.CodeCheckerTaskID == "" && (len(r.CodeCheckDetails) == 0 || string(r.CodeCheckDetails) == "null" || string(r.CodeCheckDetails) == "{}") {
+			continue
+		}
+
 		totalGateChecks++
 		isPassed := false
-		if len(r.CodeCheckDetails) > 0 && string(r.CodeCheckDetails) != "null" {
+		if len(r.CodeCheckDetails) > 0 && string(r.CodeCheckDetails) != "null" && string(r.CodeCheckDetails) != "{}" {
 			var details map[string]interface{}
 			if err := json.Unmarshal(r.CodeCheckDetails, &details); err == nil {
 				if gs, ok := details["gate_status"].(string); ok && gs != "" {
