@@ -80,16 +80,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <div>
         <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>流水线控制中心</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-          实时观测 {stats.total_repos} 个应用服务的持续集成与代码质量数据现状
+          实时观测 {stats.total_schemes ?? stats.total_repos} 个执行方案的持续集成与代码质量数据现状
         </p>
       </div>
 
       {/* Metrics cards grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>接入项目总数</span>
-          <span style={{ fontSize: 30, fontWeight: 700 }}>{stats.total_repos}</span>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>已被管代码仓</span>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>执行方案总数</span>
+          <span style={{ fontSize: 30, fontWeight: 700 }}>{stats.total_schemes ?? stats.total_repos}</span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>全量配置执行方案</span>
         </div>
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>活跃定时任务</span>

@@ -66,6 +66,7 @@ export interface FailedRepoStat {
 }
 
 export interface DashboardStats {
+  total_schemes?: number
   total_repos: number
   active_schedulers: number
   total_runs: number

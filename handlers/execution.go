@@ -284,6 +284,9 @@ type FailedRepoStat struct {
 
 // GetDashboardStats 获取 Dashboard 看板数据与最新执行轨迹
 func GetDashboardStats(c *gin.Context) {
+	var totalSchemes int64
+	database.DB.Model(&models.ExecutionScheme{}).Count(&totalSchemes)
+
 	var totalRepos int64
 	database.DB.Model(&models.ManagedRepository{}).Count(&totalRepos)
 	if totalRepos == 0 {
@@ -388,6 +391,7 @@ func GetDashboardStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
+		"total_schemes":     totalSchemes,
 		"total_repos":       totalRepos,
 		"active_schedulers": activeSchedulers,
 		"total_runs":        totalRuns,
