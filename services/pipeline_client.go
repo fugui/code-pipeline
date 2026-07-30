@@ -556,14 +556,36 @@ func SyncUpdateMRBindingRemote(ctx context.Context, scheme *models.ExecutionSche
 		return SyncUpdateMRBindingRemoteAPIG(ctx, pipelineBusinessID, scheme, repoURL, headers)
 	}
 
-	if scheme.MRBindingID == "" {
-		log.Printf("[SyncUpdateMRBinding] MRBindingID is empty for scheme %s, falling back to createMRBindingStep", scheme.Name)
+	// 优先实时查询三方系统是否存在该 MR 绑定
+	existsOnRemote := false
+	if pipelineBusinessID != "" {
+		remoteBindings, err := FetchRemoteMRBindings(ctx, pipelineBusinessID, headers)
+		if err == nil {
+			for _, b := range remoteBindings {
+				if (scheme.MRBindingID != "" && b.ID == scheme.MRBindingID) || (scheme.ExecutionSchemeID != "" && b.SchemeID == scheme.ExecutionSchemeID) {
+					existsOnRemote = true
+					scheme.MRBindingID = b.ID
+					break
+				}
+			}
+		}
+	}
+
+	// 如果三方系统查询不存在该 MR 绑定，直接使用 POST 创建，避免发送 PUT
+	if !existsOnRemote {
+		log.Printf("[SyncUpdateMRBinding] Remote MR binding not found on remote (MRBindingID=%s, SchemeID=%s), performing CreateMRBindingStep (POST)", scheme.MRBindingID, scheme.ExecutionSchemeID)
 		newBindingID, err := CreateMRBindingStep(ctx, pipelineBusinessID, scheme, scheme.ExecutionSchemeID, repoURL, headers)
 		if err != nil {
-			return fmt.Errorf("fallback createMRBindingStep failed: %w", err)
+			return fmt.Errorf("failed to create remote MR binding (POST): %w", err)
 		}
 		scheme.MRBindingID = newBindingID
-		database.DB.Model(scheme).Update("mr_binding_id", newBindingID)
+		if database.DB != nil && scheme.ID != 0 {
+			database.DB.Model(scheme).Updates(map[string]interface{}{
+				"mr_trigger":      true,
+				"mr_binding_id":   newBindingID,
+				"mr_binding_name": scheme.Name,
+			})
+		}
 		return nil
 	}
 
