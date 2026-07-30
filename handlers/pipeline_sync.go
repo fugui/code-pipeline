@@ -155,9 +155,9 @@ func SyncExecutionSchemes(c *gin.Context) {
 								scheme.CodeCheckerTaskName = remoteScheme.Name
 							}
 						}
-					case "repository":
+					case "repository", "codehubTargetRepoHttpUrl":
 						codeURL = param.Value
-					case "branch":
+					case "branch", "selectedBranchs":
 						branch = param.Value
 					}
 				}
@@ -420,9 +420,9 @@ func CalculateExecutionSchemeDiff(c *gin.Context) {
 								scheme.CodeCheckerTaskName = remoteScheme.Name
 							}
 						}
-					case "repository":
+					case "repository", "codehubTargetRepoHttpUrl":
 						codeURL = param.Value
-					case "branch":
+					case "branch", "selectedBranchs":
 						branch = param.Value
 					}
 				}
