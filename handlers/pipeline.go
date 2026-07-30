@@ -157,10 +157,14 @@ func DeletePipeline(c *gin.Context) {
 	}
 
 	headers := prepareRequestHeaders(c)
-	// 同步从三方系统删除方案
+	// 同步从三方系统删除方案，若有失败则终止流程
 	for _, scheme := range schemes {
 		if scheme.ExecutionSchemeID != "" || scheme.MRBindingID != "" || scheme.ExecutionPlanID != "" {
-			go services.SyncDeleteExecutionSchemeRemote(scheme, headers)
+			if err := services.SyncDeleteExecutionSchemeRemote(scheme, headers); err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("下架关联执行方案[%s]失败: %v", scheme.Name, err)})
+				return
+			}
 		}
 	}
 
@@ -407,8 +411,11 @@ func DeleteExecutionScheme(c *gin.Context) {
 
 	if scheme.ExecutionSchemeID != "" || scheme.MRBindingID != "" || scheme.ExecutionPlanID != "" {
 		headers := prepareRequestHeaders(c)
-		// 异步或同步删除远程系统中的方案
-		go services.SyncDeleteExecutionSchemeRemote(scheme, headers)
+		// 同步删除远程系统中的方案，三方失败则中断并保留本地记录
+		if err := services.SyncDeleteExecutionSchemeRemote(scheme, headers); err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("在三方系统中下架方案失败: %v", err)})
+			return
+		}
 	}
 
 	if err := database.DB.Delete(&scheme).Error; err != nil {

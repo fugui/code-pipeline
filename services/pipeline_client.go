@@ -1050,6 +1050,14 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[
 			}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteExecutionPlan")
 			if err != nil {
 				log.Printf("[SyncDelete] Failed to delete execution plan %s: %v\n", scheme.ExecutionPlanID, err)
+				return fmt.Errorf("删除三方执行计划失败: %w", err)
+			}
+			if scheme.ID != 0 {
+				database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", scheme.ID).Updates(map[string]interface{}{
+					"daily_build":         false,
+					"execution_plan_id":   "",
+					"execution_plan_name": "",
+				})
 			}
 		}
 	}
@@ -1061,7 +1069,7 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[
 		if err := database.DB.First(&pipeline, scheme.LocalPipelineID).Error; err == nil {
 			pipelineBusinessID = pipeline.PipelineID
 		} else if scheme.LocalPipelineID != 0 {
-			// 若主线程异步软删除了数据库记录，使用 Unscoped 恢复读取 PipelineID
+			// 若主线程软删除了数据库记录，使用 Unscoped 恢复读取 PipelineID
 			if err := database.DB.Unscoped().First(&pipeline, scheme.LocalPipelineID).Error; err == nil {
 				pipelineBusinessID = pipeline.PipelineID
 			}
@@ -1071,6 +1079,7 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[
 			log.Printf("[SyncDelete] Using APIG Token Authentication to delete MR binding %s", scheme.MRBindingID)
 			if err := SyncDeleteMRBindingAPIG(context.Background(), pipelineBusinessID, scheme.MRBindingID); err != nil {
 				log.Printf("[SyncDelete] Failed to delete mr binding %s via APIG: %v\n", scheme.MRBindingID, err)
+				return fmt.Errorf("删除三方 MR 触发关联失败: %w", err)
 			}
 		} else {
 			apiURLStr := models.AppConfig.PipelineSystem.GetMRBindingsURL
@@ -1086,8 +1095,16 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[
 				}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteMRBinding")
 				if err != nil {
 					log.Printf("[SyncDelete] Failed to delete mr binding %s: %v\n", scheme.MRBindingID, err)
+					return fmt.Errorf("删除三方 MR 触发关联失败: %w", err)
 				}
 			}
+		}
+		if scheme.ID != 0 {
+			database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", scheme.ID).Updates(map[string]interface{}{
+				"mr_trigger":      false,
+				"mr_binding_id":   "",
+				"mr_binding_name": "",
+			})
 		}
 	}
 
@@ -1109,6 +1126,12 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[
 			}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteScheme")
 			if err != nil {
 				log.Printf("[SyncDelete] Failed to delete execution scheme %s: %v\n", scheme.ExecutionSchemeID, err)
+				return fmt.Errorf("删除三方执行方案失败: %w", err)
+			}
+			if scheme.ID != 0 {
+				database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", scheme.ID).Updates(map[string]interface{}{
+					"execution_scheme_id": "",
+				})
 			}
 		}
 	}
