@@ -84,6 +84,7 @@ interface SyncDiffModalProps {
   loading: boolean
   diffResult: CalculateDiffResponse | null
   onClose: () => void
+  apiBase?: string
   onRefreshDiff?: () => Promise<void> | void
   onConfirmSync?: (payload: {
     pipeline_id: number
@@ -99,6 +100,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
   loading,
   diffResult,
   onClose,
+  apiBase: propApiBase,
   onRefreshDiff
 }) => {
   const [activeTab, setActiveTab] = useState<'update' | 'add' | 'delete' | 'unchanged'>('update')
@@ -149,9 +151,17 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
     setMsgNotice(null)
 
     const token = localStorage.getItem('code_shield_token') || localStorage.getItem('code_pipeline_token')
-    const apiBase = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
-      ? 'http://192.168.56.18:8000/api'
-      : '/api'
+    
+    // 动态判断 apiBase 前缀，完美兼容微前端环境下的 /pipeline 前缀与独立部署模式
+    const isEmbedded = window.location.pathname.startsWith('/pipeline')
+    let apiBase = propApiBase
+    if (!apiBase) {
+      if (window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')) {
+        apiBase = isEmbedded ? 'http://192.168.56.18:8000/pipeline/api' : 'http://192.168.56.18:8000/api'
+      } else {
+        apiBase = isEmbedded ? '/pipeline/api' : '/api'
+      }
+    }
 
     try {
       const res = await fetch(`${apiBase}/execution-schemes/sync-item`, {
