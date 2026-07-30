@@ -75,6 +75,7 @@ func CreateMRBindingAPIG(ctx context.Context, pipelineBusinessID string, scheme 
 	bindingID := ParseMRBindingID(body)
 	if bindingID == "" {
 		log.Printf("[APIG] Step 3: Could not parse MR binding ID from response: %s", string(body))
+		return "", fmt.Errorf("failed to parse created MR binding ID from response: %s", string(body))
 	}
 
 	log.Printf("[APIG] Step 3: Successfully created MR binding, bindingID=%s", bindingID)
