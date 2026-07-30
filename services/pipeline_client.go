@@ -96,13 +96,6 @@ func FetchRemoteExecutionSchemes(ctx context.Context, pipelineBusinessID string,
 		return nil, err
 	}
 
-	var prettyJSON bytes.Buffer
-	if err := json.Indent(&prettyJSON, body, "", "  "); err == nil {
-		log.Printf("[PipelineClient] SyncExecutionSchemes remote response:\n%s\n", prettyJSON.String())
-	} else {
-		log.Printf("[PipelineClient] SyncExecutionSchemes remote response: %s\n", string(body))
-	}
-
 	var remoteResp struct {
 		Entities []models.RemoteExecutionScheme `json:"entities"`
 	}
