@@ -653,6 +653,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
         pipeline={syncTargetPipeline}
         loading={diffLoading}
         diffResult={diffResult}
+        apiBase={apiBase}
         onClose={() => setDiffModalVisible(false)}
         onRefreshDiff={() => { if (syncTargetPipeline) return handleTriggerSync(syncTargetPipeline) }}
         onConfirmSync={handleConfirmSync}
