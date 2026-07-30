@@ -407,4 +407,3 @@ func GetDashboardStats(c *gin.Context) {
 		"recent_runs":       reports,
 	})
 }
-

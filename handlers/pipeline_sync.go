@@ -909,12 +909,12 @@ func SyncSingleExecutionSchemeItem(c *gin.Context) {
 			// 将产生的外部 ID 写回本地数据库
 			if req.LocalID != 0 {
 				database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", req.LocalID).Updates(map[string]interface{}{
-					"execution_scheme_id":   newExtID,
-					"execution_scheme_name": localScheme.Name,
-					"mr_binding_id":         localScheme.MRBindingID,
-					"mr_binding_name":       localScheme.MRBindingName,
-					"execution_plan_id":     localScheme.ExecutionPlanID,
-					"execution_plan_name":   localScheme.ExecutionPlanName,
+					"execution_scheme_id":    newExtID,
+					"execution_scheme_name":  localScheme.Name,
+					"mr_binding_id":          localScheme.MRBindingID,
+					"mr_binding_name":        localScheme.MRBindingName,
+					"execution_plan_id":      localScheme.ExecutionPlanID,
+					"execution_plan_name":    localScheme.ExecutionPlanName,
 					"code_checker_task_id":   localScheme.CodeCheckerTaskID,
 					"code_checker_task_name": localScheme.CodeCheckerTaskName,
 				})
