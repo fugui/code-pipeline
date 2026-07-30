@@ -990,7 +990,13 @@ func SyncSingleExecutionSchemeItem(c *gin.Context) {
 						LocalPipelineID: req.PipelineID,
 						MRBindingID:     schemeTarget.MRBindingID,
 					}
-					services.SyncDeleteExecutionSchemeRemote(dummyScheme, headers)
+					if err := services.SyncDeleteExecutionSchemeRemote(dummyScheme, headers); err != nil {
+						if HandleSSOExpired(c, err) {
+							return
+						}
+						c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("解绑三方 MR 触发失败: %v", err)})
+						return
+					}
 					if req.LocalID != 0 {
 						database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", req.LocalID).Updates(map[string]interface{}{
 							"mr_trigger":      false,
@@ -1028,7 +1034,13 @@ func SyncSingleExecutionSchemeItem(c *gin.Context) {
 					dummyScheme := models.ExecutionScheme{
 						ExecutionPlanID: schemeTarget.ExecutionPlanID,
 					}
-					services.SyncDeleteExecutionSchemeRemote(dummyScheme, headers)
+					if err := services.SyncDeleteExecutionSchemeRemote(dummyScheme, headers); err != nil {
+						if HandleSSOExpired(c, err) {
+							return
+						}
+						c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("删除三方每日构建计划失败: %v", err)})
+						return
+					}
 					if req.LocalID != 0 {
 						database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", req.LocalID).Updates(map[string]interface{}{
 							"daily_build":         false,
