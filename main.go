@@ -136,6 +136,7 @@ func main() {
 				admin.POST("/execution-schemes/sync", handlers.SyncExecutionSchemes)
 				admin.POST("/execution-schemes/diff", handlers.CalculateExecutionSchemeDiff)
 				admin.POST("/execution-schemes/sync-confirm", handlers.ConfirmSyncExecutionSchemes)
+				admin.POST("/execution-schemes/sync-item", handlers.SyncSingleExecutionSchemeItem)
 			}
 		}
 	}

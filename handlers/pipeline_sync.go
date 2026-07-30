@@ -759,3 +759,300 @@ func ConfirmSyncExecutionSchemes(c *gin.Context) {
 	})
 }
 
+// SyncSingleItemRequest 单条/分项定向同步请求
+type SyncSingleItemRequest struct {
+	PipelineID     uint                   `json:"pipeline_id" binding:"required"`
+	Direction      string                 `json:"direction" binding:"required"` // "pull_to_local" | "push_to_remote"
+	Category       string                 `json:"category"`                     // "full", "scheme", "mr_binding", "execution_plan"
+	Action         string                 `json:"action"`                       // "upsert", "delete", "create_remote", "update_remote", "delete_remote"
+	LocalID        uint                   `json:"local_id"`
+	RemoteSchemeID string                 `json:"remote_scheme_id"`
+	SchemeData     models.ExecutionScheme `json:"scheme_data"`
+}
+
+// SyncSingleExecutionSchemeItem 支持对单个执行方案或分项模块（如 MR 触发绑定）进行双向定向同步
+func SyncSingleExecutionSchemeItem(c *gin.Context) {
+	var req SyncSingleItemRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var pipeline models.Pipeline
+	if err := database.DB.First(&pipeline, req.PipelineID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "流水线记录不存在"})
+		return
+	}
+
+	headers := prepareRequestHeaders(c)
+
+	if req.Direction == "pull_to_local" {
+		// ==========================================
+		// 方向 A：拉取至本地 (修正本地数据库)
+		// ==========================================
+		if req.Action == "delete" {
+			// 下架清理本地记录
+			if req.LocalID != 0 {
+				if err := database.DB.Where("id = ? AND pipeline_id = ?", req.LocalID, req.PipelineID).Delete(&models.ExecutionScheme{}).Error; err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "清理本地记录失败"})
+					return
+				}
+			}
+			c.JSON(http.StatusOK, gin.H{"message": "已成功下架清理本地方案记录"})
+			return
+		}
+
+		if req.LocalID == 0 {
+			// 本地新建（如将 add_list 项拉取导入本地）
+			req.SchemeData.LocalPipelineID = req.PipelineID
+			req.SchemeData.ID = 0
+			if err := database.DB.Omit("Repository", "PipelineInfo").Create(&req.SchemeData).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "导入新增方案至本地失败"})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"message": "已成功导入方案至本地数据库"})
+			return
+		}
+
+		// 本地更新 (全量或分项更新)
+		var existing models.ExecutionScheme
+		if err := database.DB.Where("id = ? AND pipeline_id = ?", req.LocalID, req.PipelineID).First(&existing).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "本地方案记录不存在"})
+			return
+		}
+
+		switch req.Category {
+		case "mr_binding":
+			existing.MRTrigger = req.SchemeData.MRTrigger
+			existing.MRBindingID = req.SchemeData.MRBindingID
+			existing.MRBindingName = req.SchemeData.MRBindingName
+			if req.SchemeData.Branch != "" {
+				existing.Branch = req.SchemeData.Branch
+			}
+		case "execution_plan":
+			existing.DailyBuild = req.SchemeData.DailyBuild
+			existing.ExecutionPlanID = req.SchemeData.ExecutionPlanID
+			existing.ExecutionPlanName = req.SchemeData.ExecutionPlanName
+		case "scheme", "full":
+			existing.Branch = req.SchemeData.Branch
+			if req.SchemeData.Languages != "" {
+				existing.Languages = req.SchemeData.Languages
+			}
+			if req.SchemeData.ExecutionSchemeID != "" {
+				existing.ExecutionSchemeID = req.SchemeData.ExecutionSchemeID
+			}
+			existing.ExecutionSchemeName = req.SchemeData.Name
+			existing.Name = req.SchemeData.Name
+			existing.CustomAttributes = req.SchemeData.CustomAttributes
+			existing.Username = req.SchemeData.Username
+			existing.Password = req.SchemeData.Password
+			existing.CodeCheckerTaskID = req.SchemeData.CodeCheckerTaskID
+			existing.CodeCheckerTaskName = req.SchemeData.CodeCheckerTaskName
+			if req.Category == "full" {
+				existing.MRTrigger = req.SchemeData.MRTrigger
+				existing.MRBindingID = req.SchemeData.MRBindingID
+				existing.MRBindingName = req.SchemeData.MRBindingName
+				existing.DailyBuild = req.SchemeData.DailyBuild
+				existing.ExecutionPlanID = req.SchemeData.ExecutionPlanID
+				existing.ExecutionPlanName = req.SchemeData.ExecutionPlanName
+			}
+		default:
+			existing.Branch = req.SchemeData.Branch
+			existing.MRTrigger = req.SchemeData.MRTrigger
+			existing.DailyBuild = req.SchemeData.DailyBuild
+		}
+
+		if err := database.DB.Omit("Repository", "PipelineInfo").Save(&existing).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "更新本地数据库失败"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "已成功更新同步至本地数据库"})
+		return
+
+	} else if req.Direction == "push_to_remote" {
+		// ==========================================
+		// 方向 B：推送至三方 (修改/新建/删除三方控制台)
+		// ==========================================
+		if req.Action == "delete_remote" {
+			// 清理三方远程方案
+			if err := services.SyncDeleteExecutionSchemeRemote(req.SchemeData, headers); err != nil {
+				if HandleSSOExpired(c, err) {
+					return
+				}
+				c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("清理三方远程方案失败: %v", err)})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"message": "已成功在三方系统中物理下架该方案"})
+			return
+		}
+
+		if req.Action == "create_remote" || (req.LocalID != 0 && req.RemoteSchemeID == "") {
+			// 在三方新建整套方案 (Scheme + MR + Plan)
+			var localScheme models.ExecutionScheme
+			if req.LocalID != 0 {
+				if err := database.DB.Preload("Repository").Where("id = ?", req.LocalID).First(&localScheme).Error; err != nil {
+					localScheme = req.SchemeData
+				}
+			} else {
+				localScheme = req.SchemeData
+			}
+
+			newExtID, err := services.SyncCreateExecutionSchemeRemote(c.Request.Context(), pipeline.PipelineID, &localScheme, headers)
+			if err != nil {
+				if HandleSSOExpired(c, err) {
+					return
+				}
+				c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("在三方系统中创建方案失败: %v", err)})
+				return
+			}
+
+			// 将产生的外部 ID 写回本地数据库
+			if req.LocalID != 0 {
+				database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", req.LocalID).Updates(map[string]interface{}{
+					"execution_scheme_id":   newExtID,
+					"execution_scheme_name": localScheme.Name,
+					"mr_binding_id":         localScheme.MRBindingID,
+					"mr_binding_name":       localScheme.MRBindingName,
+					"execution_plan_id":     localScheme.ExecutionPlanID,
+					"execution_plan_name":   localScheme.ExecutionPlanName,
+					"code_checker_task_id":   localScheme.CodeCheckerTaskID,
+					"code_checker_task_name": localScheme.CodeCheckerTaskName,
+				})
+			}
+			c.JSON(http.StatusOK, gin.H{"message": "已成功推送并在三方系统中新建该方案"})
+			return
+		}
+
+		// 针对既有远程方案进行分项/全量推送
+		var schemeTarget models.ExecutionScheme
+		if req.LocalID != 0 {
+			if err := database.DB.Preload("Repository").Where("id = ?", req.LocalID).First(&schemeTarget).Error; err != nil {
+				schemeTarget = req.SchemeData
+			}
+		} else {
+			schemeTarget = req.SchemeData
+		}
+		if schemeTarget.ExecutionSchemeID == "" {
+			schemeTarget.ExecutionSchemeID = req.RemoteSchemeID
+		}
+
+		repoURL := ""
+		if schemeTarget.Repository != nil {
+			repoURL = schemeTarget.Repository.HTTPURL
+			if repoURL == "" {
+				repoURL = schemeTarget.Repository.URL
+			}
+		}
+		if repoURL == "" && schemeTarget.RepositoryID != 0 {
+			var r models.Repository
+			if err := database.DB.First(&r, schemeTarget.RepositoryID).Error; err == nil {
+				repoURL = r.HTTPURL
+				if repoURL == "" {
+					repoURL = r.URL
+				}
+			}
+		}
+
+		switch req.Category {
+		case "mr_binding":
+			if schemeTarget.MRTrigger {
+				// 推送/新建三方 MR 绑定
+				if schemeTarget.MRBindingID == "" {
+					newBindingID, err := services.CreateMRBindingStep(c.Request.Context(), pipeline.PipelineID, &schemeTarget, schemeTarget.ExecutionSchemeID, repoURL, headers)
+					if err != nil {
+						if HandleSSOExpired(c, err) {
+							return
+						}
+						c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("在三方创建 MR 绑定失败: %v", err)})
+						return
+					}
+					schemeTarget.MRBindingID = newBindingID
+					if req.LocalID != 0 {
+						database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", req.LocalID).Updates(map[string]interface{}{
+							"mr_trigger":      true,
+							"mr_binding_id":   newBindingID,
+							"mr_binding_name": schemeTarget.Name,
+						})
+					}
+				} else {
+					if err := services.SyncUpdateMRBindingRemote(c.Request.Context(), &schemeTarget, repoURL, headers); err != nil {
+						if HandleSSOExpired(c, err) {
+							return
+						}
+						c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("更新三方 MR 绑定失败: %v", err)})
+						return
+					}
+				}
+			} else {
+				// 三方解绑/删除 MR 绑定
+				if schemeTarget.MRBindingID != "" {
+					dummyScheme := models.ExecutionScheme{
+						LocalPipelineID: req.PipelineID,
+						MRBindingID:     schemeTarget.MRBindingID,
+					}
+					services.SyncDeleteExecutionSchemeRemote(dummyScheme, headers)
+					if req.LocalID != 0 {
+						database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", req.LocalID).Updates(map[string]interface{}{
+							"mr_trigger":      false,
+							"mr_binding_id":   "",
+							"mr_binding_name": "",
+						})
+					}
+				}
+			}
+			c.JSON(http.StatusOK, gin.H{"message": "已成功将 MR 触发配置推送同步至三方系统"})
+			return
+
+		case "execution_plan":
+			if schemeTarget.DailyBuild {
+				if schemeTarget.ExecutionPlanID == "" {
+					newPlanID, err := services.CreateExecutionPlanStep(c.Request.Context(), pipeline.PipelineID, &schemeTarget, schemeTarget.ExecutionSchemeID, headers)
+					if err != nil {
+						if HandleSSOExpired(c, err) {
+							return
+						}
+						c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("在三方创建执行计划失败: %v", err)})
+						return
+					}
+					schemeTarget.ExecutionPlanID = newPlanID
+					if req.LocalID != 0 {
+						database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", req.LocalID).Updates(map[string]interface{}{
+							"daily_build":         true,
+							"execution_plan_id":   newPlanID,
+							"execution_plan_name": schemeTarget.Name,
+						})
+					}
+				}
+			} else {
+				if schemeTarget.ExecutionPlanID != "" {
+					dummyScheme := models.ExecutionScheme{
+						ExecutionPlanID: schemeTarget.ExecutionPlanID,
+					}
+					services.SyncDeleteExecutionSchemeRemote(dummyScheme, headers)
+					if req.LocalID != 0 {
+						database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", req.LocalID).Updates(map[string]interface{}{
+							"daily_build":         false,
+							"execution_plan_id":   "",
+							"execution_plan_name": "",
+						})
+					}
+				}
+			}
+			c.JSON(http.StatusOK, gin.H{"message": "已成功将每日构建计划推送同步至三方系统"})
+			return
+
+		default: // "scheme" 或 "full"
+			if err := services.SyncUpdateExecutionSchemeRemote(c.Request.Context(), &schemeTarget, repoURL, headers); err != nil {
+				if HandleSSOExpired(c, err) {
+					return
+				}
+				c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("推送修改三方方案失败: %v", err)})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"message": "已成功将执行方案配置推送修改至三方系统"})
+			return
+		}
+	}
+
+	c.JSON(http.StatusBadRequest, gin.H{"error": "无效的同步方向参数"})
+}
