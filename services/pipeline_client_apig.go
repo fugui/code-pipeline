@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"code-pipeline/database"
 	"code-pipeline/models"
@@ -72,9 +73,26 @@ func CreateMRBindingAPIG(ctx context.Context, pipelineBusinessID string, scheme 
 		return "", err
 	}
 
+	var respStruct struct {
+		Status  string `json:"status"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &respStruct); err == nil {
+		if respStruct.Status != "" && strings.ToLower(respStruct.Status) != "success" && strings.ToLower(respStruct.Status) != "ok" {
+			log.Printf("[APIG] Step 3: Create MR binding failed: status=%s, message=%s", respStruct.Status, respStruct.Message)
+			if respStruct.Message != "" {
+				return "", fmt.Errorf("create MR binding failed: %s", respStruct.Message)
+			}
+			return "", fmt.Errorf("create MR binding failed: status %s", respStruct.Status)
+		}
+	}
+
 	bindingID := ParseMRBindingID(body)
 	if bindingID == "" {
 		log.Printf("[APIG] Step 3: Could not parse MR binding ID from response: %s", string(body))
+		if respStruct.Message != "" {
+			return "", fmt.Errorf("create MR binding failed: %s", respStruct.Message)
+		}
 		return "", fmt.Errorf("failed to parse created MR binding ID from response: %s", string(body))
 	}
 

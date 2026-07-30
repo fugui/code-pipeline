@@ -35,6 +35,11 @@ func TestParseMRBindingID(t *testing.T) {
 			jsonBody: `{"entity":{"id":"entity_id_abc"}}`,
 			expected: "entity_id_abc",
 		},
+		{
+			name:     "Failed Response Empty Result",
+			jsonBody: `{"result":[],"message":"failed to add webhook in repository ,check to see if you have administrator rights in repository","status":"failed"}`,
+			expected: "",
+		},
 	}
 
 	for _, tt := range tests {
