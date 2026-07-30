@@ -5,7 +5,11 @@ import {
   CheckCircle2, 
   RefreshCw, 
   Database,
-  Cloud
+  Cloud,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Trash2,
+  Check
 } from 'lucide-react'
 import { Pipeline } from '../types'
 import { Drawer } from './Drawer'
@@ -80,7 +84,8 @@ interface SyncDiffModalProps {
   loading: boolean
   diffResult: CalculateDiffResponse | null
   onClose: () => void
-  onConfirmSync: (payload: {
+  onRefreshDiff?: () => Promise<void> | void
+  onConfirmSync?: (payload: {
     pipeline_id: number
     add_schemes: any[]
     update_schemes: any[]
@@ -94,13 +99,11 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
   loading,
   diffResult,
   onClose,
-  onConfirmSync
+  onRefreshDiff
 }) => {
-  const [selectedAddIndex, setSelectedAddIndex] = useState<Set<number>>(new Set())
-  const [selectedUpdateIndex, setSelectedUpdateIndex] = useState<Set<number>>(new Set())
-  const [selectedDeleteIndex, setSelectedDeleteIndex] = useState<Set<number>>(new Set())
-  const [submitting, setSubmitting] = useState<boolean>(false)
   const [activeTab, setActiveTab] = useState<'update' | 'add' | 'delete' | 'unchanged'>('update')
+  const [syncingKey, setSyncingKey] = useState<string | null>(null)
+  const [msgNotice, setMsgNotice] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   const details = diffResult?.diff_details
 
@@ -110,23 +113,18 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
   const deleteList = details?.delete_list || []
   const unchangedList = details?.unchanged_list || []
 
-  // Auto initialize selection when diffResult arrives
+  // Auto initialize default active tab when diffResult arrives
   useEffect(() => {
     if (diffResult?.diff_details) {
-      const add_list = diffResult.diff_details.add_list || []
-      const update_list = diffResult.diff_details.update_list || []
-      const delete_list = diffResult.diff_details.delete_list || []
+      const add_l = diffResult.diff_details.add_list || []
+      const update_l = diffResult.diff_details.update_list || []
+      const delete_l = diffResult.diff_details.delete_list || []
 
-      setSelectedAddIndex(new Set(add_list.map((_, i) => i)))
-      setSelectedUpdateIndex(new Set(update_list.map((_, i) => i)))
-      setSelectedDeleteIndex(new Set(delete_list.map((_, i) => i)))
-
-      // Pick default tab with changes
-      if (update_list.length > 0) {
+      if (update_l.length > 0) {
         setActiveTab('update')
-      } else if (add_list.length > 0) {
+      } else if (add_l.length > 0) {
         setActiveTab('add')
-      } else if (delete_list.length > 0) {
+      } else if (delete_l.length > 0) {
         setActiveTab('delete')
       } else {
         setActiveTab('unchanged')
@@ -136,62 +134,59 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
 
   const summary = diffResult?.summary
 
-  // Selection Toggles
-  const toggleAdd = (index: number) => {
-    const next = new Set(selectedAddIndex)
-    if (next.has(index)) next.delete(index)
-    else next.add(index)
-    setSelectedAddIndex(next)
-  }
+  // Directional Single Item / Field Sync Handler
+  const handleSingleItemSync = async (params: {
+    key: string
+    direction: 'pull_to_local' | 'push_to_remote'
+    category?: string
+    action?: string
+    local_id?: number
+    remote_scheme_id?: string
+    scheme_data?: any
+  }) => {
+    if (!diffResult && !pipeline) return
+    setSyncingKey(params.key)
+    setMsgNotice(null)
 
-  const toggleUpdate = (index: number) => {
-    const next = new Set(selectedUpdateIndex)
-    if (next.has(index)) next.delete(index)
-    else next.add(index)
-    setSelectedUpdateIndex(next)
-  }
-
-  const toggleDelete = (index: number) => {
-    const next = new Set(selectedDeleteIndex)
-    if (next.has(index)) next.delete(index)
-    else next.add(index)
-    setSelectedDeleteIndex(next)
-  }
-
-  // Handle Confirm Submission
-  const handleConfirm = async () => {
-    if (!diffResult || !pipeline) return
-    setSubmitting(true)
+    const token = localStorage.getItem('code_shield_token') || localStorage.getItem('code_pipeline_token')
+    const apiBase = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
+      ? 'http://192.168.56.18:8000/api'
+      : '/api'
 
     try {
-      const add_schemes = Array.from(selectedAddIndex)
-        .map(i => addList[i]?.scheme_data)
-        .filter(Boolean)
-
-      const update_schemes = Array.from(selectedUpdateIndex)
-        .map(i => updateList[i]?.new_scheme_data)
-        .filter(Boolean)
-
-      const delete_local_ids: number[] = Array.from(selectedDeleteIndex)
-        .map(i => deleteList[i]?.local_id)
-        .filter((id): id is number => typeof id === 'number')
-
-      await onConfirmSync({
-        pipeline_id: diffResult.pipeline_id || pipeline.id || 0,
-        add_schemes,
-        update_schemes,
-        delete_local_ids
+      const res = await fetch(`${apiBase}/execution-schemes/sync-item`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          pipeline_id: diffResult?.pipeline_id || pipeline?.id || 0,
+          direction: params.direction,
+          category: params.category || 'full',
+          action: params.action || 'upsert',
+          local_id: params.local_id || 0,
+          remote_scheme_id: params.remote_scheme_id || '',
+          scheme_data: params.scheme_data || {}
+        })
       })
 
-      onClose()
-    } catch (err) {
-      console.error('Failed to apply sync changes', err)
+      const data = await res.json()
+      if (res.ok) {
+        setMsgNotice({ type: 'success', text: data.message || '定向同步成功！' })
+        if (onRefreshDiff) {
+          await onRefreshDiff()
+        }
+      } else {
+        setMsgNotice({ type: 'error', text: data.error || '定向同步失败' })
+      }
+    } catch (err: any) {
+      console.error('Failed to sync single item', err)
+      setMsgNotice({ type: 'error', text: err.message || '网络请求发生错误' })
     } finally {
-      setSubmitting(false)
+      setSyncingKey(null)
     }
   }
-
-  const totalSelectedChanges = selectedAddIndex.size + selectedUpdateIndex.size + selectedDeleteIndex.size
 
   const getCategoryBadge = (category: string) => {
     switch (category) {
@@ -227,24 +222,31 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
     </div>
   )
 
-  // Footer component
+  // Footer component (Replaced bulk sync with status notice & per-item actions)
   const drawerFooter = (
     <>
-      <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-        拟应用变更：已勾选 <strong style={{ color: 'var(--border-active, #6366f1)', fontSize: 15 }}>{totalSelectedChanges}</strong> 项同步操作
+      <div style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span>💡 <strong>操作说明：</strong>您可以对任意差异记录或模块选择【⬇️ 拉取至本地】(修正本地数据库) 或【⬆️ 推送至三方】(更新/创建远程系统)，变更即时应用生效。</span>
       </div>
-      <div style={{ display: 'flex', gap: 12 }}>
-        <button className="btn btn-secondary" onClick={onClose} disabled={submitting}>
-          取消
-        </button>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        {onRefreshDiff && (
+          <button 
+            className="btn btn-secondary" 
+            onClick={() => onRefreshDiff()} 
+            disabled={loading || !!syncingKey}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '7px 14px' }}
+          >
+            <RefreshCw size={14} className={loading ? 'spin' : ''} />
+            重新比对
+          </button>
+        )}
         <button 
           className="btn btn-primary" 
-          onClick={handleConfirm}
-          disabled={submitting || loading || totalSelectedChanges === 0}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 18px' }}
+          onClick={onClose} 
+          disabled={!!syncingKey}
+          style={{ padding: '7px 18px', fontSize: 13 }}
         >
-          {submitting ? <RefreshCw size={15} className="spin" /> : null}
-          {submitting ? '正在更新应用...' : `确认应用同步变更 (${totalSelectedChanges})`}
+          完成 / 关闭
         </button>
       </div>
     </>
@@ -257,7 +259,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
       title={drawerTitle}
       subtitle={drawerSubtitle}
       footer={drawerFooter}
-      width={840}
+      width="min(1092px, 96vw)"
     >
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 360, gap: 14, color: 'var(--text-secondary)' }}>
@@ -266,6 +268,32 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
         </div>
       ) : diffResult ? (
         <>
+          {/* Notification Message Banner */}
+          {msgNotice && (
+            <div style={{
+              padding: '10px 16px',
+              borderRadius: 8,
+              fontSize: 13,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: msgNotice.type === 'success' ? 'rgba(5, 150, 105, 0.12)' : 'rgba(225, 29, 72, 0.12)',
+              border: msgNotice.type === 'success' ? '1px solid rgba(5, 150, 105, 0.3)' : '1px solid rgba(225, 29, 72, 0.3)',
+              color: msgNotice.type === 'success' ? '#059669' : '#e11d48'
+            }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+                {msgNotice.type === 'success' ? <Check size={16} /> : <AlertTriangle size={16} />}
+                {msgNotice.text}
+              </span>
+              <button 
+                onClick={() => setMsgNotice(null)} 
+                style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 4 }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {/* Top Overview Cards / Tabs */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
             <div 
@@ -362,21 +390,9 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                   <span style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-main)' }}>
                     属性与配置更替列表 <span style={{ color: '#d97706', fontSize: 12 }}>({updateList.length} 个方案变动)</span>
                   </span>
-                  <button 
-                    style={{ background: 'none', border: 'none', color: '#6366f1', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
-                    onClick={() => {
-                      if (selectedUpdateIndex.size === updateList.length) {
-                        setSelectedUpdateIndex(new Set())
-                      } else {
-                        setSelectedUpdateIndex(new Set(updateList.map((_, i) => i)))
-                      }
-                    }}
-                  >
-                    {selectedUpdateIndex.size === updateList.length ? '取消全选' : '全选变动项'}
-                  </button>
                 </div>
                 {updateList.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {updateList.map((item, idx) => (
                       <div 
                         key={item.local_id || idx}
@@ -390,15 +406,9 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                           gap: 12
                         }}
                       >
-                        {/* Card Top Title Bar */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
-                            <input 
-                              type="checkbox" 
-                              checked={selectedUpdateIndex.has(idx)} 
-                              onChange={() => toggleUpdate(idx)} 
-                              style={{ width: 16, height: 16, accentColor: '#6366f1', cursor: 'pointer' }}
-                            />
+                        {/* Card Top Title & Global Card Action Bar */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 600, fontSize: 14 }}>
                             <span style={{ color: 'var(--text-main)', fontSize: 15 }}>{item.repository_name}</span>
                             {item.name && (
                               <span style={{ fontSize: 13, color: '#6366f1', fontWeight: 500 }}>
@@ -408,25 +418,64 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                             <span style={{ fontSize: 12, color: '#6366f1', fontFamily: 'var(--font-mono)', background: 'rgba(99, 102, 241, 0.12)', padding: '2px 8px', borderRadius: 4, fontWeight: 500 }}>
                               分支: {item.branchs || '未设置'}
                             </span>
-                          </label>
-                          <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 12, alignItems: 'center' }}>
-                            <span>本地 DB ID: <strong>{item.local_id}</strong></span>
-                            <span>
-                              三方方案: <strong style={{ color: 'var(--text-main)' }}>{item.name || '未设置'}</strong>
-                              {item.remote_scheme_id && (
-                                <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 4, fontFamily: 'var(--font-mono)' }} title={`Scheme ID: ${item.remote_scheme_id}`}>
-                                  ({item.remote_scheme_id})
-                                </span>
-                              )}
-                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 10, marginRight: 6 }}>
+                              <span>本地 DB ID: <strong>{item.local_id}</strong></span>
+                              <span>
+                                三方方案: <strong style={{ color: 'var(--text-main)' }}>{item.name || '未设置'}</strong>
+                                {item.remote_scheme_id && (
+                                  <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 4, fontFamily: 'var(--font-mono)' }} title={`Scheme ID: ${item.remote_scheme_id}`}>
+                                    ({item.remote_scheme_id})
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+
+                            {/* Card Level Action Buttons */}
+                            <button
+                              className="btn btn-secondary btn-small"
+                              style={{ padding: '4px 10px', fontSize: 12, background: 'rgba(5, 150, 105, 0.12)', color: '#059669', border: '1px solid rgba(5, 150, 105, 0.3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                              disabled={!!syncingKey}
+                              onClick={() => handleSingleItemSync({
+                                key: `update-${item.local_id}-full-pull`,
+                                direction: 'pull_to_local',
+                                category: 'full',
+                                local_id: item.local_id,
+                                remote_scheme_id: item.remote_scheme_id,
+                                scheme_data: item.new_scheme_data
+                              })}
+                              title="将该方案在三方系统的全部配置覆盖修正至本地 DB"
+                            >
+                              {syncingKey === `update-${item.local_id}-full-pull` ? <RefreshCw size={12} className="spin" /> : <ArrowDownLeft size={13} />}
+                              整方案拉取至本地
+                            </button>
+                            <button
+                              className="btn btn-secondary btn-small"
+                              style={{ padding: '4px 10px', fontSize: 12, background: 'rgba(99, 102, 241, 0.12)', color: '#6366f1', border: '1px solid rgba(99, 102, 241, 0.3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                              disabled={!!syncingKey}
+                              onClick={() => handleSingleItemSync({
+                                key: `update-${item.local_id}-full-push`,
+                                direction: 'push_to_remote',
+                                category: 'full',
+                                local_id: item.local_id,
+                                remote_scheme_id: item.remote_scheme_id,
+                                scheme_data: item.new_scheme_data
+                              })}
+                              title="将该方案在本地 DB 的配置修改覆盖推送至三方系统"
+                            >
+                              {syncingKey === `update-${item.local_id}-full-push` ? <RefreshCw size={12} className="spin" /> : <ArrowUpRight size={13} />}
+                              整方案推送至三方
+                            </button>
                           </div>
                         </div>
 
-                        {/* Detailed Tabular Diff Matrix */}
+                        {/* Detailed Tabular Diff Matrix with Row-Level Granular Sync Actions */}
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, background: 'var(--bg-primary)', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border-color)' }}>
                           <thead>
                             <tr style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
-                              <th style={{ padding: '10px 12px', width: 120 }}>变更模块</th>
+                              <th style={{ padding: '10px 12px', width: 110 }}>变更模块</th>
                               <th style={{ padding: '10px 12px', width: 120 }}>对比属性/字段</th>
                               <th style={{ padding: '10px 12px', color: '#e11d48' }}>
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
@@ -438,6 +487,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                                   <Cloud size={13} /> 第三方控制台 (Remote System)
                                 </span>
                               </th>
+                              <th style={{ padding: '10px 12px', width: 230, textAlign: 'center' }}>分项精准同步</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -455,6 +505,44 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                                     {change.new_value || '无'}
                                   </span>
                                 </td>
+                                <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                                  <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                                    <button
+                                      className="btn btn-secondary btn-small"
+                                      style={{ padding: '3px 8px', fontSize: 11, background: 'rgba(5, 150, 105, 0.12)', color: '#059669', border: '1px solid rgba(5, 150, 105, 0.3)', display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                                      disabled={!!syncingKey}
+                                      onClick={() => handleSingleItemSync({
+                                        key: `update-${item.local_id}-${change.category}-pull`,
+                                        direction: 'pull_to_local',
+                                        category: change.category,
+                                        local_id: item.local_id,
+                                        remote_scheme_id: item.remote_scheme_id,
+                                        scheme_data: item.new_scheme_data
+                                      })}
+                                      title="以三方的这项配置为准，覆盖更正本地 DB 对应字段"
+                                    >
+                                      {syncingKey === `update-${item.local_id}-${change.category}-pull` ? <RefreshCw size={11} className="spin" /> : <ArrowDownLeft size={12} />}
+                                      拉取至本地
+                                    </button>
+                                    <button
+                                      className="btn btn-secondary btn-small"
+                                      style={{ padding: '3px 8px', fontSize: 11, background: 'rgba(99, 102, 241, 0.12)', color: '#6366f1', border: '1px solid rgba(99, 102, 241, 0.3)', display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                                      disabled={!!syncingKey}
+                                      onClick={() => handleSingleItemSync({
+                                        key: `update-${item.local_id}-${change.category}-push`,
+                                        direction: 'push_to_remote',
+                                        category: change.category,
+                                        local_id: item.local_id,
+                                        remote_scheme_id: item.remote_scheme_id,
+                                        scheme_data: item.new_scheme_data
+                                      })}
+                                      title="以本地此项配置为准，在三方新建/更新该模块或规则"
+                                    >
+                                      {syncingKey === `update-${item.local_id}-${change.category}-push` ? <RefreshCw size={11} className="spin" /> : <ArrowUpRight size={12} />}
+                                      推送至三方
+                                    </button>
+                                  </div>
+                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -470,50 +558,30 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
               </div>
             )}
 
-            {/* 2. ADD TAB */}
+            {/* 2. ADD TAB (三方拟新增方案) */}
             {activeTab === 'add' && (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <span style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-main)' }}>
                     三方控制台拟新增执行方案 <span style={{ color: '#059669', fontSize: 12 }}>({addList.length} 个新方案)</span>
                   </span>
-                  <button 
-                    style={{ background: 'none', border: 'none', color: '#6366f1', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
-                    onClick={() => {
-                      if (selectedAddIndex.size === addList.length) {
-                        setSelectedAddIndex(new Set())
-                      } else {
-                        setSelectedAddIndex(new Set(addList.map((_, i) => i)))
-                      }
-                    }}
-                  >
-                    {selectedAddIndex.size === addList.length ? '取消全选' : '全选新增项'}
-                  </button>
                 </div>
                 {addList.length > 0 ? (
                   <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid rgba(16, 185, 129, 0.4)', background: 'var(--bg-card)' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
                       <thead>
                         <tr style={{ background: 'rgba(16, 185, 129, 0.08)', color: '#059669', borderBottom: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                          <th style={{ padding: '10px 14px', width: 40 }}>勾选</th>
                           <th style={{ padding: '10px 14px' }}>代码仓 / 方案名称</th>
                           <th style={{ padding: '10px 14px', width: 120 }}>生效分支</th>
                           <th style={{ padding: '10px 14px', width: 110 }}>MR 触发状态</th>
                           <th style={{ padding: '10px 14px', width: 110 }}>每日构建状态</th>
-                          <th style={{ padding: '10px 14px', width: 180 }}>三方方案名称 / ID</th>
+                          <th style={{ padding: '10px 14px', width: 160 }}>三方方案名称 / ID</th>
+                          <th style={{ padding: '10px 14px', width: 250, textAlign: 'center' }}>定向操作</th>
                         </tr>
                       </thead>
                       <tbody>
                         {addList.map((item, idx) => (
                           <tr key={item.remote_scheme_id || idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                            <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                              <input 
-                                type="checkbox" 
-                                checked={selectedAddIndex.has(idx)} 
-                                onChange={() => toggleAdd(idx)} 
-                                style={{ width: 16, height: 16, accentColor: '#059669', cursor: 'pointer' }}
-                              />
-                            </td>
                             <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text-main)' }}>
                               <div>{item.repository_name}</div>
                               <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>{item.name}</div>
@@ -537,6 +605,43 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                                 {item.remote_scheme_id}
                               </div>
                             </td>
+                            <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                              <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                                <button
+                                  className="btn btn-secondary btn-small"
+                                  style={{ padding: '4px 10px', fontSize: 12, background: 'rgba(5, 150, 105, 0.15)', color: '#059669', border: '1px solid rgba(5, 150, 105, 0.3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                  disabled={!!syncingKey}
+                                  onClick={() => handleSingleItemSync({
+                                    key: `add-${item.remote_scheme_id}-pull`,
+                                    direction: 'pull_to_local',
+                                    action: 'upsert',
+                                    category: 'full',
+                                    remote_scheme_id: item.remote_scheme_id,
+                                    scheme_data: item.scheme_data
+                                  })}
+                                  title="在本地数据库创建导入该三方新增方案"
+                                >
+                                  {syncingKey === `add-${item.remote_scheme_id}-pull` ? <RefreshCw size={12} className="spin" /> : <ArrowDownLeft size={13} />}
+                                  拉取导入本地
+                                </button>
+                                <button
+                                  className="btn btn-secondary btn-small"
+                                  style={{ padding: '4px 10px', fontSize: 12, background: 'rgba(225, 29, 72, 0.1)', color: '#e11d48', border: '1px solid rgba(225, 29, 72, 0.3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                  disabled={!!syncingKey}
+                                  onClick={() => handleSingleItemSync({
+                                    key: `add-${item.remote_scheme_id}-delremote`,
+                                    direction: 'push_to_remote',
+                                    action: 'delete_remote',
+                                    remote_scheme_id: item.remote_scheme_id,
+                                    scheme_data: item.scheme_data
+                                  })}
+                                  title="在三方系统中物理下架该废弃方案"
+                                >
+                                  {syncingKey === `add-${item.remote_scheme_id}-delremote` ? <RefreshCw size={12} className="spin" /> : <Trash2 size={13} />}
+                                  清理三方远程
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -550,49 +655,29 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
               </div>
             )}
 
-            {/* 3. DELETE TAB */}
+            {/* 3. DELETE TAB (本地拟废弃方案) */}
             {activeTab === 'delete' && (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <span style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-main)' }}>
                     本地拟废弃/移除的执行方案 <span style={{ color: '#e11d48', fontSize: 12 }}>({deleteList.length} 个废弃方案)</span>
                   </span>
-                  <button 
-                    style={{ background: 'none', border: 'none', color: '#6366f1', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
-                    onClick={() => {
-                      if (selectedDeleteIndex.size === deleteList.length) {
-                        setSelectedDeleteIndex(new Set())
-                      } else {
-                        setSelectedDeleteIndex(new Set(deleteList.map((_, i) => i)))
-                      }
-                    }}
-                  >
-                    {selectedDeleteIndex.size === deleteList.length ? '取消全选' : '全选移除项'}
-                  </button>
                 </div>
                 {deleteList.length > 0 ? (
                   <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid rgba(244, 63, 94, 0.4)', background: 'var(--bg-card)' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
                       <thead>
                         <tr style={{ background: 'rgba(244, 63, 94, 0.08)', color: '#e11d48', borderBottom: '1px solid rgba(244, 63, 94, 0.2)' }}>
-                          <th style={{ padding: '10px 14px', width: 40 }}>勾选</th>
                           <th style={{ padding: '10px 14px' }}>代码仓 / 方案名称</th>
                           <th style={{ padding: '10px 14px', width: 120 }}>生效分支</th>
-                          <th style={{ padding: '10px 14px', width: 110 }}>本地 DB ID</th>
+                          <th style={{ padding: '10px 14px', width: 100 }}>本地 DB ID</th>
                           <th style={{ padding: '10px 14px' }}>物理删除说明</th>
+                          <th style={{ padding: '10px 14px', width: 250, textAlign: 'center' }}>定向操作</th>
                         </tr>
                       </thead>
                       <tbody>
                         {deleteList.map((item, idx) => (
                           <tr key={item.local_id || idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                            <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                              <input 
-                                type="checkbox" 
-                                checked={selectedDeleteIndex.has(idx)} 
-                                onChange={() => toggleDelete(idx)} 
-                                style={{ width: 16, height: 16, accentColor: '#e11d48', cursor: 'pointer' }}
-                              />
-                            </td>
                             <td style={{ padding: '12px 14px', fontWeight: 600, color: '#e11d48' }}>
                               <div>{item.repository_name}</div>
                               <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>{item.name}</div>
@@ -604,7 +689,49 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                               {item.local_id}
                             </td>
                             <td style={{ padding: '12px 14px', fontSize: 12, color: '#e11d48', fontWeight: 500 }}>
-                              ⚠️ 三方控制台已删除该方案，应用后本地数据库记录将被物理下架
+                              ⚠️ 三方控制台已无此方案
+                            </td>
+                            <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                              <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                                <button
+                                  className="btn btn-secondary btn-small"
+                                  style={{ padding: '4px 10px', fontSize: 12, background: 'rgba(99, 102, 241, 0.12)', color: '#6366f1', border: '1px solid rgba(99, 102, 241, 0.3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                  disabled={!!syncingKey}
+                                  onClick={() => handleSingleItemSync({
+                                    key: `delete-${item.local_id}-pushcreate`,
+                                    direction: 'push_to_remote',
+                                    action: 'create_remote',
+                                    category: 'full',
+                                    local_id: item.local_id,
+                                    scheme_data: {
+                                      id: item.local_id,
+                                      name: item.name,
+                                      branch: item.branchs,
+                                      mr_trigger: item.had_mr_trigger,
+                                      daily_build: item.had_daily_build
+                                    }
+                                  })}
+                                  title="以本地配置为准，在三方控制台中重新新建该方案"
+                                >
+                                  {syncingKey === `delete-${item.local_id}-pushcreate` ? <RefreshCw size={12} className="spin" /> : <ArrowUpRight size={13} />}
+                                  推送新建至三方
+                                </button>
+                                <button
+                                  className="btn btn-secondary btn-small"
+                                  style={{ padding: '4px 10px', fontSize: 12, background: 'rgba(225, 29, 72, 0.12)', color: '#e11d48', border: '1px solid rgba(225, 29, 72, 0.3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                  disabled={!!syncingKey}
+                                  onClick={() => handleSingleItemSync({
+                                    key: `delete-${item.local_id}-dellocal`,
+                                    direction: 'pull_to_local',
+                                    action: 'delete',
+                                    local_id: item.local_id
+                                  })}
+                                  title="确认废弃，物理下架清理本地数据库记录"
+                                >
+                                  {syncingKey === `delete-${item.local_id}-dellocal` ? <RefreshCw size={12} className="spin" /> : <Trash2 size={13} />}
+                                  清理本地 DB
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}

@@ -654,6 +654,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
         loading={diffLoading}
         diffResult={diffResult}
         onClose={() => setDiffModalVisible(false)}
+        onRefreshDiff={() => { if (syncTargetPipeline) return handleTriggerSync(syncTargetPipeline) }}
         onConfirmSync={handleConfirmSync}
       />
     </div>

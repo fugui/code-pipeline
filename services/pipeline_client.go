@@ -478,8 +478,8 @@ func createExecutionSchemeStep(ctx context.Context, pipelineBusinessID string, s
 	return extID, nil
 }
 
-// createMRBindingStep 步骤三：创建 MR 触发关联
-func createMRBindingStep(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, schemeID string, repoURL string, headers map[string]string) (string, error) {
+// CreateMRBindingStep 步骤三：创建 MR 触发关联
+func CreateMRBindingStep(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, schemeID string, repoURL string, headers map[string]string) (string, error) {
 	log.Printf("[SyncCreateScheme] Enter createMRBindingStep: pipelineBusinessID=%s, scheme=%+v, schemeID=%s, repoURL=%s, headers=%v", pipelineBusinessID, scheme, schemeID, repoURL, headers)
 
 	if models.AppConfig.PipelineSystem.EnableAPIGAuth {
@@ -565,7 +565,7 @@ func SyncUpdateMRBindingRemote(ctx context.Context, scheme *models.ExecutionSche
 
 	if scheme.MRBindingID == "" {
 		log.Printf("[SyncUpdateMRBinding] MRBindingID is empty for scheme %s, falling back to createMRBindingStep", scheme.Name)
-		newBindingID, err := createMRBindingStep(ctx, pipelineBusinessID, scheme, scheme.ExecutionSchemeID, repoURL, headers)
+		newBindingID, err := CreateMRBindingStep(ctx, pipelineBusinessID, scheme, scheme.ExecutionSchemeID, repoURL, headers)
 		if err != nil {
 			return fmt.Errorf("fallback createMRBindingStep failed: %w", err)
 		}
@@ -803,8 +803,8 @@ func SyncUpdateExecutionSchemeRemote(ctx context.Context, scheme *models.Executi
 	return nil
 }
 
-// createExecutionPlanStep 步骤四：创建每日构建的执行计划
-func createExecutionPlanStep(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, schemeID string, headers map[string]string) (string, error) {
+// CreateExecutionPlanStep 步骤四：创建每日构建的执行计划
+func CreateExecutionPlanStep(ctx context.Context, pipelineBusinessID string, scheme *models.ExecutionScheme, schemeID string, headers map[string]string) (string, error) {
 	log.Printf("[SyncCreateScheme] Enter createExecutionPlanStep: pipelineBusinessID=%s, scheme=%+v, schemeID=%s, headers=%v", pipelineBusinessID, scheme, schemeID, headers)
 	apiURLStr := models.AppConfig.PipelineSystem.CreateExecutionPlanURL
 	if apiURLStr == "" {
@@ -975,7 +975,7 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 
 	// 3. 创建 MR 触发关联（关联该方案）
 	if scheme.MRTrigger {
-		mrBindingID, err := createMRBindingStep(ctx, pipelineBusinessID, scheme, extID, repoURL, headers)
+		mrBindingID, err := CreateMRBindingStep(ctx, pipelineBusinessID, scheme, extID, repoURL, headers)
 		if err != nil {
 			log.Printf("[Pipeline] Remote sync Step 3 failed: %v\n", err)
 			SyncDeleteExecutionSchemeRemote(*scheme, headers)
@@ -987,7 +987,7 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 
 	// 4. 创建每日构建的执行计划
 	if scheme.DailyBuild {
-		planID, err := createExecutionPlanStep(ctx, pipelineBusinessID, scheme, extID, headers)
+		planID, err := CreateExecutionPlanStep(ctx, pipelineBusinessID, scheme, extID, headers)
 		if err != nil {
 			log.Printf("[Pipeline] Remote sync Step 4 failed: %v\n", err)
 			SyncDeleteExecutionSchemeRemote(*scheme, headers)
