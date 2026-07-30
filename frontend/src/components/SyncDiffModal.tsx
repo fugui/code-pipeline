@@ -400,13 +400,25 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                               style={{ width: 16, height: 16, accentColor: '#6366f1', cursor: 'pointer' }}
                             />
                             <span style={{ color: 'var(--text-main)', fontSize: 15 }}>{item.repository_name}</span>
+                            {item.name && (
+                              <span style={{ fontSize: 13, color: '#6366f1', fontWeight: 500 }}>
+                                ({item.name})
+                              </span>
+                            )}
                             <span style={{ fontSize: 12, color: '#6366f1', fontFamily: 'var(--font-mono)', background: 'rgba(99, 102, 241, 0.12)', padding: '2px 8px', borderRadius: 4, fontWeight: 500 }}>
                               分支: {item.branchs || '未设置'}
                             </span>
                           </label>
-                          <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 12 }}>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 12, alignItems: 'center' }}>
                             <span>本地 DB ID: <strong>{item.local_id}</strong></span>
-                            <span>三方 Scheme ID: <strong style={{ fontFamily: 'var(--font-mono)' }}>{item.remote_scheme_id}</strong></span>
+                            <span>
+                              三方方案: <strong style={{ color: 'var(--text-main)' }}>{item.name || '未设置'}</strong>
+                              {item.remote_scheme_id && (
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 4, fontFamily: 'var(--font-mono)' }} title={`Scheme ID: ${item.remote_scheme_id}`}>
+                                  ({item.remote_scheme_id})
+                                </span>
+                              )}
+                            </span>
                           </div>
                         </div>
 
@@ -488,7 +500,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                           <th style={{ padding: '10px 14px', width: 120 }}>生效分支</th>
                           <th style={{ padding: '10px 14px', width: 110 }}>MR 触发状态</th>
                           <th style={{ padding: '10px 14px', width: 110 }}>每日构建状态</th>
-                          <th style={{ padding: '10px 14px', width: 160 }}>三方 Scheme ID</th>
+                          <th style={{ padding: '10px 14px', width: 180 }}>三方方案名称 / ID</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -519,8 +531,11 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                                 ? <span style={{ background: 'rgba(14, 165, 233, 0.12)', color: '#0284c7', fontSize: 11, padding: '2px 6px', borderRadius: 4, fontWeight: 500 }}>含 每日构建</span>
                                 : <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>未开启</span>}
                             </td>
-                            <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
-                              {item.remote_scheme_id}
+                            <td style={{ padding: '12px 14px', fontSize: 12 }}>
+                              {item.name && <div style={{ fontWeight: 500, color: 'var(--text-main)' }}>{item.name}</div>}
+                              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
+                                {item.remote_scheme_id}
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -613,10 +628,10 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
                       <thead>
                         <tr style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)' }}>
-                          <th style={{ padding: '10px 14px' }}>代码仓名称</th>
+                          <th style={{ padding: '10px 14px' }}>代码仓 / 方案名称</th>
                           <th style={{ padding: '10px 14px', width: 130 }}>生效分支</th>
                           <th style={{ padding: '10px 14px', width: 120 }}>本地 DB ID</th>
-                          <th style={{ padding: '10px 14px', width: 160 }}>三方 Scheme ID</th>
+                          <th style={{ padding: '10px 14px', width: 180 }}>三方方案名称 / ID</th>
                           <th style={{ padding: '10px 14px', width: 110, textAlign: 'right' }}>同步状态</th>
                         </tr>
                       </thead>
@@ -624,7 +639,8 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                         {unchangedList.map((item, idx) => (
                           <tr key={item.local_id || idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
                             <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                              {item.repository_name}
+                              <div>{item.repository_name}</div>
+                              {item.name && <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>{item.name}</div>}
                             </td>
                             <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)' }}>
                               {item.branchs || '-'}
@@ -632,8 +648,11 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                             <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)' }}>
                               {item.local_id}
                             </td>
-                            <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)' }}>
-                              {item.remote_scheme_id}
+                            <td style={{ padding: '12px 14px', fontSize: 12 }}>
+                              {item.name && <div style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{item.name}</div>}
+                              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
+                                {item.remote_scheme_id}
+                              </div>
                             </td>
                             <td style={{ padding: '12px 14px', textAlign: 'right', color: '#059669', fontSize: 12, fontWeight: 500 }}>
                               ✓ 两端配置一致
