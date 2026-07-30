@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 
+	"code-pipeline/database"
 	"code-pipeline/models"
 	"code-pipeline/utils"
 )
@@ -89,12 +90,36 @@ func SyncUpdateMRBindingRemoteAPIG(ctx context.Context, pipelineBusinessID strin
 		return fmt.Errorf("failed to get APIG headers: %w", err)
 	}
 
-	if scheme.MRBindingID == "" {
+	// 优先实时查询三方系统是否存在该 MR 绑定
+	existsOnRemote := false
+	if pipelineBusinessID != "" {
+		remoteBindings, err := FetchRemoteMRBindings(ctx, pipelineBusinessID, userHeaders)
+		if err == nil {
+			for _, b := range remoteBindings {
+				if (scheme.MRBindingID != "" && b.ID == scheme.MRBindingID) || (scheme.ExecutionSchemeID != "" && b.SchemeID == scheme.ExecutionSchemeID) {
+					existsOnRemote = true
+					scheme.MRBindingID = b.ID
+					break
+				}
+			}
+		}
+	}
+
+	// 如果三方系统查询不存在该 MR 绑定，直接使用 POST 创建，避免发送 PUT
+	if !existsOnRemote {
+		log.Printf("[APIG] Remote MR binding not found on remote (MRBindingID=%s, SchemeID=%s), performing CreateMRBindingAPIG (POST)", scheme.MRBindingID, scheme.ExecutionSchemeID)
 		newBindingID, err := CreateMRBindingAPIG(ctx, pipelineBusinessID, scheme, scheme.ExecutionSchemeID, repoURL, userHeaders)
 		if err != nil {
-			return fmt.Errorf("failed to create MR binding during update: %w", err)
+			return fmt.Errorf("failed to create MR binding during update via APIG (POST): %w", err)
 		}
 		scheme.MRBindingID = newBindingID
+		if database.DB != nil && scheme.ID != 0 {
+			database.DB.Model(scheme).Updates(map[string]interface{}{
+				"mr_trigger":      true,
+				"mr_binding_id":   newBindingID,
+				"mr_binding_name": scheme.Name,
+			})
+		}
 		return nil
 	}
 
