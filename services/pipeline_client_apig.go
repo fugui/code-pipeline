@@ -21,11 +21,6 @@ func CreateMRBindingAPIG(ctx context.Context, pipelineBusinessID string, scheme 
 	if apiURLStr == "" {
 		return "", fmt.Errorf("apig.mr_binding_url not configured")
 	}
-	if strings.Contains(apiURLStr, "?") {
-		apiURLStr += "&isSingle=true"
-	} else {
-		apiURLStr += "?isSingle=true"
-	}
 
 	tmpl := models.AppConfig.PipelineSystem.CreateMRBindingBody
 	if tmpl == "" {
@@ -73,6 +68,9 @@ func CreateMRBindingAPIG(ctx context.Context, pipelineBusinessID string, scheme 
 
 	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, bodyPayload, utils.HTTPOptions{
 		Headers: headers,
+		QueryParams: map[string]string{
+			"isSingle": "true",
+		},
 	}, []int{http.StatusOK, http.StatusCreated}, "APIGCreateMRBinding")
 	if err != nil {
 		return "", err
@@ -151,11 +149,6 @@ func SyncUpdateMRBindingRemoteAPIG(ctx context.Context, pipelineBusinessID strin
 	if apiURLStr == "" {
 		return fmt.Errorf("apig.mr_binding_url not configured")
 	}
-	if strings.Contains(apiURLStr, "?") {
-		apiURLStr += "&isSingle=true"
-	} else {
-		apiURLStr += "?isSingle=true"
-	}
 
 	tmpl := models.AppConfig.PipelineSystem.CreateMRBindingBody
 	if tmpl == "" {
@@ -205,6 +198,9 @@ func SyncUpdateMRBindingRemoteAPIG(ctx context.Context, pipelineBusinessID strin
 
 	_, err = utils.SendHTTPRequest(ctx, "PUT", apiURLStr, bodyPayload, utils.HTTPOptions{
 		Headers: headers,
+		QueryParams: map[string]string{
+			"isSingle": "true",
+		},
 	}, []int{http.StatusOK, http.StatusAccepted}, "APIGUpdateMRBinding")
 	if err != nil {
 		log.Printf("[APIG] Update MR Binding failed: %v", err)
