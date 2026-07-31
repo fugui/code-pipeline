@@ -21,6 +21,11 @@ func CreateMRBindingAPIG(ctx context.Context, pipelineBusinessID string, scheme 
 	if apiURLStr == "" {
 		return "", fmt.Errorf("apig.mr_binding_url not configured")
 	}
+	if strings.Contains(apiURLStr, "?") {
+		apiURLStr += "&isSingle=true"
+	} else {
+		apiURLStr += "?isSingle=true"
+	}
 
 	tmpl := models.AppConfig.PipelineSystem.CreateMRBindingBody
 	if tmpl == "" {
