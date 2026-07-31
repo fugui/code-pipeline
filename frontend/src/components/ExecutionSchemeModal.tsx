@@ -1,5 +1,5 @@
 import React from 'react'
-import { Trash2, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
+import { Trash2, CheckCircle2, XCircle, Loader2, Copy, Check } from 'lucide-react'
 
 interface ExecutionSchemeModalProps {
   isAdmin?: boolean
@@ -42,6 +42,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   const [orderedBranches, setOrderedBranches] = React.useState<string[]>([]);
   const [showPasteModal, setShowPasteModal] = React.useState(false);
   const [pasteContent, setPasteContent] = React.useState('');
+  const [copied, setCopied] = React.useState(false);
 
   const [mrTrigger, setMrTrigger] = React.useState(true);
   const [dailyBuild, setDailyBuild] = React.useState(true);
@@ -334,6 +335,46 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
     
     setPasteContent('');
     setShowPasteModal(false);
+  };
+
+  const handleCopyAttrs = () => {
+    const textToCopy = customAttrs
+      .filter(item => item.key.trim() !== '' || item.value.trim() !== '')
+      .map(item => `${item.key.trim()}=${item.value.trim()}`)
+      .join('\n');
+
+    const copyToClipboard = (text: string) => {
+      if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        return new Promise<void>((resolve, reject) => {
+          const successful = document.execCommand('copy');
+          textArea.remove();
+          if (successful) {
+            resolve();
+          } else {
+            reject(new Error('Copy failed'));
+          }
+        });
+      }
+    };
+
+    copyToClipboard(textToCopy)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(err => {
+        console.error('复制参数失败:', err);
+      });
   };
 
   return (
@@ -714,6 +755,25 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>构建参数</label>
                 <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: 12, height: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    onClick={handleCopyAttrs}
+                    title="复制全部参数到剪贴板"
+                  >
+                    {copied ? (
+                      <>
+                        <Check size={13} style={{ color: '#34d399' }} />
+                        <span style={{ color: '#34d399' }}>已复制</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={13} />
+                        复制参数
+                      </>
+                    )}
+                  </button>
                   <button
                     type="button"
                     className="btn btn-secondary"
