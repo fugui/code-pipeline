@@ -1,5 +1,5 @@
 import React from 'react'
-import { Trash2, CheckCircle2, XCircle, Loader2, Copy, Check } from 'lucide-react'
+import { Trash2, CheckCircle2, XCircle, Loader2, Copy, Check, ClipboardPaste } from 'lucide-react'
 
 interface ExecutionSchemeModalProps {
   isAdmin?: boolean
@@ -777,9 +777,10 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                   <button
                     type="button"
                     className="btn btn-secondary"
-                    style={{ padding: '4px 10px', fontSize: 12, height: 'auto' }}
+                    style={{ padding: '4px 10px', fontSize: 12, height: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                     onClick={() => setShowPasteModal(true)}
                   >
+                    <ClipboardPaste size={13} />
                     粘贴参数
                   </button>
                   <button
