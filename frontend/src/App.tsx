@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { 
-  Activity, Loader2, LayoutDashboard, GitBranch, LogOut, Eye
+  Activity, Loader2, LayoutDashboard, GitBranch, LogOut, Eye, Layers, Shield, FileText, Server
 } from 'lucide-react'
 
 // Import types
@@ -11,6 +11,10 @@ import { User, ExecutionLog, DashboardStats, Pipeline, ExecutionScheme } from '.
 import { Dashboard } from './pages/Dashboard'
 import { Repos } from './pages/Repos'
 import { ManagedRepos } from './pages/ManagedRepos'
+import { ManagedSyncBranch } from './pages/ManagedSyncBranch'
+import { ManagedProtectedRules } from './pages/ManagedProtectedRules'
+import { ManagedApprovals } from './pages/ManagedApprovals'
+import { ManagedBranchHealth } from './pages/ManagedBranchHealth'
 import { PipelineConfig } from './pages/PipelineConfig'
 import RealtimeMr from './pages/RealtimeMr'
 import RealtimeMrList from './pages/RealtimeMrList'
@@ -51,7 +55,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
   })
   const [user, setUser] = useState<User | null>(null)
   const isAdmin = !!(Array.isArray(user?.roles) && (user.roles.includes('super_admin') || user.roles.includes('pipeline_admin')))
-  const [currentView, setCurrentView] = useState<'dashboard' | 'repos' | 'managed-repos' | 'pipeline-config' | 'mr-hook' | 'mr-list'>('dashboard')
+  const [currentView, setCurrentView] = useState<'dashboard' | 'repos' | 'managed-repos' | 'managed-sync-branch' | 'managed-protected-rules' | 'managed-approvals' | 'managed-branch-health' | 'pipeline-config' | 'mr-hook' | 'mr-list'>('dashboard')
   
   // Data lists — repos 仅用于 ExecutionSchemeModal 的候选项
   const [repos, setRepos] = useState<{ id: number; name: string; url: string; service_group?: string; owner_name?: string }[]>([])
@@ -93,7 +97,15 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     const path = location.pathname
     if (path.endsWith('/repos')) {
       setCurrentView('repos')
-    } else if (path.endsWith('/managed-repos')) {
+    } else if (path.includes('/managed-repos/sync-branch')) {
+      setCurrentView('managed-sync-branch')
+    } else if (path.includes('/managed-repos/protected-rules')) {
+      setCurrentView('managed-protected-rules')
+    } else if (path.includes('/managed-repos/approvals')) {
+      setCurrentView('managed-approvals')
+    } else if (path.includes('/managed-repos/branch-health')) {
+      setCurrentView('managed-branch-health')
+    } else if (path.includes('/managed-repos')) {
       setCurrentView('managed-repos')
     } else if (path.endsWith('/pipeline-config')) {
       setCurrentView('pipeline-config')
@@ -561,15 +573,49 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
               <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
 
               <div style={{ padding: '0.4rem 0.6rem 0.2rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                管理中心
+                代码仓与分支管控
               </div>
               <button 
                 onClick={() => { setCurrentView('managed-repos'); setActiveExec(null); }} 
                 className={`btn ${currentView === 'managed-repos' ? 'btn-primary' : 'btn-secondary'}`} 
-                style={{ justifyContent: 'flex-start', width: '100%' }}
+                style={{ justifyContent: 'flex-start', width: '100%', fontSize: '0.85rem' }}
               >
-                <GitBranch size={16} /> 代码仓与分支管理
+                <Server size={15} /> 代码仓大盘
               </button>
+              <button 
+                onClick={() => { setCurrentView('managed-sync-branch'); setActiveExec(null); }} 
+                className={`btn ${currentView === 'managed-sync-branch' ? 'btn-primary' : 'btn-secondary'}`} 
+                style={{ justifyContent: 'flex-start', width: '100%', fontSize: '0.85rem' }}
+              >
+                <Layers size={15} /> 跨仓特性分支
+              </button>
+              <button 
+                onClick={() => { setCurrentView('managed-protected-rules'); setActiveExec(null); }} 
+                className={`btn ${currentView === 'managed-protected-rules' ? 'btn-primary' : 'btn-secondary'}`} 
+                style={{ justifyContent: 'flex-start', width: '100%', fontSize: '0.85rem' }}
+              >
+                <Shield size={15} /> 保护分支策略
+              </button>
+              <button 
+                onClick={() => { setCurrentView('managed-approvals'); setActiveExec(null); }} 
+                className={`btn ${currentView === 'managed-approvals' ? 'btn-primary' : 'btn-secondary'}`} 
+                style={{ justifyContent: 'flex-start', width: '100%', fontSize: '0.85rem' }}
+              >
+                <FileText size={15} /> 审批管理中心
+              </button>
+              <button 
+                onClick={() => { setCurrentView('managed-branch-health'); setActiveExec(null); }} 
+                className={`btn ${currentView === 'managed-branch-health' ? 'btn-primary' : 'btn-secondary'}`} 
+                style={{ justifyContent: 'flex-start', width: '100%', fontSize: '0.85rem' }}
+              >
+                <Activity size={15} /> 分支健康与清理
+              </button>
+
+              <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
+
+              <div style={{ padding: '0.4rem 0.6rem 0.2rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                管理中心
+              </div>
               <button 
                 onClick={() => { setCurrentView('pipeline-config'); setActiveExec(null); }} 
                 className={`btn ${currentView === 'pipeline-config' ? 'btn-primary' : 'btn-secondary'}`} 
@@ -636,9 +682,45 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
           />
         )}
 
-        {/* VIEW 3: MANAGED REPOS 代码仓与分支管理 */}
+        {/* VIEW 3: MANAGED REPOS 代码仓大盘 */}
         {currentView === 'managed-repos' && (
           <ManagedRepos 
+            isAdmin={isAdmin}
+            apiBase={apiBase}
+            token={token}
+          />
+        )}
+
+        {/* VIEW 3.2: MANAGED SYNC BRANCH 跨仓特性分支 */}
+        {currentView === 'managed-sync-branch' && (
+          <ManagedSyncBranch 
+            isAdmin={isAdmin}
+            apiBase={apiBase}
+            token={token}
+          />
+        )}
+
+        {/* VIEW 3.3: MANAGED PROTECTED RULES 保护分支策略 */}
+        {currentView === 'managed-protected-rules' && (
+          <ManagedProtectedRules 
+            isAdmin={isAdmin}
+            apiBase={apiBase}
+            token={token}
+          />
+        )}
+
+        {/* VIEW 3.4: MANAGED APPROVALS 审批管理中心 */}
+        {currentView === 'managed-approvals' && (
+          <ManagedApprovals 
+            isAdmin={isAdmin}
+            apiBase={apiBase}
+            token={token}
+          />
+        )}
+
+        {/* VIEW 3.5: MANAGED BRANCH HEALTH 分支健康与清理 */}
+        {currentView === 'managed-branch-health' && (
+          <ManagedBranchHealth 
             isAdmin={isAdmin}
             apiBase={apiBase}
             token={token}
