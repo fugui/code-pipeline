@@ -99,6 +99,9 @@ func InitDB() {
 		&models.ManagedMemberAccess{},
 		&models.ManagedBranchMonitor{},
 		&models.ExecutionReport{},
+		&models.ManagedRepoApproval{},
+		&models.ManagedBatchBranchLog{},
+		&models.ManagedProtectedBranchRule{},
 	)
 	if err != nil {
 		log.Fatalf("[Database] Migration failed: %v", err)

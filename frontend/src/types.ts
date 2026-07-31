@@ -122,3 +122,87 @@ export interface ExecutionScheme {
   daily_build?: boolean
   daily_build_time?: string
 }
+
+export interface ManagedGroup {
+  id: number
+  name: string
+  path: string
+  full_path: string
+  parent_id?: number
+  synced_at?: string
+  is_hidden?: boolean
+}
+
+export interface ManagedRepository {
+  id: number
+  managed_group_id: number
+  group?: ManagedGroup
+  name: string
+  ssh_url: string
+  http_url: string
+  owner_id: number
+  is_active: boolean
+  is_archived?: boolean
+  is_hidden?: boolean
+  webhook_registered: boolean
+  branch_count?: number
+  active_count?: number
+  stale_unmerged_count?: number
+  stale_merged_count?: number
+  last_commit_time?: string
+  created_at: string
+}
+
+export interface ManagedRepoApproval {
+  id: number
+  type: 'repo_create' | 'protected_branch' | 'batch_branch'
+  applicant_id: number
+  applicant?: User
+  managed_group_id?: number
+  group?: ManagedGroup
+  repo_name?: string
+  repo_id?: number
+  repo?: ManagedRepository
+  target_branch?: string
+  base_branch?: string
+  multi_repo_ids?: number[]
+  reason?: string
+  status: 'pending' | 'approved' | 'rejected'
+  approver_id?: number
+  approver?: User
+  approval_comment?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface BatchRepoResult {
+  repo_id: number
+  repo_name: string
+  status: 'success' | 'skipped' | 'failed'
+  message: string
+}
+
+export interface ManagedBatchBranchLog {
+  id: number
+  batch_id: string
+  feature_name: string
+  base_branch: string
+  creator_id: number
+  creator?: User
+  repo_ids: number[]
+  results: BatchRepoResult[]
+  description?: string
+  created_at: string
+}
+
+export interface ManagedProtectedBranchRule {
+  id: number
+  managed_repository_id: number
+  repo?: ManagedRepository
+  branch_pattern: string
+  allow_force_push: boolean
+  require_mr_audit: boolean
+  creator_id: number
+  created_at: string
+}
+

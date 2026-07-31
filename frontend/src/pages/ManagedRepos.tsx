@@ -524,11 +524,43 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
     .catch(err => showToast('error', err.message))
   }
 
-  // Create Repository
+  // Create Repository or Submit Approval Request
   const handleCreateRepo = (e: React.FormEvent) => {
     e.preventDefault()
     if (!newRepoName || !newRepoGroup) return
 
+    if (!isAdmin) {
+      // 非管理员 -> 提交审批申请单
+      fetch(`${apiBase}/managed-approvals`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          type: 'repo_create',
+          managed_group_id: newRepoGroup,
+          repo_name: newRepoName,
+          reason: '申请新建被管代码仓'
+        })
+      })
+      .then(async res => {
+        if (!res.ok) {
+          const errData = await res.json()
+          throw new Error(errData.error || '提交申请单失败')
+        }
+        return res.json()
+      })
+      .then(() => {
+        showToast('success', `代码仓创建申请单已成功提交！等待管理员审批核准。`)
+        setShowRepoModal(false)
+        setNewRepoName('')
+      })
+      .catch(err => showToast('error', err.message))
+      return
+    }
+
+    // 管理员 -> 直接物理创建
     fetch(`${apiBase}/managed-repos`, {
       method: 'POST',
       headers: {
@@ -883,18 +915,16 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                 </button>
               </>
             )}
-            {isAdmin && (
-              <button onClick={() => {
-                if (groups.length === 0) {
-                  showToast('error', '请先创建一个嵌套组！')
-                  return
-                }
-                setNewRepoGroup(selectedGroup?.id || groups[0]?.id || 0)
-                setShowRepoModal(true)
-              }} className="btn btn-primary">
-                <Plus size={16} /> 创建被管代码仓
-              </button>
-            )}
+            <button onClick={() => {
+              if (groups.length === 0) {
+                showToast('error', '系统中暂无嵌套组，请先联系管理员创建顶层组！')
+                return
+              }
+              setNewRepoGroup(selectedGroup?.id || groups[0]?.id || 0)
+              setShowRepoModal(true)
+            }} className="btn btn-primary">
+              <Plus size={16} /> {isAdmin ? '创建被管代码仓' : '申请新建代码仓'}
+            </button>
           </div>
         </div>
 

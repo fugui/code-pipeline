@@ -90,11 +90,18 @@ func main() {
 			api.GET("/repos/:id/branches", handlers.GetRepoBranches)
 			api.GET("/repos/:id/webhook", handlers.CheckRepoWebhook)
 
-			// 独立被管代码仓与嵌套组管理路由 (只读与催办类全员接口)
+			// 独立被管代码仓与嵌套组管理路由 (只读与全员接口)
 			api.GET("/managed-groups", handlers.GetManagedGroups)
 			api.GET("/managed-repos", handlers.GetManagedRepos)
 			api.GET("/managed-repos/:id/branches_audit", handlers.GetManagedRepoBranchAudit)
 			api.POST("/managed-repos/:id/branches_audit/notify", handlers.NotifyBranchOwner)
+
+			// 审批单据与跨仓特性分支全员接口
+			api.GET("/managed-approvals", handlers.GetManagedApprovals)
+			api.POST("/managed-approvals", handlers.CreateManagedApproval)
+			api.POST("/managed-repos/batch-create-branch", handlers.BatchCreateManagedBranches)
+			api.GET("/managed-repos/batch-branch-logs", handlers.GetManagedBatchBranchLogs)
+			api.GET("/managed-repos/protected-rules", handlers.GetProtectedBranchRules)
 
 			// 流水线配置与方案只读/触发接口
 			api.GET("/pipelines", handlers.GetPipelines)
@@ -108,6 +115,11 @@ func main() {
 			admin := api.Group("")
 			admin.Use(handlers.AdminMiddleware())
 			{
+				// 审批单据核准与驳回
+				admin.POST("/managed-approvals/:id/approve", handlers.ApproveManagedApproval)
+				admin.POST("/managed-approvals/:id/reject", handlers.RejectManagedApproval)
+				admin.POST("/managed-repos/protected-rules", handlers.CreateProtectedBranchRule)
+
 				// 仓库 Webhook 注册
 				admin.POST("/repos/:id/webhook", handlers.RegisterRepoWebhook)
 

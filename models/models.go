@@ -251,3 +251,53 @@ type ExecutionReport struct {
 	CreatedAt         time.Time      `json:"created_at"`
 	UpdatedAt         time.Time      `json:"updated_at"`
 }
+
+// ManagedRepoApproval 被管代码仓与保护分支审批单
+type ManagedRepoApproval struct {
+	ID              uint               `gorm:"primaryKey" json:"id"`
+	Type            string             `gorm:"size:30;not null" json:"type"` // "repo_create" | "protected_branch" | "batch_branch"
+	ApplicantID     uint               `gorm:"not null" json:"applicant_id"`
+	Applicant       User               `gorm:"foreignKey:ApplicantID" json:"applicant"`
+	ManagedGroupID  uint               `json:"managed_group_id"`
+	Group           *ManagedGroup      `gorm:"foreignKey:ManagedGroupID" json:"group,omitempty"`
+	RepoName        string             `gorm:"size:255" json:"repo_name"`
+	RepoID          *uint              `json:"repo_id"`
+	Repo            *ManagedRepository `gorm:"foreignKey:RepoID" json:"repo,omitempty"`
+	TargetBranch    string             `gorm:"size:120;default:'master'" json:"target_branch"`
+	BaseBranch      string             `gorm:"size:120;default:'master'" json:"base_branch"`
+	MultiRepoIDs    datatypes.JSON     `json:"multi_repo_ids"` // 跨仓分支时选择的 Repository ID 列表
+	Reason          string             `gorm:"type:text" json:"reason"`
+	Status          string             `gorm:"size:20;default:'pending'" json:"status"` // "pending", "approved", "rejected"
+	ApproverID      *uint              `json:"approver_id"`
+	Approver        *User              `gorm:"foreignKey:ApproverID" json:"approver,omitempty"`
+	ApprovalComment string             `gorm:"type:text" json:"approval_comment"`
+	CreatedAt       time.Time          `json:"created_at"`
+	UpdatedAt       time.Time          `json:"updated_at"`
+}
+
+// ManagedBatchBranchLog 跨仓特性分支批量拉起记录表
+type ManagedBatchBranchLog struct {
+	ID          uint           `gorm:"primaryKey" json:"id"`
+	BatchID     string         `gorm:"size:64;index" json:"batch_id"`
+	FeatureName string         `gorm:"size:150;not null" json:"feature_name"`
+	BaseBranch  string         `gorm:"size:100;default:'master'" json:"base_branch"`
+	CreatorID   uint           `json:"creator_id"`
+	Creator     User           `gorm:"foreignKey:CreatorID" json:"creator"`
+	RepoIDs     datatypes.JSON `json:"repo_ids"` // 选中的仓库 ID 列表
+	Results     datatypes.JSON `json:"results"`  // 各仓拉起结果 JSON 映射
+	Description string         `gorm:"type:text" json:"description"`
+	CreatedAt   time.Time      `json:"created_at"`
+}
+
+// ManagedProtectedBranchRule 保护分支规则配置表
+type ManagedProtectedBranchRule struct {
+	ID                  uint              `gorm:"primaryKey" json:"id"`
+	ManagedRepositoryID uint              `gorm:"index;not null" json:"managed_repository_id"`
+	Repo                ManagedRepository `gorm:"foreignKey:ManagedRepositoryID" json:"repo"`
+	BranchPattern       string            `gorm:"size:120;not null" json:"branch_pattern"` // 如 "master", "release/*"
+	AllowForcePush      bool              `gorm:"default:false" json:"allow_force_push"`
+	RequireMrAudit      bool              `gorm:"default:true" json:"require_mr_audit"`
+	CreatorID           uint              `json:"creator_id"`
+	CreatedAt           time.Time         `json:"created_at"`
+}
+
