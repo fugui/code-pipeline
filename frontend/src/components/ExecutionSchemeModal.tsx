@@ -490,122 +490,130 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>代码仓</label>
               {activeScheme.id ? (
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <input 
-                    type="text" 
-                    style={{ flex: 1 }}
-                    value={selectedRepo ? `${selectedRepo.name} (${selectedRepo.url})` : '未绑定仓库'} 
-                    disabled 
-                  />
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>构建类型</label>
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>代码仓</label>
+                    <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>构建类型</label>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <input 
+                      type="text" 
+                      style={{ flex: 1 }}
+                      value={selectedRepo ? `${selectedRepo.name} (${selectedRepo.url})` : '未绑定仓库'} 
+                      disabled 
+                    />
                     <input
                       type="text"
+                      style={{ flex: 1 }}
                       value={[
                         buildTypes.includes('SCH') && '上位机(SCH)',
                         buildTypes.includes('LCH') && '下位机(LCH)',
                         buildTypes.includes('DHH') && '数据机(DHH)'
                       ].filter(Boolean).join('、') || '-'}
                       disabled
-                      style={{ width: '100%' }}
                     />
                   </div>
-                </div>
+                </>
               ) : (
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <div style={{ flex: 1, position: 'relative' }}>
-                    <input 
-                      type="text" 
-                      placeholder="点击选择仓库..."
-                      value={filterQuery}
-                      readOnly
-                      onClick={() => setIsOpen(v => !v)}
-                      onBlur={() => {
-                        setTimeout(() => setIsOpen(false), 200);
-                      }}
-                      required
-                      style={{ cursor: 'pointer' }}
-                    />
-                    {isOpen && (
-                      <div 
-                        style={{ 
-                          position: 'absolute', 
-                          top: '100%', 
-                          left: 0, 
-                          right: 0, 
-                          zIndex: 1000, 
-                          maxHeight: 280, 
-                          overflowY: 'auto', 
-                          background: 'var(--bg-secondary)', 
-                          backdropFilter: 'blur(12px)',
-                          border: '1px solid var(--border-color)', 
-                          borderRadius: 6, 
-                          marginTop: 4, 
-                          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' 
-                        }}
-                        onMouseDown={(e) => e.preventDefault()}
-                      >
-                        {searching ? (
-                          <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                            <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
-                            正在检索代码仓...
-                          </div>
-                        ) : filteredRepos.length > 0 ? (
-                          filteredRepos.map(r => (
-                            <div 
-                              key={r.id} 
-                              style={{ 
-                                padding: '10px 14px', 
-                                cursor: 'pointer', 
-                                borderBottom: '1px solid rgba(255,255,255,0.03)',
-                                transition: 'background 0.2s',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 4
-                              }}
-                              className="search-item"
-                              onClick={() => {
-                                onChange({
-                                  ...activeScheme,
-                                  repository_id: r.id,
-                                  repository: r,
-                                  branchs: ''
-                                });
-                                setFilterQuery(r.name);
-                                setIsOpen(false);
-                              }}
-                            >
-                              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)' }}>{r.name}</span>
-                              <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)' }}>
-                                <span>子系统: {r.service_group || '未归属'}</span>
-                                <span style={{ color: 'rgba(255,255,255,0.12)' }}>|</span>
-                                <span>负责人: {r.owner_name || '未分配'}</span>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                            无匹配的代码仓数据
-                          </div>
-                        )}
-                      </div>
-                    )}
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>代码仓</label>
+                    <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>构建类型 (多选)</label>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>构建类型 (多选)</label>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <input 
+                        type="text" 
+                        placeholder="点击选择仓库..."
+                        value={filterQuery}
+                        readOnly
+                        onClick={() => setIsOpen(v => !v)}
+                        onBlur={() => {
+                          setTimeout(() => setIsOpen(false), 200);
+                        }}
+                        required
+                        style={{ cursor: 'pointer', width: '100%' }}
+                      />
+                      {isOpen && (
+                        <div 
+                          style={{ 
+                            position: 'absolute', 
+                            top: '100%', 
+                            left: 0, 
+                            right: 0, 
+                            zIndex: 1000, 
+                            maxHeight: 280, 
+                            overflowY: 'auto', 
+                            background: 'var(--bg-secondary)', 
+                            backdropFilter: 'blur(12px)',
+                            border: '1px solid var(--border-color)', 
+                            borderRadius: 6, 
+                            marginTop: 4, 
+                            boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' 
+                          }}
+                          onMouseDown={(e) => e.preventDefault()}
+                        >
+                          {searching ? (
+                            <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                              <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                              正在检索代码仓...
+                            </div>
+                          ) : filteredRepos.length > 0 ? (
+                            filteredRepos.map(r => (
+                              <div 
+                                key={r.id} 
+                                style={{ 
+                                  padding: '10px 14px', 
+                                  cursor: 'pointer', 
+                                  borderBottom: '1px solid rgba(255,255,255,0.03)',
+                                  transition: 'background 0.2s',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: 4
+                                }}
+                                className="search-item"
+                                onClick={() => {
+                                  onChange({
+                                    ...activeScheme,
+                                    repository_id: r.id,
+                                    repository: r,
+                                    branchs: ''
+                                  });
+                                  setFilterQuery(r.name);
+                                  setIsOpen(false);
+                                }}
+                              >
+                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)' }}>{r.name}</span>
+                                <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)' }}>
+                                  <span>子系统: {r.service_group || '未归属'}</span>
+                                  <span style={{ color: 'rgba(255,255,255,0.12)' }}>|</span>
+                                  <span>负责人: {r.owner_name || '未分配'}</span>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                              无匹配的代码仓数据
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     <div style={{
+                      flex: 1,
                       border: '1px solid var(--border-color)',
                       borderRadius: 6,
-                      padding: '8px 12px',
+                      padding: '0 12px',
                       background: 'rgba(255,255,255,0.01)',
                       display: 'flex',
-                      flexDirection: 'column',
-                      gap: 8
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 20,
+                      height: 36
                     }}>
                       {([{ code: 'SCH', label: '上位机' }, { code: 'LCH', label: '下位机' }, { code: 'DHH', label: '数据机' }] as { code: string; label: string }[]).map(({ code, label }) => (
-                        <label key={code} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text-main)', userSelect: 'none', margin: 0 }}>
+                        <label key={code} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'var(--text-main)', userSelect: 'none', margin: 0, whiteSpace: 'nowrap' }}>
                           <input
                             type="checkbox"
                             checked={buildTypes.includes(code)}
@@ -615,7 +623,6 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                                 ? [...buildTypes, code]
                                 : buildTypes.filter(t => t !== code);
                               setBuildTypes(newTypes);
-                              // 写入 buildParameters
                               let parsed: Record<string, any> = {};
                               try {
                                 parsed = JSON.parse(activeScheme.custom_attributes || '{}');
@@ -638,7 +645,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                       ))}
                     </div>
                   </div>
-                </div>
+                </>
               )}
             </div>
 
