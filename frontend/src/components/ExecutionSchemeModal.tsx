@@ -47,7 +47,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   const [mrTrigger, setMrTrigger] = React.useState(true);
   const [dailyBuild, setDailyBuild] = React.useState(true);
   const [dailyBuildTime, setDailyBuildTime] = React.useState('00:30');
-  const [buildType, setBuildType] = React.useState<string>('上位机');
+  const [buildTypes, setBuildTypes] = React.useState<string[]>(['SCH']);
   const lastCustomAttrsRef = React.useRef('');  const [searchedRepos, setSearchedRepos] = React.useState<any[]>(repos)
   const [searching, setSearching] = React.useState(false)
 
@@ -162,12 +162,13 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       try {
         const parsed = JSON.parse(activeScheme.custom_attributes || '{}');
         const buildParams = Array.isArray(parsed.buildParameters) ? parsed.buildParameters : [];
-        // 从 buildParameters 中读取 build_type
+        // 从 buildParameters 中读取 build_type（多选，逗号分隔 code）
         const buildTypeParam = buildParams.find((item: any) => item.name === 'build_type');
-        if (buildTypeParam) {
-          setBuildType(String(buildTypeParam.value || '上位机'));
+        if (buildTypeParam && buildTypeParam.value) {
+          const codes = String(buildTypeParam.value).split(',').map((s: string) => s.trim()).filter(Boolean);
+          setBuildTypes(codes.length > 0 ? codes : ['SCH']);
         } else {
-          setBuildType('上位机');
+          setBuildTypes(['SCH']);
         }
         const list = buildParams
           .filter((item: any) => item.name !== 'code_checker_task_id' && item.name !== 'repository' && item.name !== 'branch' && item.name !== 'build_type')
@@ -271,8 +272,8 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
         name: item.key.trim(),
         value: item.value
       }));
-    // 追加 build_type
-    buildParameters.push({ name: 'build_type', value: buildType });
+    // 追加 build_type（多选，逗号分隔 code）
+    buildParameters.push({ name: 'build_type', value: buildTypes.join(',') });
 
     parsed.buildParameters = buildParameters;
 
@@ -502,7 +503,11 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                     <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>构建类型</label>
                     <input
                       type="text"
-                      value={buildType}
+                      value={[
+                        buildTypes.includes('SCH') && '上位机(SCH)',
+                        buildTypes.includes('LCH') && '下位机(LCH)',
+                        buildTypes.includes('DHH') && '数据机(DHH)'
+                      ].filter(Boolean).join('、') || '-'}
                       disabled
                       style={{ width: '100%' }}
                     />
@@ -589,35 +594,49 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                     )}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>构建类型</label>
-                    <select
-                      value={buildType}
-                      onChange={(e) => {
-                        const newBuildType = e.target.value;
-                        setBuildType(newBuildType);
-                        // 写入 buildParameters
-                        let parsed: Record<string, any> = {};
-                        try {
-                          parsed = JSON.parse(activeScheme.custom_attributes || '{}');
-                        } catch (_) { parsed = {}; }
-                        let buildParameters = Array.isArray(parsed.buildParameters) ? parsed.buildParameters : [];
-                        const idx = buildParameters.findIndex((item: any) => item.name === 'build_type');
-                        if (idx !== -1) {
-                          buildParameters[idx] = { name: 'build_type', value: newBuildType };
-                        } else {
-                          buildParameters.push({ name: 'build_type', value: newBuildType });
-                        }
-                        parsed.buildParameters = buildParameters;
-                        const serialized = JSON.stringify(parsed);
-                        lastCustomAttrsRef.current = serialized;
-                        onChange({ ...activeScheme, custom_attributes: serialized });
-                      }}
-                      style={{ width: '100%' }}
-                    >
-                      <option value="上位机">上位机</option>
-                      <option value="下位机">下位机</option>
-                      <option value="上下位机">上下位机</option>
-                    </select>
+                    <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>构建类型 (多选)</label>
+                    <div style={{
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 6,
+                      padding: '8px 12px',
+                      background: 'rgba(255,255,255,0.01)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8
+                    }}>
+                      {([{ code: 'SCH', label: '上位机' }, { code: 'LCH', label: '下位机' }, { code: 'DHH', label: '数据机' }] as { code: string; label: string }[]).map(({ code, label }) => (
+                        <label key={code} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text-main)', userSelect: 'none', margin: 0 }}>
+                          <input
+                            type="checkbox"
+                            checked={buildTypes.includes(code)}
+                            style={{ width: 'auto', margin: 0 }}
+                            onChange={(e) => {
+                              const newTypes = e.target.checked
+                                ? [...buildTypes, code]
+                                : buildTypes.filter(t => t !== code);
+                              setBuildTypes(newTypes);
+                              // 写入 buildParameters
+                              let parsed: Record<string, any> = {};
+                              try {
+                                parsed = JSON.parse(activeScheme.custom_attributes || '{}');
+                              } catch (_) { parsed = {}; }
+                              let buildParameters = Array.isArray(parsed.buildParameters) ? parsed.buildParameters : [];
+                              const idx = buildParameters.findIndex((item: any) => item.name === 'build_type');
+                              if (idx !== -1) {
+                                buildParameters[idx] = { name: 'build_type', value: newTypes.join(',') };
+                              } else {
+                                buildParameters.push({ name: 'build_type', value: newTypes.join(',') });
+                              }
+                              parsed.buildParameters = buildParameters;
+                              const serialized = JSON.stringify(parsed);
+                              lastCustomAttrsRef.current = serialized;
+                              onChange({ ...activeScheme, custom_attributes: serialized });
+                            }}
+                          />
+                          {label} ({code})
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
