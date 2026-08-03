@@ -47,6 +47,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   const [mrTrigger, setMrTrigger] = React.useState(true);
   const [dailyBuild, setDailyBuild] = React.useState(true);
   const [dailyBuildTime, setDailyBuildTime] = React.useState('00:30');
+  const [buildType, setBuildType] = React.useState<string>('上位机');
   const lastCustomAttrsRef = React.useRef('');  const [searchedRepos, setSearchedRepos] = React.useState<any[]>(repos)
   const [searching, setSearching] = React.useState(false)
 
@@ -161,8 +162,15 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       try {
         const parsed = JSON.parse(activeScheme.custom_attributes || '{}');
         const buildParams = Array.isArray(parsed.buildParameters) ? parsed.buildParameters : [];
+        // 从 buildParameters 中读取 build_type
+        const buildTypeParam = buildParams.find((item: any) => item.name === 'build_type');
+        if (buildTypeParam) {
+          setBuildType(String(buildTypeParam.value || '上位机'));
+        } else {
+          setBuildType('上位机');
+        }
         const list = buildParams
-          .filter((item: any) => item.name !== 'code_checker_task_id' && item.name !== 'repository' && item.name !== 'branch')
+          .filter((item: any) => item.name !== 'code_checker_task_id' && item.name !== 'repository' && item.name !== 'branch' && item.name !== 'build_type')
           .map((item: any) => ({
             key: item.name || '',
             value: String(item.value !== undefined && item.value !== null ? item.value : '')
@@ -258,11 +266,13 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
 
     const buildParameters = newList
       .filter(item => item.key.trim())
-      .filter(item => item.key.trim() !== 'code_checker_task_id' && item.key.trim() !== 'repository' && item.key.trim() !== 'branch')
+      .filter(item => item.key.trim() !== 'code_checker_task_id' && item.key.trim() !== 'repository' && item.key.trim() !== 'branch' && item.key.trim() !== 'build_type')
       .map(item => ({
         name: item.key.trim(),
         value: item.value
       }));
+    // 追加 build_type
+    buildParameters.push({ name: 'build_type', value: buildType });
 
     parsed.buildParameters = buildParameters;
 
@@ -481,91 +491,134 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
             <div>
               <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>代码仓</label>
               {activeScheme.id ? (
-                <input 
-                  type="text" 
-                  value={selectedRepo ? `${selectedRepo.name} (${selectedRepo.url})` : '未绑定仓库'} 
-                  disabled 
-                />
-              ) : (
-                <div style={{ position: 'relative' }}>
+                <div style={{ display: 'flex', gap: 12 }}>
                   <input 
                     type="text" 
-                    placeholder="输入关键字检索并选择仓库 (支持 200+ 仓库模糊过滤)..."
-                    value={filterQuery}
-                    onChange={(e) => {
-                      setFilterQuery(e.target.value);
-                      setIsOpen(true);
-                    }}
-                    onFocus={() => setIsOpen(true)}
-                    onBlur={() => {
-                      setTimeout(() => setIsOpen(false), 200);
-                    }}
-                    required
+                    style={{ flex: 1 }}
+                    value={selectedRepo ? `${selectedRepo.name} (${selectedRepo.url})` : '未绑定仓库'} 
+                    disabled 
                   />
-                  {isOpen && (
-                    <div 
-                      style={{ 
-                        position: 'absolute', 
-                        top: '100%', 
-                        left: 0, 
-                        right: 0, 
-                        zIndex: 1000, 
-                        maxHeight: 280, 
-                        overflowY: 'auto', 
-                        background: 'var(--bg-secondary)', 
-                        backdropFilter: 'blur(12px)',
-                        border: '1px solid var(--border-color)', 
-                        borderRadius: 6, 
-                        marginTop: 4, 
-                        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' 
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>构建类型</label>
+                    <input
+                      type="text"
+                      value={buildType}
+                      disabled
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <input 
+                      type="text" 
+                      placeholder="点击选择仓库..."
+                      value={filterQuery}
+                      readOnly
+                      onClick={() => setIsOpen(v => !v)}
+                      onBlur={() => {
+                        setTimeout(() => setIsOpen(false), 200);
                       }}
-                      onMouseDown={(e) => e.preventDefault()}
-                    >
-                      {searching ? (
-                        <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                          <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
-                          正在检索代码仓...
-                        </div>
-                      ) : filteredRepos.length > 0 ? (
-                        filteredRepos.map(r => (
-                          <div 
-                            key={r.id} 
-                            style={{ 
-                              padding: '10px 14px', 
-                              cursor: 'pointer', 
-                              borderBottom: '1px solid rgba(255,255,255,0.03)',
-                              transition: 'background 0.2s',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: 4
-                            }}
-                            className="search-item"
-                            onClick={() => {
-                              onChange({
-                                ...activeScheme,
-                                repository_id: r.id,
-                                repository: r,
-                                branchs: ''
-                              });
-                              setFilterQuery(r.name);
-                              setIsOpen(false);
-                            }}
-                          >
-                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)' }}>{r.name}</span>
-                            <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)' }}>
-                              <span>子系统: {r.service_group || '未归属'}</span>
-                              <span style={{ color: 'rgba(255,255,255,0.12)' }}>|</span>
-                              <span>负责人: {r.owner_name || '未分配'}</span>
-                            </div>
+                      required
+                      style={{ cursor: 'pointer' }}
+                    />
+                    {isOpen && (
+                      <div 
+                        style={{ 
+                          position: 'absolute', 
+                          top: '100%', 
+                          left: 0, 
+                          right: 0, 
+                          zIndex: 1000, 
+                          maxHeight: 280, 
+                          overflowY: 'auto', 
+                          background: 'var(--bg-secondary)', 
+                          backdropFilter: 'blur(12px)',
+                          border: '1px solid var(--border-color)', 
+                          borderRadius: 6, 
+                          marginTop: 4, 
+                          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' 
+                        }}
+                        onMouseDown={(e) => e.preventDefault()}
+                      >
+                        {searching ? (
+                          <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                            <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                            正在检索代码仓...
                           </div>
-                        ))
-                      ) : (
-                        <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                          无匹配的代码仓数据
-                        </div>
-                      )}
-                    </div>
-                  )}
+                        ) : filteredRepos.length > 0 ? (
+                          filteredRepos.map(r => (
+                            <div 
+                              key={r.id} 
+                              style={{ 
+                                padding: '10px 14px', 
+                                cursor: 'pointer', 
+                                borderBottom: '1px solid rgba(255,255,255,0.03)',
+                                transition: 'background 0.2s',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 4
+                              }}
+                              className="search-item"
+                              onClick={() => {
+                                onChange({
+                                  ...activeScheme,
+                                  repository_id: r.id,
+                                  repository: r,
+                                  branchs: ''
+                                });
+                                setFilterQuery(r.name);
+                                setIsOpen(false);
+                              }}
+                            >
+                              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)' }}>{r.name}</span>
+                              <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)' }}>
+                                <span>子系统: {r.service_group || '未归属'}</span>
+                                <span style={{ color: 'rgba(255,255,255,0.12)' }}>|</span>
+                                <span>负责人: {r.owner_name || '未分配'}</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                            无匹配的代码仓数据
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>构建类型</label>
+                    <select
+                      value={buildType}
+                      onChange={(e) => {
+                        const newBuildType = e.target.value;
+                        setBuildType(newBuildType);
+                        // 写入 buildParameters
+                        let parsed: Record<string, any> = {};
+                        try {
+                          parsed = JSON.parse(activeScheme.custom_attributes || '{}');
+                        } catch (_) { parsed = {}; }
+                        let buildParameters = Array.isArray(parsed.buildParameters) ? parsed.buildParameters : [];
+                        const idx = buildParameters.findIndex((item: any) => item.name === 'build_type');
+                        if (idx !== -1) {
+                          buildParameters[idx] = { name: 'build_type', value: newBuildType };
+                        } else {
+                          buildParameters.push({ name: 'build_type', value: newBuildType });
+                        }
+                        parsed.buildParameters = buildParameters;
+                        const serialized = JSON.stringify(parsed);
+                        lastCustomAttrsRef.current = serialized;
+                        onChange({ ...activeScheme, custom_attributes: serialized });
+                      }}
+                      style={{ width: '100%' }}
+                    >
+                      <option value="上位机">上位机</option>
+                      <option value="下位机">下位机</option>
+                      <option value="上下位机">上下位机</option>
+                    </select>
+                  </div>
                 </div>
               )}
             </div>
