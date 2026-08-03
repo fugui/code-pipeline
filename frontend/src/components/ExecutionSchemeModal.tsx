@@ -33,7 +33,6 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   onSuccessClose
 }) => {
   const isView = !!activeScheme?.id
-  const [isOpen, setIsOpen] = React.useState(false)
   const [filterQuery, setFilterQuery] = React.useState('')
   const [branches, setBranches] = React.useState<string[]>([])
   const [loadingBranches, setLoadingBranches] = React.useState(false)
@@ -49,7 +48,6 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   const [dailyBuildTime, setDailyBuildTime] = React.useState('00:30');
   const [buildTypes, setBuildTypes] = React.useState<string[]>(['SCH']);
   const lastCustomAttrsRef = React.useRef('');  const [searchedRepos, setSearchedRepos] = React.useState<any[]>(repos)
-  const [searching, setSearching] = React.useState(false)
 
   React.useEffect(() => {
     if (visible) {
@@ -57,47 +55,6 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
     }
   }, [visible, repos]);
 
-  React.useEffect(() => {
-    if (!visible) return;
-    
-    // 如果 filterQuery 为空，使用全量候选
-    if (!filterQuery.trim()) {
-      setSearchedRepos(repos);
-      return;
-    }
-
-    // 如果正好匹配当前选中的仓库名，不触发查询
-    const selectedRepo = repos.find(r => r.id === activeScheme?.repository_id) || activeScheme?.repository;
-    if (selectedRepo && selectedRepo.name === filterQuery) {
-      setSearchedRepos(repos.find(r => r.id === activeScheme?.repository_id) ? repos : [selectedRepo, ...repos]);
-      return;
-    }
-
-    const delayDebounce = setTimeout(() => {
-      setSearching(true);
-      const token = localStorage.getItem('code_shield_token') || localStorage.getItem('code_pipeline_token');
-      fetch(`${apiBase}/repos?search=${encodeURIComponent(filterQuery)}&page_size=50`, {
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
-      })
-      .then(res => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
-      .then(data => {
-        setSearchedRepos(data?.items || []);
-      })
-      .catch(err => {
-        console.error('search repos from backend failed', err);
-      })
-      .finally(() => {
-        setSearching(false);
-      });
-    }, 300);
-
-    return () => clearTimeout(delayDebounce);
-  }, [filterQuery, visible, repos, apiBase, activeScheme?.repository_id, activeScheme?.repository]);
 
   React.useEffect(() => {
     if (activeScheme && activeScheme.repository_id) {
@@ -251,8 +208,6 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       onClose();
     }, 300);
   };
-
-  const filteredRepos = searchedRepos
 
   const selectedRepo = searchedRepos.find(r => r.id === activeScheme.repository_id) || activeScheme.repository
 
@@ -522,83 +477,13 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                     <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>构建类型 (多选)</label>
                   </div>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <div style={{ flex: 1, position: 'relative' }}>
+                    <div style={{ flex: 1 }}>
                       <input 
                         type="text" 
-                        placeholder="点击选择仓库..."
-                        value={filterQuery}
-                        readOnly
-                        onClick={() => setIsOpen(v => !v)}
-                        onBlur={() => {
-                          setTimeout(() => setIsOpen(false), 200);
-                        }}
-                        required
-                        style={{ cursor: 'pointer', width: '100%' }}
+                        value={selectedRepo ? selectedRepo.name : (filterQuery || '未绑定仓库')}
+                        disabled
+                        style={{ width: '100%', cursor: 'not-allowed' }}
                       />
-                      {isOpen && (
-                        <div 
-                          style={{ 
-                            position: 'absolute', 
-                            top: '100%', 
-                            left: 0, 
-                            right: 0, 
-                            zIndex: 1000, 
-                            maxHeight: 280, 
-                            overflowY: 'auto', 
-                            background: 'var(--bg-secondary)', 
-                            backdropFilter: 'blur(12px)',
-                            border: '1px solid var(--border-color)', 
-                            borderRadius: 6, 
-                            marginTop: 4, 
-                            boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' 
-                          }}
-                          onMouseDown={(e) => e.preventDefault()}
-                        >
-                          {searching ? (
-                            <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                              <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
-                              正在检索代码仓...
-                            </div>
-                          ) : filteredRepos.length > 0 ? (
-                            filteredRepos.map(r => (
-                              <div 
-                                key={r.id} 
-                                style={{ 
-                                  padding: '10px 14px', 
-                                  cursor: 'pointer', 
-                                  borderBottom: '1px solid rgba(255,255,255,0.03)',
-                                  transition: 'background 0.2s',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: 4
-                                }}
-                                className="search-item"
-                                onClick={() => {
-                                  onChange({
-                                    ...activeScheme,
-                                    repository_id: r.id,
-                                    repository: r,
-                                    branchs: ''
-                                  });
-                                  setFilterQuery(r.name);
-                                  setIsOpen(false);
-                                }}
-                              >
-                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)' }}>{r.name}</span>
-                                <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)' }}>
-                                  <span>子系统: {r.service_group || '未归属'}</span>
-                                  <span style={{ color: 'rgba(255,255,255,0.12)' }}>|</span>
-                                  <span>负责人: {r.owner_name || '未分配'}</span>
-                                </div>
-                              </div>
-                            ))
-                          ) : (
-                            <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                              无匹配的代码仓数据
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                     <div style={{
                       flex: 1,
