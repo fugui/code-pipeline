@@ -63,8 +63,11 @@ func CreateManagedApproval(c *gin.Context) {
 		BaseBranch     string   `json:"base_branch"`
 		MultiRepoIDs   []uint   `json:"multi_repo_ids"`
 		Reason         string   `json:"reason"`
+		OwnerID        *uint    `json:"owner_id"`
 		OwnerName      string   `json:"owner_name"`
+		SubsystemID    *uint    `json:"subsystem_id"`
 		Subsystem      string   `json:"subsystem"`
+		DepartmentID   *uint    `json:"department_id"`
 		Department     string   `json:"department"`
 		Language       string   `json:"language"`
 		MachineType    string   `json:"machine_type"`
@@ -111,9 +114,12 @@ func CreateManagedApproval(c *gin.Context) {
 		BaseBranch:     req.BaseBranch,
 		MultiRepoIDs:   multiRepoJSON,
 		Reason:         req.Reason,
+		OwnerID:        req.OwnerID,
 		OwnerName:      req.OwnerName,
-		Subsystem:      req.Subsystem,
+		DepartmentID:   req.DepartmentID,
 		Department:     req.Department,
+		SubsystemID:    req.SubsystemID,
+		Subsystem:      req.Subsystem,
 		Language:       req.Language,
 		MachineType:    req.MachineType,
 		Tags:           req.Tags,
@@ -195,6 +201,11 @@ func ApproveManagedApproval(c *gin.Context) {
 			defaultBranch = "master"
 		}
 
+		ownerID := approval.ApplicantID
+		if approval.OwnerID != nil && *approval.OwnerID > 0 {
+			ownerID = *approval.OwnerID
+		}
+
 		// 3. 写入数据库
 		newRepo := models.ManagedRepository{
 			ID:                remoteID,
@@ -202,10 +213,12 @@ func ApproveManagedApproval(c *gin.Context) {
 			Name:              approval.RepoName,
 			SSHURL:            sshURL,
 			HTTPURL:           httpURL,
-			OwnerID:           approval.ApplicantID,
+			OwnerID:           ownerID,
 			OwnerName:         approval.OwnerName,
-			Subsystem:         approval.Subsystem,
+			DepartmentID:      approval.DepartmentID,
 			Department:        approval.Department,
+			SubsystemID:       approval.SubsystemID,
+			Subsystem:         approval.Subsystem,
 			Language:          approval.Language,
 			MachineType:       approval.MachineType,
 			Tags:              approval.Tags,

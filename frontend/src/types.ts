@@ -142,8 +142,10 @@ export interface ManagedRepository {
   http_url: string
   owner_id: number
   owner_name?: string
-  subsystem?: string
+  department_id?: number
   department?: string
+  subsystem_id?: number
+  subsystem?: string
   language?: string
   machine_type?: string
   tags?: string
@@ -175,9 +177,12 @@ export interface ManagedRepoApproval {
   base_branch?: string
   multi_repo_ids?: number[]
   reason?: string
+  owner_id?: number
   owner_name?: string
-  subsystem?: string
+  department_id?: number
   department?: string
+  subsystem_id?: number
+  subsystem?: string
   language?: string
   machine_type?: string
   tags?: string
