@@ -254,7 +254,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
   const [newRepoOwnerID, setNewRepoOwnerID] = useState<number | ''>('')
   const [newRepoSubsystemID, setNewRepoSubsystemID] = useState<number | ''>('')
   const [newRepoDepartmentID, setNewRepoDepartmentID] = useState<number | ''>('')
-  const [newRepoLanguage, setNewRepoLanguage] = useState('Go')
+  const [newRepoLanguage, setNewRepoLanguage] = useState('C')
   const [newRepoMachineTypes, setNewRepoMachineTypes] = useState<string[]>(['上位机'])
   const [newRepoTags, setNewRepoTags] = useState('')
   const [newRepoDescription, setNewRepoDescription] = useState('')
@@ -295,7 +295,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
     setNewRepoOwnerID('')
     setNewRepoSubsystemID('')
     setNewRepoDepartmentID('')
-    setNewRepoLanguage('Go')
+    setNewRepoLanguage('C')
     setNewRepoMachineTypes(['上位机'])
     setNewRepoTags('')
     setNewRepoDescription('')
@@ -1806,14 +1806,14 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                       onChange={(e) => setNewRepoLanguage(e.target.value)}
                       style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
                     >
-                      <option value="Go">Go</option>
-                      <option value="C/C++">C / C++</option>
-                      <option value="Java">Java</option>
+                      <option value="C">C</option>
+                      <option value="C++">C++</option>
                       <option value="Python">Python</option>
-                      <option value="TypeScript">TypeScript / JavaScript</option>
+                      <option value="Java">Java</option>
+                      <option value="Shell/Bash">Shell / Bash</option>
+                      <option value="Go">Go</option>
                       <option value="Rust">Rust</option>
-                      <option value="Shell">Shell / Bash</option>
-                      <option value="Other">其他 (Other)</option>
+                      <option value="其它">其它 (Other)</option>
                     </select>
                   </div>
 
