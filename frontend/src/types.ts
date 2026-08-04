@@ -2,6 +2,7 @@ export interface User {
   id: number
   email: string
   name: string
+  username?: string
   roles: string[]
 }
 
@@ -133,6 +134,21 @@ export interface ManagedGroup {
   is_hidden?: boolean
 }
 
+export interface Department {
+  id: number
+  name: string
+  code?: string
+  created_at?: string
+}
+
+export interface Subsystem {
+  id: number
+  name: string
+  code?: string
+  description?: string
+  created_at?: string
+}
+
 export interface ManagedRepository {
   id: number
   managed_group_id: number
@@ -141,11 +157,11 @@ export interface ManagedRepository {
   ssh_url: string
   http_url: string
   owner_id: number
-  owner_name?: string
+  owner?: User
   department_id?: number
-  department?: string
+  department?: Department
   subsystem_id?: number
-  subsystem?: string
+  subsystem?: Subsystem
   language?: string
   machine_type?: string
   tags?: string
@@ -178,11 +194,11 @@ export interface ManagedRepoApproval {
   multi_repo_ids?: number[]
   reason?: string
   owner_id?: number
-  owner_name?: string
+  owner?: User
   department_id?: number
-  department?: string
+  department?: Department
   subsystem_id?: number
-  subsystem?: string
+  subsystem?: Subsystem
   language?: string
   machine_type?: string
   tags?: string

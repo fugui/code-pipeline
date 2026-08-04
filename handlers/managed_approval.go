@@ -44,7 +44,7 @@ func GetManagedApprovals(c *gin.Context) {
 	}
 
 	var approvals []models.ManagedRepoApproval
-	if err := query.Preload("Applicant").Preload("Approver").Preload("Group").Preload("Repo").Order("created_at DESC").Find(&approvals).Error; err != nil {
+	if err := query.Preload("Applicant").Preload("Approver").Preload("Group").Preload("Repo").Preload("Owner").Preload("Department").Preload("Subsystem").Order("created_at DESC").Find(&approvals).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch approval requests"})
 		return
 	}
@@ -64,11 +64,8 @@ func CreateManagedApproval(c *gin.Context) {
 		MultiRepoIDs   []uint   `json:"multi_repo_ids"`
 		Reason         string   `json:"reason"`
 		OwnerID        *uint    `json:"owner_id"`
-		OwnerName      string   `json:"owner_name"`
 		SubsystemID    *uint    `json:"subsystem_id"`
-		Subsystem      string   `json:"subsystem"`
 		DepartmentID   *uint    `json:"department_id"`
-		Department     string   `json:"department"`
 		Language       string   `json:"language"`
 		MachineType    string   `json:"machine_type"`
 		Tags           string   `json:"tags"`
@@ -115,11 +112,8 @@ func CreateManagedApproval(c *gin.Context) {
 		MultiRepoIDs:   multiRepoJSON,
 		Reason:         req.Reason,
 		OwnerID:        req.OwnerID,
-		OwnerName:      req.OwnerName,
 		DepartmentID:   req.DepartmentID,
-		Department:     req.Department,
 		SubsystemID:    req.SubsystemID,
-		Subsystem:      req.Subsystem,
 		Language:       req.Language,
 		MachineType:    req.MachineType,
 		Tags:           req.Tags,
@@ -135,7 +129,7 @@ func CreateManagedApproval(c *gin.Context) {
 		return
 	}
 
-	database.DB.Preload("Applicant").Preload("Group").Preload("Repo").First(&approval, approval.ID)
+	database.DB.Preload("Applicant").Preload("Group").Preload("Repo").Preload("Owner").Preload("Department").Preload("Subsystem").First(&approval, approval.ID)
 	c.JSON(http.StatusCreated, approval)
 }
 
@@ -148,6 +142,17 @@ func ApproveManagedApproval(c *gin.Context) {
 		return
 	}
 
+	var approval models.ManagedRepoApproval
+	if err := database.DB.First(&approval, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Approval request not found"})
+		return
+	}
+
+	if approval.Status != "pending" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Approval request is already processed"})
+		return
+	}
+
 	userIDVal, _ := c.Get("userID")
 	userID, _ := userIDVal.(uint)
 
@@ -155,17 +160,6 @@ func ApproveManagedApproval(c *gin.Context) {
 		Comment string `json:"comment"`
 	}
 	_ = c.ShouldBindJSON(&req)
-
-	var approval models.ManagedRepoApproval
-	if err := database.DB.Preload("Group").Preload("Repo").First(&approval, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Approval request not found"})
-		return
-	}
-
-	if approval.Status != "pending" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Approval request is already %s", approval.Status)})
-		return
-	}
 
 	// 针对代码仓创建申请
 	if approval.Type == "repo_create" {
@@ -214,11 +208,8 @@ func ApproveManagedApproval(c *gin.Context) {
 			SSHURL:            sshURL,
 			HTTPURL:           httpURL,
 			OwnerID:           ownerID,
-			OwnerName:         approval.OwnerName,
 			DepartmentID:      approval.DepartmentID,
-			Department:        approval.Department,
 			SubsystemID:       approval.SubsystemID,
-			Subsystem:         approval.Subsystem,
 			Language:          approval.Language,
 			MachineType:       approval.MachineType,
 			Tags:              approval.Tags,

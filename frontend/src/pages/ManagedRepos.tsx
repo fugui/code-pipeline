@@ -22,9 +22,11 @@ interface ManagedRepository {
   ssh_url: string
   http_url: string
   owner_id: number
-  owner_name?: string
-  subsystem?: string
-  department?: string
+  owner?: { id: number; name?: string; username?: string; email?: string }
+  department_id?: number
+  department?: { id: number; name: string }
+  subsystem_id?: number
+  subsystem?: { id: number; name: string }
   language?: string
   machine_type?: string
   tags?: string
@@ -588,21 +590,14 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
     e.preventDefault()
     if (!newRepoName || !newRepoGroup) return
 
-    const selectedUser = systemUsers.find(u => u.id === Number(newRepoOwnerID))
-    const selectedDept = systemDepartments.find(d => d.id === Number(newRepoDepartmentID))
-    const selectedSub = systemSubsystems.find(s => s.id === Number(newRepoSubsystemID))
-
     const payload = {
       type: 'repo_create',
       managed_group_id: newRepoGroup,
       repo_name: newRepoName,
       name: newRepoName,
-      owner_id: selectedUser ? selectedUser.id : undefined,
-      owner_name: selectedUser ? selectedUser.name : '',
-      department_id: selectedDept ? selectedDept.id : undefined,
-      department: selectedDept ? selectedDept.name : '',
-      subsystem_id: selectedSub ? selectedSub.id : undefined,
-      subsystem: selectedSub ? selectedSub.name : '',
+      owner_id: newRepoOwnerID || undefined,
+      department_id: newRepoDepartmentID || undefined,
+      subsystem_id: newRepoSubsystemID || undefined,
       language: newRepoLanguage,
       machine_type: newRepoMachineType,
       tags: newRepoTags,
@@ -1067,11 +1062,11 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                               </span>
                             )}
                           </div>
-                          {(r.owner_name || r.subsystem || r.department) && (
+                          {(r.owner || r.subsystem || r.department) && (
                             <div style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                              {r.owner_name && <span>责任人: {r.owner_name}</span>}
-                              {r.subsystem && <span>子系统: {r.subsystem}</span>}
-                              {r.department && <span>部门: {r.department}</span>}
+                              {r.owner && <span>责任人: {r.owner.name || r.owner.username}</span>}
+                              {r.subsystem && <span>子系统: {r.subsystem.name}</span>}
+                              {r.department && <span>部门: {r.department.name}</span>}
                             </div>
                           )}
                         </div>
