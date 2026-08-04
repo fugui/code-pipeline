@@ -268,6 +268,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
     name: string
     username: string
     email: string
+    employee_id?: string
   }
   interface SystemNamedOption {
     id: number
@@ -276,6 +277,30 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
   const [systemUsers, setSystemUsers] = useState<SystemUserOption[]>([])
   const [systemDepartments, setSystemDepartments] = useState<SystemNamedOption[]>([])
   const [systemSubsystems, setSystemSubsystems] = useState<SystemNamedOption[]>([])
+
+  const getCurrentUser = (): { id?: number; name?: string; email?: string } | null => {
+    try {
+      const userStr = localStorage.getItem('user') || localStorage.getItem('userInfo')
+      if (userStr) {
+        const u = JSON.parse(userStr)
+        if (u.id || u.email) return u
+      }
+    } catch (_) {}
+
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        const uid = payload.user_id || payload.id || payload.sub
+        if (uid) {
+          const found = systemUsers.find(u => u.id === Number(uid) || (payload.email && u.email === payload.email))
+          if (found) return found
+          return { id: Number(uid), name: payload.name || payload.username || '当前用户', email: payload.email }
+        }
+      } catch (_) {}
+    }
+    return null
+  }
+  const currentUser = getCurrentUser()
 
   const fetchSystemOptions = () => {
     fetch(`${apiBase}/system-options`, {
@@ -1752,12 +1777,40 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, position: 'relative' }}>
-                    <label style={{ fontSize: 12, fontWeight: 600 }}>责任人 <span style={{ color: '#ef4444' }}>*</span></label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={{ fontSize: 12, fontWeight: 600 }}>责任人 <span style={{ color: '#ef4444' }}>*</span></label>
+                      {currentUser && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (currentUser.id) {
+                              setNewRepoOwnerID(currentUser.id)
+                              setOwnerSearchQuery('')
+                              setShowOwnerDropdown(false)
+                            }
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: newRepoOwnerID === currentUser.id ? '#10b981' : '#6366f1',
+                            fontSize: 12,
+                            cursor: 'pointer',
+                            fontWeight: 500,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2,
+                            padding: 0
+                          }}
+                        >
+                          {newRepoOwnerID === currentUser.id ? '✓ 已指派给自己' : '👤 指派给我'}
+                        </button>
+                      )}
+                    </div>
                     <div style={{ position: 'relative' }}>
                       <input
                         type="text"
                         required={!newRepoOwnerID}
-                        placeholder="输入姓名/用户名/邮箱搜索 (800+人)..."
+                        placeholder="支持按姓名、拼音、工号、邮箱搜索 (800+人)..."
                         value={
                           showOwnerDropdown
                             ? ownerSearchQuery
@@ -1813,6 +1866,10 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                       )}
                     </div>
 
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                      💡 提示：支持输入关键词精准检索 800+ 系统成员；点击右侧【指派给我】可一键选择自己。
+                    </div>
+
                     {showOwnerDropdown && (
                       <>
                         <div 
@@ -1842,7 +1899,8 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                               return (
                                 u.name.toLowerCase().includes(q) ||
                                 (u.username && u.username.toLowerCase().includes(q)) ||
-                                (u.email && u.email.toLowerCase().includes(q))
+                                (u.email && u.email.toLowerCase().includes(q)) ||
+                                (u.employee_id && u.employee_id.toLowerCase().includes(q))
                               )
                             })
                             .slice(0, 100)
@@ -1872,7 +1930,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                                   if (newRepoOwnerID !== u.id) e.currentTarget.style.background = 'transparent'
                                 }}
                               >
-                                <span>{u.name} {u.username ? `(${u.username})` : ''}</span>
+                                <span>{u.name} {u.username ? `(${u.username})` : ''} {u.employee_id ? `[${u.employee_id}]` : ''}</span>
                                 <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{u.email}</span>
                               </div>
                             ))}
@@ -1882,7 +1940,8 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                             return (
                               u.name.toLowerCase().includes(q) ||
                               (u.username && u.username.toLowerCase().includes(q)) ||
-                              (u.email && u.email.toLowerCase().includes(q))
+                              (u.email && u.email.toLowerCase().includes(q)) ||
+                              (u.employee_id && u.employee_id.toLowerCase().includes(q))
                             )
                           }).length === 0 && (
                             <div style={{ padding: '12px', fontSize: 12, color: 'var(--text-secondary)', textAlign: 'center' }}>

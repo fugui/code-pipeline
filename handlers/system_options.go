@@ -13,13 +13,14 @@ import (
 func GetSystemOptions(c *gin.Context) {
 	// 1. 获取系统全量用户
 	var users []models.User
-	_ = database.DB.Select("id, name, username, email").Order("name ASC, username ASC").Find(&users)
+	_ = database.DB.Select("id, name, username, email, employee_id").Order("name ASC, username ASC").Find(&users)
 
 	type UserOption struct {
-		ID       uint   `json:"id"`
-		Name     string `json:"name"`
-		Username string `json:"username"`
-		Email    string `json:"email"`
+		ID         uint   `json:"id"`
+		Name       string `json:"name"`
+		Username   string `json:"username"`
+		Email      string `json:"email"`
+		EmployeeID string `json:"employee_id"`
 	}
 
 	userList := make([]UserOption, 0)
@@ -32,10 +33,11 @@ func GetSystemOptions(c *gin.Context) {
 			displayName = u.Email
 		}
 		userList = append(userList, UserOption{
-			ID:       u.ID,
-			Name:     displayName,
-			Username: u.Username,
-			Email:    u.Email,
+			ID:         u.ID,
+			Name:       displayName,
+			Username:   u.Username,
+			Email:      u.Email,
+			EmployeeID: u.EmployeeID,
 		})
 	}
 
