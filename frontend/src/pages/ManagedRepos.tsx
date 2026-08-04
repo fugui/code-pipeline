@@ -1792,7 +1792,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: newRepoOwnerID === currentUser.id ? '#10b981' : '#6366f1',
+                            color: newRepoOwnerID === currentUser.id ? '#10b981' : '#3b82f6',
                             fontSize: 12,
                             cursor: 'pointer',
                             fontWeight: 500,
@@ -1802,7 +1802,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                             padding: 0
                           }}
                         >
-                          {newRepoOwnerID === currentUser.id ? '✓ 已指派给自己' : '👤 指派给我'}
+                          {newRepoOwnerID === currentUser.id ? '✓ 已指派对自己' : '👤 指派给我'}
                         </button>
                       )}
                     </div>
@@ -1810,12 +1810,16 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                       <input
                         type="text"
                         required={!newRepoOwnerID}
-                        placeholder="支持按姓名、拼音、工号、邮箱搜索..."
+                        placeholder={
+                          newRepoOwnerID !== '' && systemUsers.find(u => u.id === newRepoOwnerID)
+                            ? `${systemUsers.find(u => u.id === newRepoOwnerID)?.name} (${systemUsers.find(u => u.id === newRepoOwnerID)?.employee_id || systemUsers.find(u => u.id === newRepoOwnerID)?.username || systemUsers.find(u => u.id === newRepoOwnerID)?.id})`
+                            : '输入姓名或工号搜索...'
+                        }
                         value={
                           showOwnerDropdown
                             ? ownerSearchQuery
-                            : (systemUsers.find(u => u.id === newRepoOwnerID) 
-                               ? `${systemUsers.find(u => u.id === newRepoOwnerID)?.name} ${systemUsers.find(u => u.id === newRepoOwnerID)?.email ? `(${systemUsers.find(u => u.id === newRepoOwnerID)?.email})` : ''}` 
+                            : (newRepoOwnerID !== '' && systemUsers.find(u => u.id === newRepoOwnerID)
+                               ? `${systemUsers.find(u => u.id === newRepoOwnerID)?.name} (${systemUsers.find(u => u.id === newRepoOwnerID)?.employee_id || systemUsers.find(u => u.id === newRepoOwnerID)?.username || systemUsers.find(u => u.id === newRepoOwnerID)?.id})`
                                : ownerSearchQuery)
                         }
                         onFocus={() => {
@@ -1839,7 +1843,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                           fontSize: 13
                         }}
                       />
-                      {newRepoOwnerID !== '' && (
+                      {newRepoOwnerID !== '' ? (
                         <button
                           type="button"
                           onClick={() => {
@@ -1847,27 +1851,16 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                             setOwnerSearchQuery('')
                           }}
                           style={{
-                            position: 'absolute',
-                            right: 8,
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--text-secondary)',
-                            cursor: 'pointer',
-                            padding: 2,
-                            display: 'flex',
-                            alignItems: 'center'
+                            position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                            background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center'
                           }}
                           title="清除选中"
                         >
                           <X size={14} />
                         </button>
+                      ) : (
+                        <Search size={14} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
                       )}
-                    </div>
-
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                      💡 提示：支持输入关键词精准检索系统成员；点击右侧【指派给我】可一键选择自己。
                     </div>
 
                     {showOwnerDropdown && (
@@ -1883,16 +1876,46 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                             left: 0,
                             right: 0,
                             zIndex: 100,
-                            maxHeight: 220,
+                            maxHeight: 240,
                             overflowY: 'auto',
                             background: 'var(--bg-card, #1e293b)',
                             border: '1px solid var(--border-color)',
-                            borderRadius: 6,
-                            boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                            borderRadius: 8,
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
                             marginTop: 4
                           }}
                         >
+                          {currentUser && (!ownerSearchQuery || currentUser.name?.includes(ownerSearchQuery) || (currentUser.email && currentUser.email.includes(ownerSearchQuery))) && (
+                            <div
+                              onClick={() => {
+                                if (currentUser.id) {
+                                  setNewRepoOwnerID(currentUser.id)
+                                  setShowOwnerDropdown(false)
+                                  setOwnerSearchQuery('')
+                                }
+                              }}
+                              style={{
+                                padding: '8px 12px', cursor: 'pointer', fontSize: 13,
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                borderBottom: '1px dashed var(--border-color, rgba(255,255,255,0.1))',
+                                background: currentUser.id === Number(newRepoOwnerID) ? 'rgba(37,99,235,0.12)' : 'rgba(59,130,246,0.04)',
+                                color: 'var(--text-main)'
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.1)'}
+                              onMouseLeave={e => e.currentTarget.style.background = currentUser.id === Number(newRepoOwnerID) ? 'rgba(37,99,235,0.12)' : 'rgba(59,130,246,0.04)'}
+                            >
+                              <span>
+                                <span style={{ fontWeight: 600, color: '#3b82f6' }}>⭐ 我 (当前账号: {currentUser.name})</span>
+                                <span style={{ color: '#94a3b8', marginLeft: 6, fontSize: 12 }}>({currentUser.email || currentUser.id})</span>
+                              </span>
+                              <span style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: 'rgba(59,130,246,0.1)', color: '#3b82f6', fontWeight: 500 }}>
+                                快捷指派
+                              </span>
+                            </div>
+                          )}
+
                           {systemUsers
+                            .filter(u => !currentUser || u.id !== currentUser.id)
                             .filter(u => {
                               if (!ownerSearchQuery.trim()) return true
                               const q = ownerSearchQuery.toLowerCase()
@@ -1916,8 +1939,8 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                                   padding: '8px 12px',
                                   cursor: 'pointer',
                                   fontSize: 13,
-                                  background: newRepoOwnerID === u.id ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
-                                  color: newRepoOwnerID === u.id ? '#818cf8' : 'var(--text-main)',
+                                  background: u.id === Number(newRepoOwnerID) ? 'rgba(37,99,235,0.12)' : 'transparent',
+                                  color: 'var(--text-main)',
                                   display: 'flex',
                                   justifyContent: 'space-between',
                                   alignItems: 'center',
@@ -1927,11 +1950,16 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                                   if (newRepoOwnerID !== u.id) e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
                                 }}
                                 onMouseLeave={(e) => {
-                                  if (newRepoOwnerID !== u.id) e.currentTarget.style.background = 'transparent'
+                                  if (newRepoOwnerID !== u.id) e.currentTarget.style.background = u.id === Number(newRepoOwnerID) ? 'rgba(37,99,235,0.12)' : 'transparent'
                                 }}
                               >
-                                <span>{u.name} {u.username ? `(${u.username})` : ''} {u.employee_id ? `[${u.employee_id}]` : ''}</span>
-                                <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{u.email}</span>
+                                <span>
+                                  <span style={{ fontWeight: 500 }}>{u.name}</span>
+                                  <span style={{ color: '#94a3b8', marginLeft: 6, fontSize: 12 }}>({u.employee_id || u.username || u.id})</span>
+                                </span>
+                                {u.email && (
+                                  <span style={{ color: '#94a3b8', fontSize: 12 }}>{u.email}</span>
+                                )}
                               </div>
                             ))}
                           {systemUsers.filter(u => {
@@ -1943,9 +1971,9 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                               (u.email && u.email.toLowerCase().includes(q)) ||
                               (u.employee_id && u.employee_id.toLowerCase().includes(q))
                             )
-                          }).length === 0 && (
-                            <div style={{ padding: '12px', fontSize: 12, color: 'var(--text-secondary)', textAlign: 'center' }}>
-                              未找到匹配的责任人
+                          }).length === 0 && (!currentUser || (ownerSearchQuery && !currentUser.name?.includes(ownerSearchQuery))) && (
+                            <div style={{ padding: 12, fontSize: 12, color: '#94a3b8', textAlign: 'center' }}>
+                              未找到匹配的人员
                             </div>
                           )}
                         </div>
