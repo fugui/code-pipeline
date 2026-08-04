@@ -1716,31 +1716,33 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                   1. 基础配置
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600 }}>仓库名称 <span style={{ color: '#ef4444' }}>*</span></label>
-                  <input 
-                    type="text" 
-                    required
-                    placeholder="例如：auth-service" 
-                    value={newRepoName}
-                    onChange={(e) => setNewRepoName(e.target.value)}
-                    style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
-                  />
-                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600 }}>归属嵌套组 <span style={{ color: '#ef4444' }}>*</span></label>
+                    <select 
+                      required
+                      value={newRepoGroup} 
+                      onChange={(e) => setNewRepoGroup(Number(e.target.value))}
+                      style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+                    >
+                      <option value={0}>请选择归属组织 Group...</option>
+                      {groups.map(g => (
+                        <option key={g.id} value={g.id}>{g.full_path}</option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600 }}>归属嵌套组 <span style={{ color: '#ef4444' }}>*</span></label>
-                  <select 
-                    required
-                    value={newRepoGroup} 
-                    onChange={(e) => setNewRepoGroup(Number(e.target.value))}
-                    style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
-                  >
-                    <option value={0}>请选择归属组织 Group...</option>
-                    {groups.map(g => (
-                      <option key={g.id} value={g.id}>{g.full_path}</option>
-                    ))}
-                  </select>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600 }}>仓库名称 <span style={{ color: '#ef4444' }}>*</span></label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="例如：auth-service" 
+                      value={newRepoName}
+                      onChange={(e) => setNewRepoName(e.target.value)}
+                      style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+                    />
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
