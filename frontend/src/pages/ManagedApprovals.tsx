@@ -187,11 +187,15 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
                             {app.language}
                           </span>
                         )}
-                        {app.machine_type && (
-                          <span className="badge" style={{ padding: '1px 6px', borderRadius: 4, background: 'rgba(168, 85, 247, 0.1)', color: '#c084fc', fontSize: 11 }}>
-                            {app.machine_type}
-                          </span>
-                        )}
+                        {app.machine_type && app.machine_type.split(',').map((item, idx) => {
+                          const trimmed = item.trim()
+                          if (!trimmed) return null
+                          return (
+                            <span key={idx} className="badge" style={{ padding: '1px 6px', borderRadius: 4, background: 'rgba(168, 85, 247, 0.1)', color: '#c084fc', fontSize: 11, marginRight: 4 }}>
+                              {trimmed}
+                            </span>
+                          )
+                        })}
                       </div>
                       {app.group && (
                         <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
