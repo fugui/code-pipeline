@@ -1738,7 +1738,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                       style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
                     >
                       <option value={0}>请选择归属组织 Group...</option>
-                      {groups.map(g => (
+                      {groups.filter(g => !g.is_hidden && !isAnyAncestorHidden(g, groups)).map(g => (
                         <option key={g.id} value={g.id}>{g.full_path}</option>
                       ))}
                     </select>
