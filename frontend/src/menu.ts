@@ -24,7 +24,7 @@ export const menuGroups: MenuGroup[] = [
     ]
   },
   {
-    title: '代码仓与分支管控',
+    title: '代码仓与分支管控(WIP)',
     items: [
       { path: '/managed-repos/hub', label: '代码仓大盘' },
       { path: '/managed-repos/sync-branch', label: '跨仓特性分支' },
