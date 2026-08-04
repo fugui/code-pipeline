@@ -554,12 +554,13 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
     .catch(err => showToast('error', err.message))
   }
 
-  // Create Repository or Submit Approval Request
+  // Create Repository Approval Request
   const handleCreateRepo = (e: React.FormEvent) => {
     e.preventDefault()
     if (!newRepoName || !newRepoGroup) return
 
     const payload = {
+      type: 'repo_create',
       managed_group_id: newRepoGroup,
       repo_name: newRepoName,
       name: newRepoName,
@@ -575,58 +576,26 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
       reason: newRepoDescription || '申请新建被管代码仓'
     }
 
-    if (!isAdmin) {
-      // 非管理员 -> 提交审批申请单
-      fetch(`${apiBase}/managed-approvals`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          type: 'repo_create',
-          ...payload
-        })
-      })
-      .then(async res => {
-        if (!res.ok) {
-          const errData = await res.json()
-          throw new Error(errData.error || '提交申请单失败')
-        }
-        return res.json()
-      })
-      .then(() => {
-        showToast('success', `代码仓 "${newRepoName}" 创建申请单已成功提交！等待管理员审批核准。`)
-        resetRepoForm()
-      })
-      .catch(err => showToast('error', err.message))
-      return
-    }
 
-    // 管理员 -> 直接物理创建
-    fetch(`${apiBase}/managed-repos`, {
+    // 所有角色（即便是管理员）统一提交审批申请单
+    fetch(`${apiBase}/managed-approvals`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        name: newRepoName,
-        managed_group_id: newRepoGroup
-      })
+      body: JSON.stringify(payload)
     })
     .then(async res => {
       if (!res.ok) {
         const errData = await res.json()
-        throw new Error(errData.error || '创建仓库失败')
+        throw new Error(errData.error || '提交申请单失败')
       }
       return res.json()
     })
     .then(() => {
-      showToast('success', `被管代码仓 "${newRepoName}" 物理创建并标准化配置成功！`)
-      setShowRepoModal(false)
-      setNewRepoName('')
-      fetchRepos(selectedGroup ? selectedGroup.id : undefined)
+      showToast('success', `代码仓 "${newRepoName}" 创建申请单已成功提交！等待审批核准。`)
+      resetRepoForm()
     })
     .catch(err => showToast('error', err.message))
   }
@@ -966,7 +935,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
               setNewRepoGroup(selectedGroup?.id || groups[0]?.id || 0)
               setShowRepoModal(true)
             }} className="btn btn-primary">
-              <Plus size={16} /> {isAdmin ? '创建被管代码仓' : '申请新建代码仓'}
+              <Plus size={16} /> 申请新建代码仓
             </button>
           </div>
         </div>
@@ -1632,7 +1601,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                 </div>
                 <div>
                   <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
-                    {isAdmin ? '创建被管代码仓' : '申请新建被管代码仓'}
+                    申请新建被管代码仓
                   </h3>
                   <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     标准化远程仓库配置与安全监控注册
@@ -1667,11 +1636,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                   <div>
                     <strong style={{ color: '#818cf8' }}>代码仓创建审批说明：</strong>
                     <div style={{ marginTop: 2, color: 'var(--text-secondary)' }}>
-                      {isAdmin ? (
-                        '当前管理员身份可直接物理拉起仓库并同步开启保护规则。普通用户提交后将自动生成审批单，须由系统管理员核准通过后，方可在远程 Git 平台完成物理建仓、初始化主分支并绑定安全门禁 Hook。'
-                      ) : (
-                        '提交创建申请后，系统将自动生成审批单并转交给团队管理员/审批人。审批通过后，后端会自动拉起物理仓库、初始化主分支（master/main）并配置标准化门禁看护。'
-                      )}
+                      代码仓创建一律实行审批制。提交创建申请后，系统将自动生成审批单并转交给团队管理员/审批人。审批核准通过后，系统才会自动在远程 Git 平台拉起物理仓库、初始化主分支（master/main）并配置标准化门禁看护。
                     </div>
                   </div>
                 </div>
@@ -1856,7 +1821,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                   取消
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  {isAdmin ? '物理创建代码仓' : '提交创建申请'}
+                  提交创建申请
                 </button>
               </div>
             </form>
