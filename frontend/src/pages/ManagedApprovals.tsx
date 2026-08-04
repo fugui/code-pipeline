@@ -195,7 +195,7 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
                       </div>
                       {app.group && (
                         <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                          归属组: {app.group.full_path} {app.owner_name ? ` | 责任人: ${app.owner_name}` : ''}
+                          归属组: {app.group.full_path} {app.owner ? ` | 责任人: ${app.owner.name || app.owner.username}` : ''}
                         </div>
                       )}
                     </td>

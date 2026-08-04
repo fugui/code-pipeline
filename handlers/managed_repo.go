@@ -91,9 +91,9 @@ func CreateManagedRepo(c *gin.Context) {
 	var req struct {
 		Name           string `json:"name" binding:"required"`
 		ManagedGroupID uint   `json:"managed_group_id" binding:"required"`
-		OwnerName      string `json:"owner_name"`
-		Subsystem      string `json:"subsystem"`
-		Department     string `json:"department"`
+		OwnerID        uint   `json:"owner_id"`
+		SubsystemID    *uint  `json:"subsystem_id"`
+		DepartmentID   *uint  `json:"department_id"`
 		Language       string `json:"language"`
 		MachineType    string `json:"machine_type"`
 		Tags           string `json:"tags"`
@@ -114,6 +114,11 @@ func CreateManagedRepo(c *gin.Context) {
 
 	userIDVal, _ := c.Get("userID")
 	userID, _ := userIDVal.(uint)
+
+	ownerID := userID
+	if req.OwnerID > 0 {
+		ownerID = req.OwnerID
+	}
 
 	defaultBranch := req.DefaultBranch
 	if defaultBranch == "" {
@@ -142,10 +147,9 @@ func CreateManagedRepo(c *gin.Context) {
 		Name:              req.Name,
 		SSHURL:            sshURL,
 		HTTPURL:           httpURL,
-		OwnerID:           userID,
-		OwnerName:         req.OwnerName,
-		Subsystem:         req.Subsystem,
-		Department:        req.Department,
+		OwnerID:           ownerID,
+		DepartmentID:      req.DepartmentID,
+		SubsystemID:       req.SubsystemID,
 		Language:          req.Language,
 		MachineType:       req.MachineType,
 		Tags:              req.Tags,
@@ -188,7 +192,7 @@ func GetManagedRepos(c *gin.Context) {
 	}
 
 	var repos []models.ManagedRepository
-	if err := query.Preload("ManagedGroup").Find(&repos).Error; err != nil {
+	if err := query.Preload("ManagedGroup").Preload("Owner").Preload("Department").Preload("Subsystem").Find(&repos).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch repositories"})
 		return
 	}
