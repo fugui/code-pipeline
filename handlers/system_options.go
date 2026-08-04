@@ -55,14 +55,21 @@ func GetSystemOptions(c *gin.Context) {
 		}
 	}
 
-	// 3. 获取系统子系统
+	// 3. 获取 code-bench 架构元素中的第一层级 (Subsystems)
 	var subsystems []models.Subsystem
-	_ = database.DB.Order("name ASC").Find(&subsystems)
+	_ = database.DB.Where("parent_id IS NULL OR type = ?", "subsystem").Order("name_cn ASC, identifier ASC").Find(&subsystems)
 
 	subList := make([]OptionItem, 0)
 	for _, s := range subsystems {
-		if s.Name != "" {
-			subList = append(subList, OptionItem{ID: s.ID, Name: s.Name})
+		displayName := s.NameCn
+		if displayName == "" {
+			displayName = s.NameEn
+		}
+		if displayName == "" {
+			displayName = s.Identifier
+		}
+		if displayName != "" {
+			subList = append(subList, OptionItem{ID: s.ID, Name: displayName})
 		}
 	}
 
