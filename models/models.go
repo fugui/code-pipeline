@@ -35,13 +35,34 @@ type Department struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// Subsystem 系统子系统表
+// Subsystem 归属子系统 (关联映射 code-bench 中的第一层级架构元素 architecture_elements)
 type Subsystem struct {
-	ID          uint      `gorm:"primaryKey" json:"id"`
-	Name        string    `gorm:"size:100;uniqueIndex;not null;default:''" json:"name"`
-	Code        string    `gorm:"size:50;default:''" json:"code"`
-	Description string    `gorm:"size:255;default:''" json:"description"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID           uint      `gorm:"primaryKey" json:"id"`
+	Identifier   string    `gorm:"not null;default:''" json:"identifier"`
+	NameCn       string    `gorm:"not null;default:''" json:"name_cn"`
+	NameEn       string    `gorm:"not null;default:''" json:"name_en"`
+	Name         string    `gorm:"-" json:"name"` // 兼容显示字段
+	Type         string    `gorm:"not null;default:'subsystem'" json:"type"` // "subsystem" | "group" | "module"
+	ParentID     *uint     `json:"parent_id"`
+	Subdirectory string    `gorm:"default:''" json:"subdirectory"`
+	Description  string    `gorm:"default:''" json:"description"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+func (Subsystem) TableName() string {
+	return "architecture_elements"
+}
+
+func (s *Subsystem) AfterFind(tx *gorm.DB) (err error) {
+	if s.NameCn != "" {
+		s.Name = s.NameCn
+	} else if s.NameEn != "" {
+		s.Name = s.NameEn
+	} else {
+		s.Name = s.Identifier
+	}
+	return
 }
 
 func (u *User) GetRoles() []string {

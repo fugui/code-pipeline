@@ -144,7 +144,10 @@ export interface Department {
 export interface Subsystem {
   id: number
   name: string
-  code?: string
+  identifier?: string
+  name_cn?: string
+  name_en?: string
+  type?: string
   description?: string
   created_at?: string
 }
