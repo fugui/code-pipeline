@@ -1810,7 +1810,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                       <input
                         type="text"
                         required={!newRepoOwnerID}
-                        placeholder="支持按姓名、拼音、工号、邮箱搜索 (800+人)..."
+                        placeholder="支持按姓名、拼音、工号、邮箱搜索..."
                         value={
                           showOwnerDropdown
                             ? ownerSearchQuery
@@ -1867,7 +1867,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                     </div>
 
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                      💡 提示：支持输入关键词精准检索 800+ 系统成员；点击右侧【指派给我】可一键选择自己。
+                      💡 提示：支持输入关键词精准检索系统成员；点击右侧【指派给我】可一键选择自己。
                     </div>
 
                     {showOwnerDropdown && (
