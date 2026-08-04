@@ -16,6 +16,7 @@ func TestSendHTTPRequest_SSOExpiration(t *testing.T) {
 	tests := []struct {
 		name          string
 		setCookies    []string
+		loginURL      string
 		expectedError error
 	}{
 		{
@@ -53,6 +54,12 @@ func TestSendHTTPRequest_SSOExpiration(t *testing.T) {
 			setCookies:    []string{"other=abc; Path=/", "prod_cftk=; Path=/"},
 			expectedError: ErrSSOExpired,
 		},
+		{
+			name:          "x-login-url header exists",
+			setCookies:    nil,
+			loginURL:      "http://sso.example.com/login",
+			expectedError: ErrSSOExpired,
+		},
 	}
 
 	for _, tc := range tests {
@@ -60,6 +67,9 @@ func TestSendHTTPRequest_SSOExpiration(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				for _, sc := range tc.setCookies {
 					w.Header().Add("Set-Cookie", sc)
+				}
+				if tc.loginURL != "" {
+					w.Header().Set("x-login-url", tc.loginURL)
 				}
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write([]byte(`{"status":"ok"}`))
