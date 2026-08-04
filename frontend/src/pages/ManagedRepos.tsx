@@ -257,7 +257,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
   const [newRepoSubsystemID, setNewRepoSubsystemID] = useState<number | ''>('')
   const [newRepoDepartmentID, setNewRepoDepartmentID] = useState<number | ''>('')
   const [newRepoLanguage, setNewRepoLanguage] = useState('C')
-  const [newRepoMachineTypes, setNewRepoMachineTypes] = useState<string[]>(['上位机'])
+  const [newRepoMachineTypes, setNewRepoMachineTypes] = useState<string[]>(['SCH'])
   const [newRepoTags, setNewRepoTags] = useState('')
   const [newRepoDescription, setNewRepoDescription] = useState('')
   const [newRepoDefaultBranch, setNewRepoDefaultBranch] = useState('master')
@@ -337,7 +337,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
     setNewRepoSubsystemID('')
     setNewRepoDepartmentID('')
     setNewRepoLanguage('C')
-    setNewRepoMachineTypes(['上位机'])
+    setNewRepoMachineTypes(['SCH'])
     setNewRepoTags('')
     setNewRepoDescription('')
     setNewRepoDefaultBranch('master')
@@ -1100,9 +1100,10 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                             {r.machine_type && r.machine_type.split(',').map((item, idx) => {
                               const trimmed = item.trim()
                               if (!trimmed) return null
+                              const labelMap: Record<string, string> = { SCH: '上位机', LCH: '下位机', DHH: '数据机', OTHER: '其它' }
                               return (
                                 <span key={idx} className="badge" style={{ padding: '1px 6px', borderRadius: 4, background: 'rgba(168, 85, 247, 0.12)', color: '#c084fc', fontSize: 11, fontWeight: 500 }}>
-                                  {trimmed}
+                                  {labelMap[trimmed] || trimmed}
                                 </span>
                               )
                             })}
@@ -2058,10 +2059,10 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                       border: '1px solid var(--border-color)', borderRadius: 6, minHeight: 38
                     }}>
                       {[
-                        { code: '上位机', label: '上位机' },
-                        { code: '下位机', label: '下位机' },
-                        { code: '数据机', label: '数据机' },
-                        { code: '其它', label: '其它' }
+                        { code: 'SCH', label: '上位机' },
+                        { code: 'LCH', label: '下位机' },
+                        { code: 'DHH', label: '数据机' },
+                        { code: 'OTHER', label: '其它' }
                       ].map(({ code, label }) => {
                         const checked = newRepoMachineTypes.includes(code)
                         return (
