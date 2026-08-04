@@ -11,16 +11,25 @@ import (
 
 // GetSystemOptions 返回系统关联的用户、部门、子系统等下拉候选项实体
 func GetSystemOptions(c *gin.Context) {
-	// 1. 获取系统全量用户
+	// 1. 获取系统全量用户（含部门关联）
 	var users []models.User
-	_ = database.DB.Select("id, name, username, email, employee_id").Order("name ASC, username ASC").Find(&users)
+	_ = database.DB.Select("id, name, username, email, employee_id, department_id").Order("name ASC, username ASC").Find(&users)
+
+	// 构建部门 ID -> 名称映射
+	var departments []models.Department
+	_ = database.DB.Select("id, name").Find(&departments)
+	deptMap := make(map[uint]string)
+	for _, d := range departments {
+		deptMap[d.ID] = d.Name
+	}
 
 	type UserOption struct {
-		ID         uint   `json:"id"`
-		Name       string `json:"name"`
-		Username   string `json:"username"`
-		Email      string `json:"email"`
-		EmployeeID string `json:"employee_id"`
+		ID             uint   `json:"id"`
+		Name           string `json:"name"`
+		Username       string `json:"username"`
+		Email          string `json:"email"`
+		EmployeeID     string `json:"employee_id"`
+		DepartmentName string `json:"department_name,omitempty"`
 	}
 
 	userList := make([]UserOption, 0)
@@ -32,18 +41,21 @@ func GetSystemOptions(c *gin.Context) {
 		if displayName == "" {
 			displayName = u.Email
 		}
+		deptName := ""
+		if u.DepartmentID != nil {
+			deptName = deptMap[*u.DepartmentID]
+		}
 		userList = append(userList, UserOption{
-			ID:         u.ID,
-			Name:       displayName,
-			Username:   u.Username,
-			Email:      u.Email,
-			EmployeeID: u.EmployeeID,
+			ID:             u.ID,
+			Name:           displayName,
+			Username:       u.Username,
+			Email:          u.Email,
+			EmployeeID:     u.EmployeeID,
+			DepartmentName: deptName,
 		})
 	}
 
-	// 2. 获取系统部门
-	var departments []models.Department
-	_ = database.DB.Order("name ASC").Find(&departments)
+	// 2. 构建部门下拉选项（复用前面已查询的 departments）
 
 	type OptionItem struct {
 		ID   uint   `json:"id"`

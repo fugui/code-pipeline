@@ -269,6 +269,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
     username: string
     email: string
     employee_id?: string
+    department_name?: string
   }
   interface SystemNamedOption {
     id: number
@@ -1906,7 +1907,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                             >
                               <span>
                                 <span style={{ fontWeight: 600, color: '#3b82f6' }}>⭐ 我 (当前账号: {currentUser.name})</span>
-                                <span style={{ color: '#94a3b8', marginLeft: 6, fontSize: 12 }}>({currentUser.email || currentUser.id})</span>
+                                <span style={{ color: '#94a3b8', marginLeft: 6, fontSize: 12 }}>({(currentUser as SystemUserOption).employee_id || currentUser.id})</span>
                               </span>
                               <span style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: 'rgba(59,130,246,0.1)', color: '#3b82f6', fontWeight: 500 }}>
                                 快捷指派
@@ -1957,8 +1958,8 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                                   <span style={{ fontWeight: 500 }}>{u.name}</span>
                                   <span style={{ color: '#94a3b8', marginLeft: 6, fontSize: 12 }}>({u.employee_id || u.username || u.id})</span>
                                 </span>
-                                {u.email && (
-                                  <span style={{ color: '#94a3b8', fontSize: 12 }}>{u.email}</span>
+                                {u.department_name && (
+                                  <span style={{ color: '#94a3b8', fontSize: 12 }}>{u.department_name}</span>
                                 )}
                               </div>
                             ))}
