@@ -269,6 +269,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
     username: string
     email: string
     employee_id?: string
+    department_id?: number
     department_name?: string
   }
   interface SystemNamedOption {
@@ -278,6 +279,16 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
   const [systemUsers, setSystemUsers] = useState<SystemUserOption[]>([])
   const [systemDepartments, setSystemDepartments] = useState<SystemNamedOption[]>([])
   const [systemSubsystems, setSystemSubsystems] = useState<SystemNamedOption[]>([])
+
+  // 当选择“责任人”后，若“所属部门”当前没有值，默认填上责任人所在的部门
+  useEffect(() => {
+    if (newRepoOwnerID !== '' && newRepoOwnerID !== 0) {
+      const ownerObj = systemUsers.find(u => u.id === Number(newRepoOwnerID))
+      if (ownerObj && ownerObj.department_id) {
+        setNewRepoDepartmentID(prev => (!prev || prev === 0 ? (ownerObj.department_id || '') : prev))
+      }
+    }
+  }, [newRepoOwnerID, systemUsers])
 
   const getCurrentUser = (): { id?: number; name?: string; email?: string } | null => {
     try {
