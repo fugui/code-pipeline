@@ -255,7 +255,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
   const [newRepoSubsystemID, setNewRepoSubsystemID] = useState<number | ''>('')
   const [newRepoDepartmentID, setNewRepoDepartmentID] = useState<number | ''>('')
   const [newRepoLanguage, setNewRepoLanguage] = useState('Go')
-  const [newRepoMachineType, setNewRepoMachineType] = useState('上位机')
+  const [newRepoMachineTypes, setNewRepoMachineTypes] = useState<string[]>(['上位机'])
   const [newRepoTags, setNewRepoTags] = useState('')
   const [newRepoDescription, setNewRepoDescription] = useState('')
   const [newRepoDefaultBranch, setNewRepoDefaultBranch] = useState('master')
@@ -296,7 +296,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
     setNewRepoSubsystemID('')
     setNewRepoDepartmentID('')
     setNewRepoLanguage('Go')
-    setNewRepoMachineType('上位机')
+    setNewRepoMachineTypes(['上位机'])
     setNewRepoTags('')
     setNewRepoDescription('')
     setNewRepoDefaultBranch('master')
@@ -599,7 +599,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
       department_id: newRepoDepartmentID || undefined,
       subsystem_id: newRepoSubsystemID || undefined,
       language: newRepoLanguage,
-      machine_type: newRepoMachineType,
+      machine_type: newRepoMachineTypes.join(', '),
       tags: newRepoTags,
       description: newRepoDescription,
       default_branch: newRepoDefaultBranch,
@@ -1056,11 +1056,15 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                                 {r.language}
                               </span>
                             )}
-                            {r.machine_type && (
-                              <span className="badge" style={{ padding: '1px 6px', borderRadius: 4, background: 'rgba(168, 85, 247, 0.12)', color: '#c084fc', fontSize: 11, fontWeight: 500 }}>
-                                {r.machine_type}
-                              </span>
-                            )}
+                            {r.machine_type && r.machine_type.split(',').map((item, idx) => {
+                              const trimmed = item.trim()
+                              if (!trimmed) return null
+                              return (
+                                <span key={idx} className="badge" style={{ padding: '1px 6px', borderRadius: 4, background: 'rgba(168, 85, 247, 0.12)', color: '#c084fc', fontSize: 11, fontWeight: 500 }}>
+                                  {trimmed}
+                                </span>
+                              )
+                            })}
                           </div>
                           {(r.owner || r.subsystem || r.department) && (
                             <div style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1814,17 +1818,38 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <label style={{ fontSize: 12, fontWeight: 600 }}>设备 / 架构分类</label>
-                    <select 
-                      value={newRepoMachineType} 
-                      onChange={(e) => setNewRepoMachineType(e.target.value)}
-                      style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
-                    >
-                      <option value="上位机">上位机 (Upper Machine)</option>
-                      <option value="下位机">下位机 (Lower Machine / Embedded)</option>
-                      <option value="数据机">数据机 (Data Processing Machine)</option>
-                      <option value="通用服务">通用微服务 / 工具</option>
-                    </select>
+                    <label style={{ fontSize: 12, fontWeight: 600 }}>设备 / 架构分类 <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>(多选)</span></label>
+                    <div style={{
+                      display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center',
+                      padding: '8px 12px', background: 'var(--bg-primary)',
+                      border: '1px solid var(--border-color)', borderRadius: 6, minHeight: 38
+                    }}>
+                      {[
+                        { code: '上位机', label: '上位机' },
+                        { code: '下位机', label: '下位机' },
+                        { code: '数据机', label: '数据机' },
+                        { code: '其它', label: '其它' }
+                      ].map(({ code, label }) => {
+                        const checked = newRepoMachineTypes.includes(code)
+                        return (
+                          <label key={code} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'var(--text-main)', userSelect: 'none', margin: 0 }}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setNewRepoMachineTypes(prev => [...prev, code])
+                                } else {
+                                  setNewRepoMachineTypes(prev => prev.filter(t => t !== code))
+                                }
+                              }}
+                              style={{ width: 'auto', cursor: 'pointer' }}
+                            />
+                            <span>{label}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
                   </div>
                 </div>
 

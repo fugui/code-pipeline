@@ -209,7 +209,7 @@ type ManagedRepository struct {
 	SubsystemID        *uint        `gorm:"index" json:"subsystem_id,omitempty"`
 	Subsystem          *Subsystem   `gorm:"foreignKey:SubsystemID" json:"subsystem,omitempty"`
 	Language           string       `gorm:"size:50;default:''" json:"language"`
-	MachineType        string       `gorm:"size:50;default:''" json:"machine_type"`
+	MachineType        string       `gorm:"size:255;default:''" json:"machine_type"`
 	Tags               string       `gorm:"size:255;default:''" json:"tags"`
 	Description        string       `gorm:"type:text" json:"description"`
 	DefaultBranch      string       `gorm:"size:50;default:'master'" json:"default_branch"`
@@ -300,7 +300,7 @@ type ManagedRepoApproval struct {
 	SubsystemID     *uint              `json:"subsystem_id,omitempty"`
 	Subsystem       *Subsystem         `gorm:"foreignKey:SubsystemID" json:"subsystem,omitempty"`
 	Language        string             `gorm:"size:50;default:''" json:"language"`
-	MachineType     string             `gorm:"size:50;default:''" json:"machine_type"`
+	MachineType     string             `gorm:"size:255;default:''" json:"machine_type"`
 	Tags            string             `gorm:"size:255;default:''" json:"tags"`
 	Description     string             `gorm:"type:text" json:"description"`
 	DefaultBranch   string             `gorm:"size:50;default:'master'" json:"default_branch"`
