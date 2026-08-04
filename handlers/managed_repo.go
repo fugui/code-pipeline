@@ -91,6 +91,14 @@ func CreateManagedRepo(c *gin.Context) {
 	var req struct {
 		Name           string `json:"name" binding:"required"`
 		ManagedGroupID uint   `json:"managed_group_id" binding:"required"`
+		OwnerName      string `json:"owner_name"`
+		Subsystem      string `json:"subsystem"`
+		Department     string `json:"department"`
+		Language       string `json:"language"`
+		MachineType    string `json:"machine_type"`
+		Tags           string `json:"tags"`
+		Description    string `json:"description"`
+		DefaultBranch  string `json:"default_branch"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -106,6 +114,11 @@ func CreateManagedRepo(c *gin.Context) {
 
 	userIDVal, _ := c.Get("userID")
 	userID, _ := userIDVal.(uint)
+
+	defaultBranch := req.DefaultBranch
+	if defaultBranch == "" {
+		defaultBranch = "master"
+	}
 
 	// 1. 调用远程服务物理创建仓库
 	remoteID, sshURL, httpURL, err := services.CreateRemoteRepo(c.Request.Context(), req.Name, group.FullPath)
@@ -130,6 +143,14 @@ func CreateManagedRepo(c *gin.Context) {
 		SSHURL:            sshURL,
 		HTTPURL:           httpURL,
 		OwnerID:           userID,
+		OwnerName:         req.OwnerName,
+		Subsystem:         req.Subsystem,
+		Department:        req.Department,
+		Language:          req.Language,
+		MachineType:       req.MachineType,
+		Tags:              req.Tags,
+		Description:       req.Description,
+		DefaultBranch:     defaultBranch,
 		IsActive:          true,
 		WebhookRegistered: true,
 		CreatedAt:         time.Now(),

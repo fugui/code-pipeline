@@ -22,6 +22,14 @@ interface ManagedRepository {
   ssh_url: string
   http_url: string
   owner_id: number
+  owner_name?: string
+  subsystem?: string
+  department?: string
+  language?: string
+  machine_type?: string
+  tags?: string
+  description?: string
+  default_branch?: string
   is_active: boolean
   is_archived?: boolean
   is_hidden?: boolean
@@ -241,6 +249,28 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
 
   const [newRepoName, setNewRepoName] = useState('')
   const [newRepoGroup, setNewRepoGroup] = useState<number>(0)
+  const [newRepoOwner, setNewRepoOwner] = useState('')
+  const [newRepoSubsystem, setNewRepoSubsystem] = useState('')
+  const [newRepoDepartment, setNewRepoDepartment] = useState('')
+  const [newRepoLanguage, setNewRepoLanguage] = useState('Go')
+  const [newRepoMachineType, setNewRepoMachineType] = useState('上位机')
+  const [newRepoTags, setNewRepoTags] = useState('')
+  const [newRepoDescription, setNewRepoDescription] = useState('')
+  const [newRepoDefaultBranch, setNewRepoDefaultBranch] = useState('master')
+
+  const resetRepoForm = () => {
+    setShowRepoModal(false)
+    setNewRepoName('')
+    setNewRepoGroup(0)
+    setNewRepoOwner('')
+    setNewRepoSubsystem('')
+    setNewRepoDepartment('')
+    setNewRepoLanguage('Go')
+    setNewRepoMachineType('上位机')
+    setNewRepoTags('')
+    setNewRepoDescription('')
+    setNewRepoDefaultBranch('master')
+  }
 
   const [newBranchName, setNewBranchName] = useState('')
   const [newBranchSource, setNewBranchSource] = useState('master')
@@ -529,6 +559,22 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
     e.preventDefault()
     if (!newRepoName || !newRepoGroup) return
 
+    const payload = {
+      managed_group_id: newRepoGroup,
+      repo_name: newRepoName,
+      name: newRepoName,
+      owner_name: newRepoOwner,
+      subsystem: newRepoSubsystem,
+      department: newRepoDepartment,
+      language: newRepoLanguage,
+      machine_type: newRepoMachineType,
+      tags: newRepoTags,
+      description: newRepoDescription,
+      default_branch: newRepoDefaultBranch,
+      target_branch: newRepoDefaultBranch,
+      reason: newRepoDescription || '申请新建被管代码仓'
+    }
+
     if (!isAdmin) {
       // 非管理员 -> 提交审批申请单
       fetch(`${apiBase}/managed-approvals`, {
@@ -539,9 +585,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
         },
         body: JSON.stringify({
           type: 'repo_create',
-          managed_group_id: newRepoGroup,
-          repo_name: newRepoName,
-          reason: '申请新建被管代码仓'
+          ...payload
         })
       })
       .then(async res => {
@@ -552,9 +596,8 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
         return res.json()
       })
       .then(() => {
-        showToast('success', `代码仓创建申请单已成功提交！等待管理员审批核准。`)
-        setShowRepoModal(false)
-        setNewRepoName('')
+        showToast('success', `代码仓 "${newRepoName}" 创建申请单已成功提交！等待管理员审批核准。`)
+        resetRepoForm()
       })
       .catch(err => showToast('error', err.message))
       return
@@ -1000,12 +1043,31 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                     <tr key={r.id} style={{ borderBottom: '1px solid var(--border-color)', fontSize: 13, opacity: r.is_archived ? 0.65 : 1 }}>
                       <td style={{ padding: '14px 8px', color: 'var(--text-secondary)' }}>{r.id}</td>
                       <td style={{ padding: '14px 8px', fontWeight: 600 }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                          <span>{r.name}</span>
-                          {r.is_archived && (
-                            <span className="badge" style={{ padding: '1px 6px', borderRadius: 4, background: 'rgba(148, 163, 184, 0.2)', color: '#94a3b8', fontSize: 11, fontWeight: 500 }}>
-                              已归档
-                            </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <span>{r.name}</span>
+                            {r.is_archived && (
+                              <span className="badge" style={{ padding: '1px 6px', borderRadius: 4, background: 'rgba(148, 163, 184, 0.2)', color: '#94a3b8', fontSize: 11, fontWeight: 500 }}>
+                                已归档
+                              </span>
+                            )}
+                            {r.language && (
+                              <span className="badge" style={{ padding: '1px 6px', borderRadius: 4, background: 'rgba(59, 130, 246, 0.12)', color: '#60a5fa', fontSize: 11, fontWeight: 500 }}>
+                                {r.language}
+                              </span>
+                            )}
+                            {r.machine_type && (
+                              <span className="badge" style={{ padding: '1px 6px', borderRadius: 4, background: 'rgba(168, 85, 247, 0.12)', color: '#c084fc', fontSize: 11, fontWeight: 500 }}>
+                                {r.machine_type}
+                              </span>
+                            )}
+                          </div>
+                          {(r.owner_name || r.subsystem || r.department) && (
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                              {r.owner_name && <span>责任人: {r.owner_name}</span>}
+                              {r.subsystem && <span>子系统: {r.subsystem}</span>}
+                              {r.department && <span>部门: {r.department}</span>}
+                            </div>
                           )}
                         </div>
                       </td>
@@ -1542,56 +1604,263 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
         </div>
       )}
 
-      {/* MODAL 2: Create Repo */}
+      {/* SIDEBAR DRAWER: Create Repo */}
       {showRepoModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex',
-          justifyContent: 'center', alignItems: 'center'
-        }}>
-          <form onSubmit={handleCreateRepo} className="glass-card" style={{ width: 480, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>新建被管代码仓</h3>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600 }}>仓库名称</label>
-              <input 
-                type="text" 
-                required
-                placeholder="例如：auth-service" 
-                value={newRepoName}
-                onChange={(e) => setNewRepoName(e.target.value)}
-                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600 }}>归属嵌套组</label>
-              <select 
-                required
-                value={newRepoGroup} 
-                onChange={(e) => setNewRepoGroup(Number(e.target.value))}
-                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+        <div className="drawer-overlay" onClick={resetRepoForm}>
+          <div className="drawer-panel" onClick={e => e.stopPropagation()}>
+            {/* Drawer Header */}
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid var(--border-color)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'rgba(255, 255, 255, 0.02)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  background: 'rgba(99, 102, 241, 0.12)',
+                  color: '#6366f1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Plus size={20} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
+                    {isAdmin ? '创建被管代码仓' : '申请新建被管代码仓'}
+                  </h3>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    标准化远程仓库配置与安全监控注册
+                  </span>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={resetRepoForm}
+                style={{
+                  background: 'transparent', border: 'none', color: 'var(--text-secondary)',
+                  cursor: 'pointer', padding: 6, borderRadius: 6, display: 'flex', alignItems: 'center'
+                }}
               >
-                <option value={0}>请选择归属组织 Group...</option>
-                {groups.map(g => (
-                  <option key={g.id} value={g.id}>{g.full_path}</option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-              ⚠️ 创建完成后，系统将自动利用超级管理员权限注册看护 Webhook 并强制开启主干合并门禁。
-            </div>
-
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
-              <button type="button" onClick={() => setShowRepoModal(false)} className="btn btn-secondary">
-                取消
-              </button>
-              <button type="submit" className="btn btn-primary">
-                提交创建
+                <X size={20} />
               </button>
             </div>
-          </form>
+
+            {/* Approval Notice Banner */}
+            <div style={{ padding: '14px 24px 0 24px' }}>
+              <div style={{
+                background: 'rgba(99, 102, 241, 0.08)',
+                border: '1px solid rgba(99, 102, 241, 0.25)',
+                borderRadius: 8,
+                padding: '12px 14px',
+                fontSize: 12,
+                color: 'var(--text-main)',
+                lineHeight: '1.5'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                  <AlertCircle size={16} style={{ color: '#6366f1', flexShrink: 0, marginTop: 2 }} />
+                  <div>
+                    <strong style={{ color: '#818cf8' }}>代码仓创建审批说明：</strong>
+                    <div style={{ marginTop: 2, color: 'var(--text-secondary)' }}>
+                      {isAdmin ? (
+                        '当前管理员身份可直接物理拉起仓库并同步开启保护规则。普通用户提交后将自动生成审批单，须由系统管理员核准通过后，方可在远程 Git 平台完成物理建仓、初始化主分支并绑定安全门禁 Hook。'
+                      ) : (
+                        '提交创建申请后，系统将自动生成审批单并转交给团队管理员/审批人。审批通过后，后端会自动拉起物理仓库、初始化主分支（master/main）并配置标准化门禁看护。'
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Form Container */}
+            <form onSubmit={handleCreateRepo} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
+                {/* 1. 基础配置 */}
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#818cf8', borderBottom: '1px solid var(--border-color)', paddingBottom: 6 }}>
+                  1. 基础配置
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600 }}>仓库名称 <span style={{ color: '#ef4444' }}>*</span></label>
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="例如：auth-service" 
+                    value={newRepoName}
+                    onChange={(e) => setNewRepoName(e.target.value)}
+                    style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600 }}>归属嵌套组 <span style={{ color: '#ef4444' }}>*</span></label>
+                  <select 
+                    required
+                    value={newRepoGroup} 
+                    onChange={(e) => setNewRepoGroup(Number(e.target.value))}
+                    style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+                  >
+                    <option value={0}>请选择归属组织 Group...</option>
+                    {groups.map(g => (
+                      <option key={g.id} value={g.id}>{g.full_path}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600 }}>主分支名称 (Default Main Branch)</label>
+                  <div style={{ display: 'flex', gap: 20, alignItems: 'center', marginTop: 4 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
+                      <input 
+                        type="radio" 
+                        name="defaultBranch" 
+                        value="master" 
+                        checked={newRepoDefaultBranch === 'master'} 
+                        onChange={e => setNewRepoDefaultBranch(e.target.value)} 
+                      />
+                      <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>master</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>(经典主干)</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
+                      <input 
+                        type="radio" 
+                        name="defaultBranch" 
+                        value="main" 
+                        checked={newRepoDefaultBranch === 'main'} 
+                        onChange={e => setNewRepoDefaultBranch(e.target.value)} 
+                      />
+                      <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>main</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>(标准主干)</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* 2. 归属与责任人 */}
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#818cf8', borderBottom: '1px solid var(--border-color)', paddingBottom: 6, marginTop: 8 }}>
+                  2. 归属与责任人
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600 }}>责任人</label>
+                    <input 
+                      type="text" 
+                      placeholder="例如：张三 (zhangsan)" 
+                      value={newRepoOwner}
+                      onChange={(e) => setNewRepoOwner(e.target.value)}
+                      style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600 }}>所属部门</label>
+                    <input 
+                      type="text" 
+                      placeholder="例如：基础架构部" 
+                      value={newRepoDepartment}
+                      onChange={(e) => setNewRepoDepartment(e.target.value)}
+                      style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600 }}>归属子系统</label>
+                  <input 
+                    type="text" 
+                    placeholder="例如：用户鉴权子系统 (Auth-Subsystem)" 
+                    value={newRepoSubsystem}
+                    onChange={(e) => setNewRepoSubsystem(e.target.value)}
+                    style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+                  />
+                </div>
+
+                {/* 3. 技术规格与分类 */}
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#818cf8', borderBottom: '1px solid var(--border-color)', paddingBottom: 6, marginTop: 8 }}>
+                  3. 技术规格与分类
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600 }}>主要编程语言</label>
+                    <select 
+                      value={newRepoLanguage} 
+                      onChange={(e) => setNewRepoLanguage(e.target.value)}
+                      style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+                    >
+                      <option value="Go">Go</option>
+                      <option value="C/C++">C / C++</option>
+                      <option value="Java">Java</option>
+                      <option value="Python">Python</option>
+                      <option value="TypeScript">TypeScript / JavaScript</option>
+                      <option value="Rust">Rust</option>
+                      <option value="Shell">Shell / Bash</option>
+                      <option value="Other">其他 (Other)</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600 }}>设备 / 架构分类</label>
+                    <select 
+                      value={newRepoMachineType} 
+                      onChange={(e) => setNewRepoMachineType(e.target.value)}
+                      style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+                    >
+                      <option value="上位机">上位机 (Upper Machine)</option>
+                      <option value="下位机">下位机 (Lower Machine / Embedded)</option>
+                      <option value="数据机">数据机 (Data Processing Machine)</option>
+                      <option value="通用服务">通用微服务 / 工具</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600 }}>TAG (标签)</label>
+                  <input 
+                    type="text" 
+                    placeholder="多个标签英文逗号隔开，例如: core, auth, microservice" 
+                    value={newRepoTags}
+                    onChange={(e) => setNewRepoTags(e.target.value)}
+                    style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600 }}>详细描述</label>
+                  <textarea 
+                    rows={3}
+                    placeholder="请输入代码仓业务背景、核心职责与维护说明..." 
+                    value={newRepoDescription}
+                    onChange={(e) => setNewRepoDescription(e.target.value)}
+                    style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)', resize: 'vertical' }}
+                  />
+                </div>
+              </div>
+
+              {/* Drawer Footer */}
+              <div style={{
+                padding: '16px 24px',
+                borderTop: '1px solid var(--border-color)',
+                display: 'flex',
+                gap: 12,
+                justifyContent: 'flex-end',
+                background: 'rgba(0, 0, 0, 0.2)'
+              }}>
+                <button type="button" onClick={resetRepoForm} className="btn btn-secondary">
+                  取消
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  {isAdmin ? '物理创建代码仓' : '提交创建申请'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
