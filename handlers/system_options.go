@@ -29,6 +29,7 @@ func GetSystemOptions(c *gin.Context) {
 		Username       string `json:"username"`
 		Email          string `json:"email"`
 		EmployeeID     string `json:"employee_id"`
+		DepartmentID   *uint  `json:"department_id,omitempty"`
 		DepartmentName string `json:"department_name,omitempty"`
 	}
 
@@ -51,6 +52,7 @@ func GetSystemOptions(c *gin.Context) {
 			Username:       u.Username,
 			Email:          u.Email,
 			EmployeeID:     u.EmployeeID,
+			DepartmentID:   u.DepartmentID,
 			DepartmentName: deptName,
 		})
 	}
