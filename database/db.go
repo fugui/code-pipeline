@@ -90,6 +90,8 @@ func InitDB() {
 	log.Println("[Database] AutoMigrating database schema...")
 	err = DB.AutoMigrate(
 		&models.User{},
+		&models.Department{},
+		&models.Subsystem{},
 		&models.Repository{},
 		&models.Pipeline{},
 		&models.ExecutionScheme{},
@@ -138,6 +140,8 @@ func InitDB() {
 	if DB.Dialector.Name() == "postgres" {
 		tables := []string{
 			"users",
+			"departments",
+			"subsystems",
 			"repositories",
 			"pipelines",
 			"execution_schemes",
@@ -173,5 +177,41 @@ func InitDB() {
 		} else {
 			log.Println("[Database] Seeded default admin user (email: admin@code-shield.com, password: admin123)")
 		}
+	}
+
+	// Seed default departments if empty
+	var deptCount int64
+	DB.Model(&models.Department{}).Count(&deptCount)
+	if deptCount == 0 {
+		defaultDepts := []string{
+			"基础架构部",
+			"软件研发一部",
+			"软件研发二部",
+			"系统测试部",
+			"运维与云原生部",
+			"网络与信息安全部",
+		}
+		for _, name := range defaultDepts {
+			_ = DB.Create(&models.Department{Name: name, CreatedAt: time.Now()})
+		}
+		log.Println("[Database] Seeded default system departments successfully")
+	}
+
+	// Seed default subsystems if empty
+	var subCount int64
+	DB.Model(&models.Subsystem{}).Count(&subCount)
+	if subCount == 0 {
+		defaultSubs := []string{
+			"用户与权限子系统 (Auth)",
+			"代码管道与流水线子系统 (Pipeline)",
+			"分支审计与门禁看护子系统 (Audit-Gate)",
+			"构建与编译调度子系统 (Build-Scheduler)",
+			"数据分析与质态大屏子系统 (Analytics)",
+			"底层通信与设备驱动子系统 (Device-Driver)",
+		}
+		for _, name := range defaultSubs {
+			_ = DB.Create(&models.Subsystem{Name: name, CreatedAt: time.Now()})
+		}
+		log.Println("[Database] Seeded default system subsystems successfully")
 	}
 }
