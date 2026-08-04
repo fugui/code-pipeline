@@ -63,6 +63,14 @@ func CreateManagedApproval(c *gin.Context) {
 		BaseBranch     string   `json:"base_branch"`
 		MultiRepoIDs   []uint   `json:"multi_repo_ids"`
 		Reason         string   `json:"reason"`
+		OwnerName      string   `json:"owner_name"`
+		Subsystem      string   `json:"subsystem"`
+		Department     string   `json:"department"`
+		Language       string   `json:"language"`
+		MachineType    string   `json:"machine_type"`
+		Tags           string   `json:"tags"`
+		Description    string   `json:"description"`
+		DefaultBranch  string   `json:"default_branch"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -85,6 +93,14 @@ func CreateManagedApproval(c *gin.Context) {
 		}
 	}
 
+	defaultBranch := req.DefaultBranch
+	if defaultBranch == "" {
+		defaultBranch = req.TargetBranch
+	}
+	if defaultBranch == "" {
+		defaultBranch = "master"
+	}
+
 	approval := models.ManagedRepoApproval{
 		Type:           req.Type,
 		ApplicantID:    userID,
@@ -95,6 +111,14 @@ func CreateManagedApproval(c *gin.Context) {
 		BaseBranch:     req.BaseBranch,
 		MultiRepoIDs:   multiRepoJSON,
 		Reason:         req.Reason,
+		OwnerName:      req.OwnerName,
+		Subsystem:      req.Subsystem,
+		Department:     req.Department,
+		Language:       req.Language,
+		MachineType:    req.MachineType,
+		Tags:           req.Tags,
+		Description:    req.Description,
+		DefaultBranch:  defaultBranch,
 		Status:         "pending",
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
@@ -163,6 +187,14 @@ func ApproveManagedApproval(c *gin.Context) {
 		_ = services.RegisterWebhook(c.Request.Context(), projectIDStr, headers)
 		_ = services.UpdateRepoSettings(c.Request.Context(), projectIDStr, headers)
 
+		defaultBranch := approval.DefaultBranch
+		if defaultBranch == "" {
+			defaultBranch = approval.TargetBranch
+		}
+		if defaultBranch == "" {
+			defaultBranch = "master"
+		}
+
 		// 3. 写入数据库
 		newRepo := models.ManagedRepository{
 			ID:                remoteID,
@@ -171,6 +203,14 @@ func ApproveManagedApproval(c *gin.Context) {
 			SSHURL:            sshURL,
 			HTTPURL:           httpURL,
 			OwnerID:           approval.ApplicantID,
+			OwnerName:         approval.OwnerName,
+			Subsystem:         approval.Subsystem,
+			Department:        approval.Department,
+			Language:          approval.Language,
+			MachineType:       approval.MachineType,
+			Tags:              approval.Tags,
+			Description:       approval.Description,
+			DefaultBranch:     defaultBranch,
 			IsActive:          true,
 			WebhookRegistered: true,
 			CreatedAt:         time.Now(),

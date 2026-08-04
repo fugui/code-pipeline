@@ -175,12 +175,27 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
                       )}
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600 }}>
-                        {app.type === 'repo_create' ? app.repo_name : `${app.repo?.name || '仓库'} (${app.target_branch})`}
+                      <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span>{app.type === 'repo_create' ? app.repo_name : `${app.repo?.name || '仓库'} (${app.target_branch})`}</span>
+                        {app.type === 'repo_create' && app.default_branch && (
+                          <span className="badge" style={{ padding: '1px 6px', borderRadius: 4, background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8', fontSize: 11 }}>
+                            主分支: {app.default_branch}
+                          </span>
+                        )}
+                        {app.language && (
+                          <span className="badge" style={{ padding: '1px 6px', borderRadius: 4, background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', fontSize: 11 }}>
+                            {app.language}
+                          </span>
+                        )}
+                        {app.machine_type && (
+                          <span className="badge" style={{ padding: '1px 6px', borderRadius: 4, background: 'rgba(168, 85, 247, 0.1)', color: '#c084fc', fontSize: 11 }}>
+                            {app.machine_type}
+                          </span>
+                        )}
                       </div>
                       {app.group && (
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                          归属组: {app.group.full_path}
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                          归属组: {app.group.full_path} {app.owner_name ? ` | 责任人: ${app.owner_name}` : ''}
                         </div>
                       )}
                     </td>

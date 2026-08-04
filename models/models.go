@@ -186,6 +186,14 @@ type ManagedRepository struct {
 	SSHURL             string       `gorm:"not null;default:''" json:"ssh_url"` // SSH 克隆地址
 	HTTPURL            string       `gorm:"default:''" json:"http_url"`         // HTTP 访问地址
 	OwnerID            uint         `json:"owner_id"`                           // 负责人 ID (系统 User)
+	OwnerName          string       `gorm:"size:100;default:''" json:"owner_name"`
+	Subsystem          string       `gorm:"size:100;default:''" json:"subsystem"`
+	Department         string       `gorm:"size:100;default:''" json:"department"`
+	Language           string       `gorm:"size:50;default:''" json:"language"`
+	MachineType        string       `gorm:"size:50;default:''" json:"machine_type"`
+	Tags               string       `gorm:"size:255;default:''" json:"tags"`
+	Description        string       `gorm:"type:text" json:"description"`
+	DefaultBranch      string       `gorm:"size:50;default:'master'" json:"default_branch"`
 	IsActive           bool         `gorm:"default:true" json:"is_active"`
 	IsArchived         bool         `gorm:"default:false;index" json:"is_archived"` // 是否已被归档 (归档时 IsActive=false, IsHidden=true)
 	IsHidden           bool         `gorm:"default:false;index" json:"is_hidden"`   // 是否已被隐藏
@@ -266,6 +274,14 @@ type ManagedRepoApproval struct {
 	TargetBranch    string             `gorm:"size:120;default:'master'" json:"target_branch"`
 	BaseBranch      string             `gorm:"size:120;default:'master'" json:"base_branch"`
 	MultiRepoIDs    datatypes.JSON     `json:"multi_repo_ids"` // 跨仓分支时选择的 Repository ID 列表
+	OwnerName       string             `gorm:"size:100;default:''" json:"owner_name"`
+	Subsystem       string             `gorm:"size:100;default:''" json:"subsystem"`
+	Department      string             `gorm:"size:100;default:''" json:"department"`
+	Language        string             `gorm:"size:50;default:''" json:"language"`
+	MachineType     string             `gorm:"size:50;default:''" json:"machine_type"`
+	Tags            string             `gorm:"size:255;default:''" json:"tags"`
+	Description     string             `gorm:"type:text" json:"description"`
+	DefaultBranch   string             `gorm:"size:50;default:'master'" json:"default_branch"`
 	Reason          string             `gorm:"type:text" json:"reason"`
 	Status          string             `gorm:"size:20;default:'pending'" json:"status"` // "pending", "approved", "rejected"
 	ApproverID      *uint              `json:"approver_id"`

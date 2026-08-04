@@ -141,6 +141,14 @@ export interface ManagedRepository {
   ssh_url: string
   http_url: string
   owner_id: number
+  owner_name?: string
+  subsystem?: string
+  department?: string
+  language?: string
+  machine_type?: string
+  tags?: string
+  description?: string
+  default_branch?: string
   is_active: boolean
   is_archived?: boolean
   is_hidden?: boolean
@@ -167,6 +175,14 @@ export interface ManagedRepoApproval {
   base_branch?: string
   multi_repo_ids?: number[]
   reason?: string
+  owner_name?: string
+  subsystem?: string
+  department?: string
+  language?: string
+  machine_type?: string
+  tags?: string
+  description?: string
+  default_branch?: string
   status: 'pending' | 'approved' | 'rejected'
   approver_id?: number
   approver?: User
