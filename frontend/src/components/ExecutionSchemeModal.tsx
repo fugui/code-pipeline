@@ -17,6 +17,17 @@ interface ExecutionSchemeModalProps {
   onSuccessClose?: () => void
 }
 
+const isReservedAttrKey = (keyName: string) => {
+  const k = (keyName || '').trim().toLowerCase();
+  return k === 'code_checker_task_id' || 
+         k === 'repository' || 
+         k === 'branch' || 
+         k === 'selectedbranchs' || 
+         k === 'languages' || 
+         k === 'codehubtargetrepohttpurl' || 
+         k === 'build_type';
+};
+
 export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   isAdmin = true,
   visible,
@@ -119,20 +130,27 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       }
       lastCustomAttrsRef.current = activeScheme.custom_attributes || '';
       try {
-        const parsed = JSON.parse(activeScheme.custom_attributes || '{}');
-        const buildParams = Array.isArray(parsed.buildParameters) ? parsed.buildParameters : [];
+        let parsed: any = JSON.parse(activeScheme.custom_attributes || '{}');
+        if (typeof parsed === 'string') {
+          try {
+            parsed = JSON.parse(parsed);
+          } catch (_) {}
+        }
+        const buildParams = Array.isArray(parsed?.buildParameters) ? parsed.buildParameters : [];
+        
         // 从 buildParameters 中读取 build_type（多选，逗号分隔 code）
-        const buildTypeParam = buildParams.find((item: any) => item.name === 'build_type');
-        if (buildTypeParam && buildTypeParam.value) {
+        const buildTypeParam = buildParams.find((item: any) => item.name && String(item.name).trim().toLowerCase() === 'build_type');
+        if (buildTypeParam && buildTypeParam.value !== undefined && buildTypeParam.value !== null) {
           const codes = String(buildTypeParam.value).split(',').map((s: string) => s.trim()).filter(Boolean);
           setBuildTypes(codes.length > 0 ? codes : ['SCH']);
         } else {
           setBuildTypes(['SCH']);
         }
+
         const list = buildParams
-          .filter((item: any) => item.name !== 'code_checker_task_id' && item.name !== 'repository' && item.name !== 'branch' && item.name !== 'build_type')
+          .filter((item: any) => item.name && !isReservedAttrKey(String(item.name)))
           .map((item: any) => ({
-            key: item.name || '',
+            key: String(item.name || '').trim(),
             value: String(item.value !== undefined && item.value !== null ? item.value : '')
           }));
         setCustomAttrs(list);
@@ -214,17 +232,19 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   const selectedRepo = searchedRepos.find(r => r.id === activeScheme.repository_id) || activeScheme.repository
 
   const updateCustomAttrs = (newList: { key: string; value: string }[], types: string[] = buildTypes) => {
-    setCustomAttrs(newList);
+    const cleanList = newList.filter(item => !isReservedAttrKey(item.key));
+    setCustomAttrs(cleanList);
     let parsed: Record<string, any> = {};
     try {
-      parsed = JSON.parse(activeScheme.custom_attributes || '{}');
+      let raw = JSON.parse(activeScheme.custom_attributes || '{}');
+      if (typeof raw === 'string') raw = JSON.parse(raw);
+      parsed = raw || {};
     } catch (e) {
       parsed = {};
     }
 
-    const buildParameters = newList
+    const buildParameters = cleanList
       .filter(item => item.key.trim())
-      .filter(item => item.key.trim() !== 'code_checker_task_id' && item.key.trim() !== 'repository' && item.key.trim() !== 'branch' && item.key.trim() !== 'build_type')
       .map(item => ({
         name: item.key.trim(),
         value: item.value
@@ -270,8 +290,8 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       const keyName = item.key.trim();
       if (!keyName) continue;
 
-      if (keyName === 'build_type') {
-        setLocalError(`保存失败：构建参数 "build_type" 为系统保留字段，请通过顶部多选框配置`);
+      if (isReservedAttrKey(keyName)) {
+        setLocalError(`保存失败：构建参数 "${keyName}" 为系统保留字段，请通过顶层设置选项进行配置`);
         return;
       }
 
@@ -326,8 +346,10 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       }
       
       if (key) {
-        if (key === 'build_type') {
-          pastedBuildTypes = value.split(',').map((s: string) => s.trim()).filter(Boolean);
+        if (isReservedAttrKey(key)) {
+          if (key.trim().toLowerCase() === 'build_type') {
+            pastedBuildTypes = value.split(',').map((s: string) => s.trim()).filter(Boolean);
+          }
         } else {
           parsedAttrs.push({ key, value });
         }
