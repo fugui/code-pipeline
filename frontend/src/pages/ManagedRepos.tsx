@@ -252,6 +252,8 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
   const [newRepoName, setNewRepoName] = useState('')
   const [newRepoGroup, setNewRepoGroup] = useState<number>(0)
   const [newRepoOwnerID, setNewRepoOwnerID] = useState<number | ''>('')
+  const [ownerSearchQuery, setOwnerSearchQuery] = useState('')
+  const [showOwnerDropdown, setShowOwnerDropdown] = useState(false)
   const [newRepoSubsystemID, setNewRepoSubsystemID] = useState<number | ''>('')
   const [newRepoDepartmentID, setNewRepoDepartmentID] = useState<number | ''>('')
   const [newRepoLanguage, setNewRepoLanguage] = useState('C')
@@ -293,6 +295,8 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
     setNewRepoName('')
     setNewRepoGroup(0)
     setNewRepoOwnerID('')
+    setOwnerSearchQuery('')
+    setShowOwnerDropdown(false)
     setNewRepoSubsystemID('')
     setNewRepoDepartmentID('')
     setNewRepoLanguage('C')
@@ -1747,19 +1751,147 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, position: 'relative' }}>
                     <label style={{ fontSize: 12, fontWeight: 600 }}>责任人 <span style={{ color: '#ef4444' }}>*</span></label>
-                    <select 
-                      required
-                      value={newRepoOwnerID} 
-                      onChange={(e) => setNewRepoOwnerID(e.target.value ? Number(e.target.value) : '')}
-                      style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
-                    >
-                      <option value="">请选择系统责任人...</option>
-                      {systemUsers.map(u => (
-                        <option key={u.id} value={u.id}>{u.name} {u.email ? `(${u.email})` : ''}</option>
-                      ))}
-                    </select>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text"
+                        required={!newRepoOwnerID}
+                        placeholder="输入姓名/用户名/邮箱搜索 (800+人)..."
+                        value={
+                          showOwnerDropdown
+                            ? ownerSearchQuery
+                            : (systemUsers.find(u => u.id === newRepoOwnerID) 
+                               ? `${systemUsers.find(u => u.id === newRepoOwnerID)?.name} ${systemUsers.find(u => u.id === newRepoOwnerID)?.email ? `(${systemUsers.find(u => u.id === newRepoOwnerID)?.email})` : ''}` 
+                               : ownerSearchQuery)
+                        }
+                        onFocus={() => {
+                          setShowOwnerDropdown(true)
+                          setOwnerSearchQuery('')
+                        }}
+                        onChange={(e) => {
+                          setOwnerSearchQuery(e.target.value)
+                          setShowOwnerDropdown(true)
+                          if (!e.target.value) {
+                            setNewRepoOwnerID('')
+                          }
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '8px 30px 8px 12px',
+                          background: 'var(--bg-primary)',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: 6,
+                          color: 'var(--text-main)',
+                          fontSize: 13
+                        }}
+                      />
+                      {newRepoOwnerID !== '' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewRepoOwnerID('')
+                            setOwnerSearchQuery('')
+                          }}
+                          style={{
+                            position: 'absolute',
+                            right: 8,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            padding: 2,
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                          title="清除选中"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+
+                    {showOwnerDropdown && (
+                      <>
+                        <div 
+                          style={{ position: 'fixed', inset: 0, zIndex: 90 }} 
+                          onClick={() => setShowOwnerDropdown(false)} 
+                        />
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            zIndex: 100,
+                            maxHeight: 220,
+                            overflowY: 'auto',
+                            background: 'var(--bg-card, #1e293b)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: 6,
+                            boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                            marginTop: 4
+                          }}
+                        >
+                          {systemUsers
+                            .filter(u => {
+                              if (!ownerSearchQuery.trim()) return true
+                              const q = ownerSearchQuery.toLowerCase()
+                              return (
+                                u.name.toLowerCase().includes(q) ||
+                                (u.username && u.username.toLowerCase().includes(q)) ||
+                                (u.email && u.email.toLowerCase().includes(q))
+                              )
+                            })
+                            .slice(0, 100)
+                            .map(u => (
+                              <div
+                                key={u.id}
+                                onClick={() => {
+                                  setNewRepoOwnerID(u.id)
+                                  setShowOwnerDropdown(false)
+                                  setOwnerSearchQuery('')
+                                }}
+                                style={{
+                                  padding: '8px 12px',
+                                  cursor: 'pointer',
+                                  fontSize: 13,
+                                  background: newRepoOwnerID === u.id ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+                                  color: newRepoOwnerID === u.id ? '#818cf8' : 'var(--text-main)',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  borderBottom: '1px solid rgba(255,255,255,0.04)'
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (newRepoOwnerID !== u.id) e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (newRepoOwnerID !== u.id) e.currentTarget.style.background = 'transparent'
+                                }}
+                              >
+                                <span>{u.name} {u.username ? `(${u.username})` : ''}</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{u.email}</span>
+                              </div>
+                            ))}
+                          {systemUsers.filter(u => {
+                            if (!ownerSearchQuery.trim()) return true
+                            const q = ownerSearchQuery.toLowerCase()
+                            return (
+                              u.name.toLowerCase().includes(q) ||
+                              (u.username && u.username.toLowerCase().includes(q)) ||
+                              (u.email && u.email.toLowerCase().includes(q))
+                            )
+                          }).length === 0 && (
+                            <div style={{ padding: '12px', fontSize: 12, color: 'var(--text-secondary)', textAlign: 'center' }}>
+                              未找到匹配的责任人
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
