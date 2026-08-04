@@ -15,7 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CreateManagedGroup 创建被管嵌套组
+// CreateManagedGroup 引入被管顶层根组
 func CreateManagedGroup(c *gin.Context) {
 	var req struct {
 		Name     string `json:"name" binding:"required"`
@@ -29,7 +29,7 @@ func CreateManagedGroup(c *gin.Context) {
 	}
 
 	if req.ParentID != nil && *req.ParentID > 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "仅允许在本地创建顶层根组。子组必须先在托管平台上创建，再通过父组同步按钮拉取同步。"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "仅允许在系统内引入顶层根组。子组必须先在托管平台上创建，再通过父组同步按钮递归拉取同步。"})
 		return
 	}
 
@@ -48,7 +48,7 @@ func CreateManagedGroup(c *gin.Context) {
 	// 1. 在创建时直接去托管平台 (CodeHub) 校验并换取真实的远程 Group ID
 	remoteID, err := services.GetRemoteGroupDetails(c.Request.Context(), fullPath)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("该组路径在托管平台上不存在，无法创建: %v", err)})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("该组路径在托管平台上不存在，无法引入: %v", err)})
 		return
 	}
 

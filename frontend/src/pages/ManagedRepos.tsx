@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { 
-  GitBranch, Folder, Plus, Search, Users, AlertCircle, RefreshCw, Send, CheckCircle2, ChevronRight, ChevronDown, Eye, EyeOff, Trash2, Zap, X, Archive
+  GitBranch, Folder, Plus, FolderPlus, Info, Search, Users, AlertCircle, RefreshCw, Send, CheckCircle2, ChevronRight, ChevronDown, Eye, EyeOff, Trash2, Zap, X, Archive
 } from 'lucide-react'
 
 interface ManagedGroup {
@@ -612,12 +612,15 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
         parent_id: null
       })
     })
-    .then(res => {
-      if (!res.ok) throw new Error('创建组失败')
+    .then(async res => {
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error || '引入组失败')
+      }
       return res.json()
     })
     .then(() => {
-      showToast('success', `嵌套组 "${newGroupName}" 创建成功！`)
+      showToast('success', `根组 "${newGroupName}" 引入成功！`)
       setShowGroupModal(false)
       setNewGroupName('')
       setNewGroupPath('')
@@ -857,8 +860,8 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
               title="显示已隐藏嵌套组"
             />
             {isAdmin && (
-              <button onClick={() => setShowGroupModal(true)} className="btn btn-secondary btn-small" style={{ padding: '4px 8px' }}>
-                <Plus size={14} /> 新建组
+              <button onClick={() => setShowGroupModal(true)} className="btn btn-secondary btn-small" style={{ padding: '4px 8px' }} title="引入远程托管平台上的顶层根组">
+                <FolderPlus size={14} /> 引入根组
               </button>
             )}
           </div>
@@ -1602,18 +1605,45 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
       )}
 
 
-      {/* MODAL 1: Create Group */}
+      {/* MODAL 1: Import Group */}
       {showGroupModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex',
           justifyContent: 'center', alignItems: 'center'
         }}>
-          <form onSubmit={handleCreateGroup} className="glass-card" style={{ width: 480, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>新建嵌套 Group</h3>
-            
+          <form onSubmit={handleCreateGroup} className="glass-card" style={{ width: 500, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FolderPlus size={20} color="var(--border-active)" />
+                引入远程根组
+              </h3>
+              <button type="button" onClick={() => setShowGroupModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Alert Banner */}
+            <div style={{
+              padding: '10px 14px',
+              background: 'rgba(59, 130, 246, 0.1)',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              borderRadius: 6,
+              fontSize: 12,
+              color: 'var(--text-main)',
+              lineHeight: 1.5,
+              display: 'flex',
+              gap: 10,
+              alignItems: 'flex-start'
+            }}>
+              <Info size={16} color="#3b82f6" style={{ marginTop: 2, flexShrink: 0 }} />
+              <div>
+                此功能用于将代码托管平台（CodeHub / GitLab 等）上<b>已存在的顶层根组</b>引入本平台。系统<b>不会</b>在远程平台创建新组。如需引入子组，请在根组导入后点击“同步”按钮递归拉取。
+              </div>
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600 }}>组名称</label>
+              <label style={{ fontSize: 12, fontWeight: 600 }}>组显示名称</label>
               <input 
                 type="text" 
                 required
@@ -1625,25 +1655,23 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600 }}>路径标识 (Path)</label>
+              <label style={{ fontSize: 12, fontWeight: 600 }}>远程组路径 (Path)</label>
               <input 
                 type="text" 
                 required
-                placeholder="例如：backend" 
+                placeholder="例如：backend (需与托管平台上的 Path 准确一致)" 
                 value={newGroupPath}
                 onChange={(e) => setNewGroupPath(e.target.value)}
                 style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
               />
             </div>
 
-
-
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
               <button type="button" onClick={() => setShowGroupModal(false)} className="btn btn-secondary">
                 取消
               </button>
               <button type="submit" className="btn btn-primary">
-                提交创建
+                确认引入
               </button>
             </div>
           </form>
