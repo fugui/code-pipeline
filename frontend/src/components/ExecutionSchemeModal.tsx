@@ -42,6 +42,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   const [showPasteModal, setShowPasteModal] = React.useState(false);
   const [pasteContent, setPasteContent] = React.useState('');
   const [copied, setCopied] = React.useState(false);
+  const [localError, setLocalError] = React.useState<string | null>(null);
 
   const [mrTrigger, setMrTrigger] = React.useState(true);
   const [dailyBuild, setDailyBuild] = React.useState(true);
@@ -52,6 +53,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   React.useEffect(() => {
     if (visible) {
       setSearchedRepos(repos);
+      setLocalError(null);
     }
   }, [visible, repos]);
 
@@ -211,7 +213,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
 
   const selectedRepo = searchedRepos.find(r => r.id === activeScheme.repository_id) || activeScheme.repository
 
-  const updateCustomAttrs = (newList: { key: string; value: string }[]) => {
+  const updateCustomAttrs = (newList: { key: string; value: string }[], types: string[] = buildTypes) => {
     setCustomAttrs(newList);
     let parsed: Record<string, any> = {};
     try {
@@ -228,7 +230,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
         value: item.value
       }));
     // 追加 build_type（多选，逗号分隔 code）
-    buildParameters.push({ name: 'build_type', value: buildTypes.join(',') });
+    buildParameters.push({ name: 'build_type', value: types.join(',') });
 
     parsed.buildParameters = buildParameters;
 
@@ -241,6 +243,47 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       daily_build: dailyBuild,
       daily_build_time: dailyBuildTime
     });
+  };
+
+  const handleBuildTypeChange = (code: string, checked: boolean) => {
+    const newTypes = checked
+      ? [...buildTypes, code]
+      : buildTypes.filter(t => t !== code);
+    setBuildTypes(newTypes);
+    if (localError) setLocalError(null);
+    updateCustomAttrs(customAttrs, newTypes);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLocalError(null);
+
+    // 1. 校验构建类型是否为空
+    if (buildTypes.length === 0) {
+      setLocalError('保存失败：请至少选择一种构建类型 (build_type)');
+      return;
+    }
+
+    // 2. 校验参数名重复 (系统相同名字的参数只能存在一份)
+    const nameCounts = new Map<string, number>();
+    for (const item of customAttrs) {
+      const keyName = item.key.trim();
+      if (!keyName) continue;
+
+      if (keyName === 'build_type') {
+        setLocalError(`保存失败：构建参数 "build_type" 为系统保留字段，请通过顶部多选框配置`);
+        return;
+      }
+
+      const count = (nameCounts.get(keyName) || 0) + 1;
+      if (count > 1) {
+        setLocalError(`保存失败：构建参数中存在重复的参数名 "${keyName}"，系统只允许存在一份`);
+        return;
+      }
+      nameCounts.set(keyName, count);
+    }
+
+    onSave(e);
   };
 
   const handleTriggerOrTimeChange = (newMrTrigger: boolean, newDailyBuild: boolean, newTime: string) => {
@@ -259,6 +302,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   const handlePasteAttrs = () => {
     const lines = pasteContent.split('\n');
     const parsedAttrs: { key: string; value: string }[] = [];
+    let pastedBuildTypes: string[] | null = null;
     
     lines.forEach(line => {
       const trimmed = line.trim();
@@ -282,22 +326,32 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       }
       
       if (key) {
-        parsedAttrs.push({ key, value });
+        if (key === 'build_type') {
+          pastedBuildTypes = value.split(',').map((s: string) => s.trim()).filter(Boolean);
+        } else {
+          parsedAttrs.push({ key, value });
+        }
       }
     });
 
-    if (parsedAttrs.length > 0) {
-      const updatedAttrs = [...customAttrs];
-      parsedAttrs.forEach(newAttr => {
-        const idx = updatedAttrs.findIndex(item => item.key.trim() === newAttr.key);
-        if (idx !== -1) {
-          updatedAttrs[idx] = newAttr;
-        } else {
-          updatedAttrs.push(newAttr);
-        }
-      });
-      updateCustomAttrs(updatedAttrs);
+    let currentBuildTypes = buildTypes;
+    if (pastedBuildTypes !== null) {
+      currentBuildTypes = pastedBuildTypes;
+      setBuildTypes(pastedBuildTypes);
+      if (localError) setLocalError(null);
     }
+
+    const updatedAttrs = [...customAttrs];
+    parsedAttrs.forEach(newAttr => {
+      const idx = updatedAttrs.findIndex(item => item.key.trim() === newAttr.key);
+      if (idx !== -1) {
+        updatedAttrs[idx] = newAttr;
+      } else {
+        updatedAttrs.push(newAttr);
+      }
+    });
+
+    updateCustomAttrs(updatedAttrs, currentBuildTypes);
     
     setPasteContent('');
     setShowPasteModal(false);
@@ -406,7 +460,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={onSave} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+        <form onSubmit={handleSubmit} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div>
               <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>关联流水线</label>
@@ -445,93 +499,44 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
             </div>
 
             <div>
-              {activeScheme.id ? (
-                <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>代码仓</label>
-                    <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>构建类型</label>
-                  </div>
-                  <div style={{ display: 'flex', gap: 12 }}>
-                    <input 
-                      type="text" 
-                      style={{ flex: 1 }}
-                      value={selectedRepo ? `${selectedRepo.name} (${selectedRepo.url})` : '未绑定仓库'} 
-                      disabled 
-                    />
-                    <input
-                      type="text"
-                      style={{ flex: 1 }}
-                      value={[
-                        buildTypes.includes('SCH') && '上位机(SCH)',
-                        buildTypes.includes('LCH') && '下位机(LCH)',
-                        buildTypes.includes('DHH') && '数据机(DHH)'
-                      ].filter(Boolean).join('、') || '-'}
-                      disabled
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>代码仓</label>
-                    <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>构建类型 (多选)</label>
-                  </div>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <div style={{ flex: 1 }}>
-                      <input 
-                        type="text" 
-                        value={selectedRepo ? selectedRepo.name : (filterQuery || '未绑定仓库')}
-                        disabled
-                        style={{ width: '100%', cursor: 'not-allowed' }}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>代码仓</label>
+                <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>构建类型 (多选)</label>
+              </div>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <div style={{ flex: 1 }}>
+                  <input 
+                    type="text" 
+                    value={activeScheme.id ? (selectedRepo ? `${selectedRepo.name} (${selectedRepo.url})` : '未绑定仓库') : (selectedRepo ? selectedRepo.name : (filterQuery || '未绑定仓库'))}
+                    disabled
+                    style={{ width: '100%', cursor: 'not-allowed' }}
+                  />
+                </div>
+                <div style={{
+                  flex: 1,
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 6,
+                  padding: '0 12px',
+                  background: 'rgba(255,255,255,0.01)',
+                  display: 'flex',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 20,
+                  height: 36
+                }}>
+                  {([{ code: 'SCH', label: '上位机' }, { code: 'LCH', label: '下位机' }, { code: 'DHH', label: '数据机' }] as { code: string; label: string }[]).map(({ code, label }) => (
+                    <label key={code} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'var(--text-main)', userSelect: 'none', margin: 0, whiteSpace: 'nowrap' }}>
+                      <input
+                        type="checkbox"
+                        checked={buildTypes.includes(code)}
+                        style={{ width: 'auto', margin: 0 }}
+                        onChange={(e) => handleBuildTypeChange(code, e.target.checked)}
                       />
-                    </div>
-                    <div style={{
-                      flex: 1,
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 6,
-                      padding: '0 12px',
-                      background: 'rgba(255,255,255,0.01)',
-                      display: 'flex',
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 20,
-                      height: 36
-                    }}>
-                      {([{ code: 'SCH', label: '上位机' }, { code: 'LCH', label: '下位机' }, { code: 'DHH', label: '数据机' }] as { code: string; label: string }[]).map(({ code, label }) => (
-                        <label key={code} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'var(--text-main)', userSelect: 'none', margin: 0, whiteSpace: 'nowrap' }}>
-                          <input
-                            type="checkbox"
-                            checked={buildTypes.includes(code)}
-                            style={{ width: 'auto', margin: 0 }}
-                            onChange={(e) => {
-                              const newTypes = e.target.checked
-                                ? [...buildTypes, code]
-                                : buildTypes.filter(t => t !== code);
-                              setBuildTypes(newTypes);
-                              let parsed: Record<string, any> = {};
-                              try {
-                                parsed = JSON.parse(activeScheme.custom_attributes || '{}');
-                              } catch (_) { parsed = {}; }
-                              let buildParameters = Array.isArray(parsed.buildParameters) ? parsed.buildParameters : [];
-                              const idx = buildParameters.findIndex((item: any) => item.name === 'build_type');
-                              if (idx !== -1) {
-                                buildParameters[idx] = { name: 'build_type', value: newTypes.join(',') };
-                              } else {
-                                buildParameters.push({ name: 'build_type', value: newTypes.join(',') });
-                              }
-                              parsed.buildParameters = buildParameters;
-                              const serialized = JSON.stringify(parsed);
-                              lastCustomAttrsRef.current = serialized;
-                              onChange({ ...activeScheme, custom_attributes: serialized });
-                            }}
-                          />
-                          {label} ({code})
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
+                      {label} ({code})
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -857,7 +862,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
           </div>
 
           {/* 错误提示条 */}
-          {saveError && (
+          {(localError || saveError) && (
             <div style={{
               margin: '0 24px 0 24px',
               padding: '12px 16px',
@@ -872,7 +877,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
               <XCircle size={16} style={{ color: '#f87171', flexShrink: 0, marginTop: 1 }} />
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#fca5a5', marginBottom: 2 }}>保存失败</div>
-                <div style={{ fontSize: 12, color: '#fca5a5', opacity: 0.85, lineHeight: 1.5 }}>{saveError}</div>
+                <div style={{ fontSize: 12, color: '#fca5a5', opacity: 0.85, lineHeight: 1.5 }}>{localError || saveError}</div>
               </div>
             </div>
           )}
