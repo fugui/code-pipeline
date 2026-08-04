@@ -249,9 +249,9 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
 
   const [newRepoName, setNewRepoName] = useState('')
   const [newRepoGroup, setNewRepoGroup] = useState<number>(0)
-  const [newRepoOwner, setNewRepoOwner] = useState('')
-  const [newRepoSubsystem, setNewRepoSubsystem] = useState('')
-  const [newRepoDepartment, setNewRepoDepartment] = useState('')
+  const [newRepoOwnerID, setNewRepoOwnerID] = useState<number | ''>('')
+  const [newRepoSubsystemID, setNewRepoSubsystemID] = useState<number | ''>('')
+  const [newRepoDepartmentID, setNewRepoDepartmentID] = useState<number | ''>('')
   const [newRepoLanguage, setNewRepoLanguage] = useState('Go')
   const [newRepoMachineType, setNewRepoMachineType] = useState('上位机')
   const [newRepoTags, setNewRepoTags] = useState('')
@@ -265,9 +265,13 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
     username: string
     email: string
   }
+  interface SystemNamedOption {
+    id: number
+    name: string
+  }
   const [systemUsers, setSystemUsers] = useState<SystemUserOption[]>([])
-  const [systemDepartments, setSystemDepartments] = useState<string[]>([])
-  const [systemSubsystems, setSystemSubsystems] = useState<string[]>([])
+  const [systemDepartments, setSystemDepartments] = useState<SystemNamedOption[]>([])
+  const [systemSubsystems, setSystemSubsystems] = useState<SystemNamedOption[]>([])
 
   const fetchSystemOptions = () => {
     fetch(`${apiBase}/system-options`, {
@@ -286,9 +290,9 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
     setShowRepoModal(false)
     setNewRepoName('')
     setNewRepoGroup(0)
-    setNewRepoOwner('')
-    setNewRepoSubsystem('')
-    setNewRepoDepartment('')
+    setNewRepoOwnerID('')
+    setNewRepoSubsystemID('')
+    setNewRepoDepartmentID('')
     setNewRepoLanguage('Go')
     setNewRepoMachineType('上位机')
     setNewRepoTags('')
@@ -584,14 +588,21 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
     e.preventDefault()
     if (!newRepoName || !newRepoGroup) return
 
+    const selectedUser = systemUsers.find(u => u.id === Number(newRepoOwnerID))
+    const selectedDept = systemDepartments.find(d => d.id === Number(newRepoDepartmentID))
+    const selectedSub = systemSubsystems.find(s => s.id === Number(newRepoSubsystemID))
+
     const payload = {
       type: 'repo_create',
       managed_group_id: newRepoGroup,
       repo_name: newRepoName,
       name: newRepoName,
-      owner_name: newRepoOwner,
-      subsystem: newRepoSubsystem,
-      department: newRepoDepartment,
+      owner_id: selectedUser ? selectedUser.id : undefined,
+      owner_name: selectedUser ? selectedUser.name : '',
+      department_id: selectedDept ? selectedDept.id : undefined,
+      department: selectedDept ? selectedDept.name : '',
+      subsystem_id: selectedSub ? selectedSub.id : undefined,
+      subsystem: selectedSub ? selectedSub.name : '',
       language: newRepoLanguage,
       machine_type: newRepoMachineType,
       tags: newRepoTags,
@@ -1741,13 +1752,13 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                     <label style={{ fontSize: 12, fontWeight: 600 }}>责任人 <span style={{ color: '#ef4444' }}>*</span></label>
                     <select 
                       required
-                      value={newRepoOwner} 
-                      onChange={(e) => setNewRepoOwner(e.target.value)}
+                      value={newRepoOwnerID} 
+                      onChange={(e) => setNewRepoOwnerID(e.target.value ? Number(e.target.value) : '')}
                       style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
                     >
                       <option value="">请选择系统责任人...</option>
                       {systemUsers.map(u => (
-                        <option key={u.id} value={u.name}>{u.name} {u.email ? `(${u.email})` : ''}</option>
+                        <option key={u.id} value={u.id}>{u.name} {u.email ? `(${u.email})` : ''}</option>
                       ))}
                     </select>
                   </div>
@@ -1756,13 +1767,13 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                     <label style={{ fontSize: 12, fontWeight: 600 }}>所属部门 <span style={{ color: '#ef4444' }}>*</span></label>
                     <select 
                       required
-                      value={newRepoDepartment} 
-                      onChange={(e) => setNewRepoDepartment(e.target.value)}
+                      value={newRepoDepartmentID} 
+                      onChange={(e) => setNewRepoDepartmentID(e.target.value ? Number(e.target.value) : '')}
                       style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
                     >
                       <option value="">请选择所属部门...</option>
                       {systemDepartments.map(d => (
-                        <option key={d} value={d}>{d}</option>
+                        <option key={d.id} value={d.id}>{d.name}</option>
                       ))}
                     </select>
                   </div>
@@ -1772,13 +1783,13 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                   <label style={{ fontSize: 12, fontWeight: 600 }}>归属子系统 <span style={{ color: '#ef4444' }}>*</span></label>
                   <select 
                     required
-                    value={newRepoSubsystem} 
-                    onChange={(e) => setNewRepoSubsystem(e.target.value)}
+                    value={newRepoSubsystemID} 
+                    onChange={(e) => setNewRepoSubsystemID(e.target.value ? Number(e.target.value) : '')}
                     style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
                   >
                     <option value="">请选择归属子系统...</option>
                     {systemSubsystems.map(s => (
-                      <option key={s} value={s}>{s}</option>
+                      <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>
                 </div>

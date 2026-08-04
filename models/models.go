@@ -203,9 +203,14 @@ type ManagedRepository struct {
 	SSHURL             string       `gorm:"not null;default:''" json:"ssh_url"` // SSH 克隆地址
 	HTTPURL            string       `gorm:"default:''" json:"http_url"`         // HTTP 访问地址
 	OwnerID            uint         `json:"owner_id"`                           // 负责人 ID (系统 User)
+	Owner              *User        `gorm:"foreignKey:OwnerID" json:"owner,omitempty"`
 	OwnerName          string       `gorm:"size:100;default:''" json:"owner_name"`
-	Subsystem          string       `gorm:"size:100;default:''" json:"subsystem"`
+	DepartmentID       *uint        `gorm:"index" json:"department_id,omitempty"`
+	DepartmentInfo     *Department  `gorm:"foreignKey:DepartmentID" json:"department_info,omitempty"`
 	Department         string       `gorm:"size:100;default:''" json:"department"`
+	SubsystemID        *uint        `gorm:"index" json:"subsystem_id,omitempty"`
+	SubsystemInfo      *Subsystem   `gorm:"foreignKey:SubsystemID" json:"subsystem_info,omitempty"`
+	Subsystem          string       `gorm:"size:100;default:''" json:"subsystem"`
 	Language           string       `gorm:"size:50;default:''" json:"language"`
 	MachineType        string       `gorm:"size:50;default:''" json:"machine_type"`
 	Tags               string       `gorm:"size:255;default:''" json:"tags"`
@@ -291,9 +296,12 @@ type ManagedRepoApproval struct {
 	TargetBranch    string             `gorm:"size:120;default:'master'" json:"target_branch"`
 	BaseBranch      string             `gorm:"size:120;default:'master'" json:"base_branch"`
 	MultiRepoIDs    datatypes.JSON     `json:"multi_repo_ids"` // 跨仓分支时选择的 Repository ID 列表
+	OwnerID         *uint              `json:"owner_id,omitempty"`
 	OwnerName       string             `gorm:"size:100;default:''" json:"owner_name"`
-	Subsystem       string             `gorm:"size:100;default:''" json:"subsystem"`
+	DepartmentID    *uint              `json:"department_id,omitempty"`
 	Department      string             `gorm:"size:100;default:''" json:"department"`
+	SubsystemID     *uint              `json:"subsystem_id,omitempty"`
+	Subsystem       string             `gorm:"size:100;default:''" json:"subsystem"`
 	Language        string             `gorm:"size:50;default:''" json:"language"`
 	MachineType     string             `gorm:"size:50;default:''" json:"machine_type"`
 	Tags            string             `gorm:"size:255;default:''" json:"tags"`

@@ -9,20 +9,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetSystemOptions 返回系统关联的用户、部门、子系统等下拉候选项
+// GetSystemOptions 返回系统关联的用户、部门、子系统等下拉候选项实体
 func GetSystemOptions(c *gin.Context) {
 	// 1. 获取系统全量用户
 	var users []models.User
 	_ = database.DB.Select("id, name, username, email").Order("name ASC, username ASC").Find(&users)
 
-	type UserItem struct {
+	type UserOption struct {
 		ID       uint   `json:"id"`
 		Name     string `json:"name"`
 		Username string `json:"username"`
 		Email    string `json:"email"`
 	}
 
-	userList := make([]UserItem, 0)
+	userList := make([]UserOption, 0)
 	for _, u := range users {
 		displayName := u.Name
 		if displayName == "" {
@@ -31,7 +31,7 @@ func GetSystemOptions(c *gin.Context) {
 		if displayName == "" {
 			displayName = u.Email
 		}
-		userList = append(userList, UserItem{
+		userList = append(userList, UserOption{
 			ID:       u.ID,
 			Name:     displayName,
 			Username: u.Username,
@@ -42,58 +42,33 @@ func GetSystemOptions(c *gin.Context) {
 	// 2. 获取系统部门
 	var departments []models.Department
 	_ = database.DB.Order("name ASC").Find(&departments)
-	deptNames := make([]string, 0)
-	for _, d := range departments {
-		if d.Name != "" {
-			deptNames = append(deptNames, d.Name)
-		}
+
+	type OptionItem struct {
+		ID   uint   `json:"id"`
+		Name string `json:"name"`
 	}
 
-	// 补全已存数据库中其他非空部门
-	var existingDepts []string
-	database.DB.Model(&models.ManagedRepository{}).Distinct("department").Where("department != ''").Pluck("department", &existingDepts)
-	for _, dept := range existingDepts {
-		found := false
-		for _, d := range deptNames {
-			if d == dept {
-				found = true
-				break
-			}
-		}
-		if !found {
-			deptNames = append(deptNames, dept)
+	deptList := make([]OptionItem, 0)
+	for _, d := range departments {
+		if d.Name != "" {
+			deptList = append(deptList, OptionItem{ID: d.ID, Name: d.Name})
 		}
 	}
 
 	// 3. 获取系统子系统
 	var subsystems []models.Subsystem
 	_ = database.DB.Order("name ASC").Find(&subsystems)
-	subsystemNames := make([]string, 0)
+
+	subList := make([]OptionItem, 0)
 	for _, s := range subsystems {
 		if s.Name != "" {
-			subsystemNames = append(subsystemNames, s.Name)
-		}
-	}
-
-	// 补全已存数据库中其他非空子系统
-	var existingSubsystems []string
-	database.DB.Model(&models.ManagedRepository{}).Distinct("subsystem").Where("subsystem != ''").Pluck("subsystem", &existingSubsystems)
-	for _, sub := range existingSubsystems {
-		found := false
-		for _, s := range subsystemNames {
-			if s == sub {
-				found = true
-				break
-			}
-		}
-		if !found {
-			subsystemNames = append(subsystemNames, sub)
+			subList = append(subList, OptionItem{ID: s.ID, Name: s.Name})
 		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"users":       userList,
-		"departments": deptNames,
-		"subsystems":  subsystemNames,
+		"departments": deptList,
+		"subsystems":  subList,
 	})
 }
