@@ -75,6 +75,7 @@ func main() {
 		api.Use(handlers.AuthMiddleware())
 		{
 			api.GET("/me", handlers.GetMe)
+			api.GET("/system-options", handlers.GetSystemOptions)
 
 			// Merge Request 实时看护与全览相关接口
 			api.GET("/mr/hook", handlers.GetMrEvents)

@@ -27,6 +27,23 @@ type User struct {
 	CreatedAt    time.Time      `json:"created_at"`
 }
 
+// Department 系统部门表
+type Department struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Name      string    `gorm:"size:100;uniqueIndex;not null;default:''" json:"name"`
+	Code      string    `gorm:"size:50;default:''" json:"code"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// Subsystem 系统子系统表
+type Subsystem struct {
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	Name        string    `gorm:"size:100;uniqueIndex;not null;default:''" json:"name"`
+	Code        string    `gorm:"size:50;default:''" json:"code"`
+	Description string    `gorm:"size:255;default:''" json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
 func (u *User) GetRoles() []string {
 	var roles []string
 	if len(u.Roles) > 0 {
