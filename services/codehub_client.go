@@ -200,14 +200,18 @@ func CreateRemoteRepo(ctx context.Context, name string, groupPath string, groupI
 	reqHeaders["Accept"] = "application/json"
 	reqHeaders["Content-Type"] = "application/json"
 
-	bodyStr := models.AppConfig.CodeHub.CreateRepoBody
-	bodyStr = strings.ReplaceAll(bodyStr, "{REPO_NAME}", name)
-	bodyStr = strings.ReplaceAll(bodyStr, "{GROUP_PATH}", groupPath)
-	bodyStr = strings.ReplaceAll(bodyStr, "{GROUP_ID}", strconv.Itoa(int(groupID)))
-	bodyStr = strings.ReplaceAll(bodyStr, "{TAG_LIST}", FormatTagList(tags))
-	bodyStr = strings.ReplaceAll(bodyStr, "{DESCRIPTION}", description)
+	payload, err := utils.RenderJSONTemplate(models.AppConfig.CodeHub.CreateRepoBody, map[string]string{
+		"REPO_NAME":   name,
+		"GROUP_PATH":  groupPath,
+		"GROUP_ID":    strconv.Itoa(int(groupID)),
+		"TAG_LIST":    FormatTagList(tags),
+		"DESCRIPTION": description,
+	})
+	if err != nil {
+		return 0, "", "", fmt.Errorf("failed to render create repo template: %w", err)
+	}
 
-	body, err := utils.SendHTTPRequest(ctx, "POST", apiURL, json.RawMessage([]byte(bodyStr)), utils.HTTPOptions{
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURL, payload, utils.HTTPOptions{
 		Headers: reqHeaders,
 	}, []int{http.StatusOK, http.StatusCreated}, "CreateRemoteRepo")
 	if err != nil {
@@ -252,11 +256,15 @@ func CreateRemoteBranch(ctx context.Context, projectID string, branchName string
 	reqHeaders["Accept"] = "application/json"
 	reqHeaders["Content-Type"] = "application/json"
 
-	bodyStr := models.AppConfig.CodeHub.CreateBranchBody
-	bodyStr = strings.ReplaceAll(bodyStr, "{BRANCH_NAME}", branchName)
-	bodyStr = strings.ReplaceAll(bodyStr, "{SOURCE_REF}", ref)
+	payload, err := utils.RenderJSONTemplate(models.AppConfig.CodeHub.CreateBranchBody, map[string]string{
+		"BRANCH_NAME": branchName,
+		"SOURCE_REF":  ref,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to render create branch template: %w", err)
+	}
 
-	_, err := utils.SendHTTPRequest(ctx, "POST", apiURL, json.RawMessage([]byte(bodyStr)), utils.HTTPOptions{
+	_, err = utils.SendHTTPRequest(ctx, "POST", apiURL, payload, utils.HTTPOptions{
 		Headers: reqHeaders,
 	}, []int{http.StatusOK, http.StatusCreated, http.StatusAccepted}, "CreateRemoteBranch")
 	if err != nil {
@@ -297,10 +305,14 @@ func ConfigureBranchProtection(ctx context.Context, projectID string, branchPatt
 	reqHeaders["Accept"] = "application/json"
 	reqHeaders["Content-Type"] = "application/json"
 
-	bodyStr := models.AppConfig.CodeHub.ConfigureProtectionBody
-	bodyStr = strings.ReplaceAll(bodyStr, "{BRANCH_PATTERN}", branchPattern)
+	payload, err := utils.RenderJSONTemplate(models.AppConfig.CodeHub.ConfigureProtectionBody, map[string]string{
+		"BRANCH_PATTERN": branchPattern,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to render branch protection template: %w", err)
+	}
 
-	_, err := utils.SendHTTPRequest(ctx, "POST", apiURL, json.RawMessage([]byte(bodyStr)), utils.HTTPOptions{
+	_, err = utils.SendHTTPRequest(ctx, "POST", apiURL, payload, utils.HTTPOptions{
 		Headers: reqHeaders,
 	}, []int{http.StatusOK, http.StatusCreated, http.StatusAccepted, http.StatusNoContent}, "ConfigureBranchProtection")
 	if err != nil {
@@ -327,12 +339,16 @@ func ConfigureRemoteACL(ctx context.Context, targetType string, targetID string,
 	reqHeaders["Accept"] = "application/json"
 	reqHeaders["Content-Type"] = "application/json"
 
-	bodyStr := models.AppConfig.CodeHub.ConfigureACLBody
-	bodyStr = strings.ReplaceAll(bodyStr, "{PRINCIPAL_TYPE}", principalType)
-	bodyStr = strings.ReplaceAll(bodyStr, "{PRINCIPAL_ID}", principalID)
-	bodyStr = strings.ReplaceAll(bodyStr, "{ACCESS_LEVEL}", strconv.Itoa(accessLevel))
+	payload, err := utils.RenderJSONTemplate(models.AppConfig.CodeHub.ConfigureACLBody, map[string]string{
+		"PRINCIPAL_TYPE": principalType,
+		"PRINCIPAL_ID":   principalID,
+		"ACCESS_LEVEL":   strconv.Itoa(accessLevel),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to render configure ACL template: %w", err)
+	}
 
-	_, err := utils.SendHTTPRequest(ctx, "POST", apiURL, json.RawMessage([]byte(bodyStr)), utils.HTTPOptions{
+	_, err = utils.SendHTTPRequest(ctx, "POST", apiURL, payload, utils.HTTPOptions{
 		Headers: reqHeaders,
 	}, []int{http.StatusOK, http.StatusCreated, http.StatusAccepted, http.StatusNoContent}, "ConfigureRemoteACL")
 	if err != nil {

@@ -181,19 +181,20 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 		return "", fmt.Errorf("create_checker_task_body not configured")
 	}
 
-	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
-		"{REPO_URL}":    repoURL,
-		"{REPO_BRANCH}": firstBranch,
-		"{TASK_NAME}":   taskName,
-		"{NAME}":        taskName,
-		"{RULE_SETS}":   string(ruleSetsJSON),
+	payload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
+		"REPO_URL":    repoURL,
+		"REPO_BRANCH": firstBranch,
+		"TASK_NAME":   taskName,
+		"NAME":        taskName,
+		"RULE_SETS":   string(ruleSetsJSON),
 	})
+	if err != nil {
+		return "", fmt.Errorf("failed to render create_checker_task_body template: %w", err)
+	}
 
-	postData := json.RawMessage(bodyStr)
+	log.Printf("[SyncCreatePlan] Step 1: Creating Checker Task. URL: %s", apiURL)
 
-	log.Printf("[SyncCreatePlan] Step 1: Creating Checker Task. URL: %s, Body: %s", apiURL, bodyStr)
-
-	body, err := utils.SendHTTPRequest(ctx, "POST", apiURL, postData, utils.HTTPOptions{
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURL, payload, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated}, "CreateCheckerTaskStep")
 	if err != nil {
@@ -404,19 +405,20 @@ func createExecutionSchemeStep(ctx context.Context, pipelineBusinessID string, s
 		formattedEmpID = "system"
 	}
 
-	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
-		"{SCHEME_NAME}":       schemeName,
-		"{NAME}":              schemeName,
-		"{PIPELINE_ID}":       pipelineBusinessID,
-		"{USER_EMAIL}":        formattedEmpID,
-		"{CUSTOM_ATTRIBUTES}": escapedCustomAttributes,
+	payload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
+		"SCHEME_NAME":       schemeName,
+		"NAME":              schemeName,
+		"PIPELINE_ID":       pipelineBusinessID,
+		"USER_EMAIL":        formattedEmpID,
+		"CUSTOM_ATTRIBUTES": escapedCustomAttributes,
 	})
+	if err != nil {
+		return "", fmt.Errorf("failed to render create_execution_scheme_body template: %w", err)
+	}
 
-	postData := json.RawMessage(bodyStr)
+	log.Printf("[SyncCreateScheme] Step 2: Creating Execution Scheme. URL: %s", apiURLStr)
 
-	log.Printf("[SyncCreateScheme] Step 2: Creating Execution Scheme. URL: %s, Body: %s", apiURLStr, bodyStr)
-
-	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, payload, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated}, "CreateExecutionSchemeStep")
 	if err != nil {
@@ -510,21 +512,22 @@ func CreateMRBindingStep(ctx context.Context, pipelineBusinessID string, scheme 
 		escapedCustomAttributes = escapedCustomAttributes[1 : len(escapedCustomAttributes)-1]
 	}
 
-	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
-		"{NAME}":              scheme.Name,
-		"{REPO_URL}":          repoURL,
-		"{BRANCHES}":          scheme.Branch,
-		"{PIPELINE_ID}":       pipelineBusinessID,
-		"{SCHEME_ID}":         schemeID,
-		"{CREDENTIAL_ID}":     credentialID,
-		"{CUSTOM_ATTRIBUTES}": escapedCustomAttributes,
+	mrPayload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
+		"NAME":              scheme.Name,
+		"REPO_URL":          repoURL,
+		"BRANCHES":          scheme.Branch,
+		"PIPELINE_ID":       pipelineBusinessID,
+		"SCHEME_ID":         schemeID,
+		"CREDENTIAL_ID":     credentialID,
+		"CUSTOM_ATTRIBUTES": escapedCustomAttributes,
 	})
+	if err != nil {
+		return "", fmt.Errorf("failed to render create_mr_binding_body template: %w", err)
+	}
 
-	postData := json.RawMessage(bodyStr)
+	log.Printf("[SyncCreateScheme] Step 3: Creating MR Binding. URL: %s", apiURLStr)
 
-	log.Printf("[SyncCreateScheme] Step 3: Creating MR Binding. URL: %s, Body: %s", apiURLStr, bodyStr)
-
-	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, mrPayload, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated, http.StatusNoContent}, "CreateMRBindingStep")
 	if err != nil {
@@ -643,34 +646,24 @@ func SyncUpdateMRBindingRemote(ctx context.Context, scheme *models.ExecutionSche
 		escapedCustomAttributes = escapedCustomAttributes[1 : len(escapedCustomAttributes)-1]
 	}
 
-	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
-		"{NAME}":              scheme.Name,
-		"{REPO_URL}":          repoURL,
-		"{BRANCHES}":          scheme.Branch,
-		"{PIPELINE_ID}":       pipelineBusinessID,
-		"{SCHEME_ID}":         scheme.ExecutionSchemeID,
-		"{CREDENTIAL_ID}":     credentialID,
-		"{CUSTOM_ATTRIBUTES}": escapedCustomAttributes,
+	payload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
+		"NAME":              scheme.Name,
+		"REPO_URL":          repoURL,
+		"BRANCHES":          scheme.Branch,
+		"PIPELINE_ID":       pipelineBusinessID,
+		"SCHEME_ID":         scheme.ExecutionSchemeID,
+		"CREDENTIAL_ID":     credentialID,
+		"CUSTOM_ATTRIBUTES": escapedCustomAttributes,
 	})
-
-	var postData []byte
-	var listPayload []map[string]interface{}
-	if err := json.Unmarshal([]byte(bodyStr), &listPayload); err == nil && len(listPayload) > 0 {
-		listPayload[0]["id"] = scheme.MRBindingID
-		postData, _ = json.Marshal(listPayload)
-	} else {
-		var singlePayload map[string]interface{}
-		if err := json.Unmarshal([]byte(bodyStr), &singlePayload); err == nil {
-			singlePayload["id"] = scheme.MRBindingID
-			postData, _ = json.Marshal([]map[string]interface{}{singlePayload})
-		} else {
-			postData = []byte(bodyStr)
-		}
+	if err != nil {
+		return fmt.Errorf("failed to render template: %w", err)
 	}
 
-	log.Printf("[SyncUpdateMRBinding] Calling Modify MR Binding. URL: %s, Body: %s", modifyURL, string(postData))
+	payload["id"] = scheme.MRBindingID
 
-	_, err = utils.SendHTTPRequest(ctx, "PUT", modifyURL, json.RawMessage(postData), utils.HTTPOptions{
+	log.Printf("[SyncUpdateMRBinding] Calling Modify MR Binding. URL: %s", modifyURL)
+
+	_, err = utils.SendHTTPRequest(ctx, "PUT", modifyURL, payload, utils.HTTPOptions{
 		Headers: headers,
 		QueryParams: map[string]string{
 			"isSingle": "true",
@@ -782,13 +775,11 @@ func SyncUpdateExecutionSchemeRemote(ctx context.Context, scheme *models.Executi
 
 	mergedBytes, err := json.Marshal(finalObj)
 	if err != nil {
-		log.Printf("[SyncUpdateExecutionScheme] Failed to marshal merged custom_attributes: %v", err)
 		return fmt.Errorf("failed to marshal custom_attributes to JSON: %w", err)
 	}
 
 	customAttributesJSON, err := json.Marshal(string(mergedBytes))
 	if err != nil {
-		log.Printf("[SyncUpdateExecutionScheme] Failed to escape custom_attributes: %v", err)
 		return fmt.Errorf("failed to escape custom_attributes to JSON: %w", err)
 	}
 
@@ -803,28 +794,24 @@ func SyncUpdateExecutionSchemeRemote(ctx context.Context, scheme *models.Executi
 		formattedEmpID = "system"
 	}
 
-	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
-		"{SCHEME_NAME}":       schemeName,
-		"{NAME}":              schemeName,
-		"{PIPELINE_ID}":       pipelineBusinessID,
-		"{USER_EMAIL}":        formattedEmpID,
-		"{CUSTOM_ATTRIBUTES}": escapedCustomAttributes,
+	payload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
+		"SCHEME_NAME":       schemeName,
+		"NAME":              schemeName,
+		"PIPELINE_ID":       pipelineBusinessID,
+		"USER_EMAIL":        formattedEmpID,
+		"CUSTOM_ATTRIBUTES": escapedCustomAttributes,
 	})
-
-	var postData []byte
-	var singlePayload map[string]interface{}
-	if err := json.Unmarshal([]byte(bodyStr), &singlePayload); err == nil {
-		if scheme.ExecutionSchemeID != "" {
-			singlePayload["id"] = scheme.ExecutionSchemeID
-		}
-		postData, _ = json.Marshal(singlePayload)
-	} else {
-		postData = []byte(bodyStr)
+	if err != nil {
+		return fmt.Errorf("failed to render template: %w", err)
 	}
 
-	log.Printf("[SyncUpdateExecutionScheme] Calling Modify Execution Scheme. URL: %s, Body: %s", modifyURL, string(postData))
+	if scheme.ExecutionSchemeID != "" {
+		payload["id"] = scheme.ExecutionSchemeID
+	}
 
-	_, err = utils.SendHTTPRequest(ctx, "PUT", modifyURL, json.RawMessage(postData), utils.HTTPOptions{
+	log.Printf("[SyncUpdateExecutionScheme] Calling Modify Execution Scheme. URL: %s", modifyURL)
+
+	_, err = utils.SendHTTPRequest(ctx, "PUT", modifyURL, payload, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated, http.StatusNoContent}, "SyncUpdateExecutionSchemeRemote")
 	if err != nil {
@@ -856,21 +843,22 @@ func CreateExecutionPlanStep(ctx context.Context, pipelineBusinessID string, sch
 		return "", fmt.Errorf("failed to fetch pipeline with ID %d: %w", scheme.LocalPipelineID, err)
 	}
 
-	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
-		"{NAME}":             scheme.Name,
-		"{PIPELINE_ID}":      pipelineBusinessID,
-		"{SCHEME_ID}":        schemeID,
-		"{DAILY_BUILD_TIME}": scheme.DailyBuildTime,
-		"{PIPELINE_NAME}":    pipeline.Name,
-		"{SERVICE_ID}":       pipeline.ServiceID,
-		"{WORKSPACE_ID}":     pipeline.WorkspaceID,
+	payload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
+		"NAME":             scheme.Name,
+		"PIPELINE_ID":      pipelineBusinessID,
+		"SCHEME_ID":        schemeID,
+		"DAILY_BUILD_TIME": scheme.DailyBuildTime,
+		"PIPELINE_NAME":    pipeline.Name,
+		"SERVICE_ID":       pipeline.ServiceID,
+		"WORKSPACE_ID":     pipeline.WorkspaceID,
 	})
+	if err != nil {
+		return "", fmt.Errorf("failed to render create_execution_plan_body template: %w", err)
+	}
 
-	postData := json.RawMessage(bodyStr)
+	log.Printf("[SyncCreateScheme] Step 4: Creating Execution Plan. URL: %s", apiURLStr)
 
-	log.Printf("[SyncCreateScheme] Step 4: Creating Execution Plan. URL: %s, Body: %s", apiURLStr, bodyStr)
-
-	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, payload, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated}, "CreateExecutionPlanStep")
 	if err != nil {
@@ -1360,14 +1348,16 @@ func RegisterWebhook(ctx context.Context, projectID string, headers map[string]s
 	callbackURL := models.AppConfig.PipelineSystem.WebhookCallbackURL
 
 	tmpl := models.AppConfig.PipelineSystem.CreateWebhookBody
-	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
-		"{WEBHOOK_URL}": callbackURL,
-		"{PROJECT_ID}":  projectID,
-		"{REPO_ID}":     projectID,
+	payload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
+		"WEBHOOK_URL": callbackURL,
+		"PROJECT_ID":  projectID,
+		"REPO_ID":     projectID,
 	})
-	postData := json.RawMessage(bodyStr)
+	if err != nil {
+		return fmt.Errorf("failed to render create_webhook_body template: %w", err)
+	}
 
-	_, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, postData, utils.HTTPOptions{
+	_, err = utils.SendHTTPRequest(ctx, "POST", apiURLStr, payload, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated}, "RegisterWebhook")
 	if err != nil {
@@ -1394,13 +1384,15 @@ func UpdateRepoSettings(ctx context.Context, projectID string, headers map[strin
 	apiURLStr = strings.ReplaceAll(apiURLStr, "{PROJECT_ID}", projectID)
 
 	tmpl := models.AppConfig.PipelineSystem.UpdateRepoSettingsBody
-	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
-		"{PROJECT_ID}": projectID,
-		"{REPO_ID}":    projectID,
+	payload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
+		"PROJECT_ID": projectID,
+		"REPO_ID":    projectID,
 	})
-	putData := json.RawMessage(bodyStr)
+	if err != nil {
+		return fmt.Errorf("failed to render update_repo_settings_body template: %w", err)
+	}
 
-	_, err := utils.SendHTTPRequest(ctx, "PUT", apiURLStr, putData, utils.HTTPOptions{
+	_, err = utils.SendHTTPRequest(ctx, "PUT", apiURLStr, payload, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusAccepted, http.StatusNoContent}, "UpdateRepoSettings")
 	if err != nil {

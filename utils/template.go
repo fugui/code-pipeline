@@ -1,13 +1,23 @@
 package utils
 
-import "strings"
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+)
 
-// ReplacePlaceholders 将模板中的特定占位符替换为相应的值
-func ReplacePlaceholders(tmpl string, placeholders map[string]string) string {
-	var oldNew []string
-	for k, v := range placeholders {
-		oldNew = append(oldNew, k, v)
+// RenderJSONTemplate 统一将包含 {VAR} 占位符的配置模板解析校验，并反序列化为标准的 Go map[string]interface{}
+func RenderJSONTemplate(templateStr string, vars map[string]string) (map[string]interface{}, error) {
+	rendered := templateStr
+	for k, v := range vars {
+		placeholder := "{" + k + "}"
+		rendered = strings.ReplaceAll(rendered, placeholder, v)
 	}
-	replacer := strings.NewReplacer(oldNew...)
-	return replacer.Replace(tmpl)
+
+	var resultMap map[string]interface{}
+	if err := json.Unmarshal([]byte(rendered), &resultMap); err != nil {
+		return nil, fmt.Errorf("invalid json config template after substitution: %w (rendered: %s)", err, rendered)
+	}
+
+	return resultMap, nil
 }
