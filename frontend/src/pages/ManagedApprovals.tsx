@@ -261,30 +261,11 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                           <button
                             onClick={() => openModal(app, 'view')}
-                            className="btn btn-secondary btn-small"
-                            style={{ padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                            className="btn btn-primary btn-small"
+                            style={{ padding: '4px 12px', display: 'inline-flex', alignItems: 'center', gap: 5 }}
                           >
-                            <Eye size={13} /> 详情
+                            <Eye size={13} /> 查看 / 审批
                           </button>
-
-                          {isAdmin && app.status === 'pending' && (
-                            <>
-                              <button 
-                                onClick={() => openModal(app, 'approve')}
-                                className="btn btn-success btn-small"
-                                style={{ background: '#10b981', color: '#fff', padding: '4px 10px' }}
-                              >
-                                通过
-                              </button>
-                              <button 
-                                onClick={() => openModal(app, 'reject')}
-                                className="btn btn-danger btn-small"
-                                style={{ background: '#ef4444', color: '#fff', padding: '4px 10px' }}
-                              >
-                                驳回
-                              </button>
-                            </>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -364,240 +345,234 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
         )}
       </div>
 
-      {/* Unified Approval Detail & Action Modal */}
+      {/* Unified Right Drawer (768px Width, Compact Single-Screen View) */}
       {selectedApproval && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-          <div className="glass-card" style={{ width: 680, maxWidth: '100%', maxHeight: '92vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', border: '1px solid var(--border-color, rgba(255,255,255,0.12))' }}>
-            {/* Modal Header */}
-            <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border-color, rgba(255,255,255,0.1))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)' }}>
+        <div 
+          className="drawer-overlay" 
+          onClick={closeModal}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(3px)', zIndex: 1000, display: 'flex', justifyContent: 'flex-end' }}
+        >
+          <div 
+            className="drawer-card" 
+            onClick={e => e.stopPropagation()}
+            style={{ 
+              width: 768, 
+              maxWidth: '100%', 
+              height: '100vh', 
+              background: 'var(--bg-card, #181825)', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              borderLeft: '1px solid var(--border-color, rgba(255,255,255,0.12))', 
+              boxShadow: '-10px 0 35px rgba(0, 0, 0, 0.6)' 
+            }}
+          >
+            {/* Drawer Header */}
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-color, rgba(255,255,255,0.1))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  申请单详情与核准中心 <span style={{ color: '#6366f1' }}>#{selectedApproval.id}</span>
+                <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  单据详情与审批 <span style={{ color: '#6366f1' }}>#{selectedApproval.id}</span>
                 </h3>
                 {selectedApproval.type === 'repo_create' ? (
-                  <span className="badge badge-info" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                  <span className="badge badge-info" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
                     <Server size={12} /> 新建代码仓
                   </span>
                 ) : (
-                  <span className="badge badge-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                  <span className="badge badge-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
                     <GitBranch size={12} /> 保护分支
                   </span>
                 )}
-                {selectedApproval.status === 'pending' && <span className="badge badge-warning">待审批</span>}
-                {selectedApproval.status === 'approved' && <span className="badge badge-success">已通过</span>}
-                {selectedApproval.status === 'rejected' && <span className="badge badge-danger">已驳回</span>}
+                {selectedApproval.status === 'pending' && <span className="badge badge-warning" style={{ fontSize: 11 }}>待审批</span>}
+                {selectedApproval.status === 'approved' && <span className="badge badge-success" style={{ fontSize: 11 }}>已通过</span>}
+                {selectedApproval.status === 'rejected' && <span className="badge badge-danger" style={{ fontSize: 11 }}>已驳回</span>}
               </div>
-              <button onClick={closeModal} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 4 }}>
-                <X size={18} />
+              <button 
+                onClick={closeModal} 
+                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                title="关闭抽屉"
+              >
+                <X size={20} />
               </button>
             </div>
 
-            {/* Modal Body */}
-            <div style={{ padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
-              {/* Section 1: 核心参数 (按类型隔离呈现) */}
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-                  {selectedApproval.type === 'repo_create' ? '代码仓元数据与归属' : '分支与仓库配置'}
-                </div>
-                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: 16, border: '1px solid var(--border-color, rgba(255,255,255,0.06))', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Drawer Body (Compact Layout for One-Screen View) */}
+            <div style={{ padding: '16px 20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+              {/* Grid Layout Section 1: 核心元数据 & 组织人员 */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {/* 核心参数 (按类型隔离) */}
+                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: 12, border: '1px solid var(--border-color, rgba(255,255,255,0.06))', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {selectedApproval.type === 'repo_create' ? '代码仓核心元数据' : '分支与仓库配置'}
+                  </div>
+
                   {selectedApproval.type === 'repo_create' ? (
-                    /* 新建代码仓：只显示仓库名称、归属组、默认主分支、责任人，隐去基准来源分支 */
                     <>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, alignItems: 'center' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>拟建代码仓名称:</span>
-                        <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>{selectedApproval.repo_name}</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>代码仓名称:</span>
+                        <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{selectedApproval.repo_name}</span>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, alignItems: 'center' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>默认主分支 (Default Branch):</span>
-                        <span style={{ fontWeight: 600, color: '#818cf8', background: 'rgba(99, 102, 241, 0.1)', padding: '2px 8px', borderRadius: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>默认主分支:</span>
+                        <span style={{ fontWeight: 600, color: '#818cf8', background: 'rgba(99, 102, 241, 0.1)', padding: '1px 6px', borderRadius: 4 }}>
                           {selectedApproval.default_branch || selectedApproval.target_branch || 'master'}
                         </span>
                       </div>
                       {selectedApproval.group && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                           <span style={{ color: 'var(--text-secondary)' }}>归属代码组:</span>
                           <span style={{ fontWeight: 600 }}>{selectedApproval.group.full_path}</span>
                         </div>
                       )}
-                      {selectedApproval.owner && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                          <span style={{ color: 'var(--text-secondary)' }}>仓库责任人:</span>
-                          <span>{selectedApproval.owner.name || selectedApproval.owner.username} ({selectedApproval.owner.email})</span>
-                        </div>
-                      )}
                     </>
                   ) : (
-                    /* 保护分支申请：显示目标代码仓、目标保护分支、来源基准分支 */
                     <>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, alignItems: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                         <span style={{ color: 'var(--text-secondary)' }}>目标代码仓:</span>
-                        <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>{selectedApproval.repo?.name || '代码仓'}</span>
+                        <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{selectedApproval.repo?.name || '代码仓'}</span>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, alignItems: 'center' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>目标保护分支 (Target Branch):</span>
-                        <span style={{ fontWeight: 600, color: '#818cf8', background: 'rgba(99, 102, 241, 0.1)', padding: '2px 8px', borderRadius: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>目标保护分支:</span>
+                        <span style={{ fontWeight: 600, color: '#818cf8', background: 'rgba(99, 102, 241, 0.1)', padding: '1px 6px', borderRadius: 4 }}>
                           {selectedApproval.target_branch}
                         </span>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, alignItems: 'center' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>基准来源分支 (Base Branch):</span>
-                        <span style={{ fontWeight: 600, color: '#34d399', background: 'rgba(52, 211, 153, 0.1)', padding: '2px 8px', borderRadius: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>基准来源分支:</span>
+                        <span style={{ fontWeight: 600, color: '#34d399', background: 'rgba(52, 211, 153, 0.1)', padding: '1px 6px', borderRadius: 4 }}>
                           {selectedApproval.base_branch || 'master'}
                         </span>
                       </div>
-                      {selectedApproval.group && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                          <span style={{ color: 'var(--text-secondary)' }}>归属代码组:</span>
-                          <span>{selectedApproval.group.full_path}</span>
-                        </div>
-                      )}
                     </>
                   )}
                 </div>
-              </div>
 
-              {/* Section 2: 拓展配置 (语言/机型/描述) - 仅 repo_create 或有具体配置时呈现 */}
-              {selectedApproval.type === 'repo_create' && (selectedApproval.language || selectedApproval.machine_type || selectedApproval.tags || selectedApproval.description) && (
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-                    环境与构架拓展元数据
+                {/* 人员与组织信息 (工号优先，严禁展示邮件) */}
+                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: 12, border: '1px solid var(--border-color, rgba(255,255,255,0.06))', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    申请人及责任人 (工号)
                   </div>
-                  <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: 16, border: '1px solid var(--border-color, rgba(255,255,255,0.06))', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {selectedApproval.language && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>编程语言:</span>
-                        <span style={{ color: '#60a5fa', fontWeight: 600 }}>{selectedApproval.language}</span>
-                      </div>
-                    )}
-                    {selectedApproval.machine_type && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>编译环境/机型:</span>
-                        <span style={{ color: '#c084fc', fontWeight: 600 }}>{selectedApproval.machine_type}</span>
-                      </div>
-                    )}
-                    {selectedApproval.tags && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>标签:</span>
-                        <span>{selectedApproval.tags}</span>
-                      </div>
-                    )}
-                    {selectedApproval.description && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13 }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>描述说明:</span>
-                        <div style={{ background: 'rgba(0,0,0,0.25)', padding: 10, borderRadius: 6, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                          {selectedApproval.description}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
 
-              {/* Section 3: 申请原因 */}
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-                  申请原因说明
-                </div>
-                <div style={{ background: 'rgba(255,255,255,0.04)', padding: 14, borderRadius: 8, border: '1px solid var(--border-color, rgba(255,255,255,0.08))', fontSize: 13, lineHeight: 1.6, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  {selectedApproval.reason || '无申请原因说明'}
-                </div>
-              </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>申请人:</span>
+                    <span style={{ fontWeight: 600 }}>
+                      {selectedApproval.applicant?.name || `User #${selectedApproval.applicant_id}`} 
+                      {selectedApproval.applicant?.username ? ` (工号: ${selectedApproval.applicant.username})` : ''}
+                    </span>
+                  </div>
 
-              {/* Section 4: 申请人及组织信息 */}
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-                  申请人及组织架构
-                </div>
-                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: 14, border: '1px solid var(--border-color, rgba(255,255,255,0.06))', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13 }}>
-                  <div>
-                    <span style={{ color: 'var(--text-secondary)', display: 'block', fontSize: 11 }}>申请人姓名</span>
-                    <span style={{ fontWeight: 600 }}>{selectedApproval.applicant?.name || `User #${selectedApproval.applicant_id}`}</span>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-secondary)', display: 'block', fontSize: 11 }}>申请人邮箱</span>
-                    <span>{selectedApproval.applicant?.email || '-'}</span>
-                  </div>
+                  {selectedApproval.type === 'repo_create' && selectedApproval.owner && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>仓库责任人:</span>
+                      <span style={{ fontWeight: 600 }}>
+                        {selectedApproval.owner.name || selectedApproval.owner.username} 
+                        {selectedApproval.owner.username ? ` (工号: ${selectedApproval.owner.username})` : ''}
+                      </span>
+                    </div>
+                  )}
+
                   {selectedApproval.department && (
-                    <div>
-                      <span style={{ color: 'var(--text-secondary)', display: 'block', fontSize: 11 }}>归属部门</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>归属部门:</span>
                       <span>{selectedApproval.department.name}</span>
                     </div>
                   )}
-                  {selectedApproval.subsystem && (
-                    <div>
-                      <span style={{ color: 'var(--text-secondary)', display: 'block', fontSize: 11 }}>所属子系统</span>
-                      <span>{selectedApproval.subsystem.name}</span>
-                    </div>
-                  )}
-                  <div>
-                    <span style={{ color: 'var(--text-secondary)', display: 'block', fontSize: 11 }}>提交申请时间</span>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>提交时间:</span>
                     <span>{new Date(selectedApproval.created_at).toLocaleString('zh-CN', { hour12: false })}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Section 5: 历史核准记录 (若已被处理) */}
-              {(selectedApproval.approver || selectedApproval.approval_comment || selectedApproval.status !== 'pending') && (
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-                    审批核准结果
-                  </div>
-                  <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: 14, border: '1px solid var(--border-color, rgba(255,255,255,0.06))', display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
-                    {selectedApproval.approver && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>审批核准人:</span>
-                        <span style={{ fontWeight: 600 }}>{selectedApproval.approver.name || selectedApproval.approver.username}</span>
-                      </div>
-                    )}
-                    {selectedApproval.updated_at && selectedApproval.status !== 'pending' && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>审批处理时间:</span>
-                        <span>{new Date(selectedApproval.updated_at).toLocaleString('zh-CN', { hour12: false })}</span>
-                      </div>
-                    )}
-                    {selectedApproval.approval_comment && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>审批意见 / 驳回理由:</span>
-                        <div style={{ background: 'rgba(0,0,0,0.2)', padding: 10, borderRadius: 6, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                          {selectedApproval.approval_comment}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+              {/* Section 2: 拓展配置 (语言/机型) - 仅 repo_create 有具体配置时呈现 */}
+              {selectedApproval.type === 'repo_create' && (selectedApproval.language || selectedApproval.machine_type || selectedApproval.tags) && (
+                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: 10, border: '1px solid var(--border-color, rgba(255,255,255,0.06))', display: 'flex', gap: 16, alignItems: 'center', fontSize: 12 }}>
+                  {selectedApproval.language && (
+                    <div>
+                      <span style={{ color: 'var(--text-secondary)', marginRight: 6 }}>编程语言:</span>
+                      <span style={{ color: '#60a5fa', fontWeight: 600 }}>{selectedApproval.language}</span>
+                    </div>
+                  )}
+                  {selectedApproval.machine_type && (
+                    <div>
+                      <span style={{ color: 'var(--text-secondary)', marginRight: 6 }}>编译机型:</span>
+                      <span style={{ color: '#c084fc', fontWeight: 600 }}>{selectedApproval.machine_type}</span>
+                    </div>
+                  )}
+                  {selectedApproval.tags && (
+                    <div>
+                      <span style={{ color: 'var(--text-secondary)', marginRight: 6 }}>标签:</span>
+                      <span>{selectedApproval.tags}</span>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Section 6: 管理员在线审批决策区 (仅 pending 状态且 isAdmin 时可调用) */}
+              {/* Section 3: 申请原因说明 (紧凑展示) */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: 12, border: '1px solid var(--border-color, rgba(255,255,255,0.06))' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                  申请原因说明
+                </div>
+                <div style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {selectedApproval.reason || '无申请原因说明'}
+                </div>
+              </div>
+
+              {/* Section 4: 历史核准结果 (若已处理) */}
+              {(selectedApproval.approver || selectedApproval.approval_comment || selectedApproval.status !== 'pending') && (
+                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: 12, border: '1px solid var(--border-color, rgba(255,255,255,0.06))', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    审批处理记录
+                  </div>
+                  {selectedApproval.approver && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>审批核准人:</span>
+                      <span style={{ fontWeight: 600 }}>
+                        {selectedApproval.approver.name || selectedApproval.approver.username}
+                        {selectedApproval.approver.username ? ` (工号: ${selectedApproval.approver.username})` : ''}
+                      </span>
+                    </div>
+                  )}
+                  {selectedApproval.approval_comment && (
+                    <div style={{ marginTop: 2 }}>
+                      <span style={{ color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>审批意见:</span>
+                      <div style={{ background: 'rgba(0,0,0,0.2)', padding: 8, borderRadius: 6, color: 'var(--text-primary)' }}>
+                        {selectedApproval.approval_comment}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Section 5: 管理员在线审批控制台 (仅 pending 状态 & isAdmin) */}
               {isAdmin && selectedApproval.status === 'pending' && (
-                <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px dashed var(--border-color, rgba(255,255,255,0.12))' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span>审批决策控制台</span>
-                    <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-secondary)' }}>（请选择决议动作并填写必要说明）</span>
+                <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: 14, border: '1px solid var(--border-color, rgba(255,255,255,0.1))', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>审批决议控制台</span>
+                    <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-secondary)' }}>请选择决议动作并输入意见</span>
                   </div>
 
-                  {/* 决策切换 Toggle Bar */}
-                  <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
+                  {/* 决议动作切换按钮 */}
+                  <div style={{ display: 'flex', gap: 10 }}>
                     <button
                       type="button"
                       onClick={() => setActionType('approve')}
                       style={{
                         flex: 1,
-                        padding: '10px 16px',
-                        borderRadius: 8,
+                        padding: '8px 12px',
+                        borderRadius: 6,
                         border: actionType === 'approve' ? '2px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
                         background: actionType === 'approve' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.02)',
                         color: actionType === 'approve' ? '#34d399' : 'var(--text-secondary)',
                         fontWeight: 600,
-                        fontSize: 13,
+                        fontSize: 12,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: 6,
-                        transition: 'all 0.2s ease'
+                        gap: 6
                       }}
                     >
-                      <CheckCircle2 size={16} /> 核准通过 (Approve)
+                      <CheckCircle2 size={14} /> 核准通过 (Approve)
                     </button>
 
                     <button
@@ -605,93 +580,47 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
                       onClick={() => setActionType('reject')}
                       style={{
                         flex: 1,
-                        padding: '10px 16px',
-                        borderRadius: 8,
+                        padding: '8px 12px',
+                        borderRadius: 6,
                         border: actionType === 'reject' ? '2px solid #ef4444' : '1px solid rgba(255,255,255,0.1)',
                         background: actionType === 'reject' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.02)',
                         color: actionType === 'reject' ? '#f87171' : 'var(--text-secondary)',
                         fontWeight: 600,
-                        fontSize: 13,
+                        fontSize: 12,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: 6,
-                        transition: 'all 0.2s ease'
+                        gap: 6
                       }}
                     >
-                      <XCircle size={16} /> 驳回申请 (Reject)
+                      <XCircle size={14} /> 驳回申请 (Reject)
                     </button>
                   </div>
 
-                  {/* 意见 Textarea */}
-                  <div>
-                    <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: 6, fontSize: 12 }}>
-                      审批意见 / 驳回理由 {actionType === 'reject' && <span style={{ color: '#ef4444' }}>* (必填)</span>}
-                    </label>
+                  {/* 审批意见文本框 & 提交按钮 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <textarea 
                       className="input"
-                      style={{ height: 80, resize: 'vertical', width: '100%' }}
-                      placeholder={actionType === 'approve' ? '可选填写同意意见或备注说明...' : '必须填写具体的驳回原因...'}
+                      style={{ height: 54, resize: 'none', width: '100%', fontSize: 12, padding: '6px 10px' }}
+                      placeholder={actionType === 'approve' ? '可选填写通过说明与备注...' : '必须填写具体的驳回原因... *'}
                       value={comment}
                       onChange={e => setComment(e.target.value)}
                       required={actionType === 'reject'}
-                      autoFocus={actionType === 'approve' || actionType === 'reject'}
+                      autoFocus
                     />
-                  </div>
-                </div>
-              )}
-            </div>
 
-            {/* Modal Footer */}
-            <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border-color, rgba(255,255,255,0.1))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
-              <button className="btn btn-secondary" onClick={closeModal}>
-                关闭
-              </button>
-
-              {isAdmin && selectedApproval.status === 'pending' && (
-                <div style={{ display: 'flex', gap: 10 }}>
-                  {actionType === 'approve' && (
-                    <button
-                      onClick={() => handleActionSubmit('approve')}
-                      disabled={isProcessing}
-                      className="btn btn-success"
-                      style={{ background: '#10b981', color: '#fff', padding: '6px 20px', fontWeight: 600 }}
-                    >
-                      {isProcessing ? '正在物理处理中...' : '确认核准通过'}
-                    </button>
-                  )}
-
-                  {actionType === 'reject' && (
-                    <button
-                      onClick={() => handleActionSubmit('reject')}
-                      disabled={isProcessing}
-                      className="btn btn-danger"
-                      style={{ background: '#ef4444', color: '#fff', padding: '6px 20px', fontWeight: 600 }}
-                    >
-                      {isProcessing ? '正在处理...' : '确认驳回申请'}
-                    </button>
-                  )}
-
-                  {actionType === 'view' && (
-                    <>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                       <button
-                        onClick={() => handleActionSubmit('approve')}
+                        onClick={() => handleActionSubmit(actionType === 'reject' ? 'reject' : 'approve')}
                         disabled={isProcessing}
-                        className="btn btn-success"
-                        style={{ background: '#10b981', color: '#fff', padding: '6px 16px' }}
+                        className={`btn ${actionType === 'reject' ? 'btn-danger' : 'btn-success'}`}
+                        style={{ padding: '6px 24px', fontWeight: 600, fontSize: 13, background: actionType === 'reject' ? '#ef4444' : '#10b981', color: '#fff' }}
                       >
-                        核准通过
+                        {isProcessing ? '正在处理中...' : actionType === 'reject' ? '确认驳回申请' : '确认核准通过'}
                       </button>
-                      <button
-                        onClick={() => setActionType('reject')}
-                        className="btn btn-danger"
-                        style={{ background: '#ef4444', color: '#fff', padding: '6px 16px' }}
-                      >
-                        驳回申请
-                      </button>
-                    </>
-                  )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
