@@ -573,58 +573,112 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
                     <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <FileText size={16} color="#6366f1" /> 审批决议控制台
                     </span>
-                    <span style={{ fontSize: 12, fontWeight: 400, color: decisionAction ? 'var(--text-secondary)' : '#f59e0b' }}>
-                      {decisionAction === 'approve' ? '已选择：核准通过' : decisionAction === 'reject' ? '已选择：驳回申请' : '请先选择决议动作（通过/驳回）'}
+                    <span style={{ fontSize: 12, fontWeight: 500, color: decisionAction ? 'var(--text-secondary)' : '#f59e0b', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {decisionAction === 'approve' ? '已点选：核准通过' : decisionAction === 'reject' ? '已点选：驳回申请' : '👉 请点击下方单选框选择决议动作'}
                     </span>
                   </div>
 
-                  {/* 决议动作 Toggle 按钮组 */}
+                  {/* 决议动作 Radio 单选选项卡片 */}
                   <div style={{ display: 'flex', gap: 12 }}>
-                    <button
-                      type="button"
+                    {/* 单选框 1: 核准通过 */}
+                    <label
                       onClick={() => setDecisionAction('approve')}
                       style={{
                         flex: 1,
-                        padding: '10px 16px',
+                        padding: '12px 16px',
                         borderRadius: 8,
-                        border: decisionAction === 'approve' ? '2px solid #10b981' : '1px solid rgba(255,255,255,0.12)',
-                        background: decisionAction === 'approve' ? 'rgba(16, 185, 129, 0.18)' : 'rgba(255,255,255,0.02)',
-                        color: decisionAction === 'approve' ? '#34d399' : 'var(--text-secondary)',
-                        fontWeight: 700,
+                        border: decisionAction === 'approve' ? '2px solid #10b981' : '1px solid rgba(255,255,255,0.2)',
+                        background: decisionAction === 'approve' ? 'rgba(16, 185, 129, 0.16)' : 'rgba(255,255,255,0.03)',
+                        color: decisionAction === 'approve' ? '#34d399' : 'var(--text-primary)',
+                        fontWeight: 600,
                         fontSize: 13,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                        transition: 'all 0.2s ease'
+                        gap: 10,
+                        transition: 'all 0.2s ease',
+                        boxShadow: decisionAction === 'approve' ? '0 0 12px rgba(16, 185, 129, 0.2)' : 'none',
+                        userSelect: 'none'
                       }}
                     >
-                      <CheckCircle2 size={16} /> 核准通过 (Approve)
-                    </button>
+                      <div style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: '50%',
+                        border: decisionAction === 'approve' ? '2px solid #10b981' : '2px solid rgba(255,255,255,0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: decisionAction === 'approve' ? '#10b981' : 'transparent',
+                        transition: 'all 0.2s ease',
+                        flexShrink: 0
+                      }}>
+                        {decisionAction === 'approve' && (
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />
+                        )}
+                      </div>
+                      <input
+                        type="radio"
+                        name="approvalDecision"
+                        checked={decisionAction === 'approve'}
+                        onChange={() => setDecisionAction('approve')}
+                        style={{ display: 'none' }}
+                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
+                        <CheckCircle2 size={16} color={decisionAction === 'approve' ? '#34d399' : '#10b981'} />
+                        <span>核准通过 (Approve)</span>
+                      </div>
+                    </label>
 
-                    <button
-                      type="button"
+                    {/* 单选框 2: 驳回申请 */}
+                    <label
                       onClick={() => setDecisionAction('reject')}
                       style={{
                         flex: 1,
-                        padding: '10px 16px',
+                        padding: '12px 16px',
                         borderRadius: 8,
-                        border: decisionAction === 'reject' ? '2px solid #ef4444' : '1px solid rgba(255,255,255,0.12)',
-                        background: decisionAction === 'reject' ? 'rgba(239, 68, 68, 0.18)' : 'rgba(255,255,255,0.02)',
-                        color: decisionAction === 'reject' ? '#f87171' : 'var(--text-secondary)',
-                        fontWeight: 700,
+                        border: decisionAction === 'reject' ? '2px solid #ef4444' : '1px solid rgba(255,255,255,0.2)',
+                        background: decisionAction === 'reject' ? 'rgba(239, 68, 68, 0.16)' : 'rgba(255,255,255,0.03)',
+                        color: decisionAction === 'reject' ? '#f87171' : 'var(--text-primary)',
+                        fontWeight: 600,
                         fontSize: 13,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                        transition: 'all 0.2s ease'
+                        gap: 10,
+                        transition: 'all 0.2s ease',
+                        boxShadow: decisionAction === 'reject' ? '0 0 12px rgba(239, 68, 68, 0.2)' : 'none',
+                        userSelect: 'none'
                       }}
                     >
-                      <XCircle size={16} /> 驳回申请 (Reject)
-                    </button>
+                      <div style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: '50%',
+                        border: decisionAction === 'reject' ? '2px solid #ef4444' : '2px solid rgba(255,255,255,0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: decisionAction === 'reject' ? '#ef4444' : 'transparent',
+                        transition: 'all 0.2s ease',
+                        flexShrink: 0
+                      }}>
+                        {decisionAction === 'reject' && (
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />
+                        )}
+                      </div>
+                      <input
+                        type="radio"
+                        name="approvalDecision"
+                        checked={decisionAction === 'reject'}
+                        onChange={() => setDecisionAction('reject')}
+                        style={{ display: 'none' }}
+                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
+                        <XCircle size={16} color={decisionAction === 'reject' ? '#f87171' : '#ef4444'} />
+                        <span>驳回申请 (Reject)</span>
+                      </div>
+                    </label>
                   </div>
 
                   {/* 审批意见文本框 & 严格按需可用的提交按钮 */}
