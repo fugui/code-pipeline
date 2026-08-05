@@ -498,36 +498,50 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
                 </div>
               </div>
 
-              {/* Section 2: 拓展配置 (语言/机型) - 充裕不拥挤 */}
-              {selectedApproval.type === 'repo_create' && (selectedApproval.language || selectedApproval.machine_type || selectedApproval.tags) && (
-                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '14px 18px', border: '1px solid var(--border-color, rgba(255,255,255,0.06))', display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap', fontSize: 13 }}>
-                  {selectedApproval.language && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* Section 2: 拓展配置 (2x2 网格) */}
+              {selectedApproval.type === 'repo_create' && (selectedApproval.language || selectedApproval.machine_type || selectedApproval.tags || selectedApproval.description) && (
+                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '14px 16px', border: '1px solid var(--border-color, rgba(255,255,255,0.06))', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    环境与构架拓展元数据
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px', fontSize: 13 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ color: 'var(--text-secondary)' }}>编程语言:</span>
-                      <span style={{ color: '#60a5fa', fontWeight: 600, background: 'rgba(96, 165, 250, 0.1)', padding: '2px 8px', borderRadius: 4 }}>{selectedApproval.language}</span>
+                      <span style={{ color: '#60a5fa', fontWeight: 600, background: 'rgba(96, 165, 250, 0.1)', padding: '2px 8px', borderRadius: 4 }}>
+                        {selectedApproval.language || '-'}
+                      </span>
                     </div>
-                  )}
-                  {selectedApproval.machine_type && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ color: 'var(--text-secondary)' }}>编译机型:</span>
-                      <span style={{ color: '#c084fc', fontWeight: 600, background: 'rgba(192, 132, 252, 0.1)', padding: '2px 8px', borderRadius: 4 }}>{selectedApproval.machine_type}</span>
+                      <span style={{ color: '#c084fc', fontWeight: 600, background: 'rgba(192, 132, 252, 0.1)', padding: '2px 8px', borderRadius: 4 }}>
+                        {selectedApproval.machine_type || '-'}
+                      </span>
                     </div>
-                  )}
-                  {selectedApproval.tags && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>标签:</span>
-                      <span style={{ color: 'var(--text-primary)' }}>{selectedApproval.tags}</span>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>仓库标签:</span>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {selectedApproval.tags || '-'}
+                      </span>
                     </div>
-                  )}
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>描述说明:</span>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={selectedApproval.description}>
+                        {selectedApproval.description || '-'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {/* Section 3: 申请原因说明 */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '14px 16px', border: '1px solid var(--border-color, rgba(255,255,255,0.06))' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+              {/* Section 3: 申请原因说明 (弹性自适应填充中段全量剩余空间) */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '14px 16px', border: '1px solid var(--border-color, rgba(255,255,255,0.06))', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 120 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
                   申请原因说明
                 </div>
-                <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', flex: 1, overflowY: 'auto', background: 'rgba(0,0,0,0.15)', padding: '10px 12px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.03)' }}>
                   {selectedApproval.reason || '无申请原因说明'}
                 </div>
               </div>
