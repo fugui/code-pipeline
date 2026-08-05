@@ -63,7 +63,7 @@ func (tm *TokenManager) GetToken(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("apig.token_url is not configured")
 	}
 
-	payload := map[string]string{
+	payload := map[string]interface{}{
 		"account":  apigCfg.TokenAccount,
 		"password": apigCfg.TokenPassword,
 	}
