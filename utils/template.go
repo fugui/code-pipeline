@@ -27,7 +27,7 @@ func RenderJSONTemplate(templateStr string, vars map[string]string) (map[string]
 	var resultMap map[string]interface{}
 	if err := json.Unmarshal([]byte(rendered), &resultMap); err != nil {
 		log.Printf("[RenderJSONTemplate] Failed to unmarshal json config template: %v | Rendered Body: %s\n", err, rendered)
-		return nil, fmt.Errorf("invalid json config template: please check config placeholders or json syntax")
+		return nil, fmt.Errorf("请求模板配置格式异常，请联系系统管理员检查处理")
 	}
 
 	return resultMap, nil
