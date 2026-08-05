@@ -77,27 +77,30 @@ func SendHTTPRequest(ctx context.Context, method, rawURL string, payload interfa
 		var jsonBytes []byte
 		var err error
 
+		// 1. 统一归一化为 JSON 字节流 (支持 json.RawMessage, []byte, string 及通用 Go Struct/Map 对象)
 		switch p := payload.(type) {
 		case json.RawMessage:
 			jsonBytes = []byte(p)
-			if !json.Valid(jsonBytes) {
-				log.Printf("[%s] Invalid JSON in RawMessage: %s\n", contextMsg, string(jsonBytes))
-				return nil, fmt.Errorf("invalid json payload template: please check config placeholders or json syntax")
-			}
 		case []byte:
 			jsonBytes = p
-			if !json.Valid(jsonBytes) {
-				log.Printf("[%s] Invalid JSON in []byte payload: %s\n", contextMsg, string(jsonBytes))
-				return nil, fmt.Errorf("invalid json payload template: please check config placeholders or json syntax")
-			}
+		case string:
+			jsonBytes = []byte(p)
 		default:
+			// 针对 Struct / Map 等所有 Go 对象，统一 Marshal 为 JSON
 			jsonBytes, err = json.Marshal(payload)
 			if err != nil {
 				log.Printf("[%s] Failed to marshal request payload: %v | Raw Payload: %#v\n", contextMsg, err, payload)
 				return nil, fmt.Errorf("failed to marshal request payload: %w", err)
 			}
 		}
-		bodyReader = bytes.NewBuffer(jsonBytes)
+
+		// 2. 统一关卡防线：发送前验证 JSON 语法完整性
+		if !json.Valid(jsonBytes) {
+			log.Printf("[%s] Invalid JSON Body Payload: %s\n", contextMsg, string(jsonBytes))
+			return nil, fmt.Errorf("invalid json payload: please check template syntax or string escaping")
+		}
+
+		bodyReader = bytes.NewReader(jsonBytes)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, u.String(), bodyReader)
