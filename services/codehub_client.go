@@ -146,8 +146,45 @@ func InitGitPlatform() {
 	}
 }
 
+// FormatTagList 将输入的标签字符串格式化为可直接嵌入 JSON 数组的带引号字符串切片 (例如 `"A","B","C"`)
+func FormatTagList(tags string) string {
+	tags = strings.TrimSpace(tags)
+	if tags == "" {
+		return ""
+	}
+
+	var rawItems []string
+
+	if strings.HasPrefix(tags, "[") && strings.HasSuffix(tags, "]") {
+		var jsonList []string
+		if err := json.Unmarshal([]byte(tags), &jsonList); err == nil {
+			rawItems = jsonList
+		} else {
+			trimmed := strings.TrimSuffix(strings.TrimPrefix(tags, "["), "]")
+			rawItems = strings.FieldsFunc(trimmed, func(r rune) bool {
+				return r == ',' || r == '，' || r == '\n' || r == '\t'
+			})
+		}
+	} else {
+		rawItems = strings.FieldsFunc(tags, func(r rune) bool {
+			return r == ',' || r == '，' || r == '\n' || r == '\t'
+		})
+	}
+
+	var items []string
+	for _, item := range rawItems {
+		trimmed := strings.TrimSpace(item)
+		trimmed = strings.Trim(trimmed, "\"'`")
+		if trimmed != "" {
+			items = append(items, fmt.Sprintf("%q", trimmed))
+		}
+	}
+
+	return strings.Join(items, ",")
+}
+
 // CreateRemoteRepo 使用超级管理员权限在远程 Git 平台创建代码仓，并融合鉴权 Header
-func CreateRemoteRepo(ctx context.Context, name string, groupPath string, groupID uint) (uint, string, string, error) {
+func CreateRemoteRepo(ctx context.Context, name string, groupPath string, groupID uint, tags string) (uint, string, string, error) {
 	apiURL := GitPlatformBaseURL + "/projects"
 
 	reqHeaders := make(map[string]string)
@@ -161,6 +198,7 @@ func CreateRemoteRepo(ctx context.Context, name string, groupPath string, groupI
 	bodyStr = strings.ReplaceAll(bodyStr, "{REPO_NAME}", name)
 	bodyStr = strings.ReplaceAll(bodyStr, "{GROUP_PATH}", groupPath)
 	bodyStr = strings.ReplaceAll(bodyStr, "{GROUP_ID}", strconv.Itoa(int(groupID)))
+	bodyStr = strings.ReplaceAll(bodyStr, "{TAG_LIST}", FormatTagList(tags))
 
 	body, err := utils.SendHTTPRequest(ctx, "POST", apiURL, json.RawMessage([]byte(bodyStr)), utils.HTTPOptions{
 		Headers: reqHeaders,
