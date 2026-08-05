@@ -76,7 +76,8 @@ func SendHTTPRequest(ctx context.Context, method, rawURL string, payload interfa
 	if payload != nil {
 		jsonBytes, err := json.Marshal(payload)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal request payload: %v", err)
+			log.Printf("[%s] Failed to marshal request payload: %v | Raw Payload: %#v\n", contextMsg, err, payload)
+			return nil, fmt.Errorf("failed to marshal request payload: %v (raw payload: %#v)", err, payload)
 		}
 		bodyReader = bytes.NewBuffer(jsonBytes)
 	}
