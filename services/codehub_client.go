@@ -146,45 +146,51 @@ func InitGitPlatform() {
 	}
 }
 
-// FormatTagList 将输入的标签字符串格式化为可直接嵌入 JSON 数组的带引号字符串切片 (例如 `"A","B","C"`)
+// FormatTagList 将输入的标签字符串格式化为可直接嵌入 JSON 数组的带引号字符串切片 (例如 `"A","B","CodeShield"`)
 func FormatTagList(tags string) string {
 	tags = strings.TrimSpace(tags)
-	if tags == "" {
-		return ""
-	}
-
 	var rawItems []string
 
-	if strings.HasPrefix(tags, "[") && strings.HasSuffix(tags, "]") {
-		var jsonList []string
-		if err := json.Unmarshal([]byte(tags), &jsonList); err == nil {
-			rawItems = jsonList
+	if tags != "" {
+		if strings.HasPrefix(tags, "[") && strings.HasSuffix(tags, "]") {
+			var jsonList []string
+			if err := json.Unmarshal([]byte(tags), &jsonList); err == nil {
+				rawItems = jsonList
+			} else {
+				trimmed := strings.TrimSuffix(strings.TrimPrefix(tags, "["), "]")
+				rawItems = strings.FieldsFunc(trimmed, func(r rune) bool {
+					return r == ',' || r == '，' || r == '\n' || r == '\t'
+				})
+			}
 		} else {
-			trimmed := strings.TrimSuffix(strings.TrimPrefix(tags, "["), "]")
-			rawItems = strings.FieldsFunc(trimmed, func(r rune) bool {
+			rawItems = strings.FieldsFunc(tags, func(r rune) bool {
 				return r == ',' || r == '，' || r == '\n' || r == '\t'
 			})
 		}
-	} else {
-		rawItems = strings.FieldsFunc(tags, func(r rune) bool {
-			return r == ',' || r == '，' || r == '\n' || r == '\t'
-		})
 	}
 
 	var items []string
+	seen := make(map[string]bool)
+
 	for _, item := range rawItems {
 		trimmed := strings.TrimSpace(item)
 		trimmed = strings.Trim(trimmed, "\"'`")
-		if trimmed != "" {
+		if trimmed != "" && !seen[strings.ToLower(trimmed)] {
+			seen[strings.ToLower(trimmed)] = true
 			items = append(items, fmt.Sprintf("%q", trimmed))
 		}
+	}
+
+	// 自动追加 "CodeShield" 标签说明是系统创建
+	if !seen["codeshield"] {
+		items = append(items, fmt.Sprintf("%q", "CodeShield"))
 	}
 
 	return strings.Join(items, ",")
 }
 
 // CreateRemoteRepo 使用超级管理员权限在远程 Git 平台创建代码仓，并融合鉴权 Header
-func CreateRemoteRepo(ctx context.Context, name string, groupPath string, groupID uint, tags string) (uint, string, string, error) {
+func CreateRemoteRepo(ctx context.Context, name string, groupPath string, groupID uint, tags string, description string) (uint, string, string, error) {
 	apiURL := GitPlatformBaseURL + "/projects"
 
 	reqHeaders := make(map[string]string)
@@ -199,6 +205,7 @@ func CreateRemoteRepo(ctx context.Context, name string, groupPath string, groupI
 	bodyStr = strings.ReplaceAll(bodyStr, "{GROUP_PATH}", groupPath)
 	bodyStr = strings.ReplaceAll(bodyStr, "{GROUP_ID}", strconv.Itoa(int(groupID)))
 	bodyStr = strings.ReplaceAll(bodyStr, "{TAG_LIST}", FormatTagList(tags))
+	bodyStr = strings.ReplaceAll(bodyStr, "{DESCRIPTION}", description)
 
 	body, err := utils.SendHTTPRequest(ctx, "POST", apiURL, json.RawMessage([]byte(bodyStr)), utils.HTTPOptions{
 		Headers: reqHeaders,
