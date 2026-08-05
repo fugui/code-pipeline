@@ -566,19 +566,19 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
                 </div>
               )}
 
-              {/* Section 5: 在线审批决议控制台 (明确化决策, 初始未选择时禁用提交按钮) */}
+              {/* Section 5: 在线审批决议控制台 (支持亮色/暗色双主题高对比度显示) */}
               {isAdmin && selectedApproval.status === 'pending' && (
-                <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '16px 18px', border: '1px solid var(--border-color, rgba(255,255,255,0.12))', display: 'flex', flexDirection: 'column', gap: 12, marginTop: 'auto' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ background: 'var(--bg-secondary, rgba(255,255,255,0.04))', borderRadius: 10, padding: '16px 18px', border: '1px solid var(--border-color, rgba(255,255,255,0.12))', display: 'flex', flexDirection: 'column', gap: 12, marginTop: 'auto' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <FileText size={16} color="#6366f1" /> 审批决议控制台
                     </span>
-                    <span style={{ fontSize: 12, fontWeight: 500, color: decisionAction ? 'var(--text-secondary)' : '#f59e0b', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: decisionAction ? 'var(--text-secondary)' : '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}>
                       {decisionAction === 'approve' ? '已点选：核准通过' : decisionAction === 'reject' ? '已点选：驳回申请' : '👉 请点击下方单选框选择决议动作'}
                     </span>
                   </div>
 
-                  {/* 决议动作 Radio 单选选项卡片 */}
+                  {/* 决议动作 Radio 单选选项卡片 (完美兼容 Light / Dark 主题) */}
                   <div style={{ display: 'flex', gap: 12 }}>
                     {/* 单选框 1: 核准通过 */}
                     <label
@@ -587,9 +587,9 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
                         flex: 1,
                         padding: '12px 16px',
                         borderRadius: 8,
-                        border: decisionAction === 'approve' ? '2px solid #10b981' : '1px solid rgba(255,255,255,0.2)',
-                        background: decisionAction === 'approve' ? 'rgba(16, 185, 129, 0.16)' : 'rgba(255,255,255,0.03)',
-                        color: decisionAction === 'approve' ? '#34d399' : 'var(--text-primary)',
+                        border: decisionAction === 'approve' ? '2px solid #10b981' : '1px solid var(--border-color, #cbd5e1)',
+                        background: decisionAction === 'approve' ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-card, rgba(0,0,0,0.02))',
+                        color: decisionAction === 'approve' ? '#10b981' : 'var(--text-main, #0f172a)',
                         fontWeight: 600,
                         fontSize: 13,
                         cursor: 'pointer',
@@ -597,7 +597,7 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
                         alignItems: 'center',
                         gap: 10,
                         transition: 'all 0.2s ease',
-                        boxShadow: decisionAction === 'approve' ? '0 0 12px rgba(16, 185, 129, 0.2)' : 'none',
+                        boxShadow: decisionAction === 'approve' ? '0 0 10px rgba(16, 185, 129, 0.2)' : 'none',
                         userSelect: 'none'
                       }}
                     >
@@ -605,7 +605,7 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
                         width: 18,
                         height: 18,
                         borderRadius: '50%',
-                        border: decisionAction === 'approve' ? '2px solid #10b981' : '2px solid rgba(255,255,255,0.4)',
+                        border: decisionAction === 'approve' ? '2px solid #10b981' : '2px solid var(--text-secondary, #9ca3af)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -625,7 +625,7 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
                         style={{ display: 'none' }}
                       />
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                        <CheckCircle2 size={16} color={decisionAction === 'approve' ? '#34d399' : '#10b981'} />
+                        <CheckCircle2 size={16} color={decisionAction === 'approve' ? '#10b981' : 'var(--text-secondary, #64748b)'} />
                         <span>核准通过 (Approve)</span>
                       </div>
                     </label>
@@ -637,9 +637,9 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
                         flex: 1,
                         padding: '12px 16px',
                         borderRadius: 8,
-                        border: decisionAction === 'reject' ? '2px solid #ef4444' : '1px solid rgba(255,255,255,0.2)',
-                        background: decisionAction === 'reject' ? 'rgba(239, 68, 68, 0.16)' : 'rgba(255,255,255,0.03)',
-                        color: decisionAction === 'reject' ? '#f87171' : 'var(--text-primary)',
+                        border: decisionAction === 'reject' ? '2px solid #ef4444' : '1px solid var(--border-color, #cbd5e1)',
+                        background: decisionAction === 'reject' ? 'rgba(239, 68, 68, 0.12)' : 'var(--bg-card, rgba(0,0,0,0.02))',
+                        color: decisionAction === 'reject' ? '#ef4444' : 'var(--text-main, #0f172a)',
                         fontWeight: 600,
                         fontSize: 13,
                         cursor: 'pointer',
@@ -647,7 +647,7 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
                         alignItems: 'center',
                         gap: 10,
                         transition: 'all 0.2s ease',
-                        boxShadow: decisionAction === 'reject' ? '0 0 12px rgba(239, 68, 68, 0.2)' : 'none',
+                        boxShadow: decisionAction === 'reject' ? '0 0 10px rgba(239, 68, 68, 0.2)' : 'none',
                         userSelect: 'none'
                       }}
                     >
@@ -655,7 +655,7 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
                         width: 18,
                         height: 18,
                         borderRadius: '50%',
-                        border: decisionAction === 'reject' ? '2px solid #ef4444' : '2px solid rgba(255,255,255,0.4)',
+                        border: decisionAction === 'reject' ? '2px solid #ef4444' : '2px solid var(--text-secondary, #9ca3af)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -675,7 +675,7 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
                         style={{ display: 'none' }}
                       />
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                        <XCircle size={16} color={decisionAction === 'reject' ? '#f87171' : '#ef4444'} />
+                        <XCircle size={16} color={decisionAction === 'reject' ? '#ef4444' : 'var(--text-secondary, #64748b)'} />
                         <span>驳回申请 (Reject)</span>
                       </div>
                     </label>
