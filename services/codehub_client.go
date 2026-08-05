@@ -147,7 +147,7 @@ func InitGitPlatform() {
 }
 
 // CreateRemoteRepo 使用超级管理员权限在远程 Git 平台创建代码仓，并融合鉴权 Header
-func CreateRemoteRepo(ctx context.Context, name string, groupPath string) (uint, string, string, error) {
+func CreateRemoteRepo(ctx context.Context, name string, groupPath string, groupID uint) (uint, string, string, error) {
 	apiURL := GitPlatformBaseURL + "/projects"
 
 	reqHeaders := make(map[string]string)
@@ -160,6 +160,7 @@ func CreateRemoteRepo(ctx context.Context, name string, groupPath string) (uint,
 	bodyStr := models.AppConfig.CodeHub.CreateRepoBody
 	bodyStr = strings.ReplaceAll(bodyStr, "{REPO_NAME}", name)
 	bodyStr = strings.ReplaceAll(bodyStr, "{GROUP_PATH}", groupPath)
+	bodyStr = strings.ReplaceAll(bodyStr, "{GROUP_ID}", strconv.Itoa(int(groupID)))
 
 	body, err := utils.SendHTTPRequest(ctx, "POST", apiURL, json.RawMessage([]byte(bodyStr)), utils.HTTPOptions{
 		Headers: reqHeaders,

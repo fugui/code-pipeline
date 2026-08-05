@@ -175,7 +175,7 @@ func ApproveManagedApproval(c *gin.Context) {
 		}
 
 		// 1. 调用远程 Git 平台创建代码仓
-		remoteID, sshURL, httpURL, err := services.CreateRemoteRepo(c.Request.Context(), approval.RepoName, group.FullPath)
+		remoteID, sshURL, httpURL, err := services.CreateRemoteRepo(c.Request.Context(), approval.RepoName, group.FullPath, group.ID)
 		if err != nil {
 			c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("Failed to create remote repository: %v", err)})
 			return
