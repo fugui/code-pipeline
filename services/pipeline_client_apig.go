@@ -50,20 +50,17 @@ func CreateMRBindingAPIG(ctx context.Context, pipelineBusinessID string, scheme 
 		escapedCustomAttributes = escapedCustomAttributes[1 : len(escapedCustomAttributes)-1]
 	}
 
-	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
-		"{NAME}":              scheme.Name,
-		"{REPO_URL}":          repoURL,
-		"{BRANCHES}":          scheme.Branch,
-		"{PIPELINE_ID}":       pipelineBusinessID,
-		"{SCHEME_ID}":         schemeID,
-		"{CREDENTIAL_ID}":     credentialID,
-		"{CUSTOM_ATTRIBUTES}": escapedCustomAttributes,
+	bodyPayload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
+		"NAME":              scheme.Name,
+		"REPO_URL":          repoURL,
+		"BRANCHES":          scheme.Branch,
+		"PIPELINE_ID":       pipelineBusinessID,
+		"SCHEME_ID":         schemeID,
+		"CREDENTIAL_ID":     credentialID,
+		"CUSTOM_ATTRIBUTES": escapedCustomAttributes,
 	})
-
-	var bodyPayload interface{}
-	if err := json.Unmarshal([]byte(bodyStr), &bodyPayload); err != nil {
-		log.Printf("[APIG] Step 3: Failed to unmarshal json body string: %v, raw: %s", err, bodyStr)
-		return "", fmt.Errorf("failed to unmarshal request body json: %w", err)
+	if err != nil {
+		return "", fmt.Errorf("failed to render template: %w", err)
 	}
 
 	body, err := utils.SendHTTPRequest(ctx, "POST", apiURLStr, bodyPayload, utils.HTTPOptions{
@@ -172,29 +169,20 @@ func SyncUpdateMRBindingRemoteAPIG(ctx context.Context, pipelineBusinessID strin
 		escapedCustomAttributes = escapedCustomAttributes[1 : len(escapedCustomAttributes)-1]
 	}
 
-	bodyStr := utils.ReplacePlaceholders(tmpl, map[string]string{
-		"{NAME}":              scheme.Name,
-		"{REPO_URL}":          repoURL,
-		"{BRANCHES}":          scheme.Branch,
-		"{PIPELINE_ID}":       pipelineBusinessID,
-		"{SCHEME_ID}":         scheme.ExecutionSchemeID,
-		"{CREDENTIAL_ID}":     credentialID,
-		"{CUSTOM_ATTRIBUTES}": escapedCustomAttributes,
+	bodyPayload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
+		"NAME":              scheme.Name,
+		"REPO_URL":          repoURL,
+		"BRANCHES":          scheme.Branch,
+		"PIPELINE_ID":       pipelineBusinessID,
+		"SCHEME_ID":         scheme.ExecutionSchemeID,
+		"CREDENTIAL_ID":     credentialID,
+		"CUSTOM_ATTRIBUTES": escapedCustomAttributes,
 	})
-
-	var bodyPayload interface{}
-	if err := json.Unmarshal([]byte(bodyStr), &bodyPayload); err != nil {
-		return fmt.Errorf("failed to unmarshal request body json: %w", err)
+	if err != nil {
+		return fmt.Errorf("failed to render template: %w", err)
 	}
 
-	// 自动注入 id 属性（适配 对象 或 数组）
-	if m, ok := bodyPayload.(map[string]interface{}); ok {
-		m["id"] = scheme.MRBindingID
-	} else if arr, ok := bodyPayload.([]interface{}); ok && len(arr) > 0 {
-		if m, ok := arr[0].(map[string]interface{}); ok {
-			m["id"] = scheme.MRBindingID
-		}
-	}
+	bodyPayload["id"] = scheme.MRBindingID
 
 	_, err = utils.SendHTTPRequest(ctx, "PUT", apiURLStr, bodyPayload, utils.HTTPOptions{
 		Headers: headers,
