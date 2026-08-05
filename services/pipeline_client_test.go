@@ -343,7 +343,7 @@ func TestManagedGitPlatformAPI(t *testing.T) {
 	origProtectBody := models.AppConfig.CodeHub.ConfigureProtectionBody
 	origACLBody := models.AppConfig.CodeHub.ConfigureACLBody
 
-	models.AppConfig.CodeHub.CreateRepoBody = `{"name":"{REPO_NAME}","namespace_path":"{GROUP_PATH}","namespace_id":"{GROUP_ID}","visibility":"private"}`
+	models.AppConfig.CodeHub.CreateRepoBody = `{"name":"{REPO_NAME}","namespace_path":"{GROUP_PATH}","namespace_id":"{GROUP_ID}","tag_list":[{TAG_LIST}],"visibility":"private"}`
 	models.AppConfig.CodeHub.CreateBranchBody = `{"branch_name":"{BRANCH_NAME}","ref":"{SOURCE_REF}"}`
 	models.AppConfig.CodeHub.ConfigureProtectionBody = `{"name":"{BRANCH_PATTERN}","push_access_level":0}`
 	models.AppConfig.CodeHub.ConfigureACLBody = `{"principal_type":"{PRINCIPAL_TYPE}","principal_id":"{PRINCIPAL_ID}","access_level":{ACCESS_LEVEL}}`
@@ -359,14 +359,14 @@ func TestManagedGitPlatformAPI(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. 测试创建远程代码仓
-	repoID, sshURL, httpURL, err := CreateRemoteRepo(ctx, "test-repo", "tech/infra", 100)
+	repoID, sshURL, httpURL, err := CreateRemoteRepo(ctx, "test-repo", "tech/infra", 100, "tag1, tag2")
 	if err != nil {
 		t.Fatalf("CreateRemoteRepo failed: %v", err)
 	}
 	if repoID != 456 || sshURL != "git@git.local:group/repo.git" || httpURL != "http://git.local/group/repo" {
 		t.Errorf("unexpected CreateRemoteRepo return values: %d, %s, %s", repoID, sshURL, httpURL)
 	}
-	if !strings.Contains(receivedPostRepo, `"name":"test-repo"`) || !strings.Contains(receivedPostRepo, `"namespace_path":"tech/infra"`) || !strings.Contains(receivedPostRepo, `"namespace_id":"100"`) {
+	if !strings.Contains(receivedPostRepo, `"name":"test-repo"`) || !strings.Contains(receivedPostRepo, `"namespace_path":"tech/infra"`) || !strings.Contains(receivedPostRepo, `"namespace_id":"100"`) || !strings.Contains(receivedPostRepo, `"tag_list":["tag1","tag2"]`) {
 		t.Errorf("unexpected CreateRemoteRepo body: %s", receivedPostRepo)
 	}
 
