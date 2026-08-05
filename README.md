@@ -38,7 +38,8 @@ graph TD
 *   **分支健康度监控**：定期刷新并分析各被管仓分支状态，自动将分支分类为 `active`（活跃）、`merged_stale`（已合并待清理）、`unmerged_stale`（未合并僵尸）三种状态。
 *   **保护分支规则**：支持配置分支模式匹配（如 `release/*`）的强制权限规则，包括禁止 Force Push 与要求 MR 审评。
 *   **全员审批流**：建仓申请、保护分支配置变更等操作均需通过审批单（`ManagedRepoApproval`）流程。
-*   **跨仓特性分支一键同步**：支持一次选定多个代码仓与基准分支，批量拉起特性分支，并记录批次内各仓拉起结果（`ManagedBatchBranchLog`）。
+*   **跨仓特性分支一键同步**：支持一次选定多个代码仓与基准分支，批量拉起特性分支，并记录批次内各仓拉起结果（`ManagedBatchBatchLog`）。
+*   **模板占位符配置规范**：完整支持的 HTTP Body 请求模板与 URL 占位符（如 `{REPO_NAME}`, `{GROUP_ID}`, `{TAG_LIST}`, `{DESCRIPTION}` 等）详细说明请参阅 [template_placeholders.md](file:///home/fugui/codes/code-pipeline/docs/template_placeholders.md)。
 
 ---
 
