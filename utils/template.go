@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 )
 
@@ -25,7 +26,8 @@ func RenderJSONTemplate(templateStr string, vars map[string]string) (map[string]
 
 	var resultMap map[string]interface{}
 	if err := json.Unmarshal([]byte(rendered), &resultMap); err != nil {
-		return nil, fmt.Errorf("invalid json config template after substitution: %w (rendered: %s)", err, rendered)
+		log.Printf("[RenderJSONTemplate] Failed to unmarshal json config template: %v | Rendered Body: %s\n", err, rendered)
+		return nil, fmt.Errorf("invalid json config template: please check config placeholders or json syntax")
 	}
 
 	return resultMap, nil
