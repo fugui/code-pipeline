@@ -2,6 +2,7 @@ package utils
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -57,5 +58,10 @@ func TestRenderJSONTemplate_InvalidJSON(t *testing.T) {
 	_, err := RenderJSONTemplate(template, vars)
 	if err == nil {
 		t.Fatal("expected error for invalid JSON template, got nil")
+	}
+
+	// 验证错误信息中不暴露具体的 invalid_unquoted_value 敏感内容
+	if strings.Contains(err.Error(), "invalid_unquoted_value") {
+		t.Fatalf("error message leaked raw sensitive placeholder data: %v", err)
 	}
 }
