@@ -5,12 +5,19 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 )
 
 // ReplacePlaceholders 通用字符串占位符替换函数，将 {KEY} 或 KEY 替换为对应的值
 func ReplacePlaceholders(templateStr string, vars map[string]string) string {
-	rendered := templateStr
+	mergedVars := make(map[string]string)
+	mergedVars["CURRENT_TIME"] = time.Now().Format("2006-01-02 15:04:05")
 	for k, v := range vars {
+		mergedVars[k] = v
+	}
+
+	rendered := templateStr
+	for k, v := range mergedVars {
 		placeholder := k
 		if !strings.HasPrefix(k, "{") {
 			placeholder = "{" + k + "}"
