@@ -177,6 +177,8 @@ codehub:
 | `{PIPELINE_ID}` | 流水线 ID |
 | `{SCHEME_ID}` | 执行方案 ID |
 | `{DAILY_BUILD_TIME}` / `{TIME}` | 定时构建的触发时间表达式（如 `"02:00"`） |
+| `{STOP_TIME}` | 定时构建的结束/停止时间表达式（基于触发时间增加 2 小时，如 `"04:00"`） |
+| `{EMPLOYEE_ID}` | 操作员工工号/用户 ID（默认为 `"system"`） |
 | `{PIPELINE_NAME}` / `{NAME}` | 定时构建计划名称 |
 | `{SERVICE_ID}` | 所属服务 ID |
 | `{WORKSPACE_ID}` | 所属工作区 ID |
