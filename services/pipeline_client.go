@@ -857,7 +857,7 @@ func CreateExecutionPlanStep(ctx context.Context, pipelineBusinessID string, sch
 	if t, err := time.Parse("15:04", dailyTimeStr); err == nil {
 		stopTime = t.Add(2 * time.Hour).Format("15:04")
 	} else if t, err := time.Parse("15:04:05", dailyTimeStr); err == nil {
-		stopTime = t.Add(2 * time.Hour).Format("15:04:05")
+		stopTime = t.Add(2 * time.Hour).Format("15:04")
 	}
 
 	payload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
