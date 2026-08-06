@@ -843,11 +843,30 @@ func CreateExecutionPlanStep(ctx context.Context, pipelineBusinessID string, sch
 		return "", fmt.Errorf("failed to fetch pipeline with ID %d: %w", scheme.LocalPipelineID, err)
 	}
 
+	empID, _ := ctx.Value("employeeID").(string)
+	formattedEmpID := utils.FormatEmployeeID(empID)
+	if formattedEmpID == "" {
+		formattedEmpID = "system"
+	}
+
+	dailyTimeStr := scheme.DailyBuildTime
+	if dailyTimeStr == "" {
+		dailyTimeStr = "00:30"
+	}
+	stopTime := dailyTimeStr
+	if t, err := time.Parse("15:04", dailyTimeStr); err == nil {
+		stopTime = t.Add(2 * time.Hour).Format("15:04")
+	} else if t, err := time.Parse("15:04:05", dailyTimeStr); err == nil {
+		stopTime = t.Add(2 * time.Hour).Format("15:04:05")
+	}
+
 	payload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
 		"NAME":             scheme.Name,
 		"PIPELINE_ID":      pipelineBusinessID,
 		"SCHEME_ID":        schemeID,
 		"DAILY_BUILD_TIME": scheme.DailyBuildTime,
+		"STOP_TIME":        stopTime,
+		"EMPLOYEE_ID":      formattedEmpID,
 		"PIPELINE_NAME":    pipeline.Name,
 		"SERVICE_ID":       pipeline.ServiceID,
 		"WORKSPACE_ID":     pipeline.WorkspaceID,
