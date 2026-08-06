@@ -46,6 +46,14 @@ func TestRenderJSONTemplate(t *testing.T) {
 	}
 }
 
+func TestReplacePlaceholders_CurrentTime(t *testing.T) {
+	template := `{"created_at": "{CURRENT_TIME}"}`
+	rendered := ReplacePlaceholders(template, map[string]string{})
+	if strings.Contains(rendered, "{CURRENT_TIME}") {
+		t.Errorf("expected {CURRENT_TIME} to be replaced, got %s", rendered)
+	}
+}
+
 func TestRenderJSONTemplate_InvalidJSON(t *testing.T) {
 	template := `{
 		"name": {INVALID_PLACEHOLDER}
