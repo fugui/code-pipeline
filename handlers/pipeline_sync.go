@@ -1011,23 +1011,21 @@ func SyncSingleExecutionSchemeItem(c *gin.Context) {
 
 		case "execution_plan":
 			if schemeTarget.DailyBuild {
-				if schemeTarget.ExecutionPlanID == "" {
-					newPlanID, err := services.CreateExecutionPlanStep(c.Request.Context(), pipeline.PipelineID, &schemeTarget, schemeTarget.ExecutionSchemeID, headers)
-					if err != nil {
-						if HandleSSOExpired(c, err) {
-							return
-						}
-						c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("在三方创建执行计划失败: %v", err)})
+				newPlanID, err := services.CreateExecutionPlanStep(c.Request.Context(), pipeline.PipelineID, &schemeTarget, schemeTarget.ExecutionSchemeID, headers)
+				if err != nil {
+					if HandleSSOExpired(c, err) {
 						return
 					}
-					schemeTarget.ExecutionPlanID = newPlanID
-					if req.LocalID != 0 {
-						database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", req.LocalID).Updates(map[string]interface{}{
-							"daily_build":         true,
-							"execution_plan_id":   newPlanID,
-							"execution_plan_name": schemeTarget.Name,
-						})
-					}
+					c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("在三方创建执行计划失败: %v", err)})
+					return
+				}
+				schemeTarget.ExecutionPlanID = newPlanID
+				if req.LocalID != 0 {
+					database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", req.LocalID).Updates(map[string]interface{}{
+						"daily_build":         true,
+						"execution_plan_id":   newPlanID,
+						"execution_plan_name": schemeTarget.Name,
+					})
 				}
 			} else {
 				if schemeTarget.ExecutionPlanID != "" {
