@@ -29,17 +29,9 @@ const isReservedAttrKey = (keyName: string) => {
 };
 
 const getRandomDailyBuildTime = () => {
-  const totalMinutes = Math.floor(Math.random() * 600);
-  let hour: number;
-  let minute: number;
-  if (totalMinutes < 120) {
-    hour = 22 + Math.floor(totalMinutes / 60);
-    minute = totalMinutes % 60;
-  } else {
-    const offset = totalMinutes - 120;
-    hour = Math.floor(offset / 60);
-    minute = offset % 60;
-  }
+  const totalMinutes = Math.floor(Math.random() * 480);
+  const hour = Math.floor(totalMinutes / 60);
+  const minute = totalMinutes % 60;
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${pad(hour)}:${pad(minute)}`;
 };
