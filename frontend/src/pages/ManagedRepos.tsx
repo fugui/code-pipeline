@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { 
-  GitBranch, Folder, Plus, FolderPlus, Info, Search, Users, AlertCircle, RefreshCw, Send, CheckCircle2, ChevronRight, ChevronDown, Eye, EyeOff, Trash2, Zap, X, Archive
+  GitBranch, Folder, Plus, FolderPlus, Info, Search, Users, AlertCircle, RefreshCw, Send, CheckCircle2, ChevronRight, ChevronDown, Eye, EyeOff, Trash2, Zap, X, Archive, ExternalLink
 } from 'lucide-react'
 
 interface ManagedGroup {
@@ -1089,7 +1089,29 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                       <td style={{ padding: '14px 8px', fontWeight: 600 }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                            <span>{r.name}</span>
+                            {r.http_url ? (
+                              <a
+                                href={r.http_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  color: 'var(--text-main)',
+                                  textDecoration: 'none',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  transition: 'color 0.15s ease'
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.color = '#6366f1')}
+                                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-main)')}
+                                title={`点击在浏览器中打开代码仓: ${r.http_url}`}
+                              >
+                                <span>{r.name}</span>
+                                <ExternalLink size={13} style={{ opacity: 0.6 }} />
+                              </a>
+                            ) : (
+                              <span>{r.name}</span>
+                            )}
                             {r.is_archived && (
                               <span className="badge" style={{ padding: '1px 6px', borderRadius: 4, background: 'rgba(148, 163, 184, 0.2)', color: '#94a3b8', fontSize: 11, fontWeight: 500 }}>
                                 已归档
@@ -1279,7 +1301,29 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                   <span className="badge badge-secondary" style={{ fontSize: 11 }}>Project ID: {activeRepo.id}</span>
                   <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{activeRepo.group?.full_path}</span>
                 </div>
-                <h2 style={{ fontSize: 22, fontWeight: 700, margin: '6px 0 0 0' }}>仓库管控大盘: {activeRepo.name}</h2>
+                <h2 style={{ fontSize: 22, fontWeight: 700, margin: '6px 0 0 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  仓库管控大盘: {activeRepo.http_url ? (
+                    <a
+                      href={activeRepo.http_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        color: 'var(--text-main)',
+                        textDecoration: 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        transition: 'color 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = '#6366f1')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-main)')}
+                      title={`点击在浏览器中打开代码仓: ${activeRepo.http_url}`}
+                    >
+                      <span>{activeRepo.name}</span>
+                      <ExternalLink size={16} style={{ opacity: 0.7 }} />
+                    </a>
+                  ) : activeRepo.name}
+                </h2>
               </div>
               <button 
                 onClick={() => setActiveRepo(null)} 
