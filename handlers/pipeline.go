@@ -273,7 +273,7 @@ func CreateExecutionScheme(c *gin.Context) {
 	if req.DailyBuildTime != "" {
 		scheme.DailyBuildTime = req.DailyBuildTime
 	} else {
-		scheme.DailyBuildTime = "00:30"
+		scheme.DailyBuildTime = utils.GetRandomDailyBuildTime()
 	}
 
 	// 创建一个流水线执行方案， 需要多个步骤
