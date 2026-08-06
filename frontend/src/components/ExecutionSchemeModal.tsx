@@ -748,6 +748,22 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                   />
                 </div>
               </div>
+              <div style={{ 
+                marginTop: 8, 
+                fontSize: 12, 
+                color: '#0284c7', 
+                background: 'rgba(14, 165, 233, 0.08)', 
+                border: '1px solid rgba(14, 165, 233, 0.2)', 
+                borderRadius: 6, 
+                padding: '8px 12px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 6,
+                lineHeight: 1.5
+              }}>
+                <span style={{ fontSize: 14, flexShrink: 0 }}>💡</span>
+                <span><strong>提示：</strong>建议将每日构建时间尽量分散错峰设置，避免高峰期并发集中导致资源争抢和流水线概率性构建失败。</span>
+              </div>
             </div>
 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 200 }}>
