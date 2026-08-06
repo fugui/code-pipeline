@@ -23,11 +23,9 @@ func TestGetRandomDailyBuildTime(t *testing.T) {
 			t.Fatalf("Minute out of bounds [0, 59]: %d in %s", minute, timeStr)
 		}
 
-		// Hour must be in 22..23 or 0..7
-		isNight := hour >= 22 && hour <= 23
-		isMorning := hour >= 0 && hour <= 7
-		if !isNight && !isMorning {
-			t.Fatalf("Hour out of allowed range [22-23, 0-7]: %d in %s", hour, timeStr)
+		// Hour must be in 0..7
+		if hour < 0 || hour > 7 {
+			t.Fatalf("Hour out of allowed range [0-7]: %d in %s", hour, timeStr)
 		}
 	}
 }
