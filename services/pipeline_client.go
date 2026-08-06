@@ -851,7 +851,7 @@ func CreateExecutionPlanStep(ctx context.Context, pipelineBusinessID string, sch
 
 	dailyTimeStr := scheme.DailyBuildTime
 	if dailyTimeStr == "" {
-		dailyTimeStr = "00:30"
+		dailyTimeStr = utils.GetRandomDailyBuildTime()
 	}
 	stopTime := dailyTimeStr
 	if t, err := time.Parse("15:04", dailyTimeStr); err == nil {

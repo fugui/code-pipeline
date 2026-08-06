@@ -28,6 +28,22 @@ const isReservedAttrKey = (keyName: string) => {
          k === 'build_type';
 };
 
+const getRandomDailyBuildTime = () => {
+  const totalMinutes = Math.floor(Math.random() * 600);
+  let hour: number;
+  let minute: number;
+  if (totalMinutes < 120) {
+    hour = 22 + Math.floor(totalMinutes / 60);
+    minute = totalMinutes % 60;
+  } else {
+    const offset = totalMinutes - 120;
+    hour = Math.floor(offset / 60);
+    minute = offset % 60;
+  }
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(hour)}:${pad(minute)}`;
+};
+
 export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   isAdmin = true,
   visible,
@@ -57,7 +73,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
 
   const [mrTrigger, setMrTrigger] = React.useState(true);
   const [dailyBuild, setDailyBuild] = React.useState(true);
-  const [dailyBuildTime, setDailyBuildTime] = React.useState('00:30');
+  const [dailyBuildTime, setDailyBuildTime] = React.useState(getRandomDailyBuildTime);
   const [buildTypes, setBuildTypes] = React.useState<string[]>(['SCH']);
   const lastCustomAttrsRef = React.useRef('');  const [searchedRepos, setSearchedRepos] = React.useState<any[]>(repos)
 
@@ -119,7 +135,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
     if (visible && activeScheme) {
       const hasMrTrigger = activeScheme.hasOwnProperty('mr_trigger') && activeScheme.mr_trigger !== null ? (String(activeScheme.mr_trigger) === 'true') : true;
       const hasDailyBuild = activeScheme.hasOwnProperty('daily_build') && activeScheme.daily_build !== null ? (String(activeScheme.daily_build) === 'true') : true;
-      const hasDailyBuildTime = activeScheme.daily_build_time || '00:30';
+      const hasDailyBuildTime = activeScheme.daily_build_time || getRandomDailyBuildTime();
 
       setMrTrigger(hasMrTrigger);
       setDailyBuild(hasDailyBuild);
