@@ -27,15 +27,15 @@ func ReplacePlaceholders(templateStr string, vars map[string]string) string {
 	return rendered
 }
 
-// RenderJSONTemplate 统一将包含 {VAR} 占位符的配置模板解析校验，并反序列化为标准的 Go map[string]interface{}
-func RenderJSONTemplate(templateStr string, vars map[string]string) (map[string]interface{}, error) {
+// RenderJSONTemplate 统一将包含 {VAR} 占位符的配置模板解析校验，并反序列化为标准的 Go 对象 (map[string]interface{} 或 []interface{} 等)
+func RenderJSONTemplate(templateStr string, vars map[string]string) (interface{}, error) {
 	rendered := ReplacePlaceholders(templateStr, vars)
 
-	var resultMap map[string]interface{}
-	if err := json.Unmarshal([]byte(rendered), &resultMap); err != nil {
+	var result interface{}
+	if err := json.Unmarshal([]byte(rendered), &result); err != nil {
 		log.Printf("[RenderJSONTemplate] Failed to unmarshal json config template: %v | Rendered Body: %s\n", err, rendered)
 		return nil, fmt.Errorf("请求模板配置格式异常，请联系系统管理员检查处理")
 	}
 
-	return resultMap, nil
+	return result, nil
 }
