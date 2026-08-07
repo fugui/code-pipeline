@@ -89,7 +89,7 @@ func SendHTTPRequest(ctx context.Context, method, rawURL string, payload map[str
 
 	req.Header = make(http.Header)
 	if payload != nil {
-		req.Header.Set("Content-Type", "application/json")
+		req.Header["content-type"] = []string{"application/json"}
 	}
 
 	for k, v := range opt.Headers {

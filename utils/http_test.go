@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"net/http/httptest"
 	"os"
 	"strings"
@@ -117,5 +118,43 @@ func TestLogHTTPErrorDetails(t *testing.T) {
 	output := logBuf.String()
 	if !strings.Contains(output, "-d '{\"hello\":\"world\"}'") {
 		t.Errorf("expected log output to contain request body in curl command, got: %s", output)
+	}
+}
+
+func TestSendHTTPRequest_HeaderCase(t *testing.T) {
+	var rawRequestHeaders string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		dump, err := httputil.DumpRequest(r, false)
+		if err == nil {
+			rawRequestHeaders = string(dump)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	payload := map[string]interface{}{"key": "val"}
+	_, err := SendHTTPRequest(
+		context.Background(),
+		"POST",
+		server.URL,
+		payload,
+		HTTPOptions{
+			Headers: map[string]string{
+				"Content-Type": "application/json",
+			},
+		},
+		[]int{http.StatusOK},
+		"TestHeaderCase",
+	)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// 验证请求报文中 Content-Type 只出现一次（没有重复 Header）
+	count := strings.Count(strings.ToLower(rawRequestHeaders), "content-type:")
+	if count != 1 {
+		t.Errorf("expected exactly 1 'content-type:' header in raw HTTP request, but found %d times:\n%s", count, rawRequestHeaders)
 	}
 }
