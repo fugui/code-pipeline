@@ -182,7 +182,15 @@ func SyncUpdateMRBindingRemoteAPIG(ctx context.Context, pipelineBusinessID strin
 		return fmt.Errorf("failed to render template: %w", err)
 	}
 
-	bodyPayload["id"] = scheme.MRBindingID
+	if m, ok := bodyPayload.(map[string]interface{}); ok {
+		m["id"] = scheme.MRBindingID
+	} else if arr, ok := bodyPayload.([]interface{}); ok {
+		for _, item := range arr {
+			if m, ok := item.(map[string]interface{}); ok {
+				m["id"] = scheme.MRBindingID
+			}
+		}
+	}
 
 	_, err = utils.SendHTTPRequest(ctx, "PUT", apiURLStr, bodyPayload, utils.HTTPOptions{
 		Headers: headers,

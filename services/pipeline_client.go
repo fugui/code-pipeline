@@ -659,7 +659,15 @@ func SyncUpdateMRBindingRemote(ctx context.Context, scheme *models.ExecutionSche
 		return fmt.Errorf("failed to render template: %w", err)
 	}
 
-	payload["id"] = scheme.MRBindingID
+	if m, ok := payload.(map[string]interface{}); ok {
+		m["id"] = scheme.MRBindingID
+	} else if arr, ok := payload.([]interface{}); ok {
+		for _, item := range arr {
+			if m, ok := item.(map[string]interface{}); ok {
+				m["id"] = scheme.MRBindingID
+			}
+		}
+	}
 
 	log.Printf("[SyncUpdateMRBinding] Calling Modify MR Binding. URL: %s", modifyURL)
 
@@ -806,7 +814,15 @@ func SyncUpdateExecutionSchemeRemote(ctx context.Context, scheme *models.Executi
 	}
 
 	if scheme.ExecutionSchemeID != "" {
-		payload["id"] = scheme.ExecutionSchemeID
+		if m, ok := payload.(map[string]interface{}); ok {
+			m["id"] = scheme.ExecutionSchemeID
+		} else if arr, ok := payload.([]interface{}); ok {
+			for _, item := range arr {
+				if m, ok := item.(map[string]interface{}); ok {
+					m["id"] = scheme.ExecutionSchemeID
+				}
+			}
+		}
 	}
 
 	log.Printf("[SyncUpdateExecutionScheme] Calling Modify Execution Scheme. URL: %s", modifyURL)

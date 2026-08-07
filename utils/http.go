@@ -57,8 +57,8 @@ func LogHTTPErrorDetails(contextMsg string, req *http.Request, statusCode int, r
 	log.Printf("[%s] Remote server returned status %d. Response Body: %s\n", contextMsg, statusCode, string(respBody))
 }
 
-// SendHTTPRequest 封装统一的 HTTP 请求发送与错误处理逻辑，Payload 强类型限定为 map[string]interface{} 或 nil
-func SendHTTPRequest(ctx context.Context, method, rawURL string, payload map[string]interface{}, opt HTTPOptions, expectedStatuses []int, contextMsg string) ([]byte, error) {
+// SendHTTPRequest 封装统一的 HTTP 请求发送与错误处理逻辑，Payload 支持 map[string]interface{}、[]interface{} 等可 JSON 序列化的 Go 对象或 nil
+func SendHTTPRequest(ctx context.Context, method, rawURL string, payload interface{}, opt HTTPOptions, expectedStatuses []int, contextMsg string) ([]byte, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse URL %s: %v", rawURL, err)

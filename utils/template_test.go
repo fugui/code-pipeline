@@ -26,23 +26,61 @@ func TestRenderJSONTemplate(t *testing.T) {
 		t.Fatalf("RenderJSONTemplate failed: %v", err)
 	}
 
-	if result["name"] != "my-repo" {
-		t.Errorf("expected name 'my-repo', got %v", result["name"])
-	}
-	if result["group_id"] != "123" {
-		t.Errorf("expected group_id '123', got %v", result["group_id"])
-	}
-	if result["description"] != "单元测试描述" {
-		t.Errorf("expected description '单元测试描述', got %v", result["description"])
+	resultMap, ok := result.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected map[string]interface{}, got %T", result)
 	}
 
-	tagList, ok := result["tag_list"].([]interface{})
+	if resultMap["name"] != "my-repo" {
+		t.Errorf("expected name 'my-repo', got %v", resultMap["name"])
+	}
+	if resultMap["group_id"] != "123" {
+		t.Errorf("expected group_id '123', got %v", resultMap["group_id"])
+	}
+	if resultMap["description"] != "单元测试描述" {
+		t.Errorf("expected description '单元测试描述', got %v", resultMap["description"])
+	}
+
+	tagList, ok := resultMap["tag_list"].([]interface{})
 	if !ok {
-		t.Fatalf("expected tag_list to be []interface{}, got %T", result["tag_list"])
+		t.Fatalf("expected tag_list to be []interface{}, got %T", resultMap["tag_list"])
 	}
 	expectedTags := []interface{}{"Go", "CodeShield"}
 	if !reflect.DeepEqual(tagList, expectedTags) {
 		t.Errorf("expected tag_list %v, got %v", expectedTags, tagList)
+	}
+}
+
+func TestRenderJSONTemplate_Array(t *testing.T) {
+	template := `[
+		{
+			"branches": "{BRANCHES}",
+			"pipelineId": "{PIPELINE_ID}"
+		}
+	]`
+	vars := map[string]string{
+		"BRANCHES":    "FeaLpsSplitMC",
+		"PIPELINE_ID": "8572814944d249ada37432a0f45a1131",
+	}
+
+	result, err := RenderJSONTemplate(template, vars)
+	if err != nil {
+		t.Fatalf("RenderJSONTemplate failed: %v", err)
+	}
+
+	arr, ok := result.([]interface{})
+	if !ok {
+		t.Fatalf("expected []interface{}, got %T", result)
+	}
+	if len(arr) != 1 {
+		t.Fatalf("expected array length 1, got %d", len(arr))
+	}
+	itemMap, ok := arr[0].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected element map[string]interface{}, got %T", arr[0])
+	}
+	if itemMap["branches"] != "FeaLpsSplitMC" {
+		t.Errorf("expected branches 'FeaLpsSplitMC', got %v", itemMap["branches"])
 	}
 }
 
