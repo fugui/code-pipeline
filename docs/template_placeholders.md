@@ -19,7 +19,8 @@
    - [创建代码检查任务 (Create Checker Task)](#23-创建代码检查任务-create_checker_task_body)
    - [创建每日/定时构建 (Create Execution Plan)](#24-创建每日定时构建-create_execution_plan_body)
    - [Webhook 注册 (Create Webhook)](#25-webhook-注册-create_webhook_body)
-3. [模板使用最佳实践与示例](#3-模板使用最佳实践与示例)
+   - [代码仓设置更新 (Update Repo Settings)](#26-代码仓设置更新-update_repo_settings_body)
+3. [模板使用最佳实践与底层机制](#3-模板使用最佳实践与底层机制)
 
 ---
 
@@ -148,6 +149,7 @@ codehub:
 
 | 占位符 | 说明 |
 | :--- | :--- |
+| `{NAME}` | 合并请求绑定名称/执行方案名称 |
 | `{PIPELINE_ID}` | 底层流水线 ID |
 | `{SCHEME_ID}` | 执行方案 ID |
 | `{REPO_URL}` | 关联的代码仓克隆 URL |
@@ -174,12 +176,12 @@ codehub:
 
 | 占位符 | 说明 |
 | :--- | :--- |
+| `{NAME}` / `{PIPELINE_NAME}` | 定时构建计划名称 / 所属流水线名称 |
 | `{PIPELINE_ID}` | 流水线 ID |
 | `{SCHEME_ID}` | 执行方案 ID |
 | `{DAILY_BUILD_TIME}` / `{TIME}` | 定时构建的触发时间表达式（如 `"02:00"`） |
 | `{STOP_TIME}` | 定时构建的结束/停止时间表达式（基于触发时间增加 2 小时，如 `"04:00"`） |
 | `{EMPLOYEE_ID}` | 操作员工工号/用户 ID（默认为 `"system"`） |
-| `{PIPELINE_NAME}` / `{NAME}` | 定时构建计划名称 |
 | `{SERVICE_ID}` | 所属服务 ID |
 | `{WORKSPACE_ID}` | 所属工作区 ID |
 
@@ -191,20 +193,30 @@ codehub:
 | 占位符 | 说明 |
 | :--- | :--- |
 | `{WEBHOOK_URL}` | 本系统接收 Webhook 事件的回调地址 |
-| `{REPO_ID}` | 代码仓 ID |
+| `{REPO_ID}` / `{PROJECT_ID}` | 代码仓远程项目 ID |
 
 ---
 
-## 3. 模板使用最佳实践与示例
+### 2.6 代码仓设置更新 (`update_repo_settings_body`)
+对应配置项：`pipeline_system.update_repo_settings_body`
 
-1. **类型匹配**：
+| 占位符 | 说明 |
+| :--- | :--- |
+| `{REPO_ID}` / `{PROJECT_ID}` | 代码仓远程项目 ID |
+
+---
+
+## 3. 模板使用最佳实践与底层机制
+
+1. **类型匹配与语法校验**：
+   - 系统底层引入 `utils.RenderJSONTemplate` 统一管理模板渲染。所有替换后的模板会自动反序列化解析并进行 JSON 语法合法性校验。
    - 字符串类型占位符（如 `{REPO_NAME}`, `{GROUP_PATH}`, `{DESCRIPTION}`），在 JSON 模板中必须加双引号：`"{REPO_NAME}"`。
    - 数字与对象/数组类型占位符（如 `{GROUP_ID}`, `{ACCESS_LEVEL}`, `{TAG_LIST}`）：
      - 数字类型直接保留裸值：`"group_id": {GROUP_ID}` 或 `"{GROUP_ID}"`。
      - 数组类型用方括号包裹：`"tag_list": [{TAG_LIST}]`。若 `tags` 为空，系统替换为 `""` 后将自动规整为合法的 JSON 空数组 `[]`；若带有标签，则替换为 `["tag1", "tag2", "CodeShield"]`。
 
-2. **通用系统占位符**：
-   - `{CURRENT_TIME}`：系统所有配置模板均通用自动支持 `{CURRENT_TIME}` 占位符，自动替换为当前系统时间格式字符串（例如 `"2026-08-06 09:55:18"`）。
+2. **全局通用系统占位符**：
+   - `{CURRENT_TIME}`：系统所有配置模板均由 `utils.ReplacePlaceholders` 自动支持 `{CURRENT_TIME}` 占位符，统一替换为当前系统时间格式字符串（格式例如 `"2026-08-08 07:10:00"`）。
 
 3. **热更新与动态调整**：
-   修改 `config.yaml` 中的模板后，无需重启 Go 核心服务，可通过系统重载或新触发请求即刻生效。
+   - 修改 `config.yaml` 中的模板后，无需重启 Go 核心服务，可通过系统配置重载或新触发请求即刻生效。
