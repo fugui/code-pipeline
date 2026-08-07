@@ -55,22 +55,22 @@ func GetManagedApprovals(c *gin.Context) {
 // CreateManagedApproval 提交代码仓或保护分支创建申请
 func CreateManagedApproval(c *gin.Context) {
 	var req struct {
-		Type           string   `json:"type" binding:"required"` // "repo_create" | "protected_branch" | "batch_branch"
-		ManagedGroupID uint     `json:"managed_group_id"`
-		RepoName       string   `json:"repo_name"`
-		RepoID         *uint    `json:"repo_id"`
-		TargetBranch   string   `json:"target_branch"`
-		BaseBranch     string   `json:"base_branch"`
-		MultiRepoIDs   []uint   `json:"multi_repo_ids"`
-		Reason         string   `json:"reason"`
-		OwnerID        *uint    `json:"owner_id"`
-		SubsystemID    *uint    `json:"subsystem_id"`
-		DepartmentID   *uint    `json:"department_id"`
-		Language       string   `json:"language"`
-		MachineType    string   `json:"machine_type"`
-		Tags           string   `json:"tags"`
-		Description    string   `json:"description"`
-		DefaultBranch  string   `json:"default_branch"`
+		Type           string `json:"type" binding:"required"` // "repo_create" | "protected_branch" | "batch_branch"
+		ManagedGroupID uint   `json:"managed_group_id"`
+		RepoName       string `json:"repo_name"`
+		RepoID         *uint  `json:"repo_id"`
+		TargetBranch   string `json:"target_branch"`
+		BaseBranch     string `json:"base_branch"`
+		MultiRepoIDs   []uint `json:"multi_repo_ids"`
+		Reason         string `json:"reason"`
+		OwnerID        *uint  `json:"owner_id"`
+		SubsystemID    *uint  `json:"subsystem_id"`
+		DepartmentID   *uint  `json:"department_id"`
+		Language       string `json:"language"`
+		MachineType    string `json:"machine_type"`
+		Tags           string `json:"tags"`
+		Description    string `json:"description"`
+		DefaultBranch  string `json:"default_branch"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {

@@ -41,7 +41,7 @@ type Subsystem struct {
 	Identifier   string    `gorm:"not null;default:''" json:"identifier"`
 	NameCn       string    `gorm:"not null;default:''" json:"name_cn"`
 	NameEn       string    `gorm:"not null;default:''" json:"name_en"`
-	Name         string    `gorm:"-" json:"name"` // 兼容显示字段
+	Name         string    `gorm:"-" json:"name"`                            // 兼容显示字段
 	Type         string    `gorm:"not null;default:'subsystem'" json:"type"` // "subsystem" | "group" | "module"
 	ParentID     *uint     `json:"parent_id"`
 	Subdirectory string    `gorm:"default:''" json:"subdirectory"`
@@ -359,4 +359,3 @@ type ManagedProtectedBranchRule struct {
 	CreatorID           uint              `json:"creator_id"`
 	CreatedAt           time.Time         `json:"created_at"`
 }
-
