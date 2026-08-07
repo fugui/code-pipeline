@@ -262,7 +262,7 @@ func TestRegisterWebhook(t *testing.T) {
 	if receivedPostPath != "/projects/project-123/hooks" {
 		t.Errorf("expected POST path '/projects/project-123/hooks', got %q", receivedPostPath)
 	}
-	if receivedPostPayload != `{"url":"http://callback.local","repo_id":"project-123"}` {
+	if receivedPostPayload != `{"repo_id":"project-123","url":"http://callback.local"}` {
 		t.Errorf("expected POST body replacement, got %q", receivedPostPayload)
 	}
 
@@ -272,7 +272,7 @@ func TestRegisterWebhook(t *testing.T) {
 	if receivedPutPath != "/projects/project-123/settings" {
 		t.Errorf("expected PUT path '/projects/project-123/settings', got %q", receivedPutPath)
 	}
-	if receivedPutPayload != `{"project_id":"project-123","enabled":true}` {
+	if receivedPutPayload != `{"enabled":true,"project_id":"project-123"}` {
 		t.Errorf("expected PUT body replacement, got %q", receivedPutPayload)
 	}
 }
