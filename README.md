@@ -1,16 +1,17 @@
 # Code Pipeline 流水线管理与检查系统 (Remote)
 
-`code-pipeline` 是 CodeBench 微前端集成工作台下的**持续集成与交付流水线管理**子系统。该项目作为微前端 Remote 应用，通过 Vite Module Federation (模块联邦) 动态拼装入 CodeBench Portal 宿主中运行。
+`code-pipeline` 是 CodeBench 微前端集成工作台下的**持续集成与交付流水线管理及代码仓合规管控**子系统。该项目作为微前端 Remote 应用，通过 Vite Module Federation (模块联邦) 动态拼装入 CodeBench Portal 宿主中运行。
 
-本系统定位为**第三方 CI/CD 流水线的统一交互与管理控制台**。它旨在为研发人员提供统一的代码仓分支流水线绑定界面、三方运行日志实时穿透查询、以及项目集成指标的大盘看板。
+本系统定位为**第三方 CI/CD 流水线的统一交互控制台与代码仓合规治理平台**。它旨在为研发人员提供统一的代码仓分支流水线绑定界面、三方运行日志实时穿透查询、每日构建错峰调度管理，以及全平台代码仓合规巡检与大盘看板。
 
 ---
 
 ## 🎯 核心设计目标
 
-1. **内聚的流水线配置管理**：面向多分支研发场景，将流水线执行方案（Execution Scheme）与代码仓多分支进行精细化绑定，消除各独立子系统重复录入仓库数据的冗余。
+1. **内聚的流水线配置管理**：面向多分支研发场景，将流水线执行方案（Execution Scheme）与代码仓多分支进行精细化绑定，消除各独立子系统重复录入仓库数据的冗余。支持每日构建时间随机错峰打散（00:00 - 08:00），优化集群构建压力。
 2. **轻量与高响应度**：本地不存储海量的执行日志，通过高性能 API 代理机制实时穿透查询第三方 CI/CD 系统的实际运行日志和输出流，极大地减轻本地数据库的存储负担。
-3. **数据一致性保护**：采用 PostgreSQL 统一数据库共享架构。全平台微服务直连同一个数据库与 `repositories` / `users` / `departments` 共享主数据表，保障数据实时强一致。
+3. **全方位的代码仓合规性管控**：构建内置合规巡检引擎，涵盖分支保护、工程规范、责任人归属、分支健康度、元信息规范及权限管控 6 大维度 11 项指标，自动生成仓库合规等级评分（A/B/C/D）与巡检报告。
+4. **数据一致性保护**：采用 PostgreSQL 统一数据库共享架构。全平台微服务直连同一个数据库与 `repositories` / `users` / `departments` 共享主数据表，保障数据实时强一致。
 
 ---
 
@@ -21,8 +22,9 @@ graph TD
     CP[code-pipeline 子系统] -- "直连共享" --> PG[(PostgreSQL 数据库)]
     ES[Execution Scheme] -->|物理外键| PG
     ES -->|物理外键| PL[(Pipeline 实体)]
-    CP_Web[前端 Repos.tsx/Dashboard.tsx] -- "最新日志请求" --> CP_API[后端代理 Handler]
-    CP_API -- "实时透传 API" --> Remote_CI[第三方 CI/CD 引擎]
+    CP_Engine[合规巡检引擎 Compliance Engine] -->|巡检报告快照| PG
+    CP_Web[前端 Dashboard/Repos/Management] -- "实时透传 API" --> CP_API[后端 API Handler]
+    CP_API -- "日志实时透传" --> Remote_CI[第三方 CI/CD 引擎]
 ```
 
 ### 1. 共享主数据模型
@@ -39,7 +41,19 @@ graph TD
 *   **保护分支规则**：支持配置分支模式匹配（如 `release/*`）的强制权限规则，包括禁止 Force Push 与要求 MR 审评。
 *   **全员审批流**：建仓申请、保护分支配置变更等操作均需通过审批单（`ManagedRepoApproval`）流程。
 *   **跨仓特性分支一键同步**：支持一次选定多个代码仓与基准分支，批量拉起特性分支，并记录批次内各仓拉起结果（`ManagedBatchBatchLog`）。
-*   **模板占位符配置规范**：完整支持的 HTTP Body 请求模板与 URL 占位符（如 `{REPO_NAME}`, `{GROUP_ID}`, `{TAG_LIST}`, `{DESCRIPTION}` 等）详细说明请参阅 [template_placeholders.md](file:///home/fugui/codes/code-pipeline/docs/template_placeholders.md)。
+*   **模板占位符配置规范**：完整支持 HTTP Body 请求模板与 URL 占位符（如 `{REPO_NAME}`, `{GROUP_ID}`, `{TAG_LIST}`, `{CURRENT_TIME}` 等），详细说明请参阅 [template_placeholders.md](file:///home/fugui/codes/code-pipeline/docs/template_placeholders.md)。
+
+### 4. 代码仓合规性管控体系
+系统提供全方位的代码仓合规治理机制：
+*   **6 大维度 11 项自动巡检**：
+    *   **分支保护**：默认分支保护检查、保护分支覆盖率
+    *   **工程规范**：代码检查任务绑定、流水线/执行方案绑定
+    *   **责任归属**：仓库负责人设置、所属部门/子系统关联
+    *   **分支健康**：未合并僵死分支上限控制、已合并滞留分支清理提示
+    *   **元信息规范**：仓库描述与标签完备度
+    *   **权限管控**：Owner 级别高权限成员数量管控
+*   **全局统一合规基线**：管理员可统一设定各项检测规则的启停与阈值参数，系统根据扣分规则实时计算仓库得分并划分等级（**A 级 ≥ 90分**、**B 级 75-89分**、**C 级 60-74分**、**D 级 < 60分**）。
+*   **合规 Dashboard 看板**：提供全站合规率 KPI 卡片、合规等级分布图表、僵死分支 Top5 榜单及高危仓库治理指引。
 
 ---
 
@@ -86,8 +100,36 @@ graph TD
 | **Username** | String | 访问代码仓凭证用户名 |
 | **Password** | String | 访问代码仓凭证密码 |
 | **Languages** | String | 选用的编程语言（如 `C/C++,Python`） |
+| **DailyBuildTime** | String | 每日构建随机错峰触发时间 (默认 00:00 - 08:00) |
 | **CodeCheckerTaskID** | String | 代码静态检查工具任务 ID |
 | **CustomAttributes** | String (JSON) | 自定义拓展属性（JSON 格式文本） |
+
+### 4. 合规基线模板 (ComplianceBaseline)
+全局统一的代码仓合规检查基线规则配置实体。
+
+| 字段名称 | 类型 | 描述 |
+| :--- | :--- | :--- |
+| **ID** | Integer | 物理主键 |
+| **Name** | String | 基线模板名称（如 `全局通用代码仓合规基线`） |
+| **Description** | String | 详细规则描述 |
+| **IsDefault** | Boolean | 是否为默认应用的全局基线 |
+| **Rules** | JSON | 包含 6 大维度 11 项规则的状态与阈值 JSON 数组 |
+
+### 5. 仓库合规报告 (RepoComplianceReport)
+被管仓自动巡检后生成的合规性评分快照记录。
+
+| 字段名称 | 类型 | 描述 |
+| :--- | :--- | :--- |
+| **ID** | Integer | 物理主键 |
+| **ManagedRepositoryID**| Integer | 关联的被管代码仓 ID (物理外键) |
+| **BaselineID** | Integer | 绑定的合规基线 ID (物理外键) |
+| **Score** | Integer | 合规得分 (0 - 100) |
+| **Grade** | String | 合规等级 (A / B / C / D) |
+| **TotalChecks** | Integer | 巡检项目总数 |
+| **PassedChecks** | Integer | 通过检验数量 |
+| **FailedChecks** | Integer | 未通过检测数量 |
+| **Details** | JSON | 详细检查项状态及期望与实测差异 JSON 数组 |
+| **AuditedAt** | DateTime | 最近一次扫描完成时间 |
 
 ---
 
@@ -120,6 +162,19 @@ code_bench:
 ---
 
 ## 🏷️ 版本历史 (Release History)
+
+### v0.7.0 (2026-08-09)
+*   **新增代码仓合规性管控体系与看板**：
+    - 新增 6 大维度 11 项检查能力的合规巡检引擎（[compliance_engine.go](file:///home/fugui/codes/code-pipeline/services/compliance_engine.go)），覆盖分支保护、工程规范、责任归属、分支健康度、元信息规范及权限管控。
+    - 新增全局统一合规基线配置与后端 API (`GET/PUT /api/managed-repos/compliance/baseline`)。
+    - 新增合规管控 Dashboard 页面，实时呈现 KPI 卡片、合规等级分布（A/B/C/D 级）以及僵死分支 Top5 风险大盘。
+*   **管理中心与菜单结构优化重构**：
+    - 重构管理中心子菜单布局，划分为“构建与流水线管理”和“代码仓合规基线配置”等模块。
+*   **每日构建时间随机打散与错峰调度**：
+    - 每日构建触发时间升级为随机打散在 `00:00` 至 `08:00` 间触发，防止高峰期并发构建拥堵。
+*   **模板占位符拓展与解析增强**：
+    - 通用模板引擎支持 `{CURRENT_TIME}` 格式化时间戳占位符。
+    - 修复数组类型 JSON 模板反序列化及 APIG Header 兼容性问题。
 
 ### v0.6.0 (2026-08-01)
 *   **被管代码仓与分支管控能力全面升级**：引入嵌套组结构的被管代码仓管理模块，支持仓库归档、成员权限、分支健康度监控、保护分支规则配置等全集能力。
@@ -158,4 +213,3 @@ code_bench:
 
 ### v0.2.0 (2026-06-08)
 *   **微前端集成与日志透传**：支持 Module Federation 嵌入 Host 宿主，并实现无本地日志存储的高性能日志实时代理查询。
-
