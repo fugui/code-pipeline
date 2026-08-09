@@ -158,7 +158,7 @@ export const ManagedCompliance: React.FC<ManagedComplianceProps> = ({ isAdmin = 
         <div>
           <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <Shield size={24} style={{ color: '#6366f1' }} />
-            全局合规基线配置
+            代码仓合规基线配置
           </h2>
           <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: 14 }}>
             全公司/全域代码仓统一适用的合规检查基准规范
