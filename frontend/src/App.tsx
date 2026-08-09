@@ -621,7 +621,7 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
                 className={`btn ${currentView === 'pipeline-config' ? 'btn-primary' : 'btn-secondary'}`} 
                 style={{ justifyContent: 'flex-start', width: '100%' }}
               >
-                <Activity size={16} /> 系统配置
+                <Activity size={16} /> 构建与流水线管理
               </button>
             </nav>
           </div>
