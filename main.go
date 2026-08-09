@@ -33,6 +33,9 @@ func main() {
 	// 2. 初始化数据库
 	database.InitDB()
 
+	// 初始化默认合规基线模板
+	services.EnsureDefaultBaseline()
+
 	// 初始化 Git 平台基准地址配置
 	services.InitGitPlatform()
 
@@ -104,6 +107,13 @@ func main() {
 			api.GET("/managed-repos/batch-branch-logs", handlers.GetManagedBatchBranchLogs)
 			api.GET("/managed-repos/protected-rules", handlers.GetProtectedBranchRules)
 
+			// 合规管控只读接口
+			api.GET("/managed-repos/compliance/baselines", handlers.GetComplianceBaselines)
+			api.GET("/managed-repos/compliance/baselines/:id", handlers.GetComplianceBaseline)
+			api.GET("/managed-repos/compliance/default-rules", handlers.GetDefaultComplianceRules)
+			api.GET("/managed-repos/:id/compliance/report", handlers.GetRepoComplianceReport)
+			api.GET("/managed-repos/dashboard/stats", handlers.GetManagedDashboardStats)
+
 			// 流水线配置与方案只读/触发接口
 			api.GET("/pipelines", handlers.GetPipelines)
 			api.GET("/execution-schemes", handlers.GetExecutionSchemes)
@@ -135,6 +145,14 @@ func main() {
 				admin.POST("/managed-acl", handlers.ConfigureManagedACL)
 				admin.POST("/managed-repos/:id/branches_audit/trigger", handlers.TriggerManagedRepoBranchAudit)
 				admin.POST("/managed-repos/:id/branches/cleanup", handlers.CleanupManagedBranches)
+
+				// 合规基线管理与巡检路由
+				admin.POST("/managed-repos/compliance/baselines", handlers.CreateComplianceBaseline)
+				admin.PUT("/managed-repos/compliance/baselines/:id", handlers.UpdateComplianceBaseline)
+				admin.DELETE("/managed-repos/compliance/baselines/:id", handlers.DeleteComplianceBaseline)
+				admin.POST("/managed-repos/compliance/audit", handlers.TriggerComplianceAudit)
+				admin.POST("/managed-repos/:id/compliance/audit", handlers.TriggerSingleRepoComplianceAudit)
+				admin.POST("/managed-repos/:id/compliance/remote-check", handlers.TriggerRepoRemoteProtectionCheck)
 
 				// 流水线配置写/管控接口
 				admin.POST("/pipelines", handlers.CreatePipeline)

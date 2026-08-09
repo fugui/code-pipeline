@@ -246,3 +246,77 @@ export interface ManagedProtectedBranchRule {
   created_at: string
 }
 
+// 合规检查规则
+export interface ComplianceRule {
+  dimension: string
+  check_key: string
+  label: string
+  severity: 'critical' | 'important' | 'suggestion'
+  enabled: boolean
+  threshold: number
+}
+
+// 合规基线模板
+export interface ComplianceBaseline {
+  id: number
+  name: string
+  description: string
+  is_default: boolean
+  rules: ComplianceRule[]
+  group_ids: number[]
+  creator_id: number
+  created_at: string
+  updated_at: string
+}
+
+// 合规检查结果详情
+export interface ComplianceCheckResult {
+  check_key: string
+  dimension: string
+  label: string
+  severity: string
+  passed: boolean
+  current_value: string
+  expected_value: string
+}
+
+// 仓库合规报告
+export interface RepoComplianceReport {
+  id: number
+  managed_repository_id: number
+  baseline_id: number
+  baseline?: ComplianceBaseline
+  score: number
+  grade: 'A' | 'B' | 'C' | 'D'
+  total_checks: number
+  passed_checks: number
+  failed_checks: number
+  details: ComplianceCheckResult[]
+  audited_at: string
+  created_at: string
+}
+
+// 管控 Dashboard 统计数据
+export interface ManagedDashboardStats {
+  total_repos: number
+  active_repos: number
+  archived_repos: number
+  hidden_repos: number
+  total_groups: number
+  repos_with_owner: number
+  webhook_registered: number
+  repos_with_protection: number
+  pending_approvals: number
+  total_stale_unmerged: number
+  total_stale_merged: number
+  compliance_total_reports: number
+  compliance_avg_score: number
+  compliance_rate: number
+  compliance_grade_a: number
+  compliance_grade_b: number
+  compliance_grade_c: number
+  compliance_grade_d: number
+  stale_top5: Array<{ repo_id: number; repo_name: string; stale_unmerged_count: number }>
+  compliance_bottom5: Array<{ repo_id: number; repo_name: string; score: number; grade: string }>
+}
+
