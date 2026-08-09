@@ -274,7 +274,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
       {/* Top Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>系统配置</h2>
+          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>构建与流水线管理</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
             集中管理持续集成流水线系统参数与基础配置，支持查看、导入、编辑及同步三方流水线控制台。
           </p>
