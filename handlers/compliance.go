@@ -14,27 +14,78 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetGlobalComplianceBaseline 获取全局唯一的合规基线配置
+func GetGlobalComplianceBaseline(c *gin.Context) {
+	baseline, err := services.GetGlobalBaseline()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取全局合规基线失败"})
+		return
+	}
+	c.JSON(http.StatusOK, baseline)
+}
+
+// UpdateGlobalComplianceBaseline 更新全局合规基线配置
+func UpdateGlobalComplianceBaseline(c *gin.Context) {
+	baseline, err := services.GetGlobalBaseline()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取全局合规基线失败"})
+		return
+	}
+
+	var req struct {
+		Name        string                  `json:"name"`
+		Description string                  `json:"description"`
+		Rules       []models.ComplianceRule `json:"rules"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求格式"})
+		return
+	}
+
+	updates := map[string]interface{}{
+		"updated_at": time.Now(),
+	}
+
+	if req.Name != "" {
+		updates["name"] = req.Name
+	}
+	if req.Description != "" {
+		updates["description"] = req.Description
+	}
+	if len(req.Rules) > 0 {
+		rulesJSON, err := json.Marshal(req.Rules)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "序列化规则失败"})
+			return
+		}
+		updates["rules"] = rulesJSON
+	}
+
+	if err := database.DB.Model(baseline).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新合规基线失败"})
+		return
+	}
+
+	database.DB.First(baseline, baseline.ID)
+	c.JSON(http.StatusOK, baseline)
+}
+
 // GetComplianceBaselines 获取所有合规基线模板
 func GetComplianceBaselines(c *gin.Context) {
-	var baselines []models.ComplianceBaseline
-	if err := database.DB.Order("is_default DESC, id ASC").Find(&baselines).Error; err != nil {
+	baseline, err := services.GetGlobalBaseline()
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取合规基线失败"})
 		return
 	}
-	c.JSON(http.StatusOK, baselines)
+	c.JSON(http.StatusOK, []models.ComplianceBaseline{*baseline})
 }
 
 // GetComplianceBaseline 获取单个合规基线模板
 func GetComplianceBaseline(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	baseline, err := services.GetGlobalBaseline()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的 ID"})
-		return
-	}
-
-	var baseline models.ComplianceBaseline
-	if err := database.DB.First(&baseline, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "合规基线不存在"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取合规基线失败"})
 		return
 	}
 	c.JSON(http.StatusOK, baseline)

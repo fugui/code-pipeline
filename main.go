@@ -108,6 +108,7 @@ func main() {
 			api.GET("/managed-repos/protected-rules", handlers.GetProtectedBranchRules)
 
 			// 合规管控只读接口
+			api.GET("/managed-repos/compliance/baseline", handlers.GetGlobalComplianceBaseline)
 			api.GET("/managed-repos/compliance/baselines", handlers.GetComplianceBaselines)
 			api.GET("/managed-repos/compliance/baselines/:id", handlers.GetComplianceBaseline)
 			api.GET("/managed-repos/compliance/default-rules", handlers.GetDefaultComplianceRules)
@@ -147,6 +148,7 @@ func main() {
 				admin.POST("/managed-repos/:id/branches/cleanup", handlers.CleanupManagedBranches)
 
 				// 合规基线管理与巡检路由
+				admin.PUT("/managed-repos/compliance/baseline", handlers.UpdateGlobalComplianceBaseline)
 				admin.POST("/managed-repos/compliance/baselines", handlers.CreateComplianceBaseline)
 				admin.PUT("/managed-repos/compliance/baselines/:id", handlers.UpdateComplianceBaseline)
 				admin.DELETE("/managed-repos/compliance/baselines/:id", handlers.DeleteComplianceBaseline)

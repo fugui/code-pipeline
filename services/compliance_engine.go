@@ -95,38 +95,21 @@ func calculateGrade(score int) string {
 	}
 }
 
-// ResolveBaselineForRepo 找到仓库适用的合规基线模板：
-// 优先匹配 Group 绑定的模板，回退到默认模板
+// GetGlobalBaseline 获取或创建全局统一的合规基线模板
+func GetGlobalBaseline() (*models.ComplianceBaseline, error) {
+	EnsureDefaultBaseline()
+	var baseline models.ComplianceBaseline
+	if err := database.DB.Where("is_default = ?", true).First(&baseline).Error; err != nil {
+		if err := database.DB.First(&baseline).Error; err != nil {
+			return nil, fmt.Errorf("未找到合规基线模板: %w", err)
+		}
+	}
+	return &baseline, nil
+}
+
+// ResolveBaselineForRepo 找到仓库适用的合规基线模板（全局统一基线）
 func ResolveBaselineForRepo(repo *models.ManagedRepository) (*models.ComplianceBaseline, error) {
-	var baselines []models.ComplianceBaseline
-	if err := database.DB.Find(&baselines).Error; err != nil {
-		return nil, fmt.Errorf("查询合规基线失败: %w", err)
-	}
-
-	// 遍历所有模板，找到绑定了当前仓库所属 Group 的
-	for i := range baselines {
-		bl := &baselines[i]
-		var groupIDs []uint
-		if len(bl.GroupIDs) > 0 {
-			if err := json.Unmarshal(bl.GroupIDs, &groupIDs); err != nil {
-				continue
-			}
-		}
-		for _, gid := range groupIDs {
-			if gid == repo.ManagedGroupID {
-				return bl, nil
-			}
-		}
-	}
-
-	// 回退到默认模板
-	for i := range baselines {
-		if baselines[i].IsDefault {
-			return &baselines[i], nil
-		}
-	}
-
-	return nil, fmt.Errorf("未找到适用的合规基线模板")
+	return GetGlobalBaseline()
 }
 
 // AuditRepoCompliance 对单个仓库执行合规检查并生成报告
