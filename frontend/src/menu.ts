@@ -35,8 +35,8 @@ export const menuGroups: MenuGroup[] = [
   {
     title: '管理中心',
     items: [
-      { path: '/managed-repos/compliance', label: '代码仓合规基线配置' },
-      { path: '/pipeline-config', label: '构建与流水线管理' }
+      { path: '/pipeline-config', label: '构建与流水线管理' },
+      { path: '/managed-repos/compliance', label: '代码仓合规基线配置' }
     ]
   }
 ];
@@ -46,10 +46,10 @@ export const menuItems: SubMenuItem[] = [
   { path: '/repos', label: '流水线配置' },
   { path: '/managed-repos/dashboard', label: '管控 Dashboard' },
   { path: '/managed-repos/hub', label: '代码仓大盘' },
+  { path: '/pipeline-config', label: '构建与流水线管理' },
   { path: '/managed-repos/compliance', label: '代码仓合规基线配置' },
   { path: '/managed-repos/approvals', label: '审批管理中心' },
   { path: '/managed-repos/branch-health', label: '分支健康与清理' },
-  { path: '/pipeline-config', label: '构建与流水线管理' },
   { path: '/mr/list', label: 'MR 全览' },
   { path: '/mr/hook', label: '实时MR看护' }
 ];

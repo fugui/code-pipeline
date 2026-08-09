@@ -610,18 +610,18 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
                 管理中心
               </div>
               <button 
-                onClick={() => { setCurrentView('managed-compliance'); setActiveExec(null); }} 
-                className={`btn ${currentView === 'managed-compliance' ? 'btn-primary' : 'btn-secondary'}`} 
-                style={{ justifyContent: 'flex-start', width: '100%', fontSize: '0.85rem' }}
-              >
-                <Shield size={15} /> 代码仓合规基线配置
-              </button>
-              <button 
                 onClick={() => { setCurrentView('pipeline-config'); setActiveExec(null); }} 
                 className={`btn ${currentView === 'pipeline-config' ? 'btn-primary' : 'btn-secondary'}`} 
                 style={{ justifyContent: 'flex-start', width: '100%' }}
               >
                 <Activity size={16} /> 构建与流水线管理
+              </button>
+              <button 
+                onClick={() => { setCurrentView('managed-compliance'); setActiveExec(null); }} 
+                className={`btn ${currentView === 'managed-compliance' ? 'btn-primary' : 'btn-secondary'}`} 
+                style={{ justifyContent: 'flex-start', width: '100%', fontSize: '0.85rem' }}
+              >
+                <Shield size={15} /> 代码仓合规基线配置
               </button>
             </nav>
           </div>
