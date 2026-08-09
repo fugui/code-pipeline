@@ -12,10 +12,10 @@ interface ManagedComplianceProps {
   token: string
 }
 
-const severityLabel: Record<string, { text: string; color: string }> = {
-  critical: { text: '严重', color: '#ef4444' },
-  important: { text: '重要', color: '#f97316' },
-  suggestion: { text: '建议', color: '#6366f1' },
+const severityLabel: Record<string, { text: string; color: string; bg: string }> = {
+  critical: { text: '严重', color: '#f43f5e', bg: 'rgba(244, 63, 94, 0.15)' },
+  important: { text: '重要', color: '#f97316', bg: 'rgba(249, 115, 22, 0.15)' },
+  suggestion: { text: '建议', color: '#6366f1', bg: 'rgba(99, 102, 241, 0.15)' },
 }
 
 const dimensionLabel: Record<string, string> = {
@@ -211,35 +211,26 @@ export const ManagedCompliance: React.FC<ManagedComplianceProps> = ({ isAdmin = 
   }
 
   return (
-    <div style={{ padding: '0 0 40px 0' }}>
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 40 }}>
       {/* 页头 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 22, color: '#f0f0f0', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Shield size={22} />
+          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Shield size={24} style={{ color: '#6366f1' }} />
             合规基线配置
           </h2>
-          <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.45)', fontSize: 13 }}>
+          <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: 14 }}>
             定义"合格代码仓"标准，绑定到组后自动适用
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 10 }}>
           {isAdmin && (
             <>
-              <button onClick={triggerAudit} disabled={auditing} style={{
-                display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px',
-                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 6, color: '#ccc', cursor: 'pointer', fontSize: 13
-              }}>
-                <RefreshCw size={14} style={auditing ? { animation: 'spin 1s linear infinite' } : undefined} />
+              <button onClick={triggerAudit} disabled={auditing} className="btn btn-secondary btn-small">
+                <RefreshCw size={14} className={auditing ? 'animate-spin' : ''} />
                 {auditing ? '巡检中...' : '全量合规巡检'}
               </button>
-              <button onClick={startCreate} disabled={isEditing} style={{
-                display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px',
-                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none',
-                borderRadius: 6, color: '#fff', cursor: isEditing ? 'not-allowed' : 'pointer', fontSize: 13,
-                opacity: isEditing ? 0.5 : 1
-              }}>
+              <button onClick={startCreate} disabled={isEditing} className="btn btn-primary btn-small" style={{ opacity: isEditing ? 0.5 : 1 }}>
                 <Plus size={14} />
                 新建模板
               </button>
@@ -250,125 +241,101 @@ export const ManagedCompliance: React.FC<ManagedComplianceProps> = ({ isAdmin = 
 
       {/* 编辑/创建表单 */}
       {isEditing && (
-        <div style={{
-          background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)',
-          borderRadius: 10, padding: '20px 24px', marginBottom: 20
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 16, color: '#e0e0e0' }}>
-              {editingId ? '编辑合规基线' : '新建合规基线'}
+        <div className="glass-card" style={{ border: '1px solid var(--border-active)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text-main)' }}>
+              {editingId ? '编辑合规基线模板' : '新建合规基线模板'}
             </h3>
-            <button onClick={cancelEdit} style={{
-              background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer'
-            }}>
-              <X size={18} />
+            <button onClick={cancelEdit} className="btn btn-secondary btn-small" style={{ padding: 6 }}>
+              <X size={16} />
             </button>
           </div>
 
           {/* 基本信息 */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
             <div>
-              <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 4, display: 'block' }}>模板名称 *</label>
-              <input value={formName} onChange={e => setFormName(e.target.value)} placeholder="如：核心业务仓标准"
-                style={{
-                  width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.3)',
-                  border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#e0e0e0',
-                  fontSize: 14, outline: 'none', boxSizing: 'border-box'
-                }} />
+              <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>模板名称 *</label>
+              <input value={formName} onChange={e => setFormName(e.target.value)} placeholder="如：核心业务仓标准" />
             </div>
             <div>
-              <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 4, display: 'block' }}>描述</label>
-              <input value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder="模板用途说明"
-                style={{
-                  width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.3)',
-                  border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#e0e0e0',
-                  fontSize: 14, outline: 'none', boxSizing: 'border-box'
-                }} />
+              <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>描述</label>
+              <input value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder="模板用途说明" />
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 24, marginBottom: 16 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
-              <input type="checkbox" checked={formIsDefault} onChange={e => setFormIsDefault(e.target.checked)} />
+          <div style={{ display: 'flex', gap: 24, marginBottom: 18 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-main)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={formIsDefault} onChange={e => setFormIsDefault(e.target.checked)} style={{ width: 'auto' }} />
               设为默认模板（新纳管仓库自动应用）
             </label>
           </div>
 
           {/* 绑定 Group */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 6, display: 'block' }}>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>
               绑定组（不绑定则仅在设为默认时全局生效）
             </label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {groups.map(g => (
                 <button key={g.id} onClick={() => toggleGroupID(g.id)}
-                  style={{
-                    padding: '4px 10px', borderRadius: 4, fontSize: 12, cursor: 'pointer',
-                    background: formGroupIDs.includes(g.id) ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.04)',
-                    border: formGroupIDs.includes(g.id) ? '1px solid rgba(99,102,241,0.5)' : '1px solid rgba(255,255,255,0.08)',
-                    color: formGroupIDs.includes(g.id) ? '#a5b4fc' : 'rgba(255,255,255,0.5)',
-                    transition: 'all 0.15s'
-                  }}>{g.full_path || g.name}</button>
+                  className={`btn btn-small ${formGroupIDs.includes(g.id) ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ fontSize: 12 }}
+                >
+                  {g.full_path || g.name}
+                </button>
               ))}
-              {groups.length === 0 && <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>暂无可绑定的组</span>}
+              {groups.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>暂无可绑定的组</span>}
             </div>
           </div>
 
           {/* 检查规则 */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 8, display: 'block' }}>检查规则</label>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10, display: 'block' }}>检查规则配置</label>
             {Object.entries(groupRulesByDimension(formRules)).map(([dim, rules]) => (
-              <div key={dim} style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 6, fontWeight: 500 }}>
+              <div key={dim} style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 8 }}>
                   {dimensionLabel[dim] || dim}
                 </div>
-                {rules.map((rule) => {
-                  const globalIdx = formRules.findIndex(r => r.check_key === rule.check_key)
-                  const sev = severityLabel[rule.severity]
-                  return (
-                    <div key={rule.check_key} style={{
-                      display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px',
-                      background: 'rgba(0,0,0,0.2)', borderRadius: 5, marginBottom: 4
-                    }}>
-                      <input type="checkbox" checked={rule.enabled} onChange={() => toggleRule(globalIdx)} />
-                      <span style={{
-                        fontSize: 11, padding: '1px 6px', borderRadius: 3,
-                        background: `${sev?.color}22`, color: sev?.color, fontWeight: 500
-                      }}>{sev?.text}</span>
-                      <span style={{ flex: 1, fontSize: 13, color: rule.enabled ? '#e0e0e0' : 'rgba(255,255,255,0.3)' }}>
-                        {rule.label}
-                      </span>
-                      {rule.threshold > 0 && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>阈值:</span>
-                          <input type="number" value={rule.threshold} onChange={e => updateThreshold(globalIdx, parseInt(e.target.value) || 0)}
-                            style={{
-                              width: 50, padding: '2px 6px', background: 'rgba(0,0,0,0.3)',
-                              border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#e0e0e0',
-                              fontSize: 12, outline: 'none', textAlign: 'center'
-                            }} />
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {rules.map((rule) => {
+                    const globalIdx = formRules.findIndex(r => r.check_key === rule.check_key)
+                    const sev = severityLabel[rule.severity]
+                    return (
+                      <div key={rule.check_key} style={{
+                        display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px',
+                        background: 'var(--portal-bg-color, rgba(255,255,255,0.02))', borderRadius: 8,
+                        border: '1px solid var(--border-color)'
+                      }}>
+                        <input type="checkbox" checked={rule.enabled} onChange={() => toggleRule(globalIdx)} style={{ width: 'auto' }} />
+                        <span style={{
+                          fontSize: 11, padding: '2px 8px', borderRadius: 4,
+                          background: sev?.bg, color: sev?.color, fontWeight: 600
+                        }}>{sev?.text}</span>
+                        <span style={{ flex: 1, fontSize: 13, color: rule.enabled ? 'var(--text-main)' : 'var(--text-muted)' }}>
+                          {rule.label}
+                        </span>
+                        {rule.threshold > 0 && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>阈值:</span>
+                            <input type="number" value={rule.threshold} onChange={e => updateThreshold(globalIdx, parseInt(e.target.value) || 0)}
+                              style={{
+                                width: 60, padding: '4px 8px', textAlign: 'center', fontSize: 13
+                              }} />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             ))}
           </div>
 
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button onClick={cancelEdit} style={{
-              padding: '7px 16px', background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#aaa',
-              cursor: 'pointer', fontSize: 13
-            }}>取消</button>
-            <button onClick={handleSubmit} disabled={submitting} style={{
-              display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px',
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none',
-              borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 13
-            }}>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button onClick={cancelEdit} className="btn btn-secondary">取消</button>
+            <button onClick={handleSubmit} disabled={submitting} className="btn btn-primary">
               <Save size={14} />
-              {submitting ? '保存中...' : '保存'}
+              {submitting ? '保存中...' : '保存模板'}
             </button>
           </div>
         </div>
@@ -376,20 +343,17 @@ export const ManagedCompliance: React.FC<ManagedComplianceProps> = ({ isAdmin = 
 
       {/* 基线列表 */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: 'rgba(255,255,255,0.4)' }}>
-          <RefreshCw size={18} style={{ animation: 'spin 1s linear infinite', marginBottom: 8 }} />
+        <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary)' }}>
+          <RefreshCw size={20} className="animate-spin" style={{ marginBottom: 8 }} />
           <div>加载中...</div>
         </div>
       ) : baselines.length === 0 ? (
-        <div style={{
-          textAlign: 'center', padding: '60px 0', color: 'rgba(255,255,255,0.3)',
-          background: 'rgba(255,255,255,0.02)', borderRadius: 10
-        }}>
-          <Layers size={32} style={{ marginBottom: 8 }} />
-          <div>暂无合规基线模板</div>
+        <div className="glass-card" style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
+          <Layers size={36} style={{ marginBottom: 12, color: 'var(--text-muted)' }} />
+          <div style={{ fontSize: 15 }}>暂无合规基线模板</div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {baselines.map(bl => {
             const isExpanded = expandedBaseline === bl.id
             const rules: ComplianceRule[] = bl.rules || []
@@ -398,50 +362,44 @@ export const ManagedCompliance: React.FC<ManagedComplianceProps> = ({ isAdmin = 
             const boundGroups = groups.filter(g => groupIDs.includes(g.id))
 
             return (
-              <div key={bl.id} style={{
-                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
-                borderRadius: 10, overflow: 'hidden',
-                borderLeft: bl.is_default ? '3px solid #6366f1' : '3px solid transparent'
+              <div key={bl.id} className="glass-card" style={{
+                padding: 0, overflow: 'hidden',
+                borderLeft: bl.is_default ? '4px solid #6366f1' : '1px solid var(--border-color)'
               }}>
                 {/* 头部 */}
                 <div
                   onClick={() => setExpandedBaseline(isExpanded ? null : bl.id)}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '14px 18px', cursor: 'pointer'
+                    padding: '16px 20px', cursor: 'pointer', background: 'transparent'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    {isExpanded ? <ChevronDown size={16} style={{ color: 'rgba(255,255,255,0.4)' }} /> : <ChevronRight size={16} style={{ color: 'rgba(255,255,255,0.4)' }} />}
-                    <Shield size={16} style={{ color: '#6366f1' }} />
-                    <span style={{ fontSize: 15, fontWeight: 500, color: '#e0e0e0' }}>{bl.name}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {isExpanded ? <ChevronDown size={18} style={{ color: 'var(--text-secondary)' }} /> : <ChevronRight size={18} style={{ color: 'var(--text-secondary)' }} />}
+                    <Shield size={18} style={{ color: '#6366f1' }} />
+                    <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-main)' }}>{bl.name}</span>
                     {bl.is_default && (
-                      <span style={{
-                        fontSize: 11, padding: '1px 8px', borderRadius: 3,
-                        background: 'rgba(99,102,241,0.15)', color: '#a5b4fc'
-                      }}>默认</span>
+                      <span className="status-badge running" style={{ fontSize: 11, padding: '2px 8px' }}>默认模板</span>
                     )}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-                      {enabledCount}/{rules.length} 项启用
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                      {enabledCount}/{rules.length} 项规则生效
                     </span>
                     {boundGroups.length > 0 && (
-                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-                        绑定 {boundGroups.length} 组
+                      <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                        已绑定 {boundGroups.length} 组
                       </span>
                     )}
                     {isAdmin && (
-                      <div style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
-                        <button onClick={() => startEdit(bl)} style={{
-                          background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
-                          cursor: 'pointer', padding: 4
-                        }}><Edit3 size={14} /></button>
+                      <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
+                        <button onClick={() => startEdit(bl)} className="btn btn-secondary btn-small" style={{ padding: '4px 8px' }}>
+                          <Edit3 size={14} /> 编辑
+                        </button>
                         {!bl.is_default && (
-                          <button onClick={() => handleDelete(bl.id)} style={{
-                            background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)',
-                            cursor: 'pointer', padding: 4
-                          }}><Trash2 size={14} /></button>
+                          <button onClick={() => handleDelete(bl.id)} className="btn btn-danger btn-small" style={{ padding: '4px 8px' }}>
+                            <Trash2 size={14} /> 删除
+                          </button>
                         )}
                       </div>
                     )}
@@ -450,50 +408,57 @@ export const ManagedCompliance: React.FC<ManagedComplianceProps> = ({ isAdmin = 
 
                 {/* 展开详情 */}
                 {isExpanded && (
-                  <div style={{ padding: '0 18px 16px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                  <div style={{ padding: '16px 20px 20px', borderTop: '1px solid var(--border-color)', background: 'var(--portal-bg-color, rgba(255,255,255,0.01))' }}>
                     {bl.description && (
-                      <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', margin: '12px 0 8px', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-                        <Info size={14} style={{ marginTop: 1, flexShrink: 0 }} />
+                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '0 0 14px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                        <Info size={16} style={{ marginTop: 1, flexShrink: 0, color: '#6366f1' }} />
                         {bl.description}
                       </p>
                     )}
 
                     {boundGroups.length > 0 && (
-                      <div style={{ marginBottom: 12 }}>
-                        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>绑定的组：</span>
+                      <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>绑定的组：</span>
                         {boundGroups.map(g => (
-                          <span key={g.id} style={{
-                            fontSize: 11, padding: '2px 8px', borderRadius: 3, marginLeft: 6,
-                            background: 'rgba(99,102,241,0.1)', color: '#a5b4fc'
-                          }}>{g.full_path || g.name}</span>
+                          <span key={g.id} className="status-badge running" style={{ fontSize: 12 }}>
+                            {g.full_path || g.name}
+                          </span>
                         ))}
                       </div>
                     )}
 
-                    {Object.entries(groupRulesByDimension(rules)).map(([dim, dimRules]) => (
-                      <div key={dim} style={{ marginBottom: 8 }}>
-                        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 4, fontWeight: 500 }}>
-                          {dimensionLabel[dim] || dim}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14 }}>
+                      {Object.entries(groupRulesByDimension(rules)).map(([dim, dimRules]) => (
+                        <div key={dim} style={{
+                          padding: '12px 14px', borderRadius: 8, background: 'var(--portal-bg-color, rgba(255,255,255,0.02))',
+                          border: '1px solid var(--border-color)'
+                        }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 8 }}>
+                            {dimensionLabel[dim] || dim}
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {dimRules.map(rule => {
+                              const sev = severityLabel[rule.severity]
+                              return (
+                                <div key={rule.check_key} style={{
+                                  display: 'flex', alignItems: 'center', gap: 8, fontSize: 13,
+                                  color: rule.enabled ? 'var(--text-main)' : 'var(--text-muted)'
+                                }}>
+                                  {rule.enabled ? <CheckCircle2 size={14} style={{ color: '#10b981' }} /> : <AlertTriangle size={14} style={{ color: 'var(--text-muted)' }} />}
+                                  <span style={{
+                                    fontSize: 10, padding: '1px 6px', borderRadius: 4,
+                                    background: rule.enabled ? sev?.bg : 'var(--border-color)',
+                                    color: rule.enabled ? sev?.color : 'var(--text-muted)', fontWeight: 600
+                                  }}>{sev?.text}</span>
+                                  <span>{rule.label}</span>
+                                  {rule.threshold > 0 && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>(阈值: {rule.threshold})</span>}
+                                </div>
+                              )
+                            })}
+                          </div>
                         </div>
-                        {dimRules.map(rule => {
-                          const sev = severityLabel[rule.severity]
-                          return (
-                            <div key={rule.check_key} style={{
-                              display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px',
-                              fontSize: 13, color: rule.enabled ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.25)'
-                            }}>
-                              {rule.enabled ? <CheckCircle2 size={13} style={{ color: '#22c55e' }} /> : <AlertTriangle size={13} style={{ color: 'rgba(255,255,255,0.2)' }} />}
-                              <span style={{
-                                fontSize: 10, padding: '0px 5px', borderRadius: 3,
-                                background: `${sev?.color}15`, color: rule.enabled ? sev?.color : 'rgba(255,255,255,0.25)'
-                              }}>{sev?.text}</span>
-                              {rule.label}
-                              {rule.threshold > 0 && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>(阈值: {rule.threshold})</span>}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
