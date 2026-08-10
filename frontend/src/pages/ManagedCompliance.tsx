@@ -311,8 +311,8 @@ export const ManagedCompliance: React.FC<ManagedComplianceProps> = ({ isAdmin = 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {/* 全局配置 - 全宽展示，规则横向两列 */}
                 {globalEntry && (
-                  <div className="glass-card" style={{ padding: '18px 22px', border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.04)' }}>
-                    <h3 style={{ margin: '0 0 14px', fontSize: 16, fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div className="glass-card" style={{ padding: '18px 22px' }}>
+                    <h3 style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
                       {dimensionLabel['global_config']}
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
