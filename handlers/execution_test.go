@@ -11,28 +11,11 @@ import (
 	"code-pipeline/models"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
 func setupTestDB(t *testing.T) {
-	var err error
-	database.DB, err = gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("Failed to open memory db: %v", err)
-	}
-
-	err = database.DB.AutoMigrate(
-		&models.User{},
-		&models.Repository{},
-		&models.Pipeline{},
-		&models.ExecutionScheme{},
-		&models.ManagedRepository{},
-		&models.ExecutionReport{},
-	)
-	if err != nil {
-		t.Fatalf("Failed to migrate test DB: %v", err)
-	}
+	_ = models.LoadConfig("../config.yaml")
+	database.InitDB()
 }
 
 func TestReportExecutionLogAndDashboardStats(t *testing.T) {
