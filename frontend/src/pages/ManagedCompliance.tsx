@@ -20,21 +20,17 @@ const severityLabel: Record<string, { text: string; color: string; bg: string }>
 const dimensionLabel: Record<string, string> = {
   global_config: '🌐 代码仓全局配置',
   branch_protection: '🛡️ 分支保护',
-  engineering: '🔗 工程接入',
   ownership: '👤 归属治理',
   branch_hygiene: '🌿 分支卫生',
-  metadata: '📝 元数据完整性',
-  permission: '🔐 权限安全',
+  engineering: '🔗 工程接入',
 }
 
 const dimensionOrder = [
   'global_config',
   'branch_protection',
-  'engineering',
   'ownership',
   'branch_hygiene',
-  'metadata',
-  'permission',
+  'engineering',
 ]
 
 const ruleDescriptions: Record<string, string> = {
