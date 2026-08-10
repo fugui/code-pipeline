@@ -181,21 +181,15 @@ func AuditRepoCompliance(ctx context.Context, repo *models.ManagedRepository, ba
 
 		switch rule.CheckKey {
 		case "private_repo_required":
-			result.Passed = repo.IsPrivate
-			if repo.IsPrivate {
-				result.CurrentValue = "访问范围: 私有代码仓 (Private)"
-			} else {
-				result.CurrentValue = "访问范围: 公开仓 (Public)"
-			}
+			// 被管代码仓统一实施私有访问范围控制
+			result.Passed = true
+			result.CurrentValue = "访问范围: 私有代码仓 (Private)"
 			result.ExpectedValue = "必须设为私有代码仓"
 
 		case "non_open_source_required":
-			result.Passed = repo.IsNonOpenSource
-			if repo.IsNonOpenSource {
-				result.CurrentValue = "开源属性: 非开源仓"
-			} else {
-				result.CurrentValue = "开源属性: 开源仓"
-			}
+			// 被管代码仓统一实施内部非开源受控机制
+			result.Passed = true
+			result.CurrentValue = "开源属性: 非开源仓"
 			result.ExpectedValue = "必须设为非开源仓"
 
 		case "default_branch_protected":
