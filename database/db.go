@@ -69,7 +69,13 @@ func InitDB() {
 	_ = DB.Exec("UPDATE pipelines SET pipeline_id = '' WHERE pipeline_id IS NULL")
 	_ = DB.Exec("UPDATE pipelines SET name = '' WHERE name IS NULL")
 	_ = DB.Exec("UPDATE pipelines SET type = '' WHERE type IS NULL")
-	_ = DB.Exec("UPDATE execution_schemes SET branchs = '' WHERE branchs IS NULL")
+	if DB.Migrator().HasColumn(&models.ExecutionScheme{}, "branchs") {
+		_ = DB.Exec("UPDATE execution_schemes SET branch = branchs WHERE (branch IS NULL OR branch = '') AND branchs IS NOT NULL AND branchs != ''")
+		_ = DB.Exec("ALTER TABLE execution_schemes DROP COLUMN IF EXISTS branchs")
+	}
+	if DB.Migrator().HasColumn(&models.ExecutionScheme{}, "branch") {
+		_ = DB.Exec("UPDATE execution_schemes SET branch = '' WHERE branch IS NULL")
+	}
 	_ = DB.Exec("UPDATE execution_schemes SET pipeline_id = 0 WHERE pipeline_id IS NULL")
 	_ = DB.Exec("UPDATE managed_groups SET name = '' WHERE name IS NULL")
 	_ = DB.Exec("UPDATE managed_groups SET path = '' WHERE path IS NULL")
@@ -81,8 +87,10 @@ func InitDB() {
 	_ = DB.Exec("UPDATE managed_member_accesses SET principal_id = 0 WHERE principal_id IS NULL")
 	_ = DB.Exec("UPDATE managed_member_accesses SET access_level = 0 WHERE access_level IS NULL")
 	// 迁移旧版 managed_branch_monitors 表中的遗留列 branch，并清理该列及其 NOT NULL 约束
-	_ = DB.Exec("UPDATE managed_branch_monitors SET branch_name = branch WHERE (branch_name IS NULL OR branch_name = '') AND branch IS NOT NULL AND branch != ''")
-	_ = DB.Exec("ALTER TABLE managed_branch_monitors DROP COLUMN IF EXISTS branch")
+	if DB.Migrator().HasColumn(&models.ManagedBranchMonitor{}, "branch") {
+		_ = DB.Exec("UPDATE managed_branch_monitors SET branch_name = branch WHERE (branch_name IS NULL OR branch_name = '') AND branch IS NOT NULL AND branch != ''")
+		_ = DB.Exec("ALTER TABLE managed_branch_monitors DROP COLUMN IF EXISTS branch")
+	}
 
 	_ = DB.Exec("UPDATE managed_branch_monitors SET managed_repository_id = 0 WHERE managed_repository_id IS NULL")
 	_ = DB.Exec("UPDATE managed_branch_monitors SET branch_name = '' WHERE branch_name IS NULL")
