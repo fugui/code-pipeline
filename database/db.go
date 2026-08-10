@@ -1,7 +1,6 @@
 package database
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -78,29 +77,7 @@ func InitDB() {
 		log.Fatalf("[Database] Migration failed: %v", err)
 	}
 
-	// PostgreSQL 自增 Sequence 修正，防止 SQLite 数据迁移至 PostgreSQL 后主键 Sequence 滞后引发插入主键冲突
-	if DB.Dialector.Name() == "postgres" {
-		tables := []string{
-			"users",
-			"departments",
-			"subsystems",
-			"repositories",
-			"pipelines",
-			"execution_schemes",
-			"mr_events",
-			"managed_groups",
-			"managed_repositories",
-			"managed_member_accesses",
-			"managed_branch_monitors",
-			"execution_reports",
-		}
-		for _, tbl := range tables {
-			seqSQL := fmt.Sprintf("SELECT setval(pg_get_serial_sequence('%s', 'id'), COALESCE((SELECT MAX(id) FROM %s), 1), (SELECT COUNT(*) > 0 FROM %s))", tbl, tbl, tbl)
-			if err := DB.Exec(seqSQL).Error; err != nil {
-				log.Printf("[Database] Failed to sync sequence for table %s: %v", tbl, err)
-			}
-		}
-	}
+
 
 	// Seed admin user
 	var count int64
