@@ -375,7 +375,7 @@ type ComplianceBaseline struct {
 
 // ComplianceRule 合规检查规则（序列化为 JSON 存储在 ComplianceBaseline.Rules 中）
 type ComplianceRule struct {
-	Dimension string `json:"dimension"`  // 维度: branch_protection / engineering / ownership / branch_hygiene / metadata / permission
+	Dimension string `json:"dimension"`  // 维度: global_config / branch_protection / engineering / ownership / branch_hygiene / permission
 	CheckKey  string `json:"check_key"`  // 检查项标识
 	Label     string `json:"label"`      // 检查项中文名
 	Severity  string `json:"severity"`   // 严重度: critical / important / suggestion

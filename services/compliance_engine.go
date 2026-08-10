@@ -10,6 +10,8 @@ import (
 
 	"code-pipeline/database"
 	"code-pipeline/models"
+
+	"gorm.io/datatypes"
 )
 
 // DefaultComplianceRules 系统内置的通用合规检查规则集
@@ -135,8 +137,8 @@ func GetGlobalBaseline() (*models.ComplianceBaseline, error) {
 	if hasNewRules || changed {
 		newRulesJSON, err := json.Marshal(existingRules)
 		if err == nil {
-			baseline.Rules = newRulesJSON
-			database.DB.Model(&models.ComplianceBaseline{}).Where("id = ?", baseline.ID).Update("rules", newRulesJSON)
+			baseline.Rules = datatypes.JSON(newRulesJSON)
+			database.DB.Model(&models.ComplianceBaseline{}).Where("id = ?", baseline.ID).Update("rules", datatypes.JSON(newRulesJSON))
 		}
 	}
 
