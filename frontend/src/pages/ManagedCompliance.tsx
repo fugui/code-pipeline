@@ -207,39 +207,26 @@ export const ManagedCompliance: React.FC<ManagedComplianceProps> = ({ isAdmin = 
         </div>
       ) : (
         <>
-          {/* 概览卡片 */}
-          <div className="glass-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-              <div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>生效规则数</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-main)' }}>
-                  {enabledCount} <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-secondary)' }}>/ {rules.length} 项</span>
-                </div>
+          {/* 概览统计行 */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+            {[
+              { label: '生效规则数', value: enabledCount, sub: `共 ${rules.length} 项`, color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+              { label: '严重 (Critical)', value: criticalCount, sub: '项已启用', color: severityLabel.critical.color, bg: severityLabel.critical.bg },
+              { label: '重要 (Important)', value: importantCount, sub: '项已启用', color: severityLabel.important.color, bg: severityLabel.important.bg },
+              { label: '建议 (Suggestion)', value: suggestionCount, sub: '项已启用', color: severityLabel.suggestion.color, bg: severityLabel.suggestion.bg },
+            ].map(kpi => (
+              <div key={kpi.label} className="glass-card" style={{ padding: '16px 20px' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{kpi.label}</div>
+                <div style={{ fontSize: 28, fontWeight: 700, color: kpi.color }}>{kpi.value}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{kpi.sub}</div>
               </div>
-              <div style={{ height: 32, width: 1, background: 'var(--border-color)' }} />
-              <div style={{ display: 'flex', gap: 12 }}>
-                <div className="status-badge" style={{ background: severityLabel.critical.bg, color: severityLabel.critical.color }}>
-                  严重 (Critical): {criticalCount}
-                </div>
-                <div className="status-badge" style={{ background: severityLabel.important.bg, color: severityLabel.important.color }}>
-                  重要 (Important): {importantCount}
-                </div>
-                <div className="status-badge" style={{ background: severityLabel.suggestion.bg, color: severityLabel.suggestion.color }}>
-                  建议 (Suggestion): {suggestionCount}
-                </div>
-              </div>
-            </div>
-            {baseline?.updated_at && (
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                最近更新时间: {new Date(baseline.updated_at).toLocaleString('zh-CN')}
-              </div>
-            )}
+            ))}
           </div>
 
-          {/* 说明信息 */}
+          {/* 基线描述 + 更新时间 */}
           {isAdmin && (
-            <div className="glass-card" style={{ padding: '14px 18px' }}>
-              <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div className="glass-card" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 16 }}>
+              <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
                 <Info size={14} style={{ color: '#6366f1' }} />
                 基线描述说明
               </label>
@@ -247,84 +234,111 @@ export const ManagedCompliance: React.FC<ManagedComplianceProps> = ({ isAdmin = 
                 value={description}
                 onChange={e => { setDescription(e.target.value); setIsDirty(true) }}
                 placeholder="说明本全局合规基线的制定原则与管控要求..."
+                style={{ flex: 1 }}
               />
+              {baseline?.updated_at && (
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                  最近更新: {new Date(baseline.updated_at).toLocaleString('zh-CN')}
+                </span>
+              )}
             </div>
           )}
 
-          {/* 维度规则配置列表 */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {Object.entries(groupRulesByDimension(rules))
-              .sort(([dimA], [dimB]) => {
-                const idxA = dimensionOrder.indexOf(dimA)
-                const idxB = dimensionOrder.indexOf(dimB)
-                return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB)
+          {/* 维度规则配置区域 */}
+          {(() => {
+            const sorted = Object.entries(groupRulesByDimension(rules))
+              .sort(([a], [b]) => {
+                const ia = dimensionOrder.indexOf(a)
+                const ib = dimensionOrder.indexOf(b)
+                return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
               })
-              .map(([dim, dimRules]) => (
-                <div key={dim} className="glass-card" style={{ padding: '18px 22px' }}>
-                  <h3 style={{ margin: '0 0 14px', fontSize: 16, fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {dimensionLabel[dim] || dim}
-                  </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {dimRules.map(rule => {
-                      const sev = severityLabel[rule.severity]
-                      return (
-                        <div key={rule.check_key} style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          padding: '12px 14px', background: 'var(--portal-bg-color, rgba(255,255,255,0.02))',
-                          borderRadius: 8, border: '1px solid var(--border-color)',
-                          opacity: rule.enabled ? 1 : 0.6, transition: 'var(--transition)'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
-                            <input
-                              type="checkbox"
-                              disabled={!isAdmin}
-                              checked={rule.enabled}
-                              onChange={() => toggleRule(rule.check_key)}
-                              style={{ width: 'auto', cursor: isAdmin ? 'pointer' : 'default' }}
-                            />
-                            <span style={{
-                              fontSize: 11, padding: '2px 8px', borderRadius: 4,
-                              background: rule.enabled ? sev?.bg : 'var(--border-color)',
-                              color: rule.enabled ? sev?.color : 'var(--text-muted)', fontWeight: 600,
-                              whiteSpace: 'nowrap'
-                            }}>
-                              {sev?.text}
-                            </span>
-                            <div>
-                              <div style={{ fontSize: 14, fontWeight: 500, color: rule.enabled ? 'var(--text-main)' : 'var(--text-muted)' }}>
-                                {rule.label}
-                              </div>
-                              {ruleDescriptions[rule.check_key] && (
-                                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                                  {ruleDescriptions[rule.check_key]}
-                                </div>
-                              )}
-                            </div>
-                          </div>
 
-                          {/* 阈值修改 */}
-                          {rule.threshold > 0 && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>上限阈值:</span>
-                              <input
-                                type="number"
-                                disabled={!isAdmin || !rule.enabled}
-                                value={rule.threshold}
-                                onChange={e => updateThreshold(rule.check_key, parseInt(e.target.value) || 0)}
-                                style={{
-                                  width: 70, padding: '4px 8px', textAlign: 'center', fontSize: 13
-                                }}
-                              />
-                              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>个</span>
-                            </div>
-                          )}
+            const globalEntry = sorted.find(([dim]) => dim === 'global_config')
+            const otherEntries = sorted.filter(([dim]) => dim !== 'global_config')
+
+            const renderRule = (rule: ComplianceRule) => {
+              const sev = severityLabel[rule.severity]
+              return (
+                <div key={rule.check_key} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '11px 14px',
+                  background: 'var(--portal-bg-color, rgba(255,255,255,0.02))',
+                  borderRadius: 8, border: '1px solid var(--border-color)',
+                  opacity: rule.enabled ? 1 : 0.55, transition: 'var(--transition)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                    <input
+                      type="checkbox"
+                      disabled={!isAdmin}
+                      checked={rule.enabled}
+                      onChange={() => toggleRule(rule.check_key)}
+                      style={{ width: 'auto', flexShrink: 0, cursor: isAdmin ? 'pointer' : 'default' }}
+                    />
+                    <span style={{
+                      fontSize: 11, padding: '2px 7px', borderRadius: 4, flexShrink: 0,
+                      background: rule.enabled ? sev?.bg : 'var(--border-color)',
+                      color: rule.enabled ? sev?.color : 'var(--text-muted)', fontWeight: 600,
+                    }}>
+                      {sev?.text}
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: rule.enabled ? 'var(--text-main)' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {rule.label}
+                      </div>
+                      {ruleDescriptions[rule.check_key] && (
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 1 }}>
+                          {ruleDescriptions[rule.check_key]}
                         </div>
-                      )
-                    })}
+                      )}
+                    </div>
                   </div>
+                  {rule.threshold > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 10, flexShrink: 0 }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>上限:</span>
+                      <input
+                        type="number"
+                        disabled={!isAdmin || !rule.enabled}
+                        value={rule.threshold}
+                        onChange={e => updateThreshold(rule.check_key, parseInt(e.target.value) || 0)}
+                        style={{ width: 58, padding: '3px 6px', textAlign: 'center', fontSize: 12 }}
+                      />
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>个</span>
+                    </div>
+                  )}
                 </div>
-              ))}
-          </div>
+              )
+            }
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* 全局配置 - 全宽展示，规则横向两列 */}
+                {globalEntry && (
+                  <div className="glass-card" style={{ padding: '18px 22px', border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.04)' }}>
+                    <h3 style={{ margin: '0 0 14px', fontSize: 16, fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {dimensionLabel['global_config']}
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+                      {globalEntry[1].map(renderRule)}
+                    </div>
+                  </div>
+                )}
+
+                {/* 其余维度 - 两列网格布局 */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, alignItems: 'start' }}>
+                  {otherEntries.map(([dim, dimRules]) => (
+                    <div key={dim} className="glass-card" style={{ padding: '18px 22px' }}>
+                      <h3 style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {dimensionLabel[dim] || dim}
+                      </h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {dimRules.map(renderRule)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
         </>
       )}
     </div>
