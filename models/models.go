@@ -243,8 +243,6 @@ type ManagedRepository struct {
 	StaleUnmergedCount int          `gorm:"default:0" json:"stale_unmerged_count"` // 未合并僵尸分支数
 	StaleMergedCount   int          `gorm:"default:0" json:"stale_merged_count"`   // 已合并待清理分支数
 	LastCommitTime     *time.Time   `json:"last_commit_time"`                      // 所有分支中最新的提交时间
-	IsPrivate          bool         `gorm:"default:true" json:"is_private"`         // 是否为私有代码仓 (访问范围受限)
-	IsNonOpenSource    bool         `gorm:"default:true" json:"is_non_open_source"` // 是否为非开源仓 (限制开源)
 	CreatedAt          time.Time    `json:"created_at"`
 }
 
