@@ -107,6 +107,33 @@ func GetGlobalBaseline() (*models.ComplianceBaseline, error) {
 			return nil, fmt.Errorf("未找到合规基线模板: %w", err)
 		}
 	}
+
+	// 自动补充合并缺少的系统新默认规则 (如 private_repo_required, non_open_source_required)
+	var existingRules []models.ComplianceRule
+	_ = json.Unmarshal(baseline.Rules, &existingRules)
+
+	existingMap := make(map[string]bool)
+	for _, r := range existingRules {
+		existingMap[r.CheckKey] = true
+	}
+
+	defaultRules := DefaultComplianceRules()
+	hasNewRules := false
+	for _, defRule := range defaultRules {
+		if !existingMap[defRule.CheckKey] {
+			existingRules = append(existingRules, defRule)
+			hasNewRules = true
+		}
+	}
+
+	if hasNewRules {
+		newRulesJSON, err := json.Marshal(existingRules)
+		if err == nil {
+			baseline.Rules = newRulesJSON
+			database.DB.Model(&models.ComplianceBaseline{}).Where("id = ?", baseline.ID).Update("rules", newRulesJSON)
+		}
+	}
+
 	return &baseline, nil
 }
 
