@@ -12,6 +12,7 @@ import (
 	"code-pipeline/services"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/datatypes"
 )
 
 // GetGlobalComplianceBaseline 获取全局唯一的合规基线配置
@@ -59,7 +60,7 @@ func UpdateGlobalComplianceBaseline(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "序列化规则失败"})
 			return
 		}
-		updates["rules"] = rulesJSON
+		updates["rules"] = datatypes.JSON(rulesJSON)
 	}
 
 	if err := database.DB.Model(baseline).Updates(updates).Error; err != nil {
