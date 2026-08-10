@@ -40,6 +40,8 @@ const dimensionOrder = [
 const ruleDescriptions: Record<string, string> = {
   private_repo_required: '强制所有被管代码仓设为私有访问控制，严禁公开暴露，确保代码仓访问范围受限。',
   non_open_source_required: '强制限制代码仓为企业内部资产，禁止对外开源与全网公开访问。',
+  has_description: '仓库包含明确的作用、架构职责与维护说明信息。',
+  has_language: '仓库具备明确的主要编程语言类型标识。',
 }
 
 export const ManagedCompliance: React.FC<ManagedComplianceProps> = ({ isAdmin = true, apiBase, token }) => {
