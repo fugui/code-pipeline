@@ -55,46 +55,6 @@ func InitDB() {
 		log.Fatalf("[Database] Failed to connect database: %v", err)
 	}
 
-	// 显式删除旧的 idx_mg_repo 单列唯一索引，以便重新建立基于 (managed_group_id, name) 的联合唯一索引
-	if err := DB.Exec("DROP INDEX IF EXISTS idx_mg_repo").Error; err != nil {
-		log.Printf("[Database] Failed to drop old idx_mg_repo index: %v", err)
-	} else {
-		log.Println("[Database] Checked and removed unique index idx_mg_repo successfully")
-	}
-
-	// 补全已存在数据行中为空或 NULL 的字段，防止 AutoMigrate 增加 NOT NULL 约束失败
-	_ = DB.Exec("UPDATE users SET email = '' WHERE email IS NULL")
-	_ = DB.Exec("UPDATE users SET password = '' WHERE password IS NULL")
-	_ = DB.Exec("UPDATE repositories SET name = '' WHERE name IS NULL")
-	_ = DB.Exec("UPDATE pipelines SET pipeline_id = '' WHERE pipeline_id IS NULL")
-	_ = DB.Exec("UPDATE pipelines SET name = '' WHERE name IS NULL")
-	_ = DB.Exec("UPDATE pipelines SET type = '' WHERE type IS NULL")
-	if DB.Migrator().HasColumn(&models.ExecutionScheme{}, "branchs") {
-		_ = DB.Exec("UPDATE execution_schemes SET branch = branchs WHERE (branch IS NULL OR branch = '') AND branchs IS NOT NULL AND branchs != ''")
-		_ = DB.Exec("ALTER TABLE execution_schemes DROP COLUMN IF EXISTS branchs")
-	}
-	if DB.Migrator().HasColumn(&models.ExecutionScheme{}, "branch") {
-		_ = DB.Exec("UPDATE execution_schemes SET branch = '' WHERE branch IS NULL")
-	}
-	_ = DB.Exec("UPDATE execution_schemes SET pipeline_id = 0 WHERE pipeline_id IS NULL")
-	_ = DB.Exec("UPDATE managed_groups SET name = '' WHERE name IS NULL")
-	_ = DB.Exec("UPDATE managed_groups SET path = '' WHERE path IS NULL")
-	_ = DB.Exec("UPDATE managed_groups SET full_path = '' WHERE full_path IS NULL")
-	_ = DB.Exec("UPDATE managed_repositories SET managed_group_id = 0 WHERE managed_group_id IS NULL")
-	_ = DB.Exec("UPDATE managed_repositories SET name = '' WHERE name IS NULL")
-	_ = DB.Exec("UPDATE managed_repositories SET ssh_url = '' WHERE ssh_url IS NULL")
-	_ = DB.Exec("UPDATE managed_member_accesses SET principal_type = '' WHERE principal_type IS NULL")
-	_ = DB.Exec("UPDATE managed_member_accesses SET principal_id = 0 WHERE principal_id IS NULL")
-	_ = DB.Exec("UPDATE managed_member_accesses SET access_level = 0 WHERE access_level IS NULL")
-	// 迁移旧版 managed_branch_monitors 表中的遗留列 branch，并清理该列及其 NOT NULL 约束
-	if DB.Migrator().HasColumn(&models.ManagedBranchMonitor{}, "branch") {
-		_ = DB.Exec("UPDATE managed_branch_monitors SET branch_name = branch WHERE (branch_name IS NULL OR branch_name = '') AND branch IS NOT NULL AND branch != ''")
-		_ = DB.Exec("ALTER TABLE managed_branch_monitors DROP COLUMN IF EXISTS branch")
-	}
-
-	_ = DB.Exec("UPDATE managed_branch_monitors SET managed_repository_id = 0 WHERE managed_repository_id IS NULL")
-	_ = DB.Exec("UPDATE managed_branch_monitors SET branch_name = '' WHERE branch_name IS NULL")
-
 	log.Println("[Database] AutoMigrating database schema...")
 	err = DB.AutoMigrate(
 		&models.User{},
@@ -116,33 +76,6 @@ func InitDB() {
 	)
 	if err != nil {
 		log.Fatalf("[Database] Migration failed: %v", err)
-	}
-
-	// 显式删除旧数据库上残存的 managed_groups.path 全局唯一索引，解除同名子组的冲突
-	if err := DB.Exec("DROP INDEX IF EXISTS idx_managed_groups_path").Error; err != nil {
-		log.Printf("[Database] Failed to drop old path unique index: %v", err)
-	} else {
-		log.Println("[Database] Checked and removed unique index on managed_groups.path successfully")
-	}
-
-	// 显式创建新增索引以防旧表未成功迁移索引
-	sqlIndices := []string{
-		"CREATE INDEX IF NOT EXISTS idx_repositories_service_group ON repositories(service_group)",
-		"CREATE INDEX IF NOT EXISTS idx_repositories_owner_name ON repositories(owner_name)",
-		"CREATE INDEX IF NOT EXISTS idx_repositories_is_active ON repositories(is_active)",
-		"CREATE INDEX IF NOT EXISTS idx_es_repo_branch ON execution_schemes(repository_id, branch)",
-		"CREATE INDEX IF NOT EXISTS idx_mbm_repo_status ON managed_branch_monitors(managed_repository_id, status)",
-		"CREATE INDEX IF NOT EXISTS idx_mma_lookup ON managed_member_accesses(source_type, source_id, principal_type, principal_id)",
-		"CREATE UNIQUE INDEX IF NOT EXISTS idx_mg_repo ON managed_repositories(managed_group_id, name)",
-		"CREATE INDEX IF NOT EXISTS idx_er_task_type ON execution_reports(task_type)",
-		"CREATE INDEX IF NOT EXISTS idx_er_status ON execution_reports(status)",
-	}
-	for _, sqlIdx := range sqlIndices {
-		if err := DB.Exec(sqlIdx).Error; err != nil {
-			log.Printf("[Database] Failed to create index: %s, error: %v", sqlIdx, err)
-		} else {
-			log.Printf("[Database] Checked/Created index successfully: %s", sqlIdx)
-		}
 	}
 
 	// PostgreSQL 自增 Sequence 修正，防止 SQLite 数据迁移至 PostgreSQL 后主键 Sequence 滞后引发插入主键冲突
