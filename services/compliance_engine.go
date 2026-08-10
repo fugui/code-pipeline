@@ -15,6 +15,9 @@ import (
 // DefaultComplianceRules 系统内置的通用合规检查规则集
 func DefaultComplianceRules() []models.ComplianceRule {
 	return []models.ComplianceRule{
+		// 🌐 代码仓全局配置
+		{Dimension: "global_config", CheckKey: "private_repo_required", Label: "私有代码仓", Severity: "critical", Enabled: true},
+		{Dimension: "global_config", CheckKey: "non_open_source_required", Label: "非开源仓", Severity: "critical", Enabled: true},
 		// 🛡️ 分支保护
 		{Dimension: "branch_protection", CheckKey: "default_branch_protected", Label: "默认分支已设置保护", Severity: "critical", Enabled: true},
 		{Dimension: "branch_protection", CheckKey: "force_push_disabled", Label: "禁止 Force Push", Severity: "critical", Enabled: true},
@@ -177,6 +180,24 @@ func AuditRepoCompliance(ctx context.Context, repo *models.ManagedRepository, ba
 		totalWeight += weight
 
 		switch rule.CheckKey {
+		case "private_repo_required":
+			result.Passed = repo.IsPrivate
+			if repo.IsPrivate {
+				result.CurrentValue = "访问范围: 私有代码仓 (Private)"
+			} else {
+				result.CurrentValue = "访问范围: 公开仓 (Public)"
+			}
+			result.ExpectedValue = "必须设为私有代码仓"
+
+		case "non_open_source_required":
+			result.Passed = repo.IsNonOpenSource
+			if repo.IsNonOpenSource {
+				result.CurrentValue = "开源属性: 非开源仓"
+			} else {
+				result.CurrentValue = "开源属性: 开源仓"
+			}
+			result.ExpectedValue = "必须设为非开源仓"
+
 		case "default_branch_protected":
 			result.Passed = hasDefaultBranchProtection
 			result.CurrentValue = fmt.Sprintf("默认分支 %s 保护: %v", defaultBranch, hasDefaultBranchProtection)
