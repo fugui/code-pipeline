@@ -18,6 +18,8 @@ func DefaultComplianceRules() []models.ComplianceRule {
 		// 🌐 代码仓全局配置
 		{Dimension: "global_config", CheckKey: "private_repo_required", Label: "私有代码仓", Severity: "critical", Enabled: true},
 		{Dimension: "global_config", CheckKey: "non_open_source_required", Label: "非开源仓", Severity: "critical", Enabled: true},
+		{Dimension: "global_config", CheckKey: "has_description", Label: "仓库有描述信息", Severity: "suggestion", Enabled: true},
+		{Dimension: "global_config", CheckKey: "has_language", Label: "仓库有语言标识", Severity: "suggestion", Enabled: true},
 		// 🛡️ 分支保护
 		{Dimension: "branch_protection", CheckKey: "default_branch_protected", Label: "默认分支已设置保护", Severity: "critical", Enabled: true},
 		{Dimension: "branch_protection", CheckKey: "force_push_disabled", Label: "禁止 Force Push", Severity: "critical", Enabled: true},
@@ -31,9 +33,6 @@ func DefaultComplianceRules() []models.ComplianceRule {
 		// 🌿 分支卫生
 		{Dimension: "branch_hygiene", CheckKey: "stale_unmerged_limit", Label: "僵死分支数 ≤ 阈值", Severity: "important", Enabled: true, Threshold: 5},
 		{Dimension: "branch_hygiene", CheckKey: "stale_merged_limit", Label: "已合并待清理分支数 ≤ 阈值", Severity: "suggestion", Enabled: true, Threshold: 10},
-		// 📝 元数据完整性
-		{Dimension: "metadata", CheckKey: "has_description", Label: "仓库有描述信息", Severity: "suggestion", Enabled: true},
-		{Dimension: "metadata", CheckKey: "has_language", Label: "仓库有语言标识", Severity: "suggestion", Enabled: true},
 	}
 }
 
@@ -108,13 +107,20 @@ func GetGlobalBaseline() (*models.ComplianceBaseline, error) {
 		}
 	}
 
-	// 自动补充合并缺少的系统新默认规则 (如 private_repo_required, non_open_source_required)
+	// 自动补充合并缺少的系统新默认规则 (如 private_repo_required, non_open_source_required) 且迁移维度
 	var existingRules []models.ComplianceRule
 	_ = json.Unmarshal(baseline.Rules, &existingRules)
 
 	existingMap := make(map[string]bool)
-	for _, r := range existingRules {
-		existingMap[r.CheckKey] = true
+	changed := false
+	for i := range existingRules {
+		existingMap[existingRules[i].CheckKey] = true
+		if existingRules[i].CheckKey == "has_description" || existingRules[i].CheckKey == "has_language" {
+			if existingRules[i].Dimension != "global_config" {
+				existingRules[i].Dimension = "global_config"
+				changed = true
+			}
+		}
 	}
 
 	defaultRules := DefaultComplianceRules()
@@ -126,7 +132,7 @@ func GetGlobalBaseline() (*models.ComplianceBaseline, error) {
 		}
 	}
 
-	if hasNewRules {
+	if hasNewRules || changed {
 		newRulesJSON, err := json.Marshal(existingRules)
 		if err == nil {
 			baseline.Rules = newRulesJSON
