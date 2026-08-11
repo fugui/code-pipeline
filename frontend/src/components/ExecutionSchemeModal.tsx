@@ -585,7 +585,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <label style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>生效分支</label>
+                  <label style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>MR触发生效分支</label>
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', margin: 0 }}>
                     <input 
                       type="checkbox" 
@@ -609,7 +609,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                     <textarea
                       value={manualBranchText}
                       disabled={isView}
-                      placeholder="请输入生效分支或通配符规则，如: master, develop, feature/*, release/v1.* (多项用逗号或换行分隔)"
+                      placeholder="请输入MR触发生效分支或通配符规则，如: master, develop, feature/*, release/v1.* (多项用逗号或换行分隔)"
                       style={{
                         width: '100%',
                         height: 140,
