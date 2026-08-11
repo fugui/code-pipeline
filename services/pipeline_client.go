@@ -3,8 +3,6 @@ package services
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -961,29 +959,12 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 		repoURL = utils.SSHToHTTPS(repoURL)
 	}
 
-	// 产生全局唯一且一致的 Name 并回填
-	repoName := utils.ExtractRepoName(repoURL)
-	randomSuffix := "0000"
-	randBytes := make([]byte, 2)
-	if _, err := rand.Read(randBytes); err == nil {
-		randomSuffix = hex.EncodeToString(randBytes)
+	schemeName := strings.TrimSpace(scheme.Name)
+	if schemeName == "" {
+		return "", fmt.Errorf("execution scheme name cannot be empty")
 	}
-	unifiedName := fmt.Sprintf("%s_%s", repoName, randomSuffix)
-	unifiedName = strings.Map(func(r rune) rune {
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
-			return r
-		}
-		return '_'
-	}, unifiedName)
-
-	// 确保名字以字母开头
-	if len(unifiedName) > 0 {
-		firstChar := unifiedName[0]
-		if !((firstChar >= 'a' && firstChar <= 'z') || (firstChar >= 'A' && firstChar <= 'Z')) {
-			unifiedName = "s_" + unifiedName
-		}
-	}
-	scheme.Name = unifiedName
+	scheme.Name = schemeName
+	log.Printf("[SyncCreateScheme] Using scheme name: %s", scheme.Name)
 
 	// 1. 获取或创建代码检查执行任务
 	var taskID string

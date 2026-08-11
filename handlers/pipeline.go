@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"code-pipeline/database"
 	"code-pipeline/models"
@@ -32,6 +33,7 @@ type PipelineRequest struct {
 type ExecutionSchemeRequest struct {
 	PipelineID       *uint  `json:"pipeline_id" binding:"required"`
 	RepositoryID     *uint  `json:"repository_id" binding:"required"`
+	Name             string `json:"name" binding:"required"`
 	Branchs          string `json:"branchs" binding:"required"`
 	Languages        string `json:"languages"` // 英文逗号分隔字符串
 	MRTrigger        *bool  `json:"mr_trigger"`
@@ -253,9 +255,16 @@ func CreateExecutionScheme(c *gin.Context) {
 		return
 	}
 
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "执行方案名称 (name) 不能为空"})
+		return
+	}
+
 	scheme := models.ExecutionScheme{
 		LocalPipelineID:  *req.PipelineID,
 		RepositoryID:     *req.RepositoryID,
+		Name:             name,
 		Branch:           req.Branchs,
 		Languages:        req.Languages,
 		CustomAttributes: req.CustomAttributes,
@@ -330,6 +339,9 @@ func UpdateExecutionScheme(c *gin.Context) {
 
 	updates := map[string]interface{}{
 		"custom_attributes": req.CustomAttributes,
+	}
+	if req.Name != "" {
+		updates["name"] = strings.TrimSpace(req.Name)
 	}
 	if req.Branchs != "" {
 		updates["branch"] = req.Branchs
