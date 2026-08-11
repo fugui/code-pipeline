@@ -102,24 +102,73 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
         setIsManualBranchMode(true);
       }
 
-      // 新建方案时如果名称为空，自动填充基于代码仓预生成的默认名称
-      if (!activeScheme.id && !activeScheme.name) {
-        const repoObj = searchedRepos.find(r => r.id === activeScheme.repository_id) || activeScheme.repository;
+      const hasMrTrigger = activeScheme.hasOwnProperty('mr_trigger') && activeScheme.mr_trigger !== null ? (String(activeScheme.mr_trigger) === 'true') : true;
+      const hasDailyBuild = activeScheme.hasOwnProperty('daily_build') && activeScheme.daily_build !== null ? (String(activeScheme.daily_build) === 'true') : true;
+      const hasDailyBuildTime = activeScheme.daily_build_time || getRandomDailyBuildTime();
+
+      setMrTrigger(hasMrTrigger);
+      setDailyBuild(hasDailyBuild);
+      setDailyBuildTime(hasDailyBuildTime);
+
+      let parsedAttrs = activeScheme.custom_attributes;
+      if (parsedAttrs !== lastCustomAttrsRef.current) {
+        lastCustomAttrsRef.current = parsedAttrs || '';
+        try {
+          let parsed: any = JSON.parse(parsedAttrs || '{}');
+          if (typeof parsed === 'string') {
+            try {
+              parsed = JSON.parse(parsed);
+            } catch (_) {}
+          }
+          const buildParams = Array.isArray(parsed?.buildParameters) ? parsed.buildParameters : [];
+          
+          const buildTypeParam = buildParams.find((item: any) => item.name && String(item.name).trim().toLowerCase() === 'build_type');
+          if (buildTypeParam && buildTypeParam.value !== undefined && buildTypeParam.value !== null) {
+            const codes = String(buildTypeParam.value).split(',').map((s: string) => s.trim()).filter(Boolean);
+            setBuildTypes(codes.length > 0 ? codes : ['SCH']);
+          } else {
+            setBuildTypes(['SCH']);
+          }
+
+          const list = buildParams
+            .filter((item: any) => item.name && !isReservedAttrKey(String(item.name)))
+            .map((item: any) => ({
+              key: String(item.name || '').trim(),
+              value: String(item.value !== undefined && item.value !== null ? item.value : '')
+            }));
+          setCustomAttrs(list);
+        } catch (e) {
+          setCustomAttrs([]);
+        }
+      }
+
+      // 原子补齐初始化缺少的基础字段，防止并发 onChange 互相覆盖
+      let updatedScheme = { ...activeScheme };
+      let needsUpdate = false;
+
+      if (!updatedScheme.id && !updatedScheme.name) {
+        const repoObj = repos.find(r => r.id === updatedScheme.repository_id) || searchedRepos.find(r => r.id === updatedScheme.repository_id) || updatedScheme.repository;
         const repoName = repoObj ? repoObj.name : (filterQuery || 'scheme');
-        const defaultName = generateDefaultSchemeName(repoName);
-        onChange({
-          ...activeScheme,
-          name: defaultName
-        });
+        updatedScheme.name = generateDefaultSchemeName(repoName);
+        needsUpdate = true;
+      }
+
+      if (updatedScheme.mr_trigger === undefined || updatedScheme.daily_build === undefined || updatedScheme.daily_build_time === undefined) {
+        updatedScheme.mr_trigger = hasMrTrigger;
+        updatedScheme.daily_build = hasDailyBuild;
+        updatedScheme.daily_build_time = hasDailyBuildTime;
+        needsUpdate = true;
+      }
+
+      if (needsUpdate) {
+        onChange(updatedScheme);
       }
     }
-  }, [visible, activeScheme?.id, activeScheme?.repository_id]);
-
+  }, [visible, activeScheme?.id, activeScheme?.repository_id, activeScheme?.custom_attributes]);
 
   React.useEffect(() => {
     if (activeScheme && activeScheme.repository_id) {
       const found = repos.find(r => r.id === activeScheme.repository_id) || activeScheme.repository
-      // 只有找到对应仓库才更新显示名，避免 repos 尚未加载时将输入框错误清空
       if (found) {
         setFilterQuery(found.name)
       }
@@ -161,60 +210,6 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       setBranches([]);
     }
   }, [activeScheme?.repository_id, apiBase])
-
-  React.useEffect(() => {
-    if (visible && activeScheme) {
-      const hasMrTrigger = activeScheme.hasOwnProperty('mr_trigger') && activeScheme.mr_trigger !== null ? (String(activeScheme.mr_trigger) === 'true') : true;
-      const hasDailyBuild = activeScheme.hasOwnProperty('daily_build') && activeScheme.daily_build !== null ? (String(activeScheme.daily_build) === 'true') : true;
-      const hasDailyBuildTime = activeScheme.daily_build_time || getRandomDailyBuildTime();
-
-      setMrTrigger(hasMrTrigger);
-      setDailyBuild(hasDailyBuild);
-      setDailyBuildTime(hasDailyBuildTime);
-
-      if (activeScheme.custom_attributes === lastCustomAttrsRef.current) {
-        return;
-      }
-      lastCustomAttrsRef.current = activeScheme.custom_attributes || '';
-      try {
-        let parsed: any = JSON.parse(activeScheme.custom_attributes || '{}');
-        if (typeof parsed === 'string') {
-          try {
-            parsed = JSON.parse(parsed);
-          } catch (_) {}
-        }
-        const buildParams = Array.isArray(parsed?.buildParameters) ? parsed.buildParameters : [];
-        
-        // 从 buildParameters 中读取 build_type（多选，逗号分隔 code）
-        const buildTypeParam = buildParams.find((item: any) => item.name && String(item.name).trim().toLowerCase() === 'build_type');
-        if (buildTypeParam && buildTypeParam.value !== undefined && buildTypeParam.value !== null) {
-          const codes = String(buildTypeParam.value).split(',').map((s: string) => s.trim()).filter(Boolean);
-          setBuildTypes(codes.length > 0 ? codes : ['SCH']);
-        } else {
-          setBuildTypes(['SCH']);
-        }
-
-        const list = buildParams
-          .filter((item: any) => item.name && !isReservedAttrKey(String(item.name)))
-          .map((item: any) => ({
-            key: String(item.name || '').trim(),
-            value: String(item.value !== undefined && item.value !== null ? item.value : '')
-          }));
-        setCustomAttrs(list);
-      } catch (e) {
-        setCustomAttrs([]);
-      }
-
-      if (activeScheme.mr_trigger === undefined || activeScheme.daily_build === undefined || activeScheme.daily_build_time === undefined) {
-        onChange({
-          ...activeScheme,
-          mr_trigger: hasMrTrigger,
-          daily_build: hasDailyBuild,
-          daily_build_time: hasDailyBuildTime
-        });
-      }
-    }
-  }, [visible, activeScheme?.id, activeScheme?.custom_attributes, activeScheme?.mr_trigger, activeScheme?.daily_build, activeScheme?.daily_build_time]);
 
   React.useEffect(() => {
     if (activeScheme) {
