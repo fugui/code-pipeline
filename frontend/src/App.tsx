@@ -657,9 +657,21 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
             isAdmin={isAdmin}
             onAddScheme={(repo) => {
               const firstPipeline = pipelines[0]
+              const cleanRepo = (repo.name || 'scheme')
+                .toLowerCase()
+                .replace(/[^a-z0-9_]/g, '_')
+                .replace(/_+/g, '_')
+                .replace(/^_+|_+$/g, '');
+              const randomSuffix = Math.random().toString(16).substring(2, 6);
+              let defaultName = `${cleanRepo || 'scheme'}_${randomSuffix}`;
+              if (!/^[a-zA-Z]/.test(defaultName)) {
+                defaultName = `s_${defaultName}`;
+              }
+
               setActiveScheme({
                 pipeline_id: firstPipeline?.id || 0,
                 repository_id: repo.id,
+                name: defaultName,
                 repository: {
                   id: repo.id,
                   name: repo.name,
