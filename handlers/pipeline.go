@@ -334,14 +334,21 @@ func UpdateExecutionScheme(c *gin.Context) {
 		return
 	}
 
+	oldName := scheme.Name
 	oldBranch := scheme.Branch
 	oldCustomAttrs := scheme.CustomAttributes
+
+	nameChanged := req.Name != "" && strings.TrimSpace(req.Name) != oldName
 
 	updates := map[string]interface{}{
 		"custom_attributes": req.CustomAttributes,
 	}
 	if req.Name != "" {
-		updates["name"] = strings.TrimSpace(req.Name)
+		newName := strings.TrimSpace(req.Name)
+		updates["name"] = newName
+		updates["execution_scheme_name"] = newName
+		updates["mr_binding_name"] = newName
+		updates["execution_plan_name"] = newName
 	}
 	if req.Branchs != "" {
 		updates["branch"] = req.Branchs
@@ -388,17 +395,17 @@ func UpdateExecutionScheme(c *gin.Context) {
 
 	headers := prepareRequestHeaders(c)
 
-	// 1. 若修改了构建参数，同步修改三方 ExecutionScheme
+	// 1. 若修改了方案名称或构建参数，同步修改三方 ExecutionScheme
 	customAttrsChanged := req.CustomAttributes != oldCustomAttrs
-	if customAttrsChanged && repoURL != "" {
+	if (nameChanged || customAttrsChanged) && repoURL != "" {
 		if err := services.SyncUpdateExecutionSchemeRemote(c.Request.Context(), &scheme, repoURL, headers); err != nil {
 			log.Printf("[UpdateExecutionScheme] Warning: failed to sync remote ExecutionScheme for scheme %d: %v\n", scheme.ID, err)
 		}
 	}
 
-	// 2. 若修改了分支，且开启了 MR 触发，才同步修改三方 MRBinding
+	// 2. 若修改了方案名称或分支，且开启了 MR 触发，才同步修改三方 MRBinding
 	branchChanged := (req.Branchs != "" && req.Branchs != oldBranch) || scheme.Branch != oldBranch
-	if branchChanged && scheme.MRTrigger && repoURL != "" {
+	if (nameChanged || branchChanged) && scheme.MRTrigger && repoURL != "" {
 		if err := services.SyncUpdateMRBindingRemote(c.Request.Context(), &scheme, repoURL, headers); err != nil {
 			log.Printf("[UpdateExecutionScheme] Warning: failed to sync remote MR binding for scheme %d: %v\n", scheme.ID, err)
 		}
