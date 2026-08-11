@@ -37,7 +37,8 @@ const getRandomDailyBuildTime = () => {
 };
 
 const generateDefaultSchemeName = (repoName: string) => {
-  const cleanRepo = (repoName || 'scheme')
+  const lastPart = (repoName || 'scheme').split('/').pop() || repoName || 'scheme';
+  const cleanRepo = lastPart
     .toLowerCase()
     .replace(/[^a-z0-9_]/g, '_')
     .replace(/_+/g, '_')
