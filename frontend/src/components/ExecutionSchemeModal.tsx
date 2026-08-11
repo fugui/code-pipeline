@@ -628,7 +628,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                         const val = e.target.value;
                         setManualBranchText(val);
                         const cleanBranchs = val
-                          .split(/[\n,\uFF0C]+/)
+                          .split(/[\r\n,\uFF0C]+/)
                           .map(s => s.trim())
                           .filter(Boolean)
                           .join(',');
