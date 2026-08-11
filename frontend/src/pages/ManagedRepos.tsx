@@ -595,6 +595,31 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
     .catch(err => showToast('error', `操作失败: ${err.message}`))
   }
 
+  const handleDeleteGroup = (group: ManagedGroup) => {
+    if (!window.confirm(`⚠️ 确定要从系统移除根组 "${group.name}" 及其下属的所有子组、代码仓和监控数据吗？此操作无法撤销！`)) {
+      return
+    }
+
+    fetch(`${apiBase}/managed-groups/${group.id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('移除根组失败')
+      return res.json()
+    })
+    .then(() => {
+      showToast('success', `已成功移除根组 "${group.name}"`)
+      if (selectedGroup?.id === group.id) {
+        setSelectedGroup(null)
+      }
+      fetchGroups()
+      fetchRepos()
+    })
+    .catch(err => showToast('error', `移除失败: ${err.message}`))
+  }
+
+
   // Create Group
   const handleCreateGroup = (e: React.FormEvent) => {
     e.preventDefault()
@@ -981,15 +1006,27 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
           <div style={{ display: 'flex', gap: 10 }}>
             {isAdmin && selectedGroup && (
               <>
-                <button 
-                  onClick={() => handleToggleGroupHide(selectedGroup)} 
-                  className="btn btn-secondary"
-                  title={selectedGroup.is_hidden ? '取消屏蔽隐藏，使此组重新在大盘和树节点中展示' : '将该组屏蔽隐藏，默认不参与展示'}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                >
-                  {selectedGroup.is_hidden ? <Eye size={15} /> : <EyeOff size={15} />}
-                  {selectedGroup.is_hidden ? '显示此组' : '隐藏此组'}
-                </button>
+                {!selectedGroup.parent_id ? (
+                  <button 
+                    onClick={() => handleDeleteGroup(selectedGroup)} 
+                    className="btn btn-secondary"
+                    title="从系统移除根组及其辖下所有同步数据"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                  >
+                    <Trash2 size={15} />
+                    移除根组
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => handleToggleGroupHide(selectedGroup)} 
+                    className="btn btn-secondary"
+                    title={selectedGroup.is_hidden ? '取消屏蔽隐藏，使此组重新在大盘和树节点中展示' : '将该组屏蔽隐藏，默认不参与展示'}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  >
+                    {selectedGroup.is_hidden ? <Eye size={15} /> : <EyeOff size={15} />}
+                    {selectedGroup.is_hidden ? '显示此组' : '隐藏此组'}
+                  </button>
+                )}
                 <button 
                   onClick={handleSyncGroup} 
                   className="btn btn-secondary"

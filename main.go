@@ -139,6 +139,7 @@ func main() {
 				admin.POST("/managed-groups", handlers.CreateManagedGroup)
 				admin.POST("/managed-groups/:id/sync", handlers.SyncManagedGroup)
 				admin.POST("/managed-groups/:id/toggle-hide", handlers.ToggleGroupHide)
+				admin.DELETE("/managed-groups/:id", handlers.DeleteManagedGroup)
 				admin.POST("/managed-repos", handlers.CreateManagedRepo)
 				admin.POST("/managed-repos/:id/branches", handlers.CreateManagedBranch)
 				admin.POST("/managed-repos/:id/toggle-archive", handlers.ToggleRepoArchive)
