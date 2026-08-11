@@ -664,8 +664,8 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                       placeholder="请输入MR触发生效分支或通配符规则，如: master, develop, feature/*, release/v1.* (多项用逗号或换行分隔)"
                       style={{
                         width: '100%',
-                        height: 140,
-                        padding: '10px 12px',
+                        height: 110,
+                        padding: '8px 10px',
                         fontSize: 13,
                         fontFamily: 'monospace, sans-serif',
                         background: 'rgba(255,255,255,0.01)',
