@@ -269,3 +269,138 @@ func TestToggleGroupHideLogic(t *testing.T) {
 
 	t.Log("ToggleGroupHide logic verification successfully passed.")
 }
+
+func TestDeleteManagedGroupLogic(t *testing.T) {
+	_ = models.LoadConfig("../config.yaml")
+	InitDB()
+
+	// 清理旧的测试数据
+	DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.ManagedBranchMonitor{})
+	DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.ManagedMemberAccess{})
+	DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.ManagedProtectedBranchRule{})
+	DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.RepoComplianceReport{})
+	DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.ManagedRepository{})
+	DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.ManagedGroup{})
+
+	t1 := time.Now().Add(-1 * time.Hour)
+	pGroup := models.ManagedGroup{
+		ID:        500,
+		Name:      "RootGroup",
+		Path:      "RootGroup",
+		FullPath:  "RootGroup",
+		ParentID:  nil,
+		SyncedAt:  &t1,
+		IsHidden:  false,
+		CreatedAt: t1,
+	}
+	DB.Create(&pGroup)
+
+	cGroupID := uint(500)
+	cGroup := models.ManagedGroup{
+		ID:        501,
+		Name:      "SubGroup",
+		Path:      "SubGroup",
+		FullPath:  "RootGroup/SubGroup",
+		ParentID:  &cGroupID,
+		SyncedAt:  &t1,
+		IsHidden:  false,
+		CreatedAt: t1,
+	}
+	DB.Create(&cGroup)
+
+	DB.Create(&models.ManagedRepository{
+		ID:             601,
+		ManagedGroupID: 500,
+		Name:           "repoA",
+		SSHURL:         "git@github.com:root/repoA.git",
+		HTTPURL:        "http://...",
+		IsActive:       true,
+		CreatedAt:      t1,
+	})
+
+	DB.Create(&models.ManagedRepository{
+		ID:             602,
+		ManagedGroupID: 501,
+		Name:           "repoB",
+		SSHURL:         "git@github.com:root/sub/repoB.git",
+		HTTPURL:        "http://...",
+		IsActive:       true,
+		CreatedAt:      t1,
+	})
+
+	DB.Create(&models.ManagedBranchMonitor{
+		ID:                  701,
+		ManagedRepositoryID: 601,
+		BranchName:          "main",
+		LastCommitHash:      "123456",
+		LastCommitTime:      t1,
+		LastAuthor:          "author",
+		IsMerged:            false,
+		IsProtected:         true,
+		Status:              "active",
+		UpdatedAt:           t1,
+	})
+
+	DB.Create(&models.ManagedMemberAccess{
+		ID:            801,
+		SourceType:    "group",
+		SourceID:      500,
+		PrincipalType: "user",
+		PrincipalID:   1,
+		AccessLevel:   50,
+	})
+
+	// 执行删除级联清理逻辑（与 DeleteManagedGroup 后端保持一致）
+	tx := DB.Begin()
+	defer tx.Rollback()
+
+	var subGroupIDs []uint
+	likePattern := pGroup.FullPath + "/%"
+	if err := tx.Model(&models.ManagedGroup{}).Where("full_path LIKE ?", likePattern).Pluck("id", &subGroupIDs).Error; err != nil {
+		t.Fatalf("Failed to query sub groups: %v", err)
+	}
+
+	allGroupIDs := append([]uint{pGroup.ID}, subGroupIDs...)
+
+	var repoIDs []uint
+	if err := tx.Model(&models.ManagedRepository{}).Where("managed_group_id IN ?", allGroupIDs).Pluck("id", &repoIDs).Error; err != nil {
+		t.Fatalf("Failed to query repos: %v", err)
+	}
+
+	if len(repoIDs) > 0 {
+		_ = tx.Where("managed_repository_id IN ?", repoIDs).Delete(&models.ManagedBranchMonitor{}).Error
+		_ = tx.Where("source_type = 'repository' AND source_id IN ?", repoIDs).Delete(&models.ManagedMemberAccess{}).Error
+		_ = tx.Where("id IN ?", repoIDs).Delete(&models.ManagedRepository{}).Error
+	}
+
+	_ = tx.Where("source_type = 'group' AND source_id IN ?", allGroupIDs).Delete(&models.ManagedMemberAccess{}).Error
+	_ = tx.Where("id IN ?", allGroupIDs).Delete(&models.ManagedGroup{}).Error
+
+	if err := tx.Commit().Error; err != nil {
+		t.Fatalf("Failed to commit transaction: %v", err)
+	}
+
+	// 校验全量删除结果
+	var checkGroup models.ManagedGroup
+	if err := DB.First(&checkGroup, 500).Error; err == nil {
+		t.Fatal("Root group should have been deleted physically")
+	}
+
+	if err := DB.First(&checkGroup, 501).Error; err == nil {
+		t.Fatal("Sub group should have been deleted physically")
+	}
+
+	var checkRepo models.ManagedRepository
+	if err := DB.First(&checkRepo, 601).Error; err == nil {
+		t.Fatal("RepoA should have been deleted")
+	}
+
+	var accessCount int64
+	DB.Model(&models.ManagedMemberAccess{}).Where("source_type = 'group' AND source_id = 500").Count(&accessCount)
+	if accessCount > 0 {
+		t.Fatalf("Root group ACL should be deleted, got count: %d", accessCount)
+	}
+
+	t.Log("DeleteManagedGroup logic verification successfully passed.")
+}
+

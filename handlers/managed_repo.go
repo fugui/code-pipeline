@@ -575,6 +575,104 @@ func ToggleGroupHide(c *gin.Context) {
 	})
 }
 
+// DeleteManagedGroup 彻底移除被管组及其下辖所有子组、仓库与监控数据
+func DeleteManagedGroup(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid group ID"})
+		return
+	}
+
+	var group models.ManagedGroup
+	if err := database.DB.First(&group, uint(id)).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Group not found"})
+		return
+	}
+
+	tx := database.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 1. 查找所有子孙分组的 ID
+	var subGroupIDs []uint
+	likePattern := group.FullPath + "/%"
+	if err := tx.Model(&models.ManagedGroup{}).
+		Where("full_path LIKE ?", likePattern).
+		Pluck("id", &subGroupIDs).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query sub groups"})
+		return
+	}
+
+	// 2. 汇总当前分组 ID 及所有子孙分组 ID
+	allGroupIDs := append([]uint{group.ID}, subGroupIDs...)
+
+	// 3. 找出这些分组底下的所有仓库 ID
+	var repoIDs []uint
+	if err := tx.Model(&models.ManagedRepository{}).
+		Where("managed_group_id IN ?", allGroupIDs).
+		Pluck("id", &repoIDs).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query repositories"})
+		return
+	}
+
+	// 4. 清理仓库关联数据和仓库本身
+	if len(repoIDs) > 0 {
+		if err := tx.Where("managed_repository_id IN ?", repoIDs).Delete(&models.ManagedBranchMonitor{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete branch monitors"})
+			return
+		}
+		if err := tx.Where("managed_repository_id IN ?", repoIDs).Delete(&models.ManagedProtectedBranchRule{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete protected branch rules"})
+			return
+		}
+		if err := tx.Where("managed_repository_id IN ?", repoIDs).Delete(&models.RepoComplianceReport{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete repo compliance reports"})
+			return
+		}
+		if err := tx.Where("source_type = 'repository' AND source_id IN ?", repoIDs).Delete(&models.ManagedMemberAccess{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete repository ACLs"})
+			return
+		}
+		if err := tx.Where("id IN ?", repoIDs).Delete(&models.ManagedRepository{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete repositories"})
+			return
+		}
+	}
+
+	// 5. 清理所有分组的 ACL 策略并彻底物理删除所有分组记录（包括根组自身）
+	if err := tx.Where("source_type = 'group' AND source_id IN ?", allGroupIDs).Delete(&models.ManagedMemberAccess{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete group ACLs"})
+		return
+	}
+	if err := tx.Where("id IN ?", allGroupIDs).Delete(&models.ManagedGroup{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete groups"})
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Group and all associated data deleted successfully",
+	})
+}
+
+
 // ToggleRepoArchive 切换仓库归档状态 (归档时自动设为非活跃和隐藏状态)
 func ToggleRepoArchive(c *gin.Context) {
 	idStr := c.Param("id")
