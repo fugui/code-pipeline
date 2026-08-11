@@ -876,18 +876,6 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                       onChange={(e) => handleTriggerOrTimeChange(mrTrigger, e.target.checked, dailyBuildTime)}
                     />
                     <span>每日构建</span>
-                    <span 
-                      style={{ 
-                        display: 'inline-flex', 
-                        alignItems: 'center', 
-                        color: '#0284c7', 
-                        cursor: 'help',
-                        marginLeft: 2
-                      }} 
-                      title="提示：建议将每日构建时间尽量分散错峰设置，避免高峰期并发集中导致资源争抢和流水线概率性构建失败。"
-                    >
-                      <HelpCircle size={14} />
-                    </span>
                   </label>
                   <input 
                     type="time" 
@@ -909,6 +897,18 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                     }}
                     onChange={(e) => handleTriggerOrTimeChange(mrTrigger, dailyBuild, e.target.value)}
                   />
+                  <span 
+                    style={{ 
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      color: '#0284c7', 
+                      cursor: 'help',
+                      marginLeft: 2
+                    }} 
+                    title="提示：建议将每日构建时间尽量分散错峰设置，避免高峰期并发集中导致资源争抢和流水线概率性构建失败。"
+                  >
+                    <HelpCircle size={14} />
+                  </span>
                 </div>
               </div>
             </div>
