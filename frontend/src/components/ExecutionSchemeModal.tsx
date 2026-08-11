@@ -36,6 +36,21 @@ const getRandomDailyBuildTime = () => {
   return `${pad(hour)}:${pad(minute)}`;
 };
 
+const generateDefaultSchemeName = (repoName: string) => {
+  const cleanRepo = (repoName || 'scheme')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  
+  const randomSuffix = Math.random().toString(16).substring(2, 6);
+  let res = `${cleanRepo || 'scheme'}_${randomSuffix}`;
+  if (!/^[a-zA-Z]/.test(res)) {
+    res = `s_${res}`;
+  }
+  return res;
+};
+
 export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   isAdmin = true,
   visible,
@@ -86,8 +101,19 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       if (/[*?]/.test(currentBranchStr)) {
         setIsManualBranchMode(true);
       }
+
+      // 新建方案时如果名称为空，自动填充基于代码仓预生成的默认名称
+      if (!activeScheme.id && !activeScheme.name) {
+        const repoObj = searchedRepos.find(r => r.id === activeScheme.repository_id) || activeScheme.repository;
+        const repoName = repoObj ? repoObj.name : (filterQuery || 'scheme');
+        const defaultName = generateDefaultSchemeName(repoName);
+        onChange({
+          ...activeScheme,
+          name: defaultName
+        });
+      }
     }
-  }, [visible, activeScheme?.id]);
+  }, [visible, activeScheme?.id, activeScheme?.repository_id]);
 
 
   React.useEffect(() => {
@@ -298,6 +324,12 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError(null);
+
+    // 0. 校验执行方案名称必填
+    if (!activeScheme.name || !activeScheme.name.trim()) {
+      setLocalError('保存失败：执行方案名称 (name) 为必填项，不能为空');
+      return;
+    }
 
     // 1. 校验构建类型是否为空
     if (buildTypes.length === 0) {
@@ -539,6 +571,30 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                   ))}
                 </select>
               )}
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  执行方案名称 <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  {activeScheme.id ? '方案唯一标识名称' : '新建时系统已预生成默认名称，可按需修改'}
+                </span>
+              </div>
+              <input 
+                type="text" 
+                value={activeScheme.name || ''}
+                disabled={isView}
+                placeholder="请输入执行方案名称 (例如: demo_service_a1b2)"
+                required
+                onChange={(e) => {
+                  onChange({
+                    ...activeScheme,
+                    name: e.target.value
+                  });
+                }}
+              />
             </div>
 
             <div>
