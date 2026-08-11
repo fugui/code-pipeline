@@ -62,6 +62,8 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   const [pasteContent, setPasteContent] = React.useState('');
   const [copied, setCopied] = React.useState(false);
   const [localError, setLocalError] = React.useState<string | null>(null);
+  const [isManualBranchMode, setIsManualBranchMode] = React.useState(false);
+  const [manualBranchText, setManualBranchText] = React.useState('');
 
   const [mrTrigger, setMrTrigger] = React.useState(true);
   const [dailyBuild, setDailyBuild] = React.useState(true);
@@ -75,6 +77,17 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       setLocalError(null);
     }
   }, [visible, repos]);
+
+  React.useEffect(() => {
+    if (visible && activeScheme) {
+      const currentBranchStr = activeScheme.branchs || '';
+      setManualBranchText(currentBranchStr);
+      // 如果现有生效分支字符串包含 * 或 ? 通配符，自动切至手动录入模式
+      if (/[*?]/.test(currentBranchStr)) {
+        setIsManualBranchMode(true);
+      }
+    }
+  }, [visible, activeScheme?.id]);
 
 
   React.useEffect(() => {
@@ -571,82 +584,168 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>生效分支 (多选)</label>
-                {loadingBranches ? (
-                  <div style={{ fontSize: 13, color: 'var(--text-muted)', height: 168, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', borderRadius: 6, background: 'rgba(255,255,255,0.01)' }}>正在加载分支...</div>
-                ) : (
-                  <div style={{ 
-                    border: '1px solid var(--border-color)', 
-                    borderRadius: 6, 
-                    padding: '10px 12px', 
-                    height: 168, 
-                    overflowY: 'auto',
-                    background: 'rgba(255,255,255,0.01)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 8,
-                    direction: 'rtl'
-                  }}>
-                    <div style={{ direction: 'ltr', display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
-                      {(() => {
-                        const activeBranches = activeScheme.branchs ? activeScheme.branchs.split(',').filter(Boolean) : [];
-                        if (orderedBranches.length === 0) {
-                          return <span style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 32, display: 'block', width: '100%' }}>暂无分支，请先选择代码仓</span>;
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>生效分支</label>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', margin: 0 }}>
+                    <input 
+                      type="checkbox" 
+                      checked={isManualBranchMode}
+                      disabled={isView}
+                      style={{ width: 'auto', margin: 0 }}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setIsManualBranchMode(checked);
+                        if (checked) {
+                          setManualBranchText(activeScheme?.branchs || '');
                         }
-                        return orderedBranches.map(branch => {
-                          const checked = activeBranches.includes(branch);
-                          return (
-                            <label key={branch} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'var(--text-main)', userSelect: 'none' }}>
-                              <input 
-                                type="checkbox"
-                                checked={checked}
-                                style={{ width: 'auto', margin: 0 }}
-                                onChange={(e) => {
-                                  let current = activeScheme.branchs ? activeScheme.branchs.split(',').filter(Boolean) : [];
-                                  if (e.target.checked) {
-                                    if (!current.includes(branch)) {
-                                      current.push(branch);
-                                    }
-                                  } else {
-                                    current = current.filter((x: string) => x !== branch);
-                                  }
-                                  const updatedBranchs = current.join(',');
-                                  let parsed: Record<string, any> = {};
-                                  try {
-                                    parsed = JSON.parse(activeScheme.custom_attributes || '{}');
-                                  } catch (err) {
-                                    parsed = {};
-                                  }
-                                  let buildParameters = Array.isArray(parsed.buildParameters) ? parsed.buildParameters : [];
-                                  let found = false;
-                                  buildParameters = buildParameters.map((item: any) => {
-                                    if (item.name === 'selectedBranchs') {
-                                      found = true;
-                                      return { ...item, value: updatedBranchs };
-                                    }
-                                    return item;
-                                  });
-                                  if (!found) {
-                                    buildParameters.push({ name: 'selectedBranchs', value: updatedBranchs });
-                                  }
-                                  parsed.buildParameters = buildParameters;
-                                  const serialized = JSON.stringify(parsed);
-                                  lastCustomAttrsRef.current = serialized;
+                      }}
+                    />
+                    手动录入 (支持通配符)
+                  </label>
+                </div>
 
-                                  onChange({ 
-                                    ...activeScheme, 
-                                    branchs: updatedBranchs,
-                                    custom_attributes: serialized
-                                  });
-                                }}
-                              />
-                              {branch}
-                            </label>
-                          );
+                {isManualBranchMode ? (
+                  <div>
+                    <textarea
+                      value={manualBranchText}
+                      disabled={isView}
+                      placeholder="请输入生效分支或通配符规则，如: master, develop, feature/*, release/v1.* (多项用逗号或换行分隔)"
+                      style={{
+                        width: '100%',
+                        height: 140,
+                        padding: '10px 12px',
+                        fontSize: 13,
+                        fontFamily: 'monospace, sans-serif',
+                        background: 'rgba(255,255,255,0.01)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: 6,
+                        color: 'var(--text-main)',
+                        resize: 'none',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setManualBranchText(val);
+                        const cleanBranchs = val
+                          .split(/[\n,\uFF0C]+/)
+                          .map(s => s.trim())
+                          .filter(Boolean)
+                          .join(',');
+                        
+                        let parsed: Record<string, any> = {};
+                        try {
+                          parsed = JSON.parse(activeScheme.custom_attributes || '{}');
+                        } catch (err) {
+                          parsed = {};
+                        }
+                        let buildParameters = Array.isArray(parsed.buildParameters) ? parsed.buildParameters : [];
+                        let found = false;
+                        buildParameters = buildParameters.map((item: any) => {
+                          if (item.name === 'selectedBranchs') {
+                            found = true;
+                            return { ...item, value: cleanBranchs };
+                          }
+                          return item;
                         });
-                      })()}
+                        if (!found) {
+                          buildParameters.push({ name: 'selectedBranchs', value: cleanBranchs });
+                        }
+                        parsed.buildParameters = buildParameters;
+                        const serialized = JSON.stringify(parsed);
+                        lastCustomAttrsRef.current = serialized;
+
+                        onChange({ 
+                          ...activeScheme, 
+                          branchs: cleanBranchs,
+                          custom_attributes: serialized
+                        });
+                      }}
+                    />
+                    <div style={{ marginTop: 4, fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span>💡 提示：支持精确名称（如 master）或通配符规则（如 feature/*）。多个表达用逗号或换行分隔。</span>
                     </div>
                   </div>
+                ) : (
+                  loadingBranches ? (
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', height: 168, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', borderRadius: 6, background: 'rgba(255,255,255,0.01)' }}>正在加载分支...</div>
+                  ) : (
+                    <div style={{ 
+                      border: '1px solid var(--border-color)', 
+                      borderRadius: 6, 
+                      padding: '10px 12px', 
+                      height: 168, 
+                      overflowY: 'auto',
+                      background: 'rgba(255,255,255,0.01)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8,
+                      direction: 'rtl'
+                    }}>
+                      <div style={{ direction: 'ltr', display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+                        {(() => {
+                          const activeBranches = activeScheme.branchs ? activeScheme.branchs.split(',').filter(Boolean) : [];
+                          if (orderedBranches.length === 0) {
+                            return <span style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 32, display: 'block', width: '100%' }}>暂无分支，请先选择代码仓或勾选“手动录入”</span>;
+                          }
+                          return orderedBranches.map(branch => {
+                            const checked = activeBranches.includes(branch);
+                            return (
+                              <label key={branch} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'var(--text-main)', userSelect: 'none' }}>
+                                <input 
+                                  type="checkbox"
+                                  checked={checked}
+                                  disabled={isView}
+                                  style={{ width: 'auto', margin: 0 }}
+                                  onChange={(e) => {
+                                    let current = activeScheme.branchs ? activeScheme.branchs.split(',').filter(Boolean) : [];
+                                    if (e.target.checked) {
+                                      if (!current.includes(branch)) {
+                                        current.push(branch);
+                                      }
+                                    } else {
+                                      current = current.filter((x: string) => x !== branch);
+                                    }
+                                    const updatedBranchs = current.join(',');
+                                    setManualBranchText(updatedBranchs);
+                                    
+                                    let parsed: Record<string, any> = {};
+                                    try {
+                                      parsed = JSON.parse(activeScheme.custom_attributes || '{}');
+                                    } catch (err) {
+                                      parsed = {};
+                                    }
+                                    let buildParameters = Array.isArray(parsed.buildParameters) ? parsed.buildParameters : [];
+                                    let found = false;
+                                    buildParameters = buildParameters.map((item: any) => {
+                                      if (item.name === 'selectedBranchs') {
+                                        found = true;
+                                        return { ...item, value: updatedBranchs };
+                                      }
+                                      return item;
+                                    });
+                                    if (!found) {
+                                      buildParameters.push({ name: 'selectedBranchs', value: updatedBranchs });
+                                    }
+                                    parsed.buildParameters = buildParameters;
+                                    const serialized = JSON.stringify(parsed);
+                                    lastCustomAttrsRef.current = serialized;
+
+                                    onChange({ 
+                                      ...activeScheme, 
+                                      branchs: updatedBranchs,
+                                      custom_attributes: serialized
+                                    });
+                                  }}
+                                />
+                                {branch}
+                              </label>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+                  )
                 )}
               </div>
 
