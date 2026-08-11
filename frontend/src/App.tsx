@@ -657,7 +657,8 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
             isAdmin={isAdmin}
             onAddScheme={(repo) => {
               const firstPipeline = pipelines[0]
-              const cleanRepo = (repo.name || 'scheme')
+              const lastPart = (repo.name || 'scheme').split('/').pop() || repo.name || 'scheme';
+              const cleanRepo = lastPart
                 .toLowerCase()
                 .replace(/[^a-z0-9_]/g, '_')
                 .replace(/_+/g, '_')
