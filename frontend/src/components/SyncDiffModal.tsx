@@ -582,7 +582,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                       <thead>
                         <tr style={{ background: 'rgba(16, 185, 129, 0.08)', color: '#059669', borderBottom: '1px solid rgba(16, 185, 129, 0.2)' }}>
                           <th style={{ padding: '10px 14px' }}>代码仓 / 方案名称</th>
-                          <th style={{ padding: '10px 14px', width: 120 }}>生效分支</th>
+                          <th style={{ padding: '10px 14px', width: 140 }}>MR触发生效分支</th>
                           <th style={{ padding: '10px 14px', width: 110 }}>MR 触发状态</th>
                           <th style={{ padding: '10px 14px', width: 110 }}>每日构建状态</th>
                           <th style={{ padding: '10px 14px', width: 160 }}>三方方案名称 / ID</th>
@@ -679,7 +679,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                       <thead>
                         <tr style={{ background: 'rgba(244, 63, 94, 0.08)', color: '#e11d48', borderBottom: '1px solid rgba(244, 63, 94, 0.2)' }}>
                           <th style={{ padding: '10px 14px' }}>代码仓 / 方案名称</th>
-                          <th style={{ padding: '10px 14px', width: 120 }}>生效分支</th>
+                          <th style={{ padding: '10px 14px', width: 140 }}>MR触发生效分支</th>
                           <th style={{ padding: '10px 14px', width: 100 }}>本地 DB ID</th>
                           <th style={{ padding: '10px 14px' }}>物理删除说明</th>
                           <th style={{ padding: '10px 14px', width: 250, textAlign: 'center' }}>定向操作</th>
@@ -766,7 +766,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
                       <thead>
                         <tr style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)' }}>
                           <th style={{ padding: '10px 14px' }}>代码仓 / 方案名称</th>
-                          <th style={{ padding: '10px 14px', width: 130 }}>生效分支</th>
+                          <th style={{ padding: '10px 14px', width: 140 }}>MR触发生效分支</th>
                           <th style={{ padding: '10px 14px', width: 120 }}>本地 DB ID</th>
                           <th style={{ padding: '10px 14px', width: 180 }}>三方方案名称 / ID</th>
                           <th style={{ padding: '10px 14px', width: 110, textAlign: 'right' }}>同步状态</th>

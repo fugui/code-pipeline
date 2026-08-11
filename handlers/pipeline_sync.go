@@ -253,7 +253,7 @@ func SyncExecutionSchemes(c *gin.Context) {
 
 type DiffItemChange struct {
 	Category  string `json:"category"`   // "scheme", "mr_binding", "execution_plan"
-	FieldName string `json:"field_name"` // e.g. "生效分支", "MR触发绑定", "每日构建计划"
+	FieldName string `json:"field_name"` // e.g. "MR触发生效分支", "MR触发绑定", "每日构建计划"
 	OldValue  string `json:"old_value"`
 	NewValue  string `json:"new_value"`
 }
@@ -591,7 +591,7 @@ func CalculateExecutionSchemeDiff(c *gin.Context) {
 			if matchedLocal.Branch != r.Branch {
 				changes = append(changes, DiffItemChange{
 					Category:  "scheme",
-					FieldName: "生效分支",
+					FieldName: "MR触发生效分支",
 					OldValue:  matchedLocal.Branch,
 					NewValue:  r.Branch,
 				})
