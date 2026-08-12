@@ -1200,14 +1200,16 @@ func SyncDeleteCheckerTaskRemote(taskID string, headers map[string]string) error
 	}
 	apiURLStr := models.AppConfig.PipelineSystem.DeleteCheckerTaskURL
 	if apiURLStr == "" {
-		return nil
+		log.Printf("[SyncDeleteCheckerTask] Warning: delete_checker_task_url is not configured, cannot delete remote task %s\n", taskID)
+		return fmt.Errorf("三方代码检查任务删除接口 URL (delete_checker_task_url) 未配置")
 	}
 	payload := map[string]interface{}{
 		"taskIds": []string{taskID},
 	}
+	// 允许 200, 204, 202 及 404 (404 视为已删除，保障幂等性)
 	_, err := utils.SendHTTPRequest(context.Background(), "DELETE", apiURLStr, payload, utils.HTTPOptions{
 		Headers: headers,
-	}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteCheckerTask")
+	}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted, http.StatusNotFound}, "SyncDeleteCheckerTask")
 	if err != nil {
 		log.Printf("[SyncDeleteCheckerTask] Failed to delete checker task %s: %v\n", taskID, err)
 		return err
@@ -1222,7 +1224,7 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[
 		if err := SyncDeleteExecutionPlanRemote(scheme.ExecutionPlanID, headers); err != nil {
 			return fmt.Errorf("删除三方执行计划失败: %w", err)
 		}
-		if scheme.ID != 0 {
+		if scheme.ID != 0 && database.DB != nil {
 			database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", scheme.ID).Updates(map[string]interface{}{
 				"daily_build":         false,
 				"execution_plan_id":   "",
@@ -1237,39 +1239,64 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[
 		return fmt.Errorf("删除三方 MR 触发关联失败: %w", err)
 	}
 
-	// 3. 如果是该代码仓的最后一个执行方案，在三方系统中删除关联的代码检查任务，并重置 Repository 缓存 TaskID
-	taskID := scheme.CodeCheckerTaskID
-	repoID := scheme.RepositoryID
-
-	if repoID == 0 && taskID != "" {
-		var repo models.Repository
-		if err := database.DB.Where("code_checker_task_id = ?", taskID).First(&repo).Error; err == nil {
-			repoID = repo.ID
+	// 3. 删除执行方案
+	if scheme.ExecutionSchemeID != "" {
+		apiURLStr := models.AppConfig.PipelineSystem.GetExecutionSchemeURL
+		if apiURLStr != "" {
+			deleteURL := apiURLStr
+			if strings.HasSuffix(deleteURL, "/get") {
+				deleteURL = deleteURL[:len(deleteURL)-3] + "delete"
+			}
+			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", deleteURL, nil, utils.HTTPOptions{
+				Headers: headers,
+				QueryParams: map[string]string{
+					"id": scheme.ExecutionSchemeID,
+				},
+			}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted, http.StatusNotFound}, "SyncDeleteScheme")
+			if err != nil {
+				log.Printf("[SyncDelete] Failed to delete execution scheme %s: %v\n", scheme.ExecutionSchemeID, err)
+				return fmt.Errorf("删除三方执行方案失败: %w", err)
+			}
+			if scheme.ID != 0 && database.DB != nil {
+				database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", scheme.ID).Updates(map[string]interface{}{
+					"execution_scheme_id": "",
+				})
+			}
 		}
 	}
 
-	if repoID != 0 {
-		var otherCount int64
-		query := database.DB.Model(&models.ExecutionScheme{}).Where("repository_id = ?", repoID)
+	// 4. 代码检查任务删除判定：全局检查该 CodeCheckerTaskID 是否仍被系统中的其他执行方案引用
+	taskID := scheme.CodeCheckerTaskID
+	if taskID == "" && scheme.RepositoryID != 0 && database.DB != nil {
+		var repo models.Repository
+		if err := database.DB.First(&repo, scheme.RepositoryID).Error; err == nil {
+			taskID = repo.CodeCheckerTaskID
+		}
+	}
+
+	if taskID != "" && database.DB != nil {
+		var remainingCount int64
+		query := database.DB.Model(&models.ExecutionScheme{}).Where("code_checker_task_id = ?", taskID)
 		if scheme.ID != 0 {
 			query = query.Where("id != ?", scheme.ID)
 		}
-		if err := query.Count(&otherCount).Error; err == nil && otherCount == 0 {
-			if taskID == "" {
-				var repo models.Repository
-				if err := database.DB.First(&repo, repoID).Error; err == nil {
-					taskID = repo.CodeCheckerTaskID
-				}
+		if err := query.Count(&remainingCount).Error; err != nil {
+			log.Printf("[SyncDelete] DB error counting remaining schemes for task %s: %v\n", taskID, err)
+			return fmt.Errorf("查询代码检查任务关联方案失败: %w", err)
+		}
+
+		if remainingCount == 0 {
+			if err := SyncDeleteCheckerTaskRemote(taskID, headers); err != nil {
+				log.Printf("[SyncDelete] Failed to delete checker task %s: %v\n", taskID, err)
+				return fmt.Errorf("删除三方代码检查任务失败: %w", err)
 			}
-			if taskID != "" {
-				if err := SyncDeleteCheckerTaskRemote(taskID, headers); err != nil {
-					log.Printf("[SyncDelete] Failed to delete checker task %s for repository %d: %v\n", taskID, repoID, err)
-					return fmt.Errorf("删除三方代码检查任务失败: %w", err)
-				}
-				database.DB.Model(&models.Repository{}).Where("id = ?", repoID).Updates(map[string]interface{}{
-					"code_checker_task_id":   "",
-					"code_checker_task_name": "",
-				})
+
+			if err := database.DB.Model(&models.Repository{}).Where("code_checker_task_id = ?", taskID).Updates(map[string]interface{}{
+				"code_checker_task_id":   "",
+				"code_checker_task_name": "",
+			}).Error; err != nil {
+				log.Printf("[SyncDelete] Warning: failed to reset repository checker task cache for task %s: %v\n", taskID, err)
+				return fmt.Errorf("更新代码仓检查任务缓存失败: %w", err)
 			}
 		}
 	}

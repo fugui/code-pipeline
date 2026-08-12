@@ -13,6 +13,13 @@ import (
 	"code-pipeline/models"
 )
 
+func setupTestDB(t *testing.T) {
+	if database.DB == nil {
+		_ = models.LoadConfig("../config.yaml.example")
+		database.InitDB()
+	}
+}
+
 func TestCheckRepoAuthorized(t *testing.T) {
 	testCases := []struct {
 		name           string
@@ -758,6 +765,8 @@ func TestSyncUpdateCheckerTaskRemoteCachedIDMiss(t *testing.T) {
 }
 
 func TestSyncDeleteExecutionScheme_LastSchemeDeletesCheckerTask(t *testing.T) {
+	setupTestDB(t)
+
 	origDeleteCheckerURL := models.AppConfig.PipelineSystem.DeleteCheckerTaskURL
 	origSchemeURL := models.AppConfig.PipelineSystem.GetExecutionSchemeURL
 	defer func() {
