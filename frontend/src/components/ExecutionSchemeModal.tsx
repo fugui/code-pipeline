@@ -830,7 +830,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                         <input 
                           type="checkbox" 
                           checked={checked}
-                          disabled={isView}
+                          disabled={!isAdmin}
                           style={{ width: 'auto', margin: 0 }}
                           onChange={(e) => {
                             let current = activeScheme.languages ? activeScheme.languages.split(',') : [];
