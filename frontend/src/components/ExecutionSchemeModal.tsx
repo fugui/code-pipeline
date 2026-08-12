@@ -86,6 +86,8 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   const [dailyBuildTime, setDailyBuildTime] = React.useState(getRandomDailyBuildTime);
   const [buildTypes, setBuildTypes] = React.useState<string[]>(['SCH']);
   const lastCustomAttrsRef = React.useRef('');  const [searchedRepos, setSearchedRepos] = React.useState<any[]>(repos)
+  // 打开弹窗时记录的原始编程语言，用于区分"清空已有语言"与"旧方案原本就没有语言"
+  const originalLanguagesRef = React.useRef('')
 
   React.useEffect(() => {
     if (visible) {
@@ -96,6 +98,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
 
   React.useEffect(() => {
     if (visible && activeScheme) {
+      originalLanguagesRef.current = activeScheme.languages || '';
       const currentBranchStr = activeScheme.branchs || '';
       setManualBranchText(currentBranchStr);
       // 如果现有生效分支字符串包含 * 或 ? 通配符，自动切至手动录入模式
@@ -339,8 +342,10 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       return;
     }
 
-    // 2.5 校验编程语言是否为空
-    if (!activeScheme.languages || !activeScheme.languages.trim()) {
+    // 2.5 校验编程语言：禁止清空原本已有的语言（与后端一致）；
+    // 语言为空的旧方案（历史上未配置语言）允许保存其他修改
+    const originalLangs = originalLanguagesRef.current || '';
+    if (originalLangs.trim() && !(activeScheme.languages || '').trim()) {
       setLocalError('保存失败：请至少选择一种编程语言');
       return;
     }

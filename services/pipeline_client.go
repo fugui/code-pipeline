@@ -197,18 +197,12 @@ func buildCheckerTaskPayloadMap(repoURL string, branch string, languages string,
 		return nil, fmt.Errorf("failed to render create_checker_task_body template: %w", err)
 	}
 
-	mergedBytes, err := json.Marshal(payloadObj)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal rendered payload: %w", err)
-	}
-
-	var resultMap map[string]interface{}
-	if err := json.Unmarshal(mergedBytes, &resultMap); err != nil {
-		log.Printf("[buildCheckerTaskPayloadMap] Warning: failed to unmarshal payload map: %v, body: %s", err, string(mergedBytes))
-		resultMap = make(map[string]interface{})
-	}
-	if resultMap == nil {
-		resultMap = make(map[string]interface{})
+	// RenderJSONTemplate 已返回解析后的 JSON 值，直接断言为对象根即可。
+	// 不再做 marshal→unmarshal 往返：array-root/标量根模板应显式报错，
+	// 避免静默退化成空 map 上送，导致创建空任务或覆盖远程任务配置。
+	resultMap, ok := payloadObj.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("create_checker_task_body template root must be a JSON object, got %T", payloadObj)
 	}
 
 	return resultMap, nil
@@ -263,30 +257,42 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 	return taskID, nil
 }
 
-// SyncUpdateCheckerTaskRemote 在三方系统中修改/更新代码检查任务（PUT 方法）
-func SyncUpdateCheckerTaskRemote(ctx context.Context, taskID string, taskName string, repoURL string, branch string, languages string, headers map[string]string) error {
+// SyncUpdateCheckerTaskRemote 在三方系统中修改/更新代码检查任务（PUT 方法）。
+// 返回本次实际使用（或回退新建）的远程任务 ID，供调用方回写本地 DB，自愈失配的缓存 ID。
+func SyncUpdateCheckerTaskRemote(ctx context.Context, taskID string, taskName string, repoURL string, branch string, languages string, headers map[string]string) (string, error) {
 	apiURL := models.AppConfig.PipelineSystem.CreateCheckerTaskURL
 	if apiURL == "" {
-		return fmt.Errorf("create_checker_task_url not configured")
+		return "", fmt.Errorf("create_checker_task_url not configured")
 	}
 
 	// 1. 事前查询，获取已存在的 taskID 和 configTemplateId
 	infos, err := QueryCheckerTaskInfo(ctx, taskName, headers)
 	if err != nil {
-		return fmt.Errorf("failed to query existing checker task info for update: %w", err)
+		return "", fmt.Errorf("failed to query existing checker task info for update: %w", err)
 	}
 
-	// 如果远程未查询到对应的 Task，自动 Fallback 调用 createCheckerTaskStep (POST) 新建任务
+	// 远程未查询到对应 Task 时：
+	// - 本地无缓存 taskID（如历史方案从未创建过检查任务）→ 回退 POST 新建并返回新 ID；
+	// - 本地已有缓存 taskID 但按名称查不到 → 任务可能已被改名/删除，此时回退新建会
+	//   制造重复任务，宁可失败告警等待人工处理。
 	if len(infos) == 0 {
-		log.Printf("[SyncUpdateCheckerTask] Remote checker task %q not found, falling back to create dynamic task", taskName)
-		_, createErr := createCheckerTaskStep(ctx, repoURL, branch, languages, taskName, headers)
-		if createErr != nil {
-			return fmt.Errorf("checker task not found remotely and fallback creation failed: %w", createErr)
+		if taskID != "" {
+			return "", fmt.Errorf("remote query returned no checker task for name %q while local DB has cached task ID %q (task may have been renamed or deleted remotely); abort to avoid creating a duplicate task", taskName, taskID)
 		}
-		return nil
+		log.Printf("[SyncUpdateCheckerTask] Remote checker task %q not found, falling back to create dynamic task", taskName)
+		createdID, createErr := createCheckerTaskStep(ctx, repoURL, branch, languages, taskName, headers)
+		if createErr != nil {
+			return "", fmt.Errorf("checker task not found remotely and fallback creation failed: %w", createErr)
+		}
+		return createdID, nil
 	}
 
-	// 三级匹配原则：1. ID 精确匹配；2. 名称匹配；3. 降级取第一项
+	// 匹配策略：
+	// 1. DB 保存的 taskID 精确匹配（最高优先级）；
+	// 2. 名称精确匹配——若 DB taskID 失配，说明远程任务可能被删除重建（同名新 ID），
+	//    按名称继续更新属于有意的 upsert 续接，并返回实际 ID 供调用方回写；
+	// 3. 仅当查询结果唯一且 ID/名称均未匹配时降级取第一项；
+	//    多条结果且 ID/名称均未精确匹配时中止，避免模糊搜索误更新无关任务。
 	var targetInfo *models.CheckerTaskInfo
 	if taskID != "" {
 		for i := range infos {
@@ -305,27 +311,27 @@ func SyncUpdateCheckerTaskRemote(ctx context.Context, taskID string, taskName st
 		}
 	}
 	if targetInfo == nil {
-		targetInfo = &infos[0]
+		if len(infos) == 1 {
+			targetInfo = &infos[0]
+		} else {
+			return "", fmt.Errorf("remote query returned %d checker tasks but none exactly matches taskID %q / taskName %q, abort update to avoid modifying an unrelated task", len(infos), taskID, taskName)
+		}
 	}
 
 	// 校验 ID 是否非空
 	if targetInfo.ID == "" {
-		return fmt.Errorf("checker task ID is empty for task name %s, cannot execute update", taskName)
+		return "", fmt.Errorf("checker task ID is empty for task name %s, cannot execute update", taskName)
 	}
 
-	if taskID != "" && targetInfo.ID != taskID {
-		log.Printf("[SyncUpdateCheckerTask] Warning: matched remote task ID (%s) differs from DB saved task ID (%s)", targetInfo.ID, taskID)
+	usedTaskID := targetInfo.ID
+	if taskID != "" && usedTaskID != taskID {
+		log.Printf("[SyncUpdateCheckerTask] Warning: DB saved task ID (%s) differs from remote task ID (%s), continuing with name-matched task (remote task may have been deleted and recreated)", taskID, usedTaskID)
 	}
 
 	// 2. 渲染基础 Payload 结构
 	payloadMap, err := buildCheckerTaskPayloadMap(repoURL, branch, languages, taskName)
 	if err != nil {
-		return err
-	}
-
-	// 缺陷 3：对 nil map 进行防护
-	if payloadMap == nil {
-		payloadMap = make(map[string]interface{})
+		return "", err
 	}
 
 	// 3. 修饰修改专用的 JSON 节点：
@@ -352,10 +358,10 @@ func SyncUpdateCheckerTaskRemote(ctx context.Context, taskID string, taskName st
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated, http.StatusNoContent}, "SyncUpdateCheckerTaskRemote")
 	if err != nil {
-		return fmt.Errorf("failed to update remote checker task: %w", err)
+		return "", fmt.Errorf("failed to update remote checker task: %w", err)
 	}
 
-	// 缺陷 1：防止 Response 校验静默失败，针对非空 Body 强制严格解析，大小写不敏感判断 status
+	// 防止 Response 校验静默失败：非空 Body 强制严格解析，大小写不敏感判断 status
 	if len(body) > 0 {
 		var statusResp struct {
 			Status  string `json:"status"`
@@ -363,14 +369,14 @@ func SyncUpdateCheckerTaskRemote(ctx context.Context, taskID string, taskName st
 		}
 		if err := json.Unmarshal(body, &statusResp); err != nil {
 			log.Printf("[SyncUpdateCheckerTask] Failed to parse response status: %v, Body: %s", err, string(body))
-			return fmt.Errorf("failed to parse checker task status response JSON: %w", err)
+			return "", fmt.Errorf("failed to parse checker task status response JSON: %w", err)
 		}
 		if statusResp.Status != "" && !strings.EqualFold(statusResp.Status, "success") && !strings.EqualFold(statusResp.Status, "ok") {
-			return fmt.Errorf("failed to update checker task: status is %s, message: %s", statusResp.Status, statusResp.Message)
+			return "", fmt.Errorf("failed to update checker task: status is %s, message: %s", statusResp.Status, statusResp.Message)
 		}
 	}
 
-	return nil
+	return usedTaskID, nil
 }
 
 // QueryCheckerTaskInfo 根据任务名称在三方系统查询代码检查任务信息列表
