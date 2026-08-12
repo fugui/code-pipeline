@@ -521,10 +521,12 @@ func TestSyncUpdateCheckerTaskRemote(t *testing.T) {
 	}))
 	defer server.Close()
 
-	models.AppConfig.PipelineSystem.CreateCheckerTaskURL = server.URL
+	models.AppConfig.PipelineSystem.CreateCheckerTaskURL = server.URL + "/create-checker-task"
 	models.AppConfig.PipelineSystem.QueryCheckerTaskURL = server.URL
 	models.AppConfig.PipelineSystem.CreateCheckerTaskBody = `{
 		"ruleSets": {RULE_SETS},
+		"languages": {LANGUAGES},
+		"id": "{TEMPLATE_ID}",
 		"branch": "{REPO_BRANCH}"
 	}`
 	models.AppConfig.PipelineSystem.RuleSets = map[string]string{
@@ -553,6 +555,12 @@ func TestSyncUpdateCheckerTaskRemote(t *testing.T) {
 	if !ok || cfgTmpl["id"] != "tmpl-config-555" {
 		t.Errorf("expected configTemplate.id 'tmpl-config-555', got %v", cfgTmpl)
 	}
+
+	langsArr, ok := receivedPutBody["languages"].([]interface{})
+	if !ok || len(langsArr) != 1 || langsArr[0] != "Go" {
+		t.Errorf("expected languages ['Go'], got %v", receivedPutBody["languages"])
+	}
 }
+
 
 

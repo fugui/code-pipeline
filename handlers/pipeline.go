@@ -347,6 +347,11 @@ func UpdateExecutionScheme(c *gin.Context) {
 	nameChanged := req.Name != "" && strings.TrimSpace(req.Name) != oldName
 	languagesChanged := req.Languages != "" && req.Languages != oldLanguages
 
+	if req.Languages == "" && oldLanguages != "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "至少需要选择一种编程语言，不能清空语言"})
+		return
+	}
+
 	updates := map[string]interface{}{
 		"custom_attributes": req.CustomAttributes,
 	}
@@ -410,7 +415,14 @@ func UpdateExecutionScheme(c *gin.Context) {
 
 	// 1.5 若修改了编程语言，同步修改三方代码检查任务 (CheckerTask)
 	if languagesChanged && repoURL != "" {
-		if err := services.SyncUpdateCheckerTaskRemote(c.Request.Context(), scheme.Name, repoURL, scheme.Branch, scheme.Languages, headers); err != nil {
+		targetCheckerName := scheme.CodeCheckerTaskName
+		if targetCheckerName == "" {
+			targetCheckerName = oldName
+		}
+		if targetCheckerName == "" {
+			targetCheckerName = scheme.Name
+		}
+		if err := services.SyncUpdateCheckerTaskRemote(c.Request.Context(), targetCheckerName, repoURL, scheme.Branch, scheme.Languages, headers); err != nil {
 			log.Printf("[UpdateExecutionScheme] Warning: failed to sync remote CheckerTask for scheme %d: %v\n", scheme.ID, err)
 		}
 	}

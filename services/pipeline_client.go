@@ -146,7 +146,17 @@ func buildCheckerTaskPayloadMap(repoURL string, branch string, languages string,
 
 	var langs []string
 	if languages != "" {
-		langs = strings.Split(languages, ",")
+		for _, l := range strings.Split(languages, ",") {
+			trimmed := strings.TrimSpace(l)
+			if trimmed != "" {
+				langs = append(langs, trimmed)
+			}
+		}
+	}
+
+	langsJSON, err := json.Marshal(langs)
+	if err != nil {
+		langsJSON = []byte("[]")
 	}
 
 	type RuleSetParam struct {
@@ -180,6 +190,8 @@ func buildCheckerTaskPayloadMap(repoURL string, branch string, languages string,
 		"TASK_NAME":   taskName,
 		"NAME":        taskName,
 		"RULE_SETS":   string(ruleSetsJSON),
+		"LANGUAGES":   string(langsJSON),
+		"TEMPLATE_ID": "",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to render create_checker_task_body template: %w", err)
@@ -192,7 +204,11 @@ func buildCheckerTaskPayloadMap(repoURL string, branch string, languages string,
 
 	var resultMap map[string]interface{}
 	if err := json.Unmarshal(mergedBytes, &resultMap); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal payload map: %w", err)
+		log.Printf("[buildCheckerTaskPayloadMap] Warning: failed to unmarshal payload map: %v, body: %s", err, string(mergedBytes))
+		resultMap = make(map[string]interface{})
+	}
+	if resultMap == nil {
+		resultMap = make(map[string]interface{})
 	}
 
 	return resultMap, nil
@@ -227,7 +243,7 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 		log.Printf("[SyncCreatePlan] Step 1: Failed to parse response status: %v, Body: %s", err, string(body))
 		return "", fmt.Errorf("failed to parse checker task status response JSON: %w", err)
 	}
-	if statusResp.Status != "success" {
+	if statusResp.Status != "" && !strings.EqualFold(statusResp.Status, "success") && !strings.EqualFold(statusResp.Status, "ok") {
 		return "", fmt.Errorf("failed to create checker task: status is %s, message: %s", statusResp.Status, statusResp.Message)
 	}
 
@@ -256,15 +272,41 @@ func SyncUpdateCheckerTaskRemote(ctx context.Context, taskName string, repoURL s
 
 	// 1. 事前查询，获取已存在的 taskID 和 configTemplateId
 	infos, err := QueryCheckerTaskInfo(ctx, taskName, headers)
-	if err != nil || len(infos) == 0 {
+	if err != nil {
 		return fmt.Errorf("failed to query existing checker task info for update: %w", err)
 	}
-	targetInfo := infos[0]
+
+	// 缺陷 6：如果远程未查询到对应的 Task，自动 Fallback 调用 createCheckerTaskStep (POST) 新建任务
+	if len(infos) == 0 {
+		log.Printf("[SyncUpdateCheckerTask] Remote checker task %q not found, falling back to create dynamic task", taskName)
+		_, createErr := createCheckerTaskStep(ctx, repoURL, branch, languages, taskName, headers)
+		if createErr != nil {
+			return fmt.Errorf("checker task not found remotely and fallback creation failed: %w", createErr)
+		}
+		return nil
+	}
+
+	// 缺陷 4：精准比对 taskName 找到目标任务，未精准命中时回退使用第一项
+	var targetInfo *models.CheckerTaskInfo
+	for i := range infos {
+		if infos[i].Name == taskName {
+			targetInfo = &infos[i]
+			break
+		}
+	}
+	if targetInfo == nil {
+		targetInfo = &infos[0]
+	}
 
 	// 2. 渲染基础 Payload 结构
 	payloadMap, err := buildCheckerTaskPayloadMap(repoURL, branch, languages, taskName)
 	if err != nil {
 		return err
+	}
+
+	// 缺陷 3：对 nil map 进行防护
+	if payloadMap == nil {
+		payloadMap = make(map[string]interface{})
 	}
 
 	// 3. 修饰修改专用的 JSON 节点：
@@ -285,10 +327,16 @@ func SyncUpdateCheckerTaskRemote(ctx context.Context, taskName string, repoURL s
 		payloadMap["configTemplate"] = cfgTmpl
 	}
 
-	// 4. 发送 PUT 请求
+	// 缺陷 2：针对不同的三方系统风格扩展 URL 改写逻辑
 	modifyURL := apiURL
-	if strings.HasSuffix(modifyURL, "/add") {
+	if strings.HasSuffix(modifyURL, "/create-checker-task") {
+		modifyURL = strings.TrimSuffix(modifyURL, "/create-checker-task") + "/update-checker-task"
+	} else if strings.HasSuffix(modifyURL, "/add") {
 		modifyURL = strings.TrimSuffix(modifyURL, "/add") + "/modify"
+	} else if strings.HasSuffix(modifyURL, "/post") {
+		modifyURL = strings.TrimSuffix(modifyURL, "/post") + "/put"
+	} else if !strings.HasSuffix(modifyURL, "/put") && !strings.HasSuffix(modifyURL, "/modify") && !strings.HasSuffix(modifyURL, "/update-checker-task") {
+		modifyURL = strings.TrimSuffix(modifyURL, "/") + "/put"
 	}
 
 	log.Printf("[SyncUpdateCheckerTask] Updating Checker Task (PUT). URL: %s, TaskID: %s, ConfigTemplateID: %s", modifyURL, targetInfo.ID, targetInfo.ConfigTemplateID)
@@ -300,12 +348,19 @@ func SyncUpdateCheckerTaskRemote(ctx context.Context, taskName string, repoURL s
 		return fmt.Errorf("failed to update remote checker task: %w", err)
 	}
 
-	var statusResp struct {
-		Status  string `json:"status"`
-		Message string `json:"result"`
-	}
-	if err := json.Unmarshal(body, &statusResp); err == nil && statusResp.Status != "" && statusResp.Status != "success" {
-		return fmt.Errorf("failed to update checker task: status is %s, message: %s", statusResp.Status, statusResp.Message)
+	// 缺陷 1：防止 Response 校验静默失败，针对非空 Body 强制严格解析，大小写不敏感判断 status
+	if len(body) > 0 {
+		var statusResp struct {
+			Status  string `json:"status"`
+			Message string `json:"result"`
+		}
+		if err := json.Unmarshal(body, &statusResp); err != nil {
+			log.Printf("[SyncUpdateCheckerTask] Failed to parse response status: %v, Body: %s", err, string(body))
+			return fmt.Errorf("failed to parse checker task status response JSON: %w", err)
+		}
+		if statusResp.Status != "" && !strings.EqualFold(statusResp.Status, "success") && !strings.EqualFold(statusResp.Status, "ok") {
+			return fmt.Errorf("failed to update checker task: status is %s, message: %s", statusResp.Status, statusResp.Message)
+		}
 	}
 
 	return nil
