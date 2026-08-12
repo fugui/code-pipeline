@@ -1067,49 +1067,8 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[
 	}
 
 	// 2. 删除 MR 触发
-	if scheme.MRBindingID != "" {
-		var pipeline models.Pipeline
-		var pipelineBusinessID string
-		if err := database.DB.First(&pipeline, scheme.LocalPipelineID).Error; err == nil {
-			pipelineBusinessID = pipeline.PipelineID
-		} else if scheme.LocalPipelineID != 0 {
-			// 若主线程软删除了数据库记录，使用 Unscoped 恢复读取 PipelineID
-			if err := database.DB.Unscoped().First(&pipeline, scheme.LocalPipelineID).Error; err == nil {
-				pipelineBusinessID = pipeline.PipelineID
-			}
-		}
-
-		if models.AppConfig.PipelineSystem.EnableAPIGAuth {
-			log.Printf("[SyncDelete] Using APIG Token Authentication to delete MR binding %s", scheme.MRBindingID)
-			if err := SyncDeleteMRBindingAPIG(context.Background(), pipelineBusinessID, scheme.MRBindingID); err != nil {
-				log.Printf("[SyncDelete] Failed to delete mr binding %s via APIG: %v\n", scheme.MRBindingID, err)
-				return fmt.Errorf("删除三方 MR 触发关联失败: %w", err)
-			}
-		} else {
-			apiURLStr := models.AppConfig.PipelineSystem.GetMRBindingsURL
-			if apiURLStr != "" {
-				deleteURL := strings.TrimSuffix(apiURLStr, "/") + "/delete"
-				_, err := utils.SendHTTPRequest(context.Background(), "DELETE", deleteURL, nil, utils.HTTPOptions{
-					Headers: headers,
-					QueryParams: map[string]string{
-						"pipelineId": pipelineBusinessID,
-						"configId":   scheme.MRBindingID,
-						"isSingle":   "true",
-					},
-				}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteMRBinding")
-				if err != nil {
-					log.Printf("[SyncDelete] Failed to delete mr binding %s: %v\n", scheme.MRBindingID, err)
-					return fmt.Errorf("删除三方 MR 触发关联失败: %w", err)
-				}
-			}
-		}
-		if scheme.ID != 0 {
-			database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", scheme.ID).Updates(map[string]interface{}{
-				"mr_trigger":      false,
-				"mr_binding_id":   "",
-				"mr_binding_name": "",
-			})
-		}
+	if err := SyncDeleteMRBindingRemote(context.Background(), &scheme, headers); err != nil {
+		log.Printf("[SyncDelete] Warning: failed to delete MR binding for scheme %d: %v\n", scheme.ID, err)
 	}
 
 	// 3. 不再在此处删除代码检查任务，使其能够被其他方案复用或保留
@@ -1140,6 +1099,61 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[
 		}
 	}
 
+	return nil
+}
+
+// SyncDeleteMRBindingRemote 在三方系统中删除 MR 触发关联
+func SyncDeleteMRBindingRemote(ctx context.Context, scheme *models.ExecutionScheme, headers map[string]string) error {
+	if scheme == nil || scheme.MRBindingID == "" {
+		return nil
+	}
+
+	var pipeline models.Pipeline
+	var pipelineBusinessID string
+	if err := database.DB.First(&pipeline, scheme.LocalPipelineID).Error; err == nil {
+		pipelineBusinessID = pipeline.PipelineID
+	} else if scheme.LocalPipelineID != 0 {
+		// 若主线程软删除了数据库记录，使用 Unscoped 恢复读取 PipelineID
+		if err := database.DB.Unscoped().First(&pipeline, scheme.LocalPipelineID).Error; err == nil {
+			pipelineBusinessID = pipeline.PipelineID
+		}
+	}
+
+	if models.AppConfig.PipelineSystem.EnableAPIGAuth {
+		log.Printf("[SyncDeleteMRBinding] Using APIG Token Authentication to delete MR binding %s", scheme.MRBindingID)
+		if err := SyncDeleteMRBindingAPIG(ctx, pipelineBusinessID, scheme.MRBindingID); err != nil {
+			log.Printf("[SyncDeleteMRBinding] Failed to delete mr binding %s via APIG: %v\n", scheme.MRBindingID, err)
+			return fmt.Errorf("删除三方 MR 触发关联失败: %w", err)
+		}
+	} else {
+		apiURLStr := models.AppConfig.PipelineSystem.GetMRBindingsURL
+		if apiURLStr != "" {
+			deleteURL := strings.TrimSuffix(apiURLStr, "/") + "/delete"
+			_, err := utils.SendHTTPRequest(ctx, "DELETE", deleteURL, nil, utils.HTTPOptions{
+				Headers: headers,
+				QueryParams: map[string]string{
+					"pipelineId": pipelineBusinessID,
+					"configId":   scheme.MRBindingID,
+					"isSingle":   "true",
+				},
+			}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteMRBinding")
+			if err != nil {
+				log.Printf("[SyncDeleteMRBinding] Failed to delete mr binding %s: %v\n", scheme.MRBindingID, err)
+				return fmt.Errorf("删除三方 MR 触发关联失败: %w", err)
+			}
+		}
+	}
+
+	if database.DB != nil && scheme.ID != 0 {
+		database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", scheme.ID).Updates(map[string]interface{}{
+			"mr_trigger":      false,
+			"mr_binding_id":   "",
+			"mr_binding_name": "",
+		})
+	}
+	scheme.MRBindingID = ""
+	scheme.MRBindingName = ""
+	scheme.MRTrigger = false
 	return nil
 }
 
