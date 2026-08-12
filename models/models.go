@@ -171,6 +171,14 @@ type MRBinding struct {
 	SchemeName string `json:"schemeName"`
 }
 
+type CheckerTaskInfo struct {
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	RepoURL          string `json:"repoURL"`
+	BranchName       string `json:"branchName"`
+	ConfigTemplateID string `json:"configTemplateId"`
+}
+
 type RemoteExecutionScheme struct {
 	ID              string `json:"id"`
 	Name            string `json:"name"`
