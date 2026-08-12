@@ -337,6 +337,8 @@ func UpdateExecutionScheme(c *gin.Context) {
 	oldName := scheme.Name
 	oldBranch := scheme.Branch
 	oldCustomAttrs := scheme.CustomAttributes
+	oldMRTrigger := scheme.MRTrigger
+	oldMRBindingID := scheme.MRBindingID
 
 	nameChanged := req.Name != "" && strings.TrimSpace(req.Name) != oldName
 
@@ -403,9 +405,20 @@ func UpdateExecutionScheme(c *gin.Context) {
 		}
 	}
 
-	// 2. 若修改了方案名称或分支，且开启了 MR 触发，才同步修改三方 MRBinding
+	// 2. MR 触发联动逻辑：
+	// a. 如果从开启变为关闭：调用 SyncDeleteMRBindingRemote 解绑删除三方 MR 触发规则
+	// b. 如果开启 MR 触发，且名称、分支变更、由关闭变为开启或尚未绑定：调用 SyncUpdateMRBindingRemote 同步或新建三方 MR 触发规则
+	mrTriggerToggledOff := oldMRTrigger && !scheme.MRTrigger
+	mrTriggerToggledOn := !oldMRTrigger && scheme.MRTrigger
 	branchChanged := (req.Branchs != "" && req.Branchs != oldBranch) || scheme.Branch != oldBranch
-	if (nameChanged || branchChanged) && scheme.MRTrigger && repoURL != "" {
+
+	if mrTriggerToggledOff && oldMRBindingID != "" {
+		schemeToDelete := scheme
+		schemeToDelete.MRBindingID = oldMRBindingID
+		if err := services.SyncDeleteMRBindingRemote(c.Request.Context(), &schemeToDelete, headers); err != nil {
+			log.Printf("[UpdateExecutionScheme] Warning: failed to delete remote MR binding for scheme %d: %v\n", scheme.ID, err)
+		}
+	} else if scheme.MRTrigger && (nameChanged || branchChanged || mrTriggerToggledOn || scheme.MRBindingID == "") && repoURL != "" {
 		if err := services.SyncUpdateMRBindingRemote(c.Request.Context(), &scheme, repoURL, headers); err != nil {
 			log.Printf("[UpdateExecutionScheme] Warning: failed to sync remote MR binding for scheme %d: %v\n", scheme.ID, err)
 		}

@@ -642,7 +642,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                     <input 
                       type="checkbox" 
                       checked={isManualBranchMode}
-                      disabled={isView}
+                      disabled={!isAdmin}
                       style={{ width: 'auto', margin: 0 }}
                       onChange={(e) => {
                         const checked = e.target.checked;
@@ -660,7 +660,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                   <div>
                     <textarea
                       value={manualBranchText}
-                      disabled={isView}
+                      disabled={!isAdmin}
                       placeholder="请输入MR触发生效分支或通配符规则，如: master, develop, feature/*, release/v1.* (多项用逗号或换行分隔)"
                       style={{
                         width: '100%',
@@ -747,7 +747,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                                 <input 
                                   type="checkbox"
                                   checked={checked}
-                                  disabled={isView}
+                                  disabled={!isAdmin}
                                   style={{ width: 'auto', margin: 0 }}
                                   onChange={(e) => {
                                     let current = activeScheme.branchs ? activeScheme.branchs.split(',').filter(Boolean) : [];
@@ -860,7 +860,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                   <input 
                     type="checkbox" 
                     checked={mrTrigger}
-                    disabled={isView}
+                    disabled={!isAdmin}
                     style={{ width: 'auto', margin: 0 }}
                     onChange={(e) => handleTriggerOrTimeChange(e.target.checked, dailyBuild, dailyBuildTime)}
                   />
