@@ -473,3 +473,86 @@ func TestQueryCheckerTaskInfo(t *testing.T) {
 	}
 }
 
+func TestSyncUpdateCheckerTaskRemote(t *testing.T) {
+	origURL := models.AppConfig.PipelineSystem.CreateCheckerTaskURL
+	origQueryURL := models.AppConfig.PipelineSystem.QueryCheckerTaskURL
+	origBody := models.AppConfig.PipelineSystem.CreateCheckerTaskBody
+	origRuleSets := models.AppConfig.PipelineSystem.RuleSets
+	defer func() {
+		models.AppConfig.PipelineSystem.CreateCheckerTaskURL = origURL
+		models.AppConfig.PipelineSystem.QueryCheckerTaskURL = origQueryURL
+		models.AppConfig.PipelineSystem.CreateCheckerTaskBody = origBody
+		models.AppConfig.PipelineSystem.RuleSets = origRuleSets
+	}()
+
+	var receivedPutMethod string
+	var receivedPutBody map[string]interface{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{
+				"status": "success",
+				"result": {
+					"info": [
+						{
+							"id": "checker-task-8891",
+							"name": "update-task-test",
+							"repoURL": "https://example.com/repo.git",
+							"branchName": "main",
+							"configTemplateId": "tmpl-config-555"
+						}
+					]
+				}
+			}`))
+			return
+		}
+		if r.Method == "PUT" {
+			receivedPutMethod = r.Method
+			bodyBytes, err := io.ReadAll(r.Body)
+			if err == nil {
+				json.Unmarshal(bodyBytes, &receivedPutBody)
+			}
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status": "success"}`))
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	models.AppConfig.PipelineSystem.CreateCheckerTaskURL = server.URL
+	models.AppConfig.PipelineSystem.QueryCheckerTaskURL = server.URL
+	models.AppConfig.PipelineSystem.CreateCheckerTaskBody = `{
+		"ruleSets": {RULE_SETS},
+		"branch": "{REPO_BRANCH}"
+	}`
+	models.AppConfig.PipelineSystem.RuleSets = map[string]string{
+		"GO": "go_rule_1",
+	}
+
+	ctx := context.Background()
+	err := SyncUpdateCheckerTaskRemote(ctx, "update-task-test", "https://example.com/repo.git", "main", "Go", nil)
+	if err != nil {
+		t.Fatalf("SyncUpdateCheckerTaskRemote failed: %v", err)
+	}
+
+	if receivedPutMethod != "PUT" {
+		t.Errorf("expected PUT method, got %q", receivedPutMethod)
+	}
+
+	if receivedPutBody["id"] != "checker-task-8891" {
+		t.Errorf("expected root id 'checker-task-8891', got %v", receivedPutBody["id"])
+	}
+
+	if receivedPutBody["configTemplateId"] != "tmpl-config-555" {
+		t.Errorf("expected root configTemplateId 'tmpl-config-555', got %v", receivedPutBody["configTemplateId"])
+	}
+
+	cfgTmpl, ok := receivedPutBody["configTemplate"].(map[string]interface{})
+	if !ok || cfgTmpl["id"] != "tmpl-config-555" {
+		t.Errorf("expected configTemplate.id 'tmpl-config-555', got %v", cfgTmpl)
+	}
+}
+
+
