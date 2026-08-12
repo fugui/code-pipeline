@@ -161,16 +161,21 @@ func DeletePipeline(c *gin.Context) {
 	headers := prepareRequestHeaders(c)
 	// 同步从三方系统删除方案，若有失败则终止流程
 	for _, scheme := range schemes {
-		if err := services.SyncDeleteExecutionSchemeRemote(scheme, headers); err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("下架关联执行方案[%s]失败: %v", scheme.Name, err)})
-			return
+		// 纯本地 scheme (所有三方 ID 均为空) 跳过远程 DELETE 网络调用
+		if scheme.ExecutionSchemeID != "" || scheme.MRBindingID != "" || scheme.ExecutionPlanID != "" || scheme.CodeCheckerTaskID != "" {
+			if err := services.SyncDeleteExecutionSchemeRemote(scheme, headers); err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("下架关联执行方案[%s]失败: %v", scheme.Name, err)})
+				return
+			}
 		}
-		if err := database.DB.Delete(&scheme).Error; err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete associated execution scheme"})
-			return
-		}
+	}
+
+	// 远程下架全部成功后，在 tx 内统一批量删除 schemes 与 pipeline，保证事务原子性
+	if err := tx.Where("pipeline_id = ?", pipeline.ID).Delete(&models.ExecutionScheme{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete associated execution schemes"})
+		return
 	}
 
 	if err := tx.Delete(&pipeline).Error; err != nil {
@@ -299,7 +304,8 @@ func CreateExecutionScheme(c *gin.Context) {
 
 	if err := database.DB.Create(&scheme).Error; err != nil {
 		log.Printf("[Pipeline] DB.Create failed for scheme %s: %v. Rolling back remote objects...", scheme.Name, err)
-		go services.SyncDeleteExecutionSchemeRemote(scheme, headers)
+		// 同步阻塞调用远程回滚，避免异步 goroutine 导致与客户端重试产生竞态
+		_ = services.SyncDeleteExecutionSchemeRemote(scheme, headers)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create execution scheme in local DB"})
 		return
 	}
@@ -530,10 +536,12 @@ func DeleteExecutionScheme(c *gin.Context) {
 	}
 
 	headers := prepareRequestHeaders(c)
-	// 同步删除远程系统中的方案，三方失败则中断并保留本地记录
-	if err := services.SyncDeleteExecutionSchemeRemote(scheme, headers); err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("在三方系统中下架方案失败: %v", err)})
-		return
+	// 纯本地方案（无任何外部 ID）跳过远程 HTTP 删除逻辑
+	if scheme.ExecutionSchemeID != "" || scheme.MRBindingID != "" || scheme.ExecutionPlanID != "" || scheme.CodeCheckerTaskID != "" {
+		if err := services.SyncDeleteExecutionSchemeRemote(scheme, headers); err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("在三方系统中下架方案失败: %v", err)})
+			return
+		}
 	}
 
 	if err := database.DB.Delete(&scheme).Error; err != nil {
