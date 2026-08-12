@@ -349,8 +349,6 @@ func UpdateExecutionScheme(c *gin.Context) {
 		newName := strings.TrimSpace(req.Name)
 		updates["name"] = newName
 		updates["execution_scheme_name"] = newName
-		updates["mr_binding_name"] = newName
-		updates["execution_plan_name"] = newName
 	}
 	if req.Branchs != "" {
 		updates["branch"] = req.Branchs
@@ -422,7 +420,7 @@ func UpdateExecutionScheme(c *gin.Context) {
 			scheme.MRBindingID = ""
 			scheme.MRBindingName = ""
 		}
-	} else if scheme.MRTrigger && (nameChanged || branchChanged || mrTriggerToggledOn || scheme.MRBindingID == "") && repoURL != "" {
+	} else if scheme.MRTrigger && (branchChanged || mrTriggerToggledOn || scheme.MRBindingID == "") && repoURL != "" {
 		if err := services.SyncUpdateMRBindingRemote(c.Request.Context(), &scheme, repoURL, headers); err != nil {
 			log.Printf("[UpdateExecutionScheme] Warning: failed to sync remote MR binding for scheme %d: %v\n", scheme.ID, err)
 		}

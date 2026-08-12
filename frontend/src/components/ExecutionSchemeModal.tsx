@@ -581,7 +581,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
               <input 
                 type="text" 
                 value={activeScheme.name || ''}
-                disabled={isView}
+                disabled={!isAdmin}
                 placeholder="请输入执行方案名称 (例如: demo_service_a1b2)"
                 required
                 onChange={(e) => {
