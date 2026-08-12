@@ -264,7 +264,7 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 }
 
 // SyncUpdateCheckerTaskRemote 在三方系统中修改/更新代码检查任务（PUT 方法）
-func SyncUpdateCheckerTaskRemote(ctx context.Context, taskName string, repoURL string, branch string, languages string, headers map[string]string) error {
+func SyncUpdateCheckerTaskRemote(ctx context.Context, taskID string, taskName string, repoURL string, branch string, languages string, headers map[string]string) error {
 	apiURL := models.AppConfig.PipelineSystem.CreateCheckerTaskURL
 	if apiURL == "" {
 		return fmt.Errorf("create_checker_task_url not configured")
@@ -276,7 +276,7 @@ func SyncUpdateCheckerTaskRemote(ctx context.Context, taskName string, repoURL s
 		return fmt.Errorf("failed to query existing checker task info for update: %w", err)
 	}
 
-	// 缺陷 6：如果远程未查询到对应的 Task，自动 Fallback 调用 createCheckerTaskStep (POST) 新建任务
+	// 如果远程未查询到对应的 Task，自动 Fallback 调用 createCheckerTaskStep (POST) 新建任务
 	if len(infos) == 0 {
 		log.Printf("[SyncUpdateCheckerTask] Remote checker task %q not found, falling back to create dynamic task", taskName)
 		_, createErr := createCheckerTaskStep(ctx, repoURL, branch, languages, taskName, headers)
@@ -286,16 +286,35 @@ func SyncUpdateCheckerTaskRemote(ctx context.Context, taskName string, repoURL s
 		return nil
 	}
 
-	// 缺陷 4：精准比对 taskName 找到目标任务，未精准命中时回退使用第一项
+	// 三级匹配原则：1. ID 精确匹配；2. 名称匹配；3. 降级取第一项
 	var targetInfo *models.CheckerTaskInfo
-	for i := range infos {
-		if infos[i].Name == taskName {
-			targetInfo = &infos[i]
-			break
+	if taskID != "" {
+		for i := range infos {
+			if infos[i].ID == taskID {
+				targetInfo = &infos[i]
+				break
+			}
+		}
+	}
+	if targetInfo == nil && taskName != "" {
+		for i := range infos {
+			if infos[i].Name == taskName {
+				targetInfo = &infos[i]
+				break
+			}
 		}
 	}
 	if targetInfo == nil {
 		targetInfo = &infos[0]
+	}
+
+	// 校验 ID 是否非空
+	if targetInfo.ID == "" {
+		return fmt.Errorf("checker task ID is empty for task name %s, cannot execute update", taskName)
+	}
+
+	if taskID != "" && targetInfo.ID != taskID {
+		log.Printf("[SyncUpdateCheckerTask] Warning: matched remote task ID (%s) differs from DB saved task ID (%s)", targetInfo.ID, taskID)
 	}
 
 	// 2. 渲染基础 Payload 结构

@@ -534,7 +534,7 @@ func TestSyncUpdateCheckerTaskRemote(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	err := SyncUpdateCheckerTaskRemote(ctx, "update-task-test", "https://example.com/repo.git", "main", "Go", nil)
+	err := SyncUpdateCheckerTaskRemote(ctx, "checker-task-8891", "update-task-test", "https://example.com/repo.git", "main", "Go", nil)
 	if err != nil {
 		t.Fatalf("SyncUpdateCheckerTaskRemote failed: %v", err)
 	}

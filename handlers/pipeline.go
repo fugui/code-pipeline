@@ -422,7 +422,7 @@ func UpdateExecutionScheme(c *gin.Context) {
 		if targetCheckerName == "" {
 			targetCheckerName = scheme.Name
 		}
-		if err := services.SyncUpdateCheckerTaskRemote(c.Request.Context(), targetCheckerName, repoURL, scheme.Branch, scheme.Languages, headers); err != nil {
+		if err := services.SyncUpdateCheckerTaskRemote(c.Request.Context(), scheme.CodeCheckerTaskID, targetCheckerName, repoURL, scheme.Branch, scheme.Languages, headers); err != nil {
 			log.Printf("[UpdateExecutionScheme] Warning: failed to sync remote CheckerTask for scheme %d: %v\n", scheme.ID, err)
 		}
 	}
