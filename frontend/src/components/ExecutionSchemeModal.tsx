@@ -339,6 +339,12 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       return;
     }
 
+    // 2.5 校验编程语言是否为空
+    if (!activeScheme.languages || !activeScheme.languages.trim()) {
+      setLocalError('保存失败：请至少选择一种编程语言');
+      return;
+    }
+
     // 3. 校验参数名重复 (系统相同名字的参数只能存在一份)
     const nameCounts = new Map<string, number>();
     for (const item of customAttrs) {
