@@ -339,6 +339,9 @@ func UpdateExecutionScheme(c *gin.Context) {
 	oldCustomAttrs := scheme.CustomAttributes
 	oldMRTrigger := scheme.MRTrigger
 	oldMRBindingID := scheme.MRBindingID
+	oldDailyBuild := scheme.DailyBuild
+	oldDailyBuildTime := scheme.DailyBuildTime
+	oldExecutionPlanID := scheme.ExecutionPlanID
 
 	nameChanged := req.Name != "" && strings.TrimSpace(req.Name) != oldName
 
@@ -423,6 +426,61 @@ func UpdateExecutionScheme(c *gin.Context) {
 	} else if scheme.MRTrigger && (branchChanged || mrTriggerToggledOn || scheme.MRBindingID == "") && repoURL != "" {
 		if err := services.SyncUpdateMRBindingRemote(c.Request.Context(), &scheme, repoURL, headers); err != nil {
 			log.Printf("[UpdateExecutionScheme] Warning: failed to sync remote MR binding for scheme %d: %v\n", scheme.ID, err)
+		}
+	}
+
+	// 3. 每日构建联动逻辑：
+	// a. 如果从开启变为关闭：删除三方每日构建计划
+	// b. 如果从关闭变为开启（或开启状态下无 planID）：创建三方每日构建计划
+	// c. 如果在开启状态下修改了每日构建运行时间：删除旧计划并重新创建新计划
+	dailyBuildToggledOff := oldDailyBuild && !scheme.DailyBuild
+	dailyBuildToggledOn := !oldDailyBuild && scheme.DailyBuild
+	dailyBuildTimeChanged := scheme.DailyBuild && req.DailyBuildTime != "" && req.DailyBuildTime != oldDailyBuildTime
+
+	var pipelineBusinessID string
+	if scheme.PipelineInfo != nil {
+		pipelineBusinessID = scheme.PipelineInfo.PipelineID
+	}
+
+	if dailyBuildToggledOff && oldExecutionPlanID != "" {
+		if err := services.SyncDeleteExecutionPlanRemote(oldExecutionPlanID, headers); err != nil {
+			log.Printf("[UpdateExecutionScheme] Warning: failed to delete remote execution plan for scheme %d: %v\n", scheme.ID, err)
+		} else {
+			scheme.ExecutionPlanID = ""
+			scheme.ExecutionPlanName = ""
+			database.DB.Model(&scheme).Updates(map[string]interface{}{
+				"execution_plan_id":   "",
+				"execution_plan_name": "",
+			})
+		}
+	} else if (dailyBuildToggledOn || (scheme.DailyBuild && scheme.ExecutionPlanID == "")) && pipelineBusinessID != "" {
+		planID, err := services.CreateExecutionPlanStep(c.Request.Context(), pipelineBusinessID, &scheme, scheme.ExecutionSchemeID, headers)
+		if err != nil {
+			log.Printf("[UpdateExecutionScheme] Warning: failed to create remote execution plan for scheme %d: %v\n", scheme.ID, err)
+		} else {
+			scheme.ExecutionPlanID = planID
+			scheme.ExecutionPlanName = scheme.Name
+			database.DB.Model(&scheme).Updates(map[string]interface{}{
+				"execution_plan_id":   planID,
+				"execution_plan_name": scheme.Name,
+			})
+		}
+	} else if dailyBuildTimeChanged && oldExecutionPlanID != "" && pipelineBusinessID != "" {
+		if err := services.SyncDeleteExecutionPlanRemote(oldExecutionPlanID, headers); err != nil {
+			// 删除旧计划失败时中止重建，保留旧 planID 不落库，避免三方残留孤儿计划，下次更新时再重试
+			log.Printf("[UpdateExecutionScheme] Warning: failed to delete old remote execution plan for scheme %d: %v\n", scheme.ID, err)
+		} else {
+			planID, err := services.CreateExecutionPlanStep(c.Request.Context(), pipelineBusinessID, &scheme, scheme.ExecutionSchemeID, headers)
+			if err != nil {
+				log.Printf("[UpdateExecutionScheme] Warning: failed to recreate remote execution plan for scheme %d: %v\n", scheme.ID, err)
+			} else {
+				scheme.ExecutionPlanID = planID
+				scheme.ExecutionPlanName = scheme.Name
+				database.DB.Model(&scheme).Updates(map[string]interface{}{
+					"execution_plan_id":   planID,
+					"execution_plan_name": scheme.Name,
+				})
+			}
 		}
 	}
 
