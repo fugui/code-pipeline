@@ -788,7 +788,7 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
                 <button
                   className="btn btn-secondary btn-small"
                   style={{ padding: '6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4 }}
-                  title="查看执行方案"
+                  title="查看/修改执行方案"
                   onClick={() => onEditScheme(scheme)}
                 >
                   <Eye size={12} />
