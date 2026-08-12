@@ -428,3 +428,48 @@ func TestManagedGitPlatformAPI(t *testing.T) {
 		t.Errorf("unexpected projects result: %v", projects)
 	}
 }
+
+func TestQueryCheckerTaskInfo(t *testing.T) {
+	origQueryURL := models.AppConfig.PipelineSystem.QueryCheckerTaskURL
+	defer func() {
+		models.AppConfig.PipelineSystem.QueryCheckerTaskURL = origQueryURL
+	}()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" && r.URL.Query().Get("search") == "my-checker-task" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{
+				"status": "success",
+				"result": {
+					"info": [
+						{
+							"id": "checker-99",
+							"name": "my-checker-task",
+							"repoURL": "https://example.com/repo.git",
+							"branchName": "main",
+							"configTemplateId": "tmpl-777"
+						}
+					]
+				}
+			}`))
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	models.AppConfig.PipelineSystem.QueryCheckerTaskURL = server.URL
+
+	ctx := context.Background()
+	infos, err := QueryCheckerTaskInfo(ctx, "my-checker-task", nil)
+	if err != nil {
+		t.Fatalf("QueryCheckerTaskInfo failed: %v", err)
+	}
+	if len(infos) != 1 {
+		t.Fatalf("expected 1 info item, got %d", len(infos))
+	}
+	if infos[0].ID != "checker-99" || infos[0].ConfigTemplateID != "tmpl-777" {
+		t.Errorf("unexpected info result: %+v", infos[0])
+	}
+}
+

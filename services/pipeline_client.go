@@ -211,44 +211,15 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 		return "", fmt.Errorf("failed to create checker task: status is %s, message: %s", statusResp.Status, statusResp.Message)
 	}
 
-	queryURL := models.AppConfig.PipelineSystem.QueryCheckerTaskURL
-	if queryURL == "" {
-		return "", fmt.Errorf("query_checker_task_url not configured")
-	}
-
-	queryBody, err := utils.SendHTTPRequest(ctx, "GET", queryURL, nil, utils.HTTPOptions{
-		Headers: headers,
-		QueryParams: map[string]string{
-			"search": taskName,
-		},
-	}, []int{http.StatusOK}, "QueryCheckerTaskStep")
+	infos, err := QueryCheckerTaskInfo(ctx, taskName, headers)
 	if err != nil {
-		return "", fmt.Errorf("failed to query checker task ID by name: %w", err)
+		return "", err
 	}
-
-	var queryResp struct {
-		Status string `json:"status"`
-		Result struct {
-			Info []struct {
-				ID         string `json:"id"`
-				Name       string `json:"name"`
-				RepoURL    string `json:"repoURL"`
-				BranchName string `json:"branchName"`
-			} `json:"info"`
-		} `json:"result"`
-	}
-	if err := json.Unmarshal(queryBody, &queryResp); err != nil {
-		log.Printf("[SyncCreatePlan] Step 1: Failed to parse query response: %v, Body: %s", err, string(queryBody))
-		return "", fmt.Errorf("failed to parse query checker task response JSON: %w", err)
-	}
-	if queryResp.Status != "success" {
-		return "", fmt.Errorf("failed to query checker task: status is %s", queryResp.Status)
-	}
-	if len(queryResp.Result.Info) == 0 {
+	if len(infos) == 0 {
 		return "", fmt.Errorf("no checker task found with name %s", taskName)
 	}
 
-	taskID := queryResp.Result.Info[0].ID
+	taskID := infos[0].ID
 	if taskID == "" {
 		return "", fmt.Errorf("checker task ID is empty for task name %s", taskName)
 	}
@@ -256,48 +227,56 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 	return taskID, nil
 }
 
-// GetCheckerTaskName 根据任务ID和搜索名称在三方系统查找并获取任务的真实名称
-func GetCheckerTaskName(ctx context.Context, searchName string, taskID string, headers map[string]string) (string, error) {
+// QueryCheckerTaskInfo 根据任务名称在三方系统查询代码检查任务信息列表
+func QueryCheckerTaskInfo(ctx context.Context, taskName string, headers map[string]string) ([]models.CheckerTaskInfo, error) {
 	queryURL := models.AppConfig.PipelineSystem.QueryCheckerTaskURL
 	if queryURL == "" {
-		return "", fmt.Errorf("query_checker_task_url not configured")
+		return nil, fmt.Errorf("query_checker_task_url not configured")
 	}
 
 	queryBody, err := utils.SendHTTPRequest(ctx, "GET", queryURL, nil, utils.HTTPOptions{
 		Headers: headers,
 		QueryParams: map[string]string{
-			"search": searchName,
+			"search": taskName,
 		},
-	}, []int{http.StatusOK}, "GetCheckerTaskName")
+	}, []int{http.StatusOK}, "QueryCheckerTaskInfo")
 	if err != nil {
-		return "", err
+		return nil, fmt.Errorf("failed to query checker task ID by name: %w", err)
 	}
 
 	var queryResp struct {
 		Status string `json:"status"`
 		Result struct {
-			Info []struct {
-				ID   string `json:"id"`
-				Name string `json:"name"`
-			} `json:"info"`
+			Info []models.CheckerTaskInfo `json:"info"`
 		} `json:"result"`
 	}
 	if err := json.Unmarshal(queryBody, &queryResp); err != nil {
-		return "", err
+		log.Printf("[QueryCheckerTaskInfo] Failed to parse query response: %v, Body: %s", err, string(queryBody))
+		return nil, fmt.Errorf("failed to parse query checker task response JSON: %w", err)
 	}
 	if queryResp.Status != "success" {
-		return "", fmt.Errorf("failed to query checker task: status is %s", queryResp.Status)
+		return nil, fmt.Errorf("failed to query checker task: status is %s", queryResp.Status)
 	}
 
-	for _, info := range queryResp.Result.Info {
+	return queryResp.Result.Info, nil
+}
+
+// GetCheckerTaskName 根据任务ID和搜索名称在三方系统查找并获取任务的真实名称
+func GetCheckerTaskName(ctx context.Context, searchName string, taskID string, headers map[string]string) (string, error) {
+	infos, err := QueryCheckerTaskInfo(ctx, searchName, headers)
+	if err != nil {
+		return "", err
+	}
+
+	for _, info := range infos {
 		if info.ID == taskID {
 			return info.Name, nil
 		}
 	}
 
 	// fallback
-	if len(queryResp.Result.Info) > 0 {
-		return queryResp.Result.Info[0].Name, nil
+	if len(infos) > 0 {
+		return infos[0].Name, nil
 	}
 
 	return "", fmt.Errorf("checker task not found with name: %s", searchName)
