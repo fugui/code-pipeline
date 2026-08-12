@@ -133,13 +133,8 @@ func FetchRemoteExecutionPlans(ctx context.Context, pipelineBusinessID string, h
 	return remoteResp.Entities, nil
 }
 
-// createCheckerTaskStep 步骤一：创建代码检查执行任务
-func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, languages string, taskName string, headers map[string]string) (string, error) {
-	apiURL := models.AppConfig.PipelineSystem.CreateCheckerTaskURL
-	if apiURL == "" {
-		return "", fmt.Errorf("create_checker_task_url not configured")
-	}
-
+// buildCheckerTaskPayloadMap 渲染代码检查任务的基础 Body Payload Map
+func buildCheckerTaskPayloadMap(repoURL string, branch string, languages string, taskName string) (map[string]interface{}, error) {
 	firstBranch := branch
 	if idx := strings.Index(branch, ","); idx != -1 {
 		firstBranch = strings.TrimSpace(branch[:idx])
@@ -170,16 +165,16 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 	}
 	ruleSetsJSON, err := json.Marshal(ruleSets)
 	if err != nil {
-		log.Printf("[SyncCreatePlan] Step 1: Failed to marshal ruleSets: %v", err)
-		return "", fmt.Errorf("failed to marshal ruleSets to JSON: %w", err)
+		log.Printf("[buildCheckerTaskPayloadMap] Failed to marshal ruleSets: %v", err)
+		return nil, fmt.Errorf("failed to marshal ruleSets to JSON: %w", err)
 	}
 
 	tmpl := models.AppConfig.PipelineSystem.CreateCheckerTaskBody
 	if tmpl == "" {
-		return "", fmt.Errorf("create_checker_task_body not configured")
+		return nil, fmt.Errorf("create_checker_task_body not configured")
 	}
 
-	payload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
+	payloadObj, err := utils.RenderJSONTemplate(tmpl, map[string]string{
 		"REPO_URL":    repoURL,
 		"REPO_BRANCH": firstBranch,
 		"TASK_NAME":   taskName,
@@ -187,12 +182,37 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 		"RULE_SETS":   string(ruleSetsJSON),
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to render create_checker_task_body template: %w", err)
+		return nil, fmt.Errorf("failed to render create_checker_task_body template: %w", err)
+	}
+
+	mergedBytes, err := json.Marshal(payloadObj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal rendered payload: %w", err)
+	}
+
+	var resultMap map[string]interface{}
+	if err := json.Unmarshal(mergedBytes, &resultMap); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal payload map: %w", err)
+	}
+
+	return resultMap, nil
+}
+
+// createCheckerTaskStep 步骤一：创建代码检查执行任务
+func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, languages string, taskName string, headers map[string]string) (string, error) {
+	apiURL := models.AppConfig.PipelineSystem.CreateCheckerTaskURL
+	if apiURL == "" {
+		return "", fmt.Errorf("create_checker_task_url not configured")
+	}
+
+	payloadMap, err := buildCheckerTaskPayloadMap(repoURL, branch, languages, taskName)
+	if err != nil {
+		return "", err
 	}
 
 	log.Printf("[SyncCreatePlan] Step 1: Creating Checker Task. URL: %s", apiURL)
 
-	body, err := utils.SendHTTPRequest(ctx, "POST", apiURL, payload, utils.HTTPOptions{
+	body, err := utils.SendHTTPRequest(ctx, "POST", apiURL, payloadMap, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated}, "CreateCheckerTaskStep")
 	if err != nil {
@@ -225,6 +245,70 @@ func createCheckerTaskStep(ctx context.Context, repoURL string, branch string, l
 	}
 
 	return taskID, nil
+}
+
+// SyncUpdateCheckerTaskRemote 在三方系统中修改/更新代码检查任务（PUT 方法）
+func SyncUpdateCheckerTaskRemote(ctx context.Context, taskName string, repoURL string, branch string, languages string, headers map[string]string) error {
+	apiURL := models.AppConfig.PipelineSystem.CreateCheckerTaskURL
+	if apiURL == "" {
+		return fmt.Errorf("create_checker_task_url not configured")
+	}
+
+	// 1. 事前查询，获取已存在的 taskID 和 configTemplateId
+	infos, err := QueryCheckerTaskInfo(ctx, taskName, headers)
+	if err != nil || len(infos) == 0 {
+		return fmt.Errorf("failed to query existing checker task info for update: %w", err)
+	}
+	targetInfo := infos[0]
+
+	// 2. 渲染基础 Payload 结构
+	payloadMap, err := buildCheckerTaskPayloadMap(repoURL, branch, languages, taskName)
+	if err != nil {
+		return err
+	}
+
+	// 3. 修饰修改专用的 JSON 节点：
+	// 3.1 根对象增加 id
+	payloadMap["id"] = targetInfo.ID
+
+	// 3.2 替换/设置 configTemplateId 及其子对象 id
+	if targetInfo.ConfigTemplateID != "" {
+		payloadMap["configTemplateId"] = targetInfo.ConfigTemplateID
+
+		var cfgTmpl map[string]interface{}
+		if existingCfg, ok := payloadMap["configTemplate"].(map[string]interface{}); ok && existingCfg != nil {
+			cfgTmpl = existingCfg
+		} else {
+			cfgTmpl = make(map[string]interface{})
+		}
+		cfgTmpl["id"] = targetInfo.ConfigTemplateID
+		payloadMap["configTemplate"] = cfgTmpl
+	}
+
+	// 4. 发送 PUT 请求
+	modifyURL := apiURL
+	if strings.HasSuffix(modifyURL, "/add") {
+		modifyURL = strings.TrimSuffix(modifyURL, "/add") + "/modify"
+	}
+
+	log.Printf("[SyncUpdateCheckerTask] Updating Checker Task (PUT). URL: %s, TaskID: %s, ConfigTemplateID: %s", modifyURL, targetInfo.ID, targetInfo.ConfigTemplateID)
+
+	body, err := utils.SendHTTPRequest(ctx, "PUT", modifyURL, payloadMap, utils.HTTPOptions{
+		Headers: headers,
+	}, []int{http.StatusOK, http.StatusCreated, http.StatusNoContent}, "SyncUpdateCheckerTaskRemote")
+	if err != nil {
+		return fmt.Errorf("failed to update remote checker task: %w", err)
+	}
+
+	var statusResp struct {
+		Status  string `json:"status"`
+		Message string `json:"result"`
+	}
+	if err := json.Unmarshal(body, &statusResp); err == nil && statusResp.Status != "" && statusResp.Status != "success" {
+		return fmt.Errorf("failed to update checker task: status is %s, message: %s", statusResp.Status, statusResp.Message)
+	}
+
+	return nil
 }
 
 // QueryCheckerTaskInfo 根据任务名称在三方系统查询代码检查任务信息列表
