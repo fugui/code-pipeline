@@ -337,6 +337,7 @@ func UpdateExecutionScheme(c *gin.Context) {
 	oldName := scheme.Name
 	oldBranch := scheme.Branch
 	oldCustomAttrs := scheme.CustomAttributes
+	oldLanguages := scheme.Languages
 	oldMRTrigger := scheme.MRTrigger
 	oldMRBindingID := scheme.MRBindingID
 	oldDailyBuild := scheme.DailyBuild
@@ -344,6 +345,7 @@ func UpdateExecutionScheme(c *gin.Context) {
 	oldExecutionPlanID := scheme.ExecutionPlanID
 
 	nameChanged := req.Name != "" && strings.TrimSpace(req.Name) != oldName
+	languagesChanged := req.Languages != "" && req.Languages != oldLanguages
 
 	updates := map[string]interface{}{
 		"custom_attributes": req.CustomAttributes,
@@ -398,11 +400,18 @@ func UpdateExecutionScheme(c *gin.Context) {
 
 	headers := prepareRequestHeaders(c)
 
-	// 1. 若修改了方案名称或构建参数，同步修改三方 ExecutionScheme
+	// 1. 若修改了方案名称、构建参数或编程语言，同步修改三方 ExecutionScheme
 	customAttrsChanged := req.CustomAttributes != oldCustomAttrs
-	if (nameChanged || customAttrsChanged) && repoURL != "" {
+	if (nameChanged || customAttrsChanged || languagesChanged) && repoURL != "" {
 		if err := services.SyncUpdateExecutionSchemeRemote(c.Request.Context(), &scheme, repoURL, headers); err != nil {
 			log.Printf("[UpdateExecutionScheme] Warning: failed to sync remote ExecutionScheme for scheme %d: %v\n", scheme.ID, err)
+		}
+	}
+
+	// 1.5 若修改了编程语言，同步修改三方代码检查任务 (CheckerTask)
+	if languagesChanged && repoURL != "" {
+		if err := services.SyncUpdateCheckerTaskRemote(c.Request.Context(), scheme.Name, repoURL, scheme.Branch, scheme.Languages, headers); err != nil {
+			log.Printf("[UpdateExecutionScheme] Warning: failed to sync remote CheckerTask for scheme %d: %v\n", scheme.ID, err)
 		}
 	}
 
