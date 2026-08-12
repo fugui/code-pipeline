@@ -1066,9 +1066,10 @@ func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[
 		}
 	}
 
-	// 2. 删除 MR 触发
+	// 2. 删除 MR 触发 (失败则中止，保留本地记录与 mr_binding_id，便于重试或事后清理)
 	if err := SyncDeleteMRBindingRemote(context.Background(), &scheme, headers); err != nil {
-		log.Printf("[SyncDelete] Warning: failed to delete MR binding for scheme %d: %v\n", scheme.ID, err)
+		log.Printf("[SyncDelete] Failed to delete mr binding %s: %v\n", scheme.MRBindingID, err)
+		return fmt.Errorf("删除三方 MR 触发关联失败: %w", err)
 	}
 
 	// 3. 不再在此处删除代码检查任务，使其能够被其他方案复用或保留
