@@ -521,7 +521,7 @@ func TestSyncUpdateCheckerTaskRemote(t *testing.T) {
 	}))
 	defer server.Close()
 
-	models.AppConfig.PipelineSystem.CreateCheckerTaskURL = server.URL + "/create-checker-task"
+	models.AppConfig.PipelineSystem.CreateCheckerTaskURL = server.URL
 	models.AppConfig.PipelineSystem.QueryCheckerTaskURL = server.URL
 	models.AppConfig.PipelineSystem.CreateCheckerTaskBody = `{
 		"ruleSets": {RULE_SETS},
