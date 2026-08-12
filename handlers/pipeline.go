@@ -422,8 +422,18 @@ func UpdateExecutionScheme(c *gin.Context) {
 		if targetCheckerName == "" {
 			targetCheckerName = scheme.Name
 		}
-		if err := services.SyncUpdateCheckerTaskRemote(c.Request.Context(), scheme.CodeCheckerTaskID, targetCheckerName, repoURL, scheme.Branch, scheme.Languages, headers); err != nil {
+		usedTaskID, err := services.SyncUpdateCheckerTaskRemote(c.Request.Context(), scheme.CodeCheckerTaskID, targetCheckerName, repoURL, scheme.Branch, scheme.Languages, headers)
+		if err != nil {
 			log.Printf("[UpdateExecutionScheme] Warning: failed to sync remote CheckerTask for scheme %d: %v\n", scheme.ID, err)
+		} else if usedTaskID != "" && usedTaskID != scheme.CodeCheckerTaskID {
+			// 远程任务被删除重建（或回退新建）后 ID 已变化，回写本地 DB 自愈缓存 ID
+			checkerUpdates := map[string]interface{}{"code_checker_task_id": usedTaskID}
+			if scheme.CodeCheckerTaskName == "" {
+				checkerUpdates["code_checker_task_name"] = targetCheckerName
+			}
+			if err := database.DB.Model(&scheme).Updates(checkerUpdates).Error; err != nil {
+				log.Printf("[UpdateExecutionScheme] Warning: failed to update local CodeCheckerTaskID for scheme %d: %v\n", scheme.ID, err)
+			}
 		}
 	}
 

@@ -534,9 +534,13 @@ func TestSyncUpdateCheckerTaskRemote(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	err := SyncUpdateCheckerTaskRemote(ctx, "checker-task-8891", "update-task-test", "https://example.com/repo.git", "main", "Go", nil)
+	usedID, err := SyncUpdateCheckerTaskRemote(ctx, "checker-task-8891", "update-task-test", "https://example.com/repo.git", "main", "Go", nil)
 	if err != nil {
 		t.Fatalf("SyncUpdateCheckerTaskRemote failed: %v", err)
+	}
+
+	if usedID != "checker-task-8891" {
+		t.Errorf("expected returned task ID 'checker-task-8891', got %q", usedID)
 	}
 
 	if receivedPutMethod != "PUT" {
@@ -559,6 +563,196 @@ func TestSyncUpdateCheckerTaskRemote(t *testing.T) {
 	langsArr, ok := receivedPutBody["languages"].([]interface{})
 	if !ok || len(langsArr) != 1 || langsArr[0] != "Go" {
 		t.Errorf("expected languages ['Go'], got %v", receivedPutBody["languages"])
+	}
+}
+
+// TestSyncUpdateCheckerTaskRemoteStaleID 验证：DB 缓存的 taskID 已失配（远程任务被删除重建，同名新 ID）
+// 时应按名称精确匹配继续更新（upsert 续接），并返回实际使用的远程任务 ID
+func TestSyncUpdateCheckerTaskRemoteStaleID(t *testing.T) {
+	origURL := models.AppConfig.PipelineSystem.CreateCheckerTaskURL
+	origQueryURL := models.AppConfig.PipelineSystem.QueryCheckerTaskURL
+	origBody := models.AppConfig.PipelineSystem.CreateCheckerTaskBody
+	origRuleSets := models.AppConfig.PipelineSystem.RuleSets
+	defer func() {
+		models.AppConfig.PipelineSystem.CreateCheckerTaskURL = origURL
+		models.AppConfig.PipelineSystem.QueryCheckerTaskURL = origQueryURL
+		models.AppConfig.PipelineSystem.CreateCheckerTaskBody = origBody
+		models.AppConfig.PipelineSystem.RuleSets = origRuleSets
+	}()
+
+	var putCount int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{
+				"status": "success",
+				"result": {
+					"info": [
+						{
+							"id": "checker-task-RECREATED",
+							"name": "stale-id-task",
+							"repoURL": "https://example.com/repo.git",
+							"branchName": "main",
+							"configTemplateId": "tmpl-new-1"
+						}
+					]
+				}
+			}`))
+			return
+		}
+		if r.Method == "PUT" {
+			putCount++
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status": "success"}`))
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	models.AppConfig.PipelineSystem.CreateCheckerTaskURL = server.URL
+	models.AppConfig.PipelineSystem.QueryCheckerTaskURL = server.URL
+	models.AppConfig.PipelineSystem.CreateCheckerTaskBody = `{
+		"id": "{TEMPLATE_ID}",
+		"name": "{NAME}",
+		"languages": {LANGUAGES}
+	}`
+	models.AppConfig.PipelineSystem.RuleSets = map[string]string{"GO": "go_rule_1"}
+
+	// DB 缓存 ID 是旧的 checker-task-OLD，远程实际 ID 是 checker-task-RECREATED，名称一致
+	usedID, err := SyncUpdateCheckerTaskRemote(context.Background(), "checker-task-OLD", "stale-id-task", "https://example.com/repo.git", "main", "Go", nil)
+	if err != nil {
+		t.Fatalf("stale ID upsert should succeed, got: %v", err)
+	}
+	if putCount != 1 {
+		t.Errorf("expected 1 PUT after stale-ID upsert, got %d", putCount)
+	}
+	if usedID != "checker-task-RECREATED" {
+		t.Errorf("expected returned ID 'checker-task-RECREATED', got %q", usedID)
+	}
+}
+
+// TestSyncUpdateCheckerTaskRemoteAmbiguous 验证：远程查询返回多条结果且 ID/名称均未精确匹配时，
+// 必须中止更新（不得降级取第一条误更新无关任务）
+func TestSyncUpdateCheckerTaskRemoteAmbiguous(t *testing.T) {
+	origURL := models.AppConfig.PipelineSystem.CreateCheckerTaskURL
+	origQueryURL := models.AppConfig.PipelineSystem.QueryCheckerTaskURL
+	origBody := models.AppConfig.PipelineSystem.CreateCheckerTaskBody
+	origRuleSets := models.AppConfig.PipelineSystem.RuleSets
+	defer func() {
+		models.AppConfig.PipelineSystem.CreateCheckerTaskURL = origURL
+		models.AppConfig.PipelineSystem.QueryCheckerTaskURL = origQueryURL
+		models.AppConfig.PipelineSystem.CreateCheckerTaskBody = origBody
+		models.AppConfig.PipelineSystem.RuleSets = origRuleSets
+	}()
+
+	var putCount int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{
+				"status": "success",
+				"result": {
+					"info": [
+						{
+							"id": "task-A",
+							"name": "Daily-Build",
+							"repoURL": "https://example.com/repo.git",
+							"branchName": "main",
+							"configTemplateId": "tmpl-a"
+						},
+						{
+							"id": "task-B",
+							"name": "Daily-Build-2",
+							"repoURL": "https://example.com/repo.git",
+							"branchName": "dev",
+							"configTemplateId": "tmpl-b"
+						}
+					]
+				}
+			}`))
+			return
+		}
+		if r.Method == "PUT" {
+			putCount++
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status": "success"}`))
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	models.AppConfig.PipelineSystem.CreateCheckerTaskURL = server.URL
+	models.AppConfig.PipelineSystem.QueryCheckerTaskURL = server.URL
+	models.AppConfig.PipelineSystem.CreateCheckerTaskBody = `{
+		"id": "{TEMPLATE_ID}",
+		"name": "{NAME}"
+	}`
+	models.AppConfig.PipelineSystem.RuleSets = map[string]string{"GO": "go_rule_1"}
+
+	// 传入的 taskID/taskName 均不在查询结果中（模糊搜索命中两条无关任务）
+	usedID, err := SyncUpdateCheckerTaskRemote(context.Background(), "task-X", "Nightly-Build", "https://example.com/repo.git", "main", "Go", nil)
+	if err == nil {
+		t.Fatalf("ambiguous result should abort with error, but returned success, usedID=%q, putCount=%d", usedID, putCount)
+	}
+	if putCount != 0 {
+		t.Errorf("expected no PUT on ambiguous result, got %d", putCount)
+	}
+}
+
+// TestSyncUpdateCheckerTaskRemoteCachedIDMiss 验证：本地缓存了 taskID 但按名称查询不到任务时，
+// 必须中止并告警，不得回退新建（否则会在任务被改名/删除的场景下制造重复任务）
+func TestSyncUpdateCheckerTaskRemoteCachedIDMiss(t *testing.T) {
+	origURL := models.AppConfig.PipelineSystem.CreateCheckerTaskURL
+	origQueryURL := models.AppConfig.PipelineSystem.QueryCheckerTaskURL
+	origBody := models.AppConfig.PipelineSystem.CreateCheckerTaskBody
+	origRuleSets := models.AppConfig.PipelineSystem.RuleSets
+	defer func() {
+		models.AppConfig.PipelineSystem.CreateCheckerTaskURL = origURL
+		models.AppConfig.PipelineSystem.QueryCheckerTaskURL = origQueryURL
+		models.AppConfig.PipelineSystem.CreateCheckerTaskBody = origBody
+		models.AppConfig.PipelineSystem.RuleSets = origRuleSets
+	}()
+
+	var postCount, putCount int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status": "success", "result": {"info": []}}`))
+			return
+		}
+		if r.Method == "POST" {
+			postCount++
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status": "success"}`))
+			return
+		}
+		if r.Method == "PUT" {
+			putCount++
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status": "success"}`))
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	models.AppConfig.PipelineSystem.CreateCheckerTaskURL = server.URL
+	models.AppConfig.PipelineSystem.QueryCheckerTaskURL = server.URL
+	models.AppConfig.PipelineSystem.CreateCheckerTaskBody = `{
+		"id": "{TEMPLATE_ID}",
+		"name": "{NAME}"
+	}`
+	models.AppConfig.PipelineSystem.RuleSets = map[string]string{"GO": "go_rule_1"}
+
+	// DB 缓存 ID 存在但查询按名称 miss（任务被改名/删除）→ 中止，不得回退新建
+	usedID, err := SyncUpdateCheckerTaskRemote(context.Background(), "checker-task-CACHED", "renamed-scheme", "https://example.com/repo.git", "main", "Go", nil)
+	if err == nil {
+		t.Fatalf("cached-ID miss should abort with error, but returned success, usedID=%q", usedID)
+	}
+	if postCount != 0 || putCount != 0 {
+		t.Errorf("expected no POST/PUT on cached-ID miss, got postCount=%d putCount=%d", postCount, putCount)
 	}
 }
 
