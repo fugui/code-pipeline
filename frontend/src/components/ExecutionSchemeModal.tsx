@@ -518,7 +518,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
           borderBottom: '1px solid var(--border-color, rgba(255,255,255,0.08))' 
         }}>
           <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
-            {activeScheme?.id ? '查看仓库执行方案' : '新增仓库执行方案'}
+            {activeScheme?.id ? '查看/修改仓库执行方案' : '新增仓库执行方案'}
           </h3>
           <button 
             type="button" 
