@@ -417,6 +417,10 @@ func UpdateExecutionScheme(c *gin.Context) {
 		schemeToDelete.MRBindingID = oldMRBindingID
 		if err := services.SyncDeleteMRBindingRemote(c.Request.Context(), &schemeToDelete, headers); err != nil {
 			log.Printf("[UpdateExecutionScheme] Warning: failed to delete remote MR binding for scheme %d: %v\n", scheme.ID, err)
+		} else {
+			// 同步内存状态，避免接口响应中残留已删除的绑定 ID
+			scheme.MRBindingID = ""
+			scheme.MRBindingName = ""
 		}
 	} else if scheme.MRTrigger && (nameChanged || branchChanged || mrTriggerToggledOn || scheme.MRBindingID == "") && repoURL != "" {
 		if err := services.SyncUpdateMRBindingRemote(c.Request.Context(), &scheme, repoURL, headers); err != nil {
