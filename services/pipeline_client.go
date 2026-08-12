@@ -327,21 +327,9 @@ func SyncUpdateCheckerTaskRemote(ctx context.Context, taskName string, repoURL s
 		payloadMap["configTemplate"] = cfgTmpl
 	}
 
-	// 缺陷 2：针对不同的三方系统风格扩展 URL 改写逻辑
-	modifyURL := apiURL
-	if strings.HasSuffix(modifyURL, "/create-checker-task") {
-		modifyURL = strings.TrimSuffix(modifyURL, "/create-checker-task") + "/update-checker-task"
-	} else if strings.HasSuffix(modifyURL, "/add") {
-		modifyURL = strings.TrimSuffix(modifyURL, "/add") + "/modify"
-	} else if strings.HasSuffix(modifyURL, "/post") {
-		modifyURL = strings.TrimSuffix(modifyURL, "/post") + "/put"
-	} else if !strings.HasSuffix(modifyURL, "/put") && !strings.HasSuffix(modifyURL, "/modify") && !strings.HasSuffix(modifyURL, "/update-checker-task") {
-		modifyURL = strings.TrimSuffix(modifyURL, "/") + "/put"
-	}
+	log.Printf("[SyncUpdateCheckerTask] Updating Checker Task (PUT). URL: %s, TaskID: %s, ConfigTemplateID: %s", apiURL, targetInfo.ID, targetInfo.ConfigTemplateID)
 
-	log.Printf("[SyncUpdateCheckerTask] Updating Checker Task (PUT). URL: %s, TaskID: %s, ConfigTemplateID: %s", modifyURL, targetInfo.ID, targetInfo.ConfigTemplateID)
-
-	body, err := utils.SendHTTPRequest(ctx, "PUT", modifyURL, payloadMap, utils.HTTPOptions{
+	body, err := utils.SendHTTPRequest(ctx, "PUT", apiURL, payloadMap, utils.HTTPOptions{
 		Headers: headers,
 	}, []int{http.StatusOK, http.StatusCreated, http.StatusNoContent}, "SyncUpdateCheckerTaskRemote")
 	if err != nil {
