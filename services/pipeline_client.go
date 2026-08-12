@@ -1036,33 +1036,45 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 	return extID, nil
 }
 
+// SyncDeleteExecutionPlanRemote 单独删除三方系统中的执行计划（每日构建）
+func SyncDeleteExecutionPlanRemote(planID string, headers map[string]string) error {
+	if planID == "" {
+		return nil
+	}
+	apiURLStr := models.AppConfig.PipelineSystem.GetExecutionPlanURL
+	if apiURLStr == "" {
+		return fmt.Errorf("get_execution_plan_url not configured")
+	}
+	deleteURL := apiURLStr
+	if strings.HasSuffix(deleteURL, "/get") {
+		deleteURL = deleteURL[:len(deleteURL)-3] + "delete"
+	}
+	_, err := utils.SendHTTPRequest(context.Background(), "DELETE", deleteURL, nil, utils.HTTPOptions{
+		Headers: headers,
+		QueryParams: map[string]string{
+			"scheduleId": planID,
+		},
+	}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteExecutionPlanRemote")
+	if err != nil {
+		log.Printf("[SyncDeleteExecutionPlan] Failed to delete execution plan %s: %v\n", planID, err)
+		return err
+	}
+	return nil
+}
+
 // SyncDeleteExecutionSchemeRemote 在三方系统中删除执行方案及其关联的所有对象（方案、计划、MR触发、检查任务）
 func SyncDeleteExecutionSchemeRemote(scheme models.ExecutionScheme, headers map[string]string) error {
-	// 1. 删除执行计划（每日构建）
-	if scheme.ExecutionPlanID != "" {
-		apiURLStr := models.AppConfig.PipelineSystem.GetExecutionPlanURL
-		if apiURLStr != "" {
-			deleteURL := apiURLStr
-			if strings.HasSuffix(deleteURL, "/get") {
-				deleteURL = deleteURL[:len(deleteURL)-3] + "delete"
-			}
-			_, err := utils.SendHTTPRequest(context.Background(), "DELETE", deleteURL, nil, utils.HTTPOptions{
-				Headers: headers,
-				QueryParams: map[string]string{
-					"scheduleId": scheme.ExecutionPlanID,
-				},
-			}, []int{http.StatusOK, http.StatusNoContent, http.StatusAccepted}, "SyncDeleteExecutionPlan")
-			if err != nil {
-				log.Printf("[SyncDelete] Failed to delete execution plan %s: %v\n", scheme.ExecutionPlanID, err)
-				return fmt.Errorf("删除三方执行计划失败: %w", err)
-			}
-			if scheme.ID != 0 {
-				database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", scheme.ID).Updates(map[string]interface{}{
-					"daily_build":         false,
-					"execution_plan_id":   "",
-					"execution_plan_name": "",
-				})
-			}
+	// 1. 删除执行计划（每日构建）；未配置 get_execution_plan_url 时跳过，避免中断整个删除流程
+	if scheme.ExecutionPlanID != "" && models.AppConfig.PipelineSystem.GetExecutionPlanURL != "" {
+		if err := SyncDeleteExecutionPlanRemote(scheme.ExecutionPlanID, headers); err != nil {
+			return fmt.Errorf("删除三方执行计划失败: %w", err)
+		}
+		if scheme.ID != 0 {
+			database.DB.Model(&models.ExecutionScheme{}).Where("id = ?", scheme.ID).Updates(map[string]interface{}{
+				"daily_build":         false,
+				"execution_plan_id":   "",
+				"execution_plan_name": "",
+			})
 		}
 	}
 

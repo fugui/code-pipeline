@@ -333,7 +333,13 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       return;
     }
 
-    // 2. 校验参数名重复 (系统相同名字的参数只能存在一份)
+    // 2. 校验每日构建时间（开启每日构建时时间必填，避免清空后静默无效）
+    if (dailyBuild && !dailyBuildTime) {
+      setLocalError('保存失败：开启每日构建时，请选择每日构建时间');
+      return;
+    }
+
+    // 3. 校验参数名重复 (系统相同名字的参数只能存在一份)
     const nameCounts = new Map<string, number>();
     for (const item of customAttrs) {
       const keyName = item.key.trim();
@@ -871,7 +877,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                     <input 
                       type="checkbox" 
                       checked={dailyBuild}
-                      disabled={isView}
+                      disabled={!isAdmin}
                       style={{ width: 'auto', margin: 0 }}
                       onChange={(e) => handleTriggerOrTimeChange(mrTrigger, e.target.checked, dailyBuildTime)}
                     />
@@ -880,7 +886,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                   <input 
                     type="time" 
                     value={dailyBuildTime}
-                    disabled={!dailyBuild || isView}
+                    disabled={!dailyBuild || !isAdmin}
                     style={{ 
                       width: 100, 
                       padding: '4px 8px', 
