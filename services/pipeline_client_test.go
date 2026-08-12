@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"code-pipeline/database"
 	"code-pipeline/models"
 )
 
@@ -755,6 +756,108 @@ func TestSyncUpdateCheckerTaskRemoteCachedIDMiss(t *testing.T) {
 		t.Errorf("expected no POST/PUT on cached-ID miss, got postCount=%d putCount=%d", postCount, putCount)
 	}
 }
+
+func TestSyncDeleteExecutionScheme_LastSchemeDeletesCheckerTask(t *testing.T) {
+	origDeleteCheckerURL := models.AppConfig.PipelineSystem.DeleteCheckerTaskURL
+	origSchemeURL := models.AppConfig.PipelineSystem.GetExecutionSchemeURL
+	defer func() {
+		models.AppConfig.PipelineSystem.DeleteCheckerTaskURL = origDeleteCheckerURL
+		models.AppConfig.PipelineSystem.GetExecutionSchemeURL = origSchemeURL
+	}()
+
+	var checkerTaskDeleted bool
+	var deletedTaskIDs []string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" && r.URL.Path == "/delete-checker-task" {
+			checkerTaskDeleted = true
+			bodyBytes, _ := io.ReadAll(r.Body)
+			var payload map[string][]string
+			json.Unmarshal(bodyBytes, &payload)
+			deletedTaskIDs = payload["taskIds"]
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status":"success"}`))
+			return
+		}
+		if r.Method == "DELETE" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status":"success"}`))
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	models.AppConfig.PipelineSystem.DeleteCheckerTaskURL = server.URL + "/delete-checker-task"
+	models.AppConfig.PipelineSystem.GetExecutionSchemeURL = server.URL + "/schemes/delete"
+
+	// 初始化测试 DB 数据
+	repo := models.Repository{
+		ID:                  9991,
+		Name:                "test-repo-delete-checker",
+		CodeCheckerTaskID:   "checker-task-9991",
+		CodeCheckerTaskName: "test-repo-delete-checker",
+	}
+	database.DB.Delete(&models.ExecutionScheme{}, "repository_id = ?", 9991)
+	database.DB.Delete(&models.Repository{}, "id = ?", 9991)
+
+	if err := database.DB.Create(&repo).Error; err != nil {
+		t.Fatalf("Failed to create test repo: %v", err)
+	}
+	defer database.DB.Delete(&models.Repository{}, "id = ?", 9991)
+
+	scheme1 := models.ExecutionScheme{
+		ID:                9991,
+		Name:              "scheme-1",
+		RepositoryID:      9991,
+		ExecutionSchemeID: "ext-scheme-1",
+		CodeCheckerTaskID: "checker-task-9991",
+	}
+	scheme2 := models.ExecutionScheme{
+		ID:                9992,
+		Name:              "scheme-2",
+		RepositoryID:      9991,
+		ExecutionSchemeID: "ext-scheme-2",
+		CodeCheckerTaskID: "checker-task-9991",
+	}
+
+	database.DB.Create(&scheme1)
+	database.DB.Create(&scheme2)
+	defer func() {
+		database.DB.Delete(&models.ExecutionScheme{}, "id IN ?", []uint{9991, 9992})
+	}()
+
+	// 1. 删除 Scheme 1（仓库仍有 Scheme 2，不应触发删除代码检查任务）
+	if err := SyncDeleteExecutionSchemeRemote(scheme1, nil); err != nil {
+		t.Fatalf("SyncDeleteExecutionSchemeRemote for scheme1 failed: %v", err)
+	}
+	if checkerTaskDeleted {
+		t.Errorf("Expected checker task NOT to be deleted when other scheme exists, but it was deleted")
+	}
+	database.DB.Delete(&scheme1)
+
+	// 2. 删除 Scheme 2（仓库最后一个执行方案，必须触发删除代码检查任务并清理 Repo 缓存）
+	if err := SyncDeleteExecutionSchemeRemote(scheme2, nil); err != nil {
+		t.Fatalf("SyncDeleteExecutionSchemeRemote for scheme2 failed: %v", err)
+	}
+	if !checkerTaskDeleted {
+		t.Errorf("Expected checker task to be deleted for last scheme of repository, but it was not")
+	}
+	if len(deletedTaskIDs) != 1 || deletedTaskIDs[0] != "checker-task-9991" {
+		t.Errorf("Expected deleted taskIds ['checker-task-9991'], got %v", deletedTaskIDs)
+	}
+
+	database.DB.Delete(&scheme2)
+
+	// 验证 Repository 的 code_checker_task_id 是否已被重置为空
+	var updatedRepo models.Repository
+	if err := database.DB.First(&updatedRepo, 9991).Error; err == nil {
+		if updatedRepo.CodeCheckerTaskID != "" || updatedRepo.CodeCheckerTaskName != "" {
+			t.Errorf("Expected repo CodeCheckerTaskID/Name to be cleared, got ID=%q Name=%q", updatedRepo.CodeCheckerTaskID, updatedRepo.CodeCheckerTaskName)
+		}
+	}
+}
+
 
 
 
