@@ -445,10 +445,19 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
     setShowPasteModal(false);
   };
 
+  const isSensitiveParamKey = (key: string): boolean => {
+    if (!key) return false;
+    const lower = key.toLowerCase();
+    return lower.includes('password') || lower.includes('passwd') || lower.includes('pwd') || lower.includes('secret');
+  };
+
   const handleCopyAttrs = () => {
     const textToCopy = customAttrs
       .filter(item => item.key.trim() !== '' || item.value.trim() !== '')
-      .map(item => `${item.key.trim()}=${item.value.trim()}`)
+      .map(item => {
+        const val = (!isAdmin && isSensitiveParamKey(item.key)) ? (item.value.trim() ? '******' : '') : item.value.trim();
+        return `${item.key.trim()}=${val}`;
+      })
       .join('\n');
 
     const copyToClipboard = (text: string) => {
@@ -953,26 +962,30 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                       </>
                     )}
                   </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    style={{ padding: '4px 10px', fontSize: 12, height: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                    onClick={() => setShowPasteModal(true)}
-                  >
-                    <ClipboardPaste size={13} />
-                    粘贴参数
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    style={{ padding: '4px 10px', fontSize: 12, height: 'auto' }}
-                    onClick={() => {
-                      const newList = [...customAttrs, { key: '', value: '' }];
-                      updateCustomAttrs(newList);
-                    }}
-                  >
-                    + 添加参数
-                  </button>
+                  {isAdmin && (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ padding: '4px 10px', fontSize: 12, height: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        onClick={() => setShowPasteModal(true)}
+                      >
+                        <ClipboardPaste size={13} />
+                        粘贴参数
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ padding: '4px 10px', fontSize: 12, height: 'auto' }}
+                        onClick={() => {
+                          const newList = [...customAttrs, { key: '', value: '' }];
+                          updateCustomAttrs(newList);
+                        }}
+                      >
+                        + 添加参数
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -997,72 +1010,81 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                       {customAttrs.length === 0 ? (
                         <tr>
                           <td colSpan={3} style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
-                            暂无构建参数，点击右上角“添加参数”新增
+                            暂无构建参数{isAdmin ? '，点击右上角“添加参数”新增' : ''}
                           </td>
                         </tr>
                       ) : (
-                        customAttrs.map((item, index) => (
-                          <tr key={index} style={{ borderBottom: index === customAttrs.length - 1 ? 'none' : '1px solid rgba(255, 255, 255, 0.03)' }}>
-                            <td style={{ padding: '4px 8px' }}>
-                              <input
-                                type="text"
-                                placeholder="例如: TIMEOUT"
-                                value={item.key}
-                                style={{ width: '100%', padding: '6px 10px', fontSize: 13, height: 32 }}
-                                onChange={(e) => {
-                                  const newList = [...customAttrs];
-                                  newList[index] = { ...newList[index], key: e.target.value };
-                                  updateCustomAttrs(newList);
-                                }}
-                              />
-                            </td>
-                            <td style={{ padding: '4px 8px' }}>
-                              <input
-                                type="text"
-                                placeholder="例如: 300"
-                                value={item.value}
-                                style={{ width: '100%', padding: '6px 10px', fontSize: 13, height: 32 }}
-                                onChange={(e) => {
-                                  const newList = [...customAttrs];
-                                  newList[index] = { ...newList[index], value: e.target.value };
-                                  updateCustomAttrs(newList);
-                                }}
-                              />
-                            </td>
-                            <td style={{ padding: '4px 8px', textAlign: 'center' }}>
-                              <button
-                                type="button"
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  color: '#fda4af',
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  padding: '6px',
-                                  borderRadius: '4px',
-                                  transition: 'all 0.2s'
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.color = '#fb7185';
-                                  e.currentTarget.style.background = 'rgba(244, 63, 94, 0.1)';
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.color = '#fda4af';
-                                  e.currentTarget.style.background = 'none';
-                                }}
-                                onClick={() => {
-                                  const newList = customAttrs.filter((_, i) => i !== index);
-                                  updateCustomAttrs(newList);
-                                }}
-                                title="删除"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))
+                        customAttrs.map((item, index) => {
+                          const isSensitive = !isAdmin && isSensitiveParamKey(item.key);
+                          const displayValue = isSensitive ? (item.value ? '******' : '') : item.value;
+
+                          return (
+                            <tr key={index} style={{ borderBottom: index === customAttrs.length - 1 ? 'none' : '1px solid rgba(255, 255, 255, 0.03)' }}>
+                              <td style={{ padding: '4px 8px' }}>
+                                <input
+                                  type="text"
+                                  placeholder="例如: TIMEOUT"
+                                  value={item.key}
+                                  disabled={!isAdmin}
+                                  style={{ width: '100%', padding: '6px 10px', fontSize: 13, height: 32 }}
+                                  onChange={(e) => {
+                                    const newList = [...customAttrs];
+                                    newList[index] = { ...newList[index], key: e.target.value };
+                                    updateCustomAttrs(newList);
+                                  }}
+                                />
+                              </td>
+                              <td style={{ padding: '4px 8px' }}>
+                                <input
+                                  type={isSensitive ? "password" : "text"}
+                                  placeholder="例如: 300"
+                                  value={displayValue}
+                                  disabled={!isAdmin}
+                                  style={{ width: '100%', padding: '6px 10px', fontSize: 13, height: 32 }}
+                                  onChange={(e) => {
+                                    const newList = [...customAttrs];
+                                    newList[index] = { ...newList[index], value: e.target.value };
+                                    updateCustomAttrs(newList);
+                                  }}
+                                />
+                              </td>
+                              <td style={{ padding: '4px 8px', textAlign: 'center' }}>
+                                {isAdmin && (
+                                  <button
+                                    type="button"
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: '#fda4af',
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      padding: '6px',
+                                      borderRadius: '4px',
+                                      transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.color = '#fb7185';
+                                      e.currentTarget.style.background = 'rgba(244, 63, 94, 0.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.color = '#fda4af';
+                                      e.currentTarget.style.background = 'none';
+                                    }}
+                                    onClick={() => {
+                                      const newList = customAttrs.filter((_, i) => i !== index);
+                                      updateCustomAttrs(newList);
+                                    }}
+                                    title="删除"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
