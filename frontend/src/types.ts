@@ -1,10 +1,5 @@
-export interface User {
-  id: number
-  email: string
-  name: string
-  username?: string
-  roles: string[]
-}
+import type { User } from '@code/common';
+export type { User };
 
 export interface Repository {
   id: number

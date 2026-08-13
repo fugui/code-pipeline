@@ -13,56 +13,13 @@ import (
 	"code-pipeline/models"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type PortalClaims struct {
-	UserID     uint     `json:"user_id"`
-	Email      string   `json:"email"`
-	Name       string   `json:"name"`
-	EmployeeID string   `json:"employee_id"`
-	Roles      []string `json:"roles"`
-	jwt.RegisteredClaims
-	SSOUserID string `json:"-"`
-}
-
-func (c *PortalClaims) UnmarshalJSON(data []byte) error {
-	type Alias PortalClaims
-	aux := &struct {
-		UserID interface{} `json:"user_id"`
-		*Alias
-	}{
-		Alias: (*Alias)(c),
-	}
-	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
-	}
-
-	if aux.UserID != nil {
-		switch v := aux.UserID.(type) {
-		case float64:
-			c.UserID = uint(v)
-		case string:
-			c.SSOUserID = v
-		}
-	}
-	return nil
-}
+type PortalClaims = commonAuth.PortalClaims
 
 func parseToken(tokenString string) (*PortalClaims, error) {
-	claims, err := commonAuth.ParseToken(tokenString, models.AppConfig.Auth.JWTSecret)
-	if err != nil {
-		return nil, err
-	}
-	return &PortalClaims{
-		UserID:           claims.UserID,
-		Email:            claims.Email,
-		Name:             claims.Name,
-		EmployeeID:       claims.EmployeeID,
-		Roles:            claims.Roles,
-		RegisteredClaims: claims.RegisteredClaims,
-	}, nil
+	return commonAuth.ParseToken(tokenString, models.AppConfig.Auth.JWTSecret)
 }
 
 func AuthMiddleware() gin.HandlerFunc {
@@ -223,20 +180,16 @@ func Login(c *gin.Context) {
 	}
 
 	// 生成 JWT
-	expirationTime := time.Now().Add(6 * time.Hour)
-	claims := &PortalClaims{
-		UserID: user.ID,
-		Email:  user.Email,
-		Name:   user.Name,
-		Roles:  user.GetRoles(),
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expirationTime),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(models.AppConfig.Auth.JWTSecret))
+	tokenString, err := commonAuth.GenerateToken(
+		user.ID,
+		user.Email,
+		user.Email,
+		user.Name,
+		user.IsAdmin,
+		user.GetRoles(),
+		models.AppConfig.Auth.JWTSecret,
+		6*time.Hour,
+	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate auth token"})
 		return
