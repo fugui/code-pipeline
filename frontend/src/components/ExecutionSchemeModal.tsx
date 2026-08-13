@@ -1,4 +1,5 @@
 import React from 'react'
+import { AUTH_TOKEN_KEY } from '@code/common'
 import { Trash2, CheckCircle2, XCircle, Loader2, Copy, Check, ClipboardPaste, HelpCircle } from 'lucide-react'
 
 interface ExecutionSchemeModalProps {
@@ -184,7 +185,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   React.useEffect(() => {
     if (activeScheme && activeScheme.repository_id) {
       setLoadingBranches(true);
-      const token = localStorage.getItem('code_shield_token') || localStorage.getItem('code_pipeline_token');
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
       fetch(`${apiBase}/repos/${activeScheme.repository_id}/branches`, {
         headers: {
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
