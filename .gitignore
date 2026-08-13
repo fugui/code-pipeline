@@ -21,6 +21,9 @@ logs/
 # Frontend build products
 /frontend/dist
 /frontend/node_modules
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
 
 # Workspace sandbox for checked out repos
 /workspace
