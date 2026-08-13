@@ -26,18 +26,15 @@ import { PipelineModal } from './components/PipelineModal'
 import { ExecutionSchemeModal } from './components/ExecutionSchemeModal'
 import { ExecutionLogModal } from './components/ExecutionLogModal'
 
-const AUTH_TOKEN_KEY = 'code_pipeline_token'
+import { AUTH_TOKEN_KEY } from '@code/common';
 
 // 拦截全局 fetch，处理 401 状态以触发前端自动退出登录并重定向
 const originalFetch = window.fetch;
 window.fetch = async (...args) => {
   const response = await originalFetch(...args);
   if (response.status === 401) {
-    const tokenKey = 'code_pipeline_token';
-    const shieldTokenKey = 'code_shield_token';
-    if (localStorage.getItem(tokenKey) || localStorage.getItem(shieldTokenKey)) {
-      localStorage.removeItem(tokenKey);
-      localStorage.removeItem(shieldTokenKey);
+    if (localStorage.getItem(AUTH_TOKEN_KEY)) {
+      localStorage.removeItem(AUTH_TOKEN_KEY);
       window.location.reload();
     }
   }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { AUTH_TOKEN_KEY } from '@code/common'
 import { 
   PlusCircle, 
   AlertTriangle, 
@@ -150,7 +151,7 @@ export const SyncDiffModal: React.FC<SyncDiffModalProps> = ({
     setSyncingKey(params.key)
     setMsgNotice(null)
 
-    const token = localStorage.getItem('code_shield_token') || localStorage.getItem('code_pipeline_token')
+    const token = localStorage.getItem(AUTH_TOKEN_KEY)
     
     // 动态判断 apiBase 前缀，完美兼容微前端环境下的 /pipeline 前缀与独立部署模式
     const isEmbedded = window.location.pathname.startsWith('/pipeline')
