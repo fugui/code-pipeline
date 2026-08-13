@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	commonAuth "code-common/backend/auth"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -50,21 +51,18 @@ func (c *PortalClaims) UnmarshalJSON(data []byte) error {
 }
 
 func parseToken(tokenString string) (*PortalClaims, error) {
-	secret := []byte(models.AppConfig.Auth.JWTSecret)
-	claims := &PortalClaims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return secret, nil
-	})
+	claims, err := commonAuth.ParseToken(tokenString, models.AppConfig.Auth.JWTSecret)
 	if err != nil {
 		return nil, err
 	}
-	if !token.Valid {
-		return nil, fmt.Errorf("invalid token")
-	}
-	return claims, nil
+	return &PortalClaims{
+		UserID:           claims.UserID,
+		Email:            claims.Email,
+		Name:             claims.Name,
+		EmployeeID:       claims.EmployeeID,
+		Roles:            claims.Roles,
+		RegisteredClaims: claims.RegisteredClaims,
+	}, nil
 }
 
 func AuthMiddleware() gin.HandlerFunc {
