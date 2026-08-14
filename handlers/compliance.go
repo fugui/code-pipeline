@@ -95,11 +95,11 @@ func GetComplianceBaseline(c *gin.Context) {
 // CreateComplianceBaseline 创建合规基线模板
 func CreateComplianceBaseline(c *gin.Context) {
 	var req struct {
-		Name        string                 `json:"name" binding:"required"`
-		Description string                 `json:"description"`
-		IsDefault   bool                   `json:"is_default"`
+		Name        string                  `json:"name" binding:"required"`
+		Description string                  `json:"description"`
+		IsDefault   bool                    `json:"is_default"`
 		Rules       []models.ComplianceRule `json:"rules"`
-		GroupIDs    []uint                 `json:"group_ids"`
+		GroupIDs    []uint                  `json:"group_ids"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -169,11 +169,11 @@ func UpdateComplianceBaseline(c *gin.Context) {
 	}
 
 	var req struct {
-		Name        string                 `json:"name"`
-		Description string                 `json:"description"`
-		IsDefault   *bool                  `json:"is_default"`
+		Name        string                  `json:"name"`
+		Description string                  `json:"description"`
+		IsDefault   *bool                   `json:"is_default"`
 		Rules       []models.ComplianceRule `json:"rules"`
-		GroupIDs    []uint                 `json:"group_ids"`
+		GroupIDs    []uint                  `json:"group_ids"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -397,15 +397,15 @@ func GetManagedDashboardStats(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		// 基础仓库统计
-		"total_repos":         totalRepos,
-		"active_repos":        activeRepos,
-		"archived_repos":      archivedRepos,
-		"hidden_repos":        hiddenRepos,
-		"total_groups":        totalGroups,
-		"repos_with_owner":    reposWithOwner,
-		"webhook_registered":  webhookRegistered,
+		"total_repos":           totalRepos,
+		"active_repos":          activeRepos,
+		"archived_repos":        archivedRepos,
+		"hidden_repos":          hiddenRepos,
+		"total_groups":          totalGroups,
+		"repos_with_owner":      reposWithOwner,
+		"webhook_registered":    webhookRegistered,
 		"repos_with_protection": reposWithProtection,
-		"pending_approvals":   pendingApprovals,
+		"pending_approvals":     pendingApprovals,
 
 		// 分支统计
 		"total_stale_unmerged": totalStaleUnmerged,
@@ -421,8 +421,8 @@ func GetManagedDashboardStats(c *gin.Context) {
 		"compliance_grade_d":       gradeD,
 
 		// 排行榜
-		"stale_top5":           staleTop5,
-		"compliance_bottom5":   complianceBottom5,
+		"stale_top5":         staleTop5,
+		"compliance_bottom5": complianceBottom5,
 	})
 }
 

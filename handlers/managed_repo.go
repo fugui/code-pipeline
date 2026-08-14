@@ -672,7 +672,6 @@ func DeleteManagedGroup(c *gin.Context) {
 	})
 }
 
-
 // ToggleRepoArchive 切换仓库归档状态 (归档时自动设为非活跃和隐藏状态)
 func ToggleRepoArchive(c *gin.Context) {
 	idStr := c.Param("id")

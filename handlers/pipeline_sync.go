@@ -244,6 +244,21 @@ func SyncExecutionSchemes(c *gin.Context) {
 		return
 	}
 
+	// 同步回写更新关联代码仓的 CodeCheckerTaskID / Name，保证双表一致性
+	for _, s := range finalSchemes {
+		if s.RepositoryID > 0 && s.CodeCheckerTaskID != "" {
+			var r models.Repository
+			if err := database.DB.First(&r, s.RepositoryID).Error; err == nil {
+				if r.CodeCheckerTaskID != s.CodeCheckerTaskID || r.CodeCheckerTaskName != s.CodeCheckerTaskName {
+					database.DB.Model(&r).Updates(map[string]interface{}{
+						"code_checker_task_id":   s.CodeCheckerTaskID,
+						"code_checker_task_name": s.CodeCheckerTaskName,
+					})
+				}
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully synced %d execution schemes", len(finalSchemes))})
 }
 
@@ -810,6 +825,17 @@ func SyncSingleExecutionSchemeItem(c *gin.Context) {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "导入新增方案至本地失败"})
 				return
 			}
+			if req.SchemeData.RepositoryID > 0 && req.SchemeData.CodeCheckerTaskID != "" {
+				var r models.Repository
+				if err := database.DB.First(&r, req.SchemeData.RepositoryID).Error; err == nil {
+					if r.CodeCheckerTaskID != req.SchemeData.CodeCheckerTaskID || r.CodeCheckerTaskName != req.SchemeData.CodeCheckerTaskName {
+						database.DB.Model(&r).Updates(map[string]interface{}{
+							"code_checker_task_id":   req.SchemeData.CodeCheckerTaskID,
+							"code_checker_task_name": req.SchemeData.CodeCheckerTaskName,
+						})
+					}
+				}
+			}
 			c.JSON(http.StatusOK, gin.H{"message": "已成功导入方案至本地数据库"})
 			return
 		}
@@ -866,6 +892,17 @@ func SyncSingleExecutionSchemeItem(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "更新本地数据库失败"})
 			return
 		}
+		if existing.RepositoryID > 0 && existing.CodeCheckerTaskID != "" {
+			var r models.Repository
+			if err := database.DB.First(&r, existing.RepositoryID).Error; err == nil {
+				if r.CodeCheckerTaskID != existing.CodeCheckerTaskID || r.CodeCheckerTaskName != existing.CodeCheckerTaskName {
+					database.DB.Model(&r).Updates(map[string]interface{}{
+						"code_checker_task_id":   existing.CodeCheckerTaskID,
+						"code_checker_task_name": existing.CodeCheckerTaskName,
+					})
+				}
+			}
+		}
 		c.JSON(http.StatusOK, gin.H{"message": "已成功更新同步至本地数据库"})
 		return
 
@@ -918,6 +955,17 @@ func SyncSingleExecutionSchemeItem(c *gin.Context) {
 					"code_checker_task_id":   localScheme.CodeCheckerTaskID,
 					"code_checker_task_name": localScheme.CodeCheckerTaskName,
 				})
+			}
+			if localScheme.RepositoryID > 0 && localScheme.CodeCheckerTaskID != "" {
+				var r models.Repository
+				if err := database.DB.First(&r, localScheme.RepositoryID).Error; err == nil {
+					if r.CodeCheckerTaskID != localScheme.CodeCheckerTaskID || r.CodeCheckerTaskName != localScheme.CodeCheckerTaskName {
+						database.DB.Model(&r).Updates(map[string]interface{}{
+							"code_checker_task_id":   localScheme.CodeCheckerTaskID,
+							"code_checker_task_name": localScheme.CodeCheckerTaskName,
+						})
+					}
+				}
 			}
 			c.JSON(http.StatusOK, gin.H{"message": "已成功推送并在三方系统中新建该方案"})
 			return

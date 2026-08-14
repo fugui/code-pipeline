@@ -184,14 +184,24 @@ func buildCheckerTaskPayloadMap(repoURL string, branch string, languages string,
 		return nil, fmt.Errorf("create_checker_task_body not configured")
 	}
 
+	finalTaskName := strings.TrimSpace(taskName)
+	if finalTaskName == "" {
+		finalTaskName = utils.ExtractRepoName(repoURL)
+	}
+	if finalTaskName == "" {
+		finalTaskName = "checker_task"
+	}
+
 	payloadObj, err := utils.RenderJSONTemplate(tmpl, map[string]string{
-		"REPO_URL":    repoURL,
-		"REPO_BRANCH": firstBranch,
-		"TASK_NAME":   taskName,
-		"NAME":        taskName,
-		"RULE_SETS":   string(ruleSetsJSON),
-		"LANGUAGES":   string(langsJSON),
-		"TEMPLATE_ID": "",
+		"REPO_URL":          repoURL,
+		"REPO_BRANCH":       firstBranch,
+		"TASK_NAME":         finalTaskName,
+		"NAME":              finalTaskName,
+		"TASKNAME":          finalTaskName,
+		"CHECKER_TASK_NAME": finalTaskName,
+		"RULE_SETS":         string(ruleSetsJSON),
+		"LANGUAGES":         string(langsJSON),
+		"TEMPLATE_ID":       "",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to render create_checker_task_body template: %w", err)
@@ -1100,21 +1110,64 @@ func SyncCreateExecutionSchemeRemote(ctx context.Context, pipelineBusinessID str
 	// 1. 获取或创建代码检查执行任务
 	var taskID string
 	var taskName string
+
+	// 1.1 若 Repository 记录中已有 CodeCheckerTaskID，直接复用
 	if repo.CodeCheckerTaskID != "" {
 		taskID = repo.CodeCheckerTaskID
 		taskName = repo.CodeCheckerTaskName
 		log.Printf("[SyncCreateScheme] Reusing existing code checker task ID: %s, Name: %s for repo ID: %d", taskID, taskName, repo.ID)
 	} else {
+		// 1.2 向上关联复用：如果仓记录中没有，检查该 RepositoryID 下其他已有方案中是否已存在 CodeCheckerTaskID
+		var existingWithChecker models.ExecutionScheme
+		if err := database.DB.Where("repository_id = ? AND code_checker_task_id != ''", scheme.RepositoryID).First(&existingWithChecker).Error; err == nil && existingWithChecker.CodeCheckerTaskID != "" {
+			taskID = existingWithChecker.CodeCheckerTaskID
+			taskName = existingWithChecker.CodeCheckerTaskName
+			log.Printf("[SyncCreateScheme] Reusing code checker task from existing scheme (ID: %s, Name: %s) for repo ID: %d", taskID, taskName, repo.ID)
+		}
+	}
+
+	// 1.3 若找到了已有的 taskID，进行名称自愈并持久化回写 Repository 表
+	if taskID != "" {
+		if strings.TrimSpace(taskName) == "" {
+			if scheme.Name != "" {
+				taskName = scheme.Name
+			} else if repo.Name != "" {
+				taskName = repo.Name
+			} else {
+				taskName = utils.ExtractRepoName(repoURL)
+			}
+		}
+		// 若 repo 记录中此前无 ID 或 Name，补全回写自愈
+		if repo.CodeCheckerTaskID != taskID || repo.CodeCheckerTaskName != taskName {
+			repo.CodeCheckerTaskID = taskID
+			repo.CodeCheckerTaskName = taskName
+			if err := database.DB.Model(&repo).Updates(map[string]interface{}{
+				"code_checker_task_id":   taskID,
+				"code_checker_task_name": taskName,
+			}).Error; err != nil {
+				log.Printf("[Pipeline] Warning: failed to update CodeCheckerTask info to Repository %d: %v\n", repo.ID, err)
+			}
+		}
+	} else {
+		// 1.4 确实无已有任务，按需创建新任务
 		if scheme.Languages == "" {
 			log.Printf("[SyncCreateScheme] No languages selected, skipping checker task creation for repo ID: %d", repo.ID)
 		} else {
-			createdTaskID, err := createCheckerTaskStep(ctx, repoURL, scheme.Branch, scheme.Languages, scheme.Name, headers)
+			targetTaskName := strings.TrimSpace(scheme.Name)
+			if targetTaskName == "" {
+				targetTaskName = strings.TrimSpace(repo.Name)
+			}
+			if targetTaskName == "" {
+				targetTaskName = utils.ExtractRepoName(repoURL)
+			}
+
+			createdTaskID, err := createCheckerTaskStep(ctx, repoURL, scheme.Branch, scheme.Languages, targetTaskName, headers)
 			if err != nil {
 				log.Printf("[Pipeline] Remote sync Step 1 failed: %v\n", err)
 				return "", err
 			}
 			taskID = createdTaskID
-			taskName = scheme.Name
+			taskName = targetTaskName
 
 			// 立即将任务 ID 持久化回 Repository
 			repo.CodeCheckerTaskID = taskID
