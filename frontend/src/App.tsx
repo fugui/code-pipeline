@@ -26,7 +26,7 @@ import { PipelineModal } from './components/PipelineModal'
 import { ExecutionSchemeModal } from './components/ExecutionSchemeModal'
 import { ExecutionLogModal } from './components/ExecutionLogModal'
 
-import { AUTH_TOKEN_KEY } from '@code/common';
+import { AUTH_TOKEN_KEY, UnifiedLogin } from '@code/common';
 
 // 拦截全局 fetch，处理 401 状态以触发前端自动退出登录并重定向
 const originalFetch = window.fetch;
@@ -503,16 +503,30 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
   }
 
   if (!token || !user) {
-    if (window.top) {
-      window.top.location.href = '/'
-    } else {
-      window.location.href = '/'
+    if (isEmbedded) {
+      if (window.top && window.top !== window) {
+        window.top.location.href = '/'
+      } else {
+        window.location.href = '/'
+      }
+      return (
+        <div className="pipeline-app" style={{ display: 'flex', flexDirection: 'column', gap: 16, justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          <Loader2 className="animate-spin" size={48} color="#6366f1" />
+          <p style={{ color: 'var(--text-secondary)' }}>登录凭证已失效，正在重定向至统一登录页面...</p>
+        </div>
+      )
     }
+
     return (
-      <div className="pipeline-app" style={{ display: 'flex', flexDirection: 'column', gap: 16, justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Loader2 className="animate-spin" size={48} color="#6366f1" />
-        <p style={{ color: 'var(--text-secondary)' }}>登录凭证已失效，正在重定向至统一登录页面...</p>
-      </div>
+      <UnifiedLogin
+        systemName="Code-Pipeline 流水线系统"
+        systemSubtitle="自动化构建、静态检查与质量红线门禁"
+        systemDesc="提供高可靠流水线编排、多语言静态代码扫描、MR 实时门禁与多代码仓合规基线管控"
+        onLoginSuccess={() => {
+          setToken(localStorage.getItem(AUTH_TOKEN_KEY))
+          window.location.reload()
+        }}
+      />
     )
   }
 
