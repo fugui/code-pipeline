@@ -34,9 +34,11 @@ type Config struct {
 	} `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
 	Auth     struct {
-		JWTSecret            string `yaml:"jwt_secret"`
-		PasswordLoginEnabled bool   `yaml:"password_login_enabled"`
-		SystemUserID         uint   `yaml:"system_user_id"`
+		StandaloneMode       bool                      `yaml:"standalone_mode"`
+		JWTSecret            string                    `yaml:"jwt_secret"`
+		PasswordLoginEnabled bool                      `yaml:"password_login_enabled"`
+		SystemUserID         uint                      `yaml:"system_user_id"`
+		OAuth2               commonModels.OAuth2Config `yaml:"oauth2"`
 	} `yaml:"auth"`
 	PipelineSystem struct {
 		EnableAPIGAuth            bool              `yaml:"enable_apig_auth"`

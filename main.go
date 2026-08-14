@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	commonAuth "code-common/backend/auth"
 	"code-pipeline/database"
 	"code-pipeline/handlers"
 	"code-pipeline/models"
@@ -32,6 +33,11 @@ func main() {
 
 	// 2. 初始化数据库
 	database.InitDB()
+
+	// 确保至少存在默认管理员账号（用于独立部署模式）
+	if err := commonAuth.EnsureSeedAdmin(database.DB, "pipeline_admin"); err != nil {
+		log.Printf("[Server] Warning: Failed to ensure seed admin: %v", err)
+	}
 
 	// 初始化默认合规基线模板
 	services.EnsureDefaultBaseline()
@@ -64,6 +70,9 @@ func main() {
 	{
 		// 免密路由
 		api.POST("/login", handlers.Login)
+		api.GET("/auth/config", handlers.GetAuthConfig)
+		api.GET("/oauth2/authorize", handlers.StartOAuth2Flow)
+		api.GET("/oauth2/callback", handlers.OAuth2Callback)
 		api.POST("/webhook", handlers.HandleWebhook)
 
 		// 第三方任务日志上报免密端点
@@ -78,6 +87,7 @@ func main() {
 		api.Use(handlers.AuthMiddleware())
 		{
 			api.GET("/me", handlers.GetMe)
+			api.PATCH("/password", handlers.UpdatePassword)
 			api.GET("/system-options", handlers.GetSystemOptions)
 
 			// Merge Request 实时看护与全览相关接口
