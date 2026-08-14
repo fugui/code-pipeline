@@ -15,7 +15,9 @@ import (
 
 func setupTestDB(t *testing.T) {
 	if database.DB == nil {
-		_ = models.LoadConfig("../config.yaml.example")
+		if err := models.LoadConfig("../config.yaml"); err != nil {
+			_ = models.LoadConfig("../config.yaml.example")
+		}
 		database.InitDB()
 	}
 }
@@ -867,6 +869,178 @@ func TestSyncDeleteExecutionScheme_LastSchemeDeletesCheckerTask(t *testing.T) {
 	}
 }
 
+func TestBuildCheckerTaskPayloadMap_EmptyTaskNameFallback(t *testing.T) {
+	origBody := models.AppConfig.PipelineSystem.CreateCheckerTaskBody
+	defer func() {
+		models.AppConfig.PipelineSystem.CreateCheckerTaskBody = origBody
+	}()
 
+	models.AppConfig.PipelineSystem.CreateCheckerTaskBody = `{
+		"name": "{TASK_NAME}",
+		"alias_name": "{NAME}",
+		"taskname_alias": "{TASKNAME}",
+		"checker_alias": "{CHECKER_TASK_NAME}",
+		"branch": "{REPO_BRANCH}"
+	}`
 
+	// 1. 传入空 taskName，应该自动从 repoURL (https://github.com/org/my-awesome-repo.git) 提取出 "my-awesome-repo"
+	payloadMap, err := buildCheckerTaskPayloadMap("https://github.com/org/my-awesome-repo.git", "master", "Go", "")
+	if err != nil {
+		t.Fatalf("buildCheckerTaskPayloadMap failed: %v", err)
+	}
 
+	if payloadMap["name"] != "my-awesome-repo" {
+		t.Errorf("expected name to fallback to 'my-awesome-repo', got %v", payloadMap["name"])
+	}
+	if payloadMap["alias_name"] != "my-awesome-repo" {
+		t.Errorf("expected alias_name to fallback to 'my-awesome-repo', got %v", payloadMap["alias_name"])
+	}
+	if payloadMap["taskname_alias"] != "my-awesome-repo" {
+		t.Errorf("expected taskname_alias to fallback to 'my-awesome-repo', got %v", payloadMap["taskname_alias"])
+	}
+	if payloadMap["checker_alias"] != "my-awesome-repo" {
+		t.Errorf("expected checker_alias to fallback to 'my-awesome-repo', got %v", payloadMap["checker_alias"])
+	}
+
+	// 2. 传入非空 taskName 时，使用传入的值
+	payloadMapExplicit, err := buildCheckerTaskPayloadMap("https://github.com/org/my-awesome-repo.git", "master", "Go", "custom_task_name")
+	if err != nil {
+		t.Fatalf("buildCheckerTaskPayloadMap with explicit name failed: %v", err)
+	}
+	if payloadMapExplicit["name"] != "custom_task_name" {
+		t.Errorf("expected name 'custom_task_name', got %v", payloadMapExplicit["name"])
+	}
+}
+
+func TestSyncCreateExecutionSchemeRemote_ReuseFromExistingScheme(t *testing.T) {
+	setupTestDB(t)
+	checkerTaskCreated := false
+	schemeCreated := false
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(r.URL.Path, "create-checker-task") {
+			checkerTaskCreated = true
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"success","result":"ok"}`))
+			return
+		}
+		if strings.Contains(r.URL.Path, "query-checker-task") {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"success","result":{"info":[{"id":"existing-checker-9992","name":"existing-checker-name"}]}}`))
+			return
+		}
+		if strings.Contains(r.URL.Path, "create-scheme") {
+			schemeCreated = true
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"result":"success","message":"created"}`))
+			return
+		}
+		if strings.Contains(r.URL.Path, "get-schemes") {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"entities":[{"id":"new-ext-scheme-9992","name":"test_scheme_reuse"}]}`))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"result":"ok","status":"success"}`))
+	}))
+	defer server.Close()
+
+	origCreateChecker := models.AppConfig.PipelineSystem.CreateCheckerTaskURL
+	origQueryChecker := models.AppConfig.PipelineSystem.QueryCheckerTaskURL
+	origCreateScheme := models.AppConfig.PipelineSystem.CreateExecutionSchemeURL
+	origGetScheme := models.AppConfig.PipelineSystem.GetExecutionSchemeURL
+	origSchemeBody := models.AppConfig.PipelineSystem.CreateExecutionSchemeBody
+	origCheckerBody := models.AppConfig.PipelineSystem.CreateCheckerTaskBody
+
+	defer func() {
+		models.AppConfig.PipelineSystem.CreateCheckerTaskURL = origCreateChecker
+		models.AppConfig.PipelineSystem.QueryCheckerTaskURL = origQueryChecker
+		models.AppConfig.PipelineSystem.CreateExecutionSchemeURL = origCreateScheme
+		models.AppConfig.PipelineSystem.GetExecutionSchemeURL = origGetScheme
+		models.AppConfig.PipelineSystem.CreateExecutionSchemeBody = origSchemeBody
+		models.AppConfig.PipelineSystem.CreateCheckerTaskBody = origCheckerBody
+	}()
+
+	models.AppConfig.PipelineSystem.CreateCheckerTaskURL = server.URL + "/create-checker-task"
+	models.AppConfig.PipelineSystem.QueryCheckerTaskURL = server.URL + "/query-checker-task"
+	models.AppConfig.PipelineSystem.CreateExecutionSchemeURL = server.URL + "/create-scheme"
+	models.AppConfig.PipelineSystem.GetExecutionSchemeURL = server.URL + "/get-schemes"
+	models.AppConfig.PipelineSystem.CreateExecutionSchemeBody = `{"name":"{NAME}","pipeline_id":"{PIPELINE_ID}"}`
+	models.AppConfig.PipelineSystem.CreateCheckerTaskBody = `{"name":"{NAME}"}`
+
+	// 准备测试数据：仓库 ID 为 9992，Repository 表中的 CodeCheckerTaskID 为空，
+	// 但 execution_schemes 表中已存在该仓的已有方案 scheme_old，且包含 CodeCheckerTaskID
+	repo := models.Repository{
+		ID:                  9992,
+		Name:                "test-repo-reuse",
+		HTTPURL:             "https://github.com/org/test-repo-reuse.git",
+		CodeCheckerTaskID:   "", // 仓记录为空
+		CodeCheckerTaskName: "",
+	}
+	database.DB.Delete(&models.Repository{}, 9992)
+	database.DB.Delete(&models.ExecutionScheme{}, "repository_id = ?", 9992)
+
+	if err := database.DB.Create(&repo).Error; err != nil {
+		t.Fatalf("failed to create test repo: %v", err)
+	}
+	defer database.DB.Delete(&models.Repository{}, 9992)
+	defer database.DB.Delete(&models.ExecutionScheme{}, "repository_id = ?", 9992)
+
+	existingScheme := models.ExecutionScheme{
+		ID:                  99921,
+		RepositoryID:        9992,
+		Name:                "scheme_old",
+		CodeCheckerTaskID:   "existing-checker-9992",
+		CodeCheckerTaskName: "existing-checker-name",
+		Languages:           "Go",
+	}
+	if err := database.DB.Create(&existingScheme).Error; err != nil {
+		t.Fatalf("failed to create existing scheme: %v", err)
+	}
+
+	newScheme := models.ExecutionScheme{
+		RepositoryID: 9992,
+		Name:         "test_scheme_reuse",
+		Branch:       "master",
+		Languages:    "Go",
+	}
+
+	ctx := context.Background()
+	extID, err := SyncCreateExecutionSchemeRemote(ctx, "pipeline-test-9992", &newScheme, nil)
+	if err != nil {
+		t.Fatalf("SyncCreateExecutionSchemeRemote failed: %v", err)
+	}
+
+	if extID != "new-ext-scheme-9992" {
+		t.Errorf("expected extID 'new-ext-scheme-9992', got %q", extID)
+	}
+
+	// 关键断言 1：不应该调用三方接口创建新的代码检查任务（应该复用已有的）
+	if checkerTaskCreated {
+		t.Errorf("Expected checker task to be reused from existing scheme, but createCheckerTaskStep was called!")
+	}
+
+	// 关键断言 2：新方案应该继承已有的 CodeCheckerTaskID 和 Name
+	if newScheme.CodeCheckerTaskID != "existing-checker-9992" {
+		t.Errorf("expected newScheme CodeCheckerTaskID 'existing-checker-9992', got %q", newScheme.CodeCheckerTaskID)
+	}
+	if newScheme.CodeCheckerTaskName != "existing-checker-name" {
+		t.Errorf("expected newScheme CodeCheckerTaskName 'existing-checker-name', got %q", newScheme.CodeCheckerTaskName)
+	}
+
+	// 关键断言 3：Repository 记录应该被自愈回写
+	var updatedRepo models.Repository
+	if err := database.DB.First(&updatedRepo, 9992).Error; err != nil {
+		t.Fatalf("failed to query updated repo: %v", err)
+	}
+	if updatedRepo.CodeCheckerTaskID != "existing-checker-9992" {
+		t.Errorf("expected repo CodeCheckerTaskID to be self-healed to 'existing-checker-9992', got %q", updatedRepo.CodeCheckerTaskID)
+	}
+	if updatedRepo.CodeCheckerTaskName != "existing-checker-name" {
+		t.Errorf("expected repo CodeCheckerTaskName to be self-healed to 'existing-checker-name', got %q", updatedRepo.CodeCheckerTaskName)
+	}
+	if !schemeCreated {
+		t.Errorf("expected execution scheme to be created")
+	}
+}

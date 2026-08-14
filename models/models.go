@@ -48,7 +48,6 @@ func (s *Subsystem) AfterFind(tx *gorm.DB) (err error) {
 	return
 }
 
-
 type Repository struct {
 	ID                  uint              `gorm:"primaryKey" json:"id"`
 	DepartmentID        uint              `json:"department_id"`
@@ -325,8 +324,8 @@ type ComplianceBaseline struct {
 	Name        string         `gorm:"size:100;uniqueIndex;not null;default:''" json:"name"`
 	Description string         `gorm:"type:text" json:"description"`
 	IsDefault   bool           `gorm:"default:false;index" json:"is_default"` // 是否为系统默认模板，新纳管仓自动应用
-	Rules       datatypes.JSON `gorm:"type:text" json:"rules"`               // 检查规则集 JSON ([]ComplianceRule)
-	GroupIDs    datatypes.JSON `gorm:"type:text" json:"group_ids"`           // 绑定的 Group ID 列表 ([]uint)
+	Rules       datatypes.JSON `gorm:"type:text" json:"rules"`                // 检查规则集 JSON ([]ComplianceRule)
+	GroupIDs    datatypes.JSON `gorm:"type:text" json:"group_ids"`            // 绑定的 Group ID 列表 ([]uint)
 	CreatorID   uint           `json:"creator_id"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
@@ -334,29 +333,29 @@ type ComplianceBaseline struct {
 
 // ComplianceRule 合规检查规则（序列化为 JSON 存储在 ComplianceBaseline.Rules 中）
 type ComplianceRule struct {
-	Dimension string `json:"dimension"`  // 维度: global_config / branch_protection / engineering / ownership / branch_hygiene / permission
-	CheckKey  string `json:"check_key"`  // 检查项标识
-	Label     string `json:"label"`      // 检查项中文名
-	Severity  string `json:"severity"`   // 严重度: critical / important / suggestion
-	Enabled   bool   `json:"enabled"`    // 是否启用
-	Threshold int    `json:"threshold"`  // 阈值参数（如僵死分支数上限），0 表示不适用
+	Dimension string `json:"dimension"` // 维度: global_config / branch_protection / engineering / ownership / branch_hygiene / permission
+	CheckKey  string `json:"check_key"` // 检查项标识
+	Label     string `json:"label"`     // 检查项中文名
+	Severity  string `json:"severity"`  // 严重度: critical / important / suggestion
+	Enabled   bool   `json:"enabled"`   // 是否启用
+	Threshold int    `json:"threshold"` // 阈值参数（如僵死分支数上限），0 表示不适用
 }
 
 // RepoComplianceReport 仓库合规报告快照
 type RepoComplianceReport struct {
-	ID                  uint           `gorm:"primaryKey" json:"id"`
-	ManagedRepositoryID uint           `gorm:"index;not null" json:"managed_repository_id"`
-	Repo                ManagedRepository `gorm:"foreignKey:ManagedRepositoryID" json:"repo,omitempty"`
-	BaselineID          uint           `gorm:"index;not null" json:"baseline_id"`
+	ID                  uint                `gorm:"primaryKey" json:"id"`
+	ManagedRepositoryID uint                `gorm:"index;not null" json:"managed_repository_id"`
+	Repo                ManagedRepository   `gorm:"foreignKey:ManagedRepositoryID" json:"repo,omitempty"`
+	BaselineID          uint                `gorm:"index;not null" json:"baseline_id"`
 	Baseline            *ComplianceBaseline `gorm:"foreignKey:BaselineID" json:"baseline,omitempty"`
-	Score               int            `gorm:"default:0" json:"score"`         // 合规总分 0-100
-	Grade               string         `gorm:"size:2;default:'D'" json:"grade"` // A / B / C / D
-	TotalChecks         int            `gorm:"default:0" json:"total_checks"`
-	PassedChecks        int            `gorm:"default:0" json:"passed_checks"`
-	FailedChecks        int            `gorm:"default:0" json:"failed_checks"`
-	Details             datatypes.JSON `gorm:"type:text" json:"details"` // 各检查项详细结果 ([]ComplianceCheckResult)
-	AuditedAt           time.Time      `gorm:"index" json:"audited_at"`
-	CreatedAt           time.Time      `json:"created_at"`
+	Score               int                 `gorm:"default:0" json:"score"`          // 合规总分 0-100
+	Grade               string              `gorm:"size:2;default:'D'" json:"grade"` // A / B / C / D
+	TotalChecks         int                 `gorm:"default:0" json:"total_checks"`
+	PassedChecks        int                 `gorm:"default:0" json:"passed_checks"`
+	FailedChecks        int                 `gorm:"default:0" json:"failed_checks"`
+	Details             datatypes.JSON      `gorm:"type:text" json:"details"` // 各检查项详细结果 ([]ComplianceCheckResult)
+	AuditedAt           time.Time           `gorm:"index" json:"audited_at"`
+	CreatedAt           time.Time           `json:"created_at"`
 }
 
 // ComplianceCheckResult 单个检查项的执行结果（序列化为 JSON 存储在 RepoComplianceReport.Details 中）

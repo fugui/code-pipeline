@@ -403,4 +403,3 @@ func TestDeleteManagedGroupLogic(t *testing.T) {
 
 	t.Log("DeleteManagedGroup logic verification successfully passed.")
 }
-

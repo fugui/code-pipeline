@@ -77,8 +77,6 @@ func InitDB() {
 		log.Fatalf("[Database] Migration failed: %v", err)
 	}
 
-
-
 	// Seed admin user
 	var count int64
 	DB.Model(&models.User{}).Count(&count)
