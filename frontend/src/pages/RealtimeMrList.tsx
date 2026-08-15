@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { Pagination, usePagination } from '@code/common';
 import { useToast } from '../components/Toast';
 
 // Premium SVG Icons
@@ -54,8 +55,7 @@ export default function RealtimeMrList({ apiBase, token }: RealtimeMrListProps) 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [hasSynced, setHasSynced] = useState(false);
-  const [page, setPage] = useState(1);
-  const pageSize = 15;
+  const { page, pageSize, setPage } = usePagination({ defaultPageSize: 15 });
 
   // 获取所有仓库列表，以用于下拉筛选
   const fetchRepos = useCallback(() => {
@@ -182,7 +182,6 @@ export default function RealtimeMrList({ apiBase, token }: RealtimeMrListProps) 
 
   // 前端分页
   const totalItems = filteredMRs.length;
-  const totalPages = Math.ceil(totalItems / pageSize) || 1;
   const paginatedMRs = filteredMRs.slice((page - 1) * pageSize, page * pageSize);
 
   return (
@@ -433,55 +432,8 @@ export default function RealtimeMrList({ apiBase, token }: RealtimeMrListProps) 
       </div>
 
       {/* Pagination Footer */}
-      {!loading && totalPages > 1 && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginTop: '0.5rem',
-          padding: '0.75rem 1.25rem',
-          background: 'var(--card-bg)',
-          borderRadius: '12px',
-          border: '1px solid var(--border-color)'
-        }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-color)' }}>
-            当前第 <strong>{page}</strong> / {totalPages} 页 (共 {totalItems} 条数据)
-          </span>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button
-              disabled={page === 1}
-              onClick={() => setPage(page - 1)}
-              style={{
-                padding: '0.4rem 0.9rem',
-                borderRadius: '6px',
-                border: '1px solid var(--border-color)',
-                background: page === 1 ? 'var(--bg-color)' : 'var(--card-bg)',
-                color: page === 1 ? '#94a3b8' : 'var(--text-color)',
-                cursor: page === 1 ? 'not-allowed' : 'pointer',
-                fontSize: '0.825rem',
-                transition: 'all 0.2s'
-              }}
-            >
-              上一页
-            </button>
-            <button
-              disabled={page >= totalPages}
-              onClick={() => setPage(page + 1)}
-              style={{
-                padding: '0.4rem 0.9rem',
-                borderRadius: '6px',
-                border: '1px solid var(--border-color)',
-                background: page >= totalPages ? 'var(--bg-color)' : 'var(--card-bg)',
-                color: page >= totalPages ? '#94a3b8' : 'var(--text-color)',
-                cursor: page >= totalPages ? 'not-allowed' : 'pointer',
-                fontSize: '0.825rem',
-                transition: 'all 0.2s'
-              }}
-            >
-              下一页
-            </button>
-          </div>
-        </div>
+      {!loading && totalItems > 0 && (
+        <Pagination totalItems={totalItems} defaultPageSize={15} />
       )}
     </div>
   );

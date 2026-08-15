@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react'
+import { Pagination, usePagination } from '@code/common'
 import { 
   Plus, 
   Search, 
   Edit, 
   Trash2, 
   RefreshCw, 
-  ChevronLeft, 
-  ChevronRight, 
   ExternalLink,
   Layers,
   Box,
@@ -49,8 +48,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
 }) => {
   const [selectedType, setSelectedType] = useState<string>('ALL')
   const [selectedGroup, setSelectedGroup] = useState<string>('ALL')
-  const [currentPage, setCurrentPage] = useState<number>(1)
-  const [pageSize, setPageSize] = useState<number>(10)
+  const { page: currentPage, pageSize, setPage: setCurrentPage } = usePagination({ defaultPageSize: 15 })
   const [allSchemes, setAllSchemes] = useState<ExecutionScheme[]>([])
 
   // Diff Modal States
@@ -249,7 +247,6 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
   }, [searchQuery, selectedType, selectedGroup, pageSize])
 
   // Pagination calculation
-  const totalPages = Math.ceil(filteredPipelines.length / pageSize) || 1
   const paginatedPipelines = useMemo(() => {
     const start = (currentPage - 1) * pageSize
     return filteredPipelines.slice(start, start + pageSize)
@@ -567,82 +564,8 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
 
         {/* Pagination Footer */}
         {filteredPipelines.length > 0 && (
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            padding: '12px 16px', 
-            borderTop: '1px solid var(--border-color)',
-            background: 'rgba(255, 255, 255, 0.01)',
-            flexWrap: 'wrap',
-            gap: 12
-          }}>
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span>
-                显示第 <strong>{(currentPage - 1) * pageSize + 1}</strong> 至 <strong>{Math.min(currentPage * pageSize, filteredPipelines.length)}</strong> 条，共 <strong>{filteredPipelines.length}</strong> 条记录
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 }}>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>每页显示:</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                  style={{
-                    height: 28,
-                    padding: '0 6px',
-                    fontSize: 12,
-                    borderRadius: 4,
-                    background: 'var(--bg-secondary, rgba(255, 255, 255, 0.05))',
-                    color: 'var(--text-main)',
-                    border: '1px solid var(--border-color)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <option value={10}>10 条</option>
-                  <option value={20}>20 条</option>
-                  <option value={50}>50 条</option>
-                </select>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <button 
-                className="btn btn-secondary btn-small"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                style={{ 
-                  padding: '4px 10px', 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  gap: 4, 
-                  fontSize: 12,
-                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer', 
-                  opacity: currentPage === 1 ? 0.5 : 1 
-                }}
-              >
-                <ChevronLeft size={14} /> 上一页
-              </button>
-              
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)', padding: '0 8px' }}>
-                {currentPage} / {totalPages}
-              </span>
-
-              <button 
-                className="btn btn-secondary btn-small"
-                disabled={currentPage >= totalPages}
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                style={{ 
-                  padding: '4px 10px', 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  gap: 4, 
-                  fontSize: 12,
-                  cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer', 
-                  opacity: currentPage >= totalPages ? 0.5 : 1 
-                }}
-              >
-                下一页 <ChevronRight size={14} />
-              </button>
-            </div>
+          <div style={{ padding: '0 1rem 1rem 1rem' }}>
+            <Pagination totalItems={filteredPipelines.length} defaultPageSize={15} />
           </div>
         )}
       </div>

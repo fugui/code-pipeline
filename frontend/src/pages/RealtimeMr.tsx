@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Pagination, usePagination } from '@code/common';
 import { useToast } from '../components/Toast';
 
 // Premium SVG Icons
@@ -57,13 +58,12 @@ interface RealtimeMrProps {
 export default function RealtimeMr({ apiBase, token }: RealtimeMrProps) {
   const { showToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-  const page = parseInt(searchParams.get('page') || '1', 10) || 1;
+  const { page, pageSize } = usePagination({ defaultPageSize: 15 });
   const repoFilter = searchParams.get('repo') || '';
   const authorFilter = searchParams.get('author') || '';
 
   const [items, setItems] = useState<MrEvent[]>([]);
   const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
 
   // Modal detail view state
@@ -73,7 +73,7 @@ export default function RealtimeMr({ apiBase, token }: RealtimeMrProps) {
     setLoading(true);
     const params = new URLSearchParams({
       page: page.toString(),
-      pageSize: '15',
+      pageSize: pageSize.toString(),
     });
     if (repoFilter) params.append('repo', repoFilter);
     if (authorFilter) params.append('author', authorFilter);
@@ -90,7 +90,6 @@ export default function RealtimeMr({ apiBase, token }: RealtimeMrProps) {
       .then(data => {
         setItems(data.items || []);
         setTotalItems(data.total || 0);
-        setTotalPages(data.totalPages || 1);
       })
       .catch(err => {
         console.error('Failed to fetch MR events:', err);
@@ -99,7 +98,7 @@ export default function RealtimeMr({ apiBase, token }: RealtimeMrProps) {
       .finally(() => {
         setLoading(false);
       });
-  }, [page, repoFilter, authorFilter, apiBase, token, showToast]);
+  }, [page, pageSize, repoFilter, authorFilter, apiBase, token, showToast]);
 
   useEffect(() => {
     fetchEvents();
@@ -114,18 +113,6 @@ export default function RealtimeMr({ apiBase, token }: RealtimeMrProps) {
         next.delete(key);
       }
       next.delete('page');
-      return next;
-    }, { replace: true });
-  };
-
-  const setPage = (p: number) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      if (p <= 1) {
-        next.delete('page');
-      } else {
-        next.set('page', p.toString());
-      }
       return next;
     }, { replace: true });
   };
@@ -536,55 +523,8 @@ export default function RealtimeMr({ apiBase, token }: RealtimeMrProps) {
       </div>
 
       {/* Pagination Footer */}
-      {totalPages > 1 && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginTop: '0.5rem',
-          padding: '0.75rem 1.25rem',
-          background: 'var(--card-bg)',
-          borderRadius: '12px',
-          border: '1px solid var(--border-color)'
-        }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-color)' }}>
-            当前第 <strong>{page}</strong> / {totalPages} 页
-          </span>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button
-              disabled={page === 1}
-              onClick={() => setPage(page - 1)}
-              style={{
-                padding: '0.4rem 0.9rem',
-                borderRadius: '6px',
-                border: '1px solid var(--border-color)',
-                background: page === 1 ? 'var(--bg-color)' : 'var(--card-bg)',
-                color: page === 1 ? '#94a3b8' : 'var(--text-color)',
-                cursor: page === 1 ? 'not-allowed' : 'pointer',
-                fontSize: '0.825rem',
-                transition: 'all 0.2s'
-              }}
-            >
-              上一页
-            </button>
-            <button
-              disabled={page >= totalPages}
-              onClick={() => setPage(page + 1)}
-              style={{
-                padding: '0.4rem 0.9rem',
-                borderRadius: '6px',
-                border: '1px solid var(--border-color)',
-                background: page >= totalPages ? 'var(--bg-color)' : 'var(--card-bg)',
-                color: page >= totalPages ? '#94a3b8' : 'var(--text-color)',
-                cursor: page >= totalPages ? 'not-allowed' : 'pointer',
-                fontSize: '0.825rem',
-                transition: 'all 0.2s'
-              }}
-            >
-              下一页
-            </button>
-          </div>
-        </div>
+      {totalItems > 0 && (
+        <Pagination totalItems={totalItems} defaultPageSize={15} />
       )}
 
       {/* Modal Detail Payload View */}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { FileText, CheckCircle2, XCircle, Clock, RefreshCw, Server, GitBranch, Eye, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X } from 'lucide-react'
+import { Pagination, usePagination } from '@code/common'
+import { FileText, CheckCircle2, XCircle, Clock, RefreshCw, Server, GitBranch, Eye, X } from 'lucide-react'
 import { ManagedRepoApproval } from '../types'
 import { useToast } from '../components/Toast'
 
@@ -18,8 +19,7 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
   const [loading, setLoading] = useState(false)
 
   // Pagination states
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
+  const { page: currentPage, pageSize, setPage: setCurrentPage } = usePagination({ defaultPageSize: 15 })
 
   // Consolidated modal state
   const [selectedApproval, setSelectedApproval] = useState<ManagedRepoApproval | null>(null)
@@ -54,7 +54,6 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
   }, [apiBase, token, statusFilter, typeFilter])
 
   // Pagination slice
-  const totalPages = Math.ceil(approvals.length / pageSize) || 1
   const paginatedApprovals = useMemo(() => {
     const start = (currentPage - 1) * pageSize
     return approvals.slice(start, start + pageSize)
@@ -277,72 +276,11 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
             </div>
 
             {/* Pagination Controls */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-color, rgba(255,255,255,0.08))', flexWrap: 'wrap', gap: 12 }}>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                显示第 <strong style={{ color: 'var(--text-primary)' }}>{(currentPage - 1) * pageSize + 1}</strong> 至 <strong style={{ color: 'var(--text-primary)' }}>{Math.min(currentPage * pageSize, approvals.length)}</strong> 条，共 <strong style={{ color: 'var(--text-primary)' }}>{approvals.length}</strong> 条记录
+            {approvals.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <Pagination totalItems={approvals.length} defaultPageSize={15} />
               </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)' }}>
-                  <span>每页显示:</span>
-                  <select
-                    className="input"
-                    style={{ width: 80, padding: '4px 8px', height: 32 }}
-                    value={pageSize}
-                    onChange={e => {
-                      setPageSize(Number(e.target.value))
-                      setCurrentPage(1)
-                    }}
-                  >
-                    <option value={10}>10 条</option>
-                    <option value={20}>20 条</option>
-                    <option value={50}>50 条</option>
-                  </select>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <button
-                    className="btn btn-secondary btn-small"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(1)}
-                    title="首页"
-                    style={{ padding: '4px 8px', opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
-                  >
-                    <ChevronsLeft size={14} />
-                  </button>
-                  <button
-                    className="btn btn-secondary btn-small"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    title="上一页"
-                    style={{ padding: '4px 8px', opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
-                  >
-                    <ChevronLeft size={14} />
-                  </button>
-                  <span style={{ fontSize: 13, margin: '0 8px', color: 'var(--text-primary)', fontWeight: 600 }}>
-                    {currentPage} / {totalPages}
-                  </span>
-                  <button
-                    className="btn btn-secondary btn-small"
-                    disabled={currentPage >= totalPages}
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    title="下一页"
-                    style={{ padding: '4px 8px', opacity: currentPage >= totalPages ? 0.5 : 1, cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer' }}
-                  >
-                    <ChevronRight size={14} />
-                  </button>
-                  <button
-                    className="btn btn-secondary btn-small"
-                    disabled={currentPage >= totalPages}
-                    onClick={() => setCurrentPage(totalPages)}
-                    title="末页"
-                    style={{ padding: '4px 8px', opacity: currentPage >= totalPages ? 0.5 : 1, cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer' }}
-                  >
-                    <ChevronsRight size={14} />
-                  </button>
-                </div>
-              </div>
-            </div>
+            )}
           </>
         )}
       </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { Pagination, usePagination } from '@code/common'
 import {
   Search, ChevronDown, ChevronRight, Plus, Trash2,
   GitBranch, AlertCircle, CheckCircle2, Loader2, RefreshCw,
@@ -60,7 +61,7 @@ export const Repos: React.FC<ReposProps> = ({
   const serviceGroup = searchParams.get('service_group') || ''
   const ownerName = searchParams.get('owner_name') || ''
   const hasScheme = searchParams.get('has_scheme') || 'all'
-  const page = parseInt(searchParams.get('page') || '1', 10)
+  const { page, pageSize } = usePagination({ defaultPageSize: 20 })
 
   useEffect(() => {
     setSearch(searchParams.get('search') || '')
@@ -140,7 +141,8 @@ export const Repos: React.FC<ReposProps> = ({
     const finalSearch = searchParams.get('search') || ''
     const params = new URLSearchParams({
       page: String(page),
-      page_size: String(PAGE_SIZE),
+      page_size: String(pageSize),
+      pageSize: String(pageSize),
       search: finalSearch,
       service_group: serviceGroup,
       owner_name: ownerName,
@@ -212,8 +214,6 @@ export const Repos: React.FC<ReposProps> = ({
     }
     setExpandedIds(next)
   }
-
-  const totalPages = result ? Math.ceil(result.total / PAGE_SIZE) : 0
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -332,38 +332,9 @@ export const Repos: React.FC<ReposProps> = ({
           </tbody>
         </table>
 
-        {totalPages > 1 && (
-          <div style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            alignItems: 'center',
-            gap: 10,
-            padding: '12px 20px',
-            borderTop: '1px solid var(--border-color)',
-            fontSize: 13,
-          }}>
-            {loading && (
-              <Loader2 size={13} style={{ animation: 'spin 1s linear infinite', color: 'var(--text-muted)' }} />
-            )}
-            <button
-              className="btn btn-secondary"
-              style={{ padding: '4px 12px', fontSize: 12 }}
-              disabled={page <= 1 || loading}
-              onClick={() => updateQueryParams({ page: page - 1 })}
-            >
-              上一页
-            </button>
-            <span style={{ color: 'var(--text-secondary)', minWidth: 80, textAlign: 'center' }}>
-              第 {page} / {totalPages} 页
-            </span>
-            <button
-              className="btn btn-secondary"
-              style={{ padding: '4px 12px', fontSize: 12 }}
-              disabled={page >= totalPages || loading}
-              onClick={() => updateQueryParams({ page: page + 1 })}
-            >
-              下一页
-            </button>
+        {result && result.total > 0 && (
+          <div style={{ padding: '0 1rem 1rem 1rem' }}>
+            <Pagination totalItems={result.total} defaultPageSize={20} />
           </div>
         )}
       </div>

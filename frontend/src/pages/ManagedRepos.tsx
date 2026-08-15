@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { Pagination, usePagination } from '@code/common'
 import { 
   GitBranch, Folder, Plus, FolderPlus, Info, Search, Users, AlertCircle, RefreshCw, Send, CheckCircle2, ChevronRight, ChevronDown, Eye, EyeOff, Trash2, Zap, X, Archive, ExternalLink
 } from 'lucide-react'
@@ -153,8 +154,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
   const [searchParams, setSearchParams] = useSearchParams()
   const [sortField, setSortField] = useState<'name' | 'branch_count' | 'last_commit_time' | null>(null)
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(15)
+  const { page: currentPage, pageSize, setPage: setCurrentPage } = usePagination({ defaultPageSize: 15 })
   const [hasInitialized, setHasInitialized] = useState(false)
 
   const handleSort = (field: 'name' | 'branch_count' | 'last_commit_time') => {
@@ -164,47 +164,14 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
       setSortField(field)
       setSortOrder('asc')
     }
-    const newParams = new URLSearchParams(searchParams)
-    newParams.set('page', '1')
-    setSearchParams(newParams)
-  }
-
-  const handlePageChange = (newPage: number) => {
-    const newParams = new URLSearchParams(searchParams)
-    newParams.set('page', newPage.toString())
-    setSearchParams(newParams)
-  }
-
-  const handlePageSizeChange = (newSize: number) => {
-    const newParams = new URLSearchParams(searchParams)
-    newParams.set('page_size', newSize.toString())
-    newParams.set('page', '1')
-    setSearchParams(newParams)
+    setCurrentPage(1)
   }
 
   // 监听并同步 URL 参数变化到组件 State（Single Source of Truth 还原）
   useEffect(() => {
     const paramGroupId = searchParams.get('group_id')
-    const paramPage = searchParams.get('page')
-    const paramPageSize = searchParams.get('page_size')
 
-    // 1. 同步 page_size
-    const size = paramPageSize ? Number(paramPageSize) : 15
-    if ([15, 25, 50, 100].includes(size)) {
-      setPageSize(size)
-    } else {
-      setPageSize(15)
-    }
-
-    // 2. 同步 page
-    const page = paramPage ? Number(paramPage) : 1
-    if (!isNaN(page) && page > 0) {
-      setCurrentPage(page)
-    } else {
-      setCurrentPage(1)
-    }
-
-    // 3. 同步 selectedGroup 与数据拉取
+    // 同步 selectedGroup 与数据拉取
     if (paramGroupId) {
       const groupId = Number(paramGroupId)
       if (!isNaN(groupId)) {
@@ -1247,65 +1214,11 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
           </div>
 
           {/* Pagination Footer */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: 16,
-            paddingTop: 16,
-            borderTop: '1px solid var(--border-color)',
-            fontSize: 13,
-            color: 'var(--text-secondary)'
-          }}>
-            <div>
-              共 <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{totalItems}</span> 个仓库
-              {totalItems > 0 && `，显示第 ${(currentPage - 1) * pageSize + 1} - ${Math.min(currentPage * pageSize, totalItems)} 个`}
+          {totalItems > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <Pagination totalItems={totalItems} defaultPageSize={15} />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span>每页:</span>
-                <select 
-                  value={pageSize} 
-                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                  style={{
-                    padding: '4px 8px',
-                    fontSize: 12,
-                    background: 'var(--bg-primary)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: 4,
-                    color: 'var(--text-main)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <option value={15}>15</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <button 
-                  disabled={currentPage === 1}
-                  onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
-                  className="btn btn-secondary btn-small"
-                  style={{ padding: '4px 8px', minWidth: 60 }}
-                >
-                  上一页
-                </button>
-                <span style={{ margin: '0 8px' }}>
-                  第 {currentPage} / {totalPages} 页
-                </span>
-                <button 
-                  disabled={currentPage === totalPages}
-                  onClick={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
-                  className="btn btn-secondary btn-small"
-                  style={{ padding: '4px 8px', minWidth: 60 }}
-                >
-                  下一页
-                </button>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
