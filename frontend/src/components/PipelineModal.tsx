@@ -1,6 +1,8 @@
 import React from 'react'
 import { Loader2, HelpCircle } from 'lucide-react'
+import { Modal } from '@code/common'
 import { Pipeline } from '../types'
+
 
 interface PipelineModalProps {
   isAdmin?: boolean
@@ -25,14 +27,16 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
   pipelineFetchError,
   onFetchRemoteInfo
 }) => {
-  if (!visible || !activePipeline) return null
+  if (!activePipeline) return null
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }}>
-      <div className="glass-card" style={{ width: '100%', maxWidth: 540, display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <h3 style={{ fontSize: 18, fontWeight: 700 }}>
-          {activePipeline.id ? (isAdmin ? '编辑流水线元数据' : '查看流水线元数据 (只读)') : '导入流水线'}
-        </h3>
+    <Modal
+      open={visible}
+      onClose={onClose}
+      title={activePipeline.id ? (isAdmin ? '编辑流水线元数据' : '查看流水线元数据 (只读)') : '导入流水线'}
+      width="md"
+    >
+
 
         <form onSubmit={onSave} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
@@ -199,7 +203,7 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
             )}
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   )
 }
+

@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react'
 import { Loader2, RefreshCw, CheckCircle, XCircle, Terminal, Square, ExternalLink, ShieldCheck, Hammer, AlertTriangle, Search, Clock } from 'lucide-react'
+import { EmptyState } from '@code/common'
 import { DashboardStats, ExecutionLog, CodeCheckDetails } from '../types'
+
 
 interface DashboardProps {
   stats: DashboardStats | null
@@ -464,13 +466,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 )
               })
             ) : (
-              <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: 24, color: 'var(--text-secondary)' }}>
-                  暂无匹配的执行日志记录
-                </td>
-              </tr>
+              <EmptyState
+                inTable
+                colSpan={8}
+                type="search"
+                title="暂无匹配的执行日志记录"
+                description="未发现符合当前检索条件的流水线执行记录。"
+              />
             )}
           </tbody>
+
         </table>
       </div>
     </div>
