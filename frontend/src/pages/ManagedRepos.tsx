@@ -815,8 +815,8 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
 
   // Paginate repos
   const totalItems = sortedRepos.length
-  const totalPages = Math.ceil(totalItems / pageSize) || 1
   const paginatedRepos = sortedRepos.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
 
   const mergedStale = branches.filter(b => b.status === 'merged_stale').length
   const unmergedStale = branches.filter(b => b.status === 'unmerged_stale').length

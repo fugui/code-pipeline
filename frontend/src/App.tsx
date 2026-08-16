@@ -26,7 +26,9 @@ import { PipelineModal } from './components/PipelineModal'
 import { ExecutionSchemeModal } from './components/ExecutionSchemeModal'
 import { ExecutionLogModal } from './components/ExecutionLogModal'
 
-import { AUTH_TOKEN_KEY, UnifiedLogin } from '@code/common';
+import { AUTH_TOKEN_KEY, UnifiedLogin, ConfirmProvider, useConfirm } from '@code/common';
+
+
 
 // 拦截全局 fetch，处理 401 状态以触发前端自动退出登录并重定向
 const originalFetch = window.fetch;
@@ -46,7 +48,9 @@ interface AppProps {
 }
 
 const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
+  const confirm = useConfirm()
   const apiBase = isEmbedded ? '/pipeline/api' : '/api'
+
   const [token, setToken] = useState<string | null>(() => {
     return localStorage.getItem('code_shield_token') || localStorage.getItem(AUTH_TOKEN_KEY);
   })
@@ -281,8 +285,14 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     .catch(err => alert(err.message))
   }
 
-  const handleDeletePipeline = (id: number) => {
-    if (!window.confirm('您确定要删除此流水线吗？其关联的所有执行方案在本地及三方系统上均将被同步物理删除！')) return
+  const handleDeletePipeline = async (id: number) => {
+    const ok = await confirm({
+      title: '确定要删除此流水线吗？',
+      content: '其关联的所有执行方案在本地及三方系统上均将被同步物理删除，此操作不可恢复。',
+      type: 'danger',
+      confirmText: '确认删除',
+    })
+    if (!ok) return
 
     fetch(`${apiBase}/pipelines/${id}`, {
       method: 'DELETE',
@@ -347,8 +357,14 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     })
   }
 
-  const handleDeleteScheme = (id: number) => {
-    if (!window.confirm('您确定要删除此执行方案吗？将同步通知外部系统进行删除。')) return
+  const handleDeleteScheme = async (id: number) => {
+    const ok = await confirm({
+      title: '确定要删除此执行方案吗？',
+      content: '删除后将同步通知外部系统进行删除，此操作不可撤销。',
+      type: 'danger',
+      confirmText: '确认删除',
+    })
+    if (!ok) return
 
     fetch(`${apiBase}/execution-schemes/${id}`, {
       method: 'DELETE',
@@ -469,8 +485,15 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
     setRepos([])
   }
 
-  const handleCancelExecution = (id: number) => {
-    if (!window.confirm('确定要取消此流水线的执行任务吗？')) return
+  const handleCancelExecution = async (id: number) => {
+    const ok = await confirm({
+      title: '确定要取消此流水线的执行任务吗？',
+      content: '取消后进行中的构建和测试流程将立即中止。',
+      type: 'warning',
+      confirmText: '确认取消任务',
+    })
+    if (!ok) return
+
 
     fetch(`${apiBase}/executions/${id}/cancel`, {
       method: 'POST',
@@ -531,9 +554,11 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
   }
 
   return (
-    <div className="pipeline-app">
-      <ToastProvider>
-        <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <ConfirmProvider>
+      <div className="pipeline-app">
+        <ToastProvider>
+          <div style={{ display: 'flex', minHeight: '100vh' }}>
+
       {/* Sidebar */}
       {!isEmbedded && (
         <aside className="glass-card" style={{ width: 260, borderRadius: 0, borderTop: 'none', borderBottom: 'none', borderLeft: 'none', padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -827,10 +852,13 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
         onClose={() => setActiveExec(null)}
         onCancel={handleCancelExecution}
       />
-    </div>
-    </ToastProvider>
-    </div>
+          </div>
+        </ToastProvider>
+      </div>
+    </ConfirmProvider>
   )
 }
 
 export default App
+
+
