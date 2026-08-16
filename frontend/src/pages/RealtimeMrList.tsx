@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Pagination, usePagination } from '@code/common';
+import { Pagination, usePagination, EmptyState } from '@code/common';
 import { useToast } from '../components/Toast';
+
 
 // Premium SVG Icons
 const RefreshIcon = ({ className = "" }) => (
@@ -363,12 +364,21 @@ export default function RealtimeMrList({ apiBase, token }: RealtimeMrListProps) 
             </thead>
             <tbody>
               {paginatedMRs.length === 0 ? (
-                <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '5rem', color: '#94a3b8' }}>
-                    {!hasSynced ? '暂无数据，请点击右上角“同步最新数据”按钮拉取三方合并请求列表。' : '暂无相关的 Merge Request 记录。'}
-                  </td>
-                </tr>
+                <EmptyState
+                  inTable
+                  colSpan={9}
+                  type={hasSynced ? "data" : "search"}
+                  title={!hasSynced ? "暂无数据，请同步最新合并请求" : "暂无相关的 Merge Request 记录"}
+                  description={!hasSynced ? "点击右上角“同步最新数据”按钮即可实时拉取三方合并请求列表。" : "未检索到匹配的合并请求。"}
+                  action={!hasSynced ? (
+                    <button className="btn btn-primary" onClick={() => fetchMRs(selectedRepoId)} style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}>
+                      立即同步数据
+                    </button>
+                  ) : undefined}
+
+                />
               ) : (
+
                 paginatedMRs.map((item) => (
                   <tr key={item.id} className="table-row-hover">
                     <td style={{ paddingLeft: '1.5rem', color: '#94a3b8', fontWeight: 500 }}>
