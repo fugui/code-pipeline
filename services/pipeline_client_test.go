@@ -1044,3 +1044,176 @@ func TestSyncCreateExecutionSchemeRemote_ReuseFromExistingScheme(t *testing.T) {
 		t.Errorf("expected execution scheme to be created")
 	}
 }
+
+func TestCreateMRBindingStep_BranchFuzzy(t *testing.T) {
+	origAuthURL := models.AppConfig.PipelineSystem.RepoAuthCheckURL
+	origCreateURL := models.AppConfig.PipelineSystem.CreateMRBindingURL
+	origCreateBody := models.AppConfig.PipelineSystem.CreateMRBindingBody
+
+	defer func() {
+		models.AppConfig.PipelineSystem.RepoAuthCheckURL = origAuthURL
+		models.AppConfig.PipelineSystem.CreateMRBindingURL = origCreateURL
+		models.AppConfig.PipelineSystem.CreateMRBindingBody = origCreateBody
+	}()
+
+	models.AppConfig.PipelineSystem.CreateMRBindingBody = `{
+		"pipeline_id": "{PIPELINE_ID}",
+		"scheme_id": "{SCHEME_ID}",
+		"code_url": "{REPO_URL}",
+		"branches": "{BRANCHES}",
+		"branch_fuzzy": {BRANCH_FUZZY},
+		"credential_id": "{CREDENTIAL_ID}",
+		"custom_attributes": "{CUSTOM_ATTRIBUTES}"
+	}`
+
+	testCases := []struct {
+		name          string
+		branch        string
+		expectedFuzzy bool
+	}{
+		{
+			name:          "Exact branch master",
+			branch:        "master",
+			expectedFuzzy: false,
+		},
+		{
+			name:          "Exact branch develop,release/1.0",
+			branch:        "develop,release/1.0",
+			expectedFuzzy: false,
+		},
+		{
+			name:          "Wildcard asterisk feature/*",
+			branch:        "feature/*",
+			expectedFuzzy: true,
+		},
+		{
+			name:          "Wildcard question mark release-v?",
+			branch:        "release-v?",
+			expectedFuzzy: true,
+		},
+		{
+			name:          "Multiple branches with wildcard",
+			branch:        "master, feature/*",
+			expectedFuzzy: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var receivedPayload map[string]interface{}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if strings.Contains(r.URL.Path, "auth-check") {
+					w.WriteHeader(http.StatusOK)
+					w.Write([]byte(`{"status":"success","count":1,"entities":[{"id":"cred-123"}]}`))
+					return
+				}
+				body, _ := io.ReadAll(r.Body)
+				_ = json.Unmarshal(body, &receivedPayload)
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`{"status":"success","id":"mr-binding-888"}`))
+			}))
+			defer server.Close()
+
+			models.AppConfig.PipelineSystem.RepoAuthCheckURL = server.URL + "/auth-check"
+			models.AppConfig.PipelineSystem.CreateMRBindingURL = server.URL + "/mr-binding"
+
+			scheme := &models.ExecutionScheme{
+				Name:   "test-scheme",
+				Branch: tc.branch,
+			}
+
+			bindingID, err := CreateMRBindingStep(context.Background(), "pipeline-1", scheme, "scheme-1", "https://github.com/org/repo", nil)
+			if err != nil {
+				t.Fatalf("CreateMRBindingStep failed: %v", err)
+			}
+			if bindingID != "mr-binding-888" {
+				t.Errorf("expected bindingID 'mr-binding-888', got %q", bindingID)
+			}
+
+			fuzzyVal, ok := receivedPayload["branch_fuzzy"].(bool)
+			if !ok {
+				t.Fatalf("expected branch_fuzzy to be boolean, got %v (%T)", receivedPayload["branch_fuzzy"], receivedPayload["branch_fuzzy"])
+			}
+			if fuzzyVal != tc.expectedFuzzy {
+				t.Errorf("expected branch_fuzzy=%v for branch %q, got %v", tc.expectedFuzzy, tc.branch, fuzzyVal)
+			}
+		})
+	}
+}
+
+func TestSyncUpdateMRBinding_BranchFuzzy(t *testing.T) {
+	setupTestDB(t)
+
+	pipeline := models.Pipeline{
+		ID:         7788,
+		PipelineID: "pipeline-test-7788",
+		Name:       "Test Pipeline 7788",
+	}
+	database.DB.Save(&pipeline)
+
+	origAuthURL := models.AppConfig.PipelineSystem.RepoAuthCheckURL
+	origGetMRURL := models.AppConfig.PipelineSystem.GetMRBindingsURL
+	origCreateURL := models.AppConfig.PipelineSystem.CreateMRBindingURL
+	origCreateBody := models.AppConfig.PipelineSystem.CreateMRBindingBody
+
+	defer func() {
+		models.AppConfig.PipelineSystem.RepoAuthCheckURL = origAuthURL
+		models.AppConfig.PipelineSystem.GetMRBindingsURL = origGetMRURL
+		models.AppConfig.PipelineSystem.CreateMRBindingURL = origCreateURL
+		models.AppConfig.PipelineSystem.CreateMRBindingBody = origCreateBody
+	}()
+
+	models.AppConfig.PipelineSystem.CreateMRBindingBody = `{
+		"pipeline_id": "{PIPELINE_ID}",
+		"scheme_id": "{SCHEME_ID}",
+		"code_url": "{REPO_URL}",
+		"branches": "{BRANCHES}",
+		"branch_fuzzy": {BRANCH_FUZZY},
+		"credential_id": "{CREDENTIAL_ID}",
+		"custom_attributes": "{CUSTOM_ATTRIBUTES}"
+	}`
+
+	var receivedPayload map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "auth-check") {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status":"success","count":1,"entities":[{"id":"cred-123"}]}`))
+			return
+		}
+		if strings.Contains(r.URL.Path, "get-mr") {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status":"success","result":[{"id":"mr-binding-999","scheme_id":"ext-scheme-123"}]}`))
+			return
+		}
+		body, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(body, &receivedPayload)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"success"}`))
+	}))
+	defer server.Close()
+
+	models.AppConfig.PipelineSystem.RepoAuthCheckURL = server.URL + "/auth-check"
+	models.AppConfig.PipelineSystem.GetMRBindingsURL = server.URL + "/get-mr"
+	models.AppConfig.PipelineSystem.CreateMRBindingURL = server.URL + "/mr-binding"
+
+	scheme := &models.ExecutionScheme{
+		LocalPipelineID:   7788,
+		Name:              "test-scheme-fuzzy",
+		Branch:            "hotfix/*",
+		ExecutionSchemeID: "ext-scheme-123",
+		MRBindingID:       "mr-binding-999",
+	}
+
+	err := SyncUpdateMRBindingRemote(context.Background(), scheme, "https://github.com/org/repo", nil)
+	if err != nil {
+		t.Fatalf("SyncUpdateMRBindingRemote failed: %v", err)
+	}
+
+	fuzzyVal, ok := receivedPayload["branch_fuzzy"].(bool)
+	if !ok {
+		t.Fatalf("expected branch_fuzzy to be boolean, got %v (%T)", receivedPayload["branch_fuzzy"], receivedPayload["branch_fuzzy"])
+	}
+	if !fuzzyVal {
+		t.Errorf("expected branch_fuzzy=true for branch %q, got false", scheme.Branch)
+	}
+}
