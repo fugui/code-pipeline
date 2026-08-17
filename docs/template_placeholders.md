@@ -154,6 +154,7 @@ codehub:
 | `{SCHEME_ID}` | 执行方案 ID |
 | `{REPO_URL}` | 关联的代码仓克隆 URL |
 | `{BRANCHES}` | 触发 MR 检查的目标分支集合 |
+| `{BRANCH_FUZZY}` | 是否包含通配符模糊匹配（包含 `*` 或 `?` 时为 `true`，否则为 `false`） |
 | `{CREDENTIAL_ID}` | 代码仓访问凭据 ID |
 | `{CUSTOM_ATTRIBUTES}` | 扩展控制属性 |
 

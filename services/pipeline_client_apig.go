@@ -50,10 +50,16 @@ func CreateMRBindingAPIG(ctx context.Context, pipelineBusinessID string, scheme 
 		escapedCustomAttributes = escapedCustomAttributes[1 : len(escapedCustomAttributes)-1]
 	}
 
+	branchFuzzy := "false"
+	if strings.ContainsAny(scheme.Branch, "*?") {
+		branchFuzzy = "true"
+	}
+
 	bodyPayload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
 		"NAME":              scheme.Name,
 		"REPO_URL":          repoURL,
 		"BRANCHES":          scheme.Branch,
+		"BRANCH_FUZZY":      branchFuzzy,
 		"PIPELINE_ID":       pipelineBusinessID,
 		"SCHEME_ID":         schemeID,
 		"CREDENTIAL_ID":     credentialID,
@@ -169,10 +175,16 @@ func SyncUpdateMRBindingRemoteAPIG(ctx context.Context, pipelineBusinessID strin
 		escapedCustomAttributes = escapedCustomAttributes[1 : len(escapedCustomAttributes)-1]
 	}
 
+	branchFuzzy := "false"
+	if strings.ContainsAny(scheme.Branch, "*?") {
+		branchFuzzy = "true"
+	}
+
 	bodyPayload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
 		"NAME":              scheme.Name,
 		"REPO_URL":          repoURL,
 		"BRANCHES":          scheme.Branch,
+		"BRANCH_FUZZY":      branchFuzzy,
 		"PIPELINE_ID":       pipelineBusinessID,
 		"SCHEME_ID":         scheme.ExecutionSchemeID,
 		"CREDENTIAL_ID":     credentialID,

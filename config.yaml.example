@@ -71,6 +71,7 @@ pipeline_system:
        "scheme_id": "{SCHEME_ID}",
        "code_url": "{REPO_URL}",
        "branches": "{BRANCHES}",
+       "branch_fuzzy": {BRANCH_FUZZY},
        "credential_id": "{CREDENTIAL_ID}",
        "custom_attributes": "{CUSTOM_ATTRIBUTES}"
      }

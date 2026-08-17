@@ -651,10 +651,16 @@ func CreateMRBindingStep(ctx context.Context, pipelineBusinessID string, scheme 
 		escapedCustomAttributes = escapedCustomAttributes[1 : len(escapedCustomAttributes)-1]
 	}
 
+	branchFuzzy := "false"
+	if strings.ContainsAny(scheme.Branch, "*?") {
+		branchFuzzy = "true"
+	}
+
 	mrPayload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
 		"NAME":              scheme.Name,
 		"REPO_URL":          repoURL,
 		"BRANCHES":          scheme.Branch,
+		"BRANCH_FUZZY":      branchFuzzy,
 		"PIPELINE_ID":       pipelineBusinessID,
 		"SCHEME_ID":         schemeID,
 		"CREDENTIAL_ID":     credentialID,
@@ -785,10 +791,16 @@ func SyncUpdateMRBindingRemote(ctx context.Context, scheme *models.ExecutionSche
 		escapedCustomAttributes = escapedCustomAttributes[1 : len(escapedCustomAttributes)-1]
 	}
 
+	branchFuzzy := "false"
+	if strings.ContainsAny(scheme.Branch, "*?") {
+		branchFuzzy = "true"
+	}
+
 	payload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
 		"NAME":              scheme.Name,
 		"REPO_URL":          repoURL,
 		"BRANCHES":          scheme.Branch,
+		"BRANCH_FUZZY":      branchFuzzy,
 		"PIPELINE_ID":       pipelineBusinessID,
 		"SCHEME_ID":         scheme.ExecutionSchemeID,
 		"CREDENTIAL_ID":     credentialID,
