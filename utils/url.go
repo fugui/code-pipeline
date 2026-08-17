@@ -1,60 +1,21 @@
 package utils
 
 import (
-	"regexp"
+	commonUtils "code-common/backend/utils"
 	"strings"
 )
 
-// SSHToHTTPS 将 SSH/SCP git URL 转换为浏览器可访问或 API 使用的 HTTPS URL。
-// 转换规则参考自 code-shield/frontend/src/utils/urlUtils.ts：
-//
-//	git@host:path/repo.git            →  https://host/path/repo
-//	git@host:PORT/path/repo.git       →  https://host/path/repo  (port dropped)
-//	ssh://git@host/path.git           →  https://host/path
-//	ssh://git@host:PORT/path.git      →  https://host/path       (port dropped)
-//	ssh:git@host:PORT/path.git        →  https://host/path       (non-standard prefix)
-//	https://...                       →  unchanged
-//
-// 域名后处理：
-//   - 将域名中的 "-git-" 替换为 "-"
+// SSHToHTTPS 将 SSH/SCP git URL 转换为浏览器可访问或 API 使用的 HTTPS URL
 func SSHToHTTPS(rawURL string) string {
-	rawURL = strings.TrimSpace(rawURL)
-	if rawURL == "" {
-		return ""
-	}
-
-	if strings.HasPrefix(rawURL, "http://") || strings.HasPrefix(rawURL, "https://") {
-		return rawURL
-	}
-
-	var host, repoPath string
-
-	// 1. 尝试匹配 ssh:// 协议前缀格式
-	// 匹配正则： ^ssh:/{0,2}(?:[^@]+@)?([^/:]+)(?::\d+)?/(.+?)(?:\.git)?$
-	protoRegex := regexp.MustCompile(`^ssh:/{0,2}(?:[^@]+@)?([^/:]+)(?::\d+)?/(.+?)(?:\.git)?$`)
-	if matches := protoRegex.FindStringSubmatch(rawURL); len(matches) > 0 {
-		host = matches[1]
-		repoPath = matches[2]
-	} else {
-		// 2. 尝试匹配 SCP 格式： [user@]host:path 或者 [user@]host:PORT/path
-		// 匹配正则： ^(?:[^@]+@)?([^:]+):(?:\d+/)?(.+?)(?:\.git)?$
-		scpRegex := regexp.MustCompile(`^(?:[^@]+@)?([^:]+):(?:\d+/)?(.+?)(?:\.git)?$`)
-		if matches := scpRegex.FindStringSubmatch(rawURL); len(matches) > 0 {
-			host = matches[1]
-			repoPath = matches[2]
-		} else {
-			// 无法识别，直接返回原 URL
-			return rawURL
-		}
-	}
-
-	// 3. 后置处理：将 host 中的 "-git-" 替换为 "-"
-	host = strings.ReplaceAll(host, "-git-", "-")
-
-	return "https://" + host + "/" + repoPath
+	return commonUtils.SSHToHTTPS(rawURL)
 }
 
-// NormalizeGitURL 规范化 Git 仓库地址，消除协议（ssh/http/https）、端口、用户名及 .git 后缀的差异，返回标准的 host/path
+// ExtractRepoPath 提取不含协议、host 与末尾 .git 的仓库路径
+func ExtractRepoPath(repoURL string) string {
+	return commonUtils.ExtractRepoPath(repoURL)
+}
+
+// NormalizeGitURL 规范化 Git 仓库地址，消除协议、端口、用户名及 .git 后缀的差异
 func NormalizeGitURL(u string) string {
 	u = strings.TrimSpace(u)
 	u = strings.ToLower(u)
@@ -120,34 +81,14 @@ func NormalizeGitURL(u string) string {
 	return hostPart
 }
 
-// ExtractRepoPath 提取不含协议、host 与末尾 .git 的仓库路径，例如 https://host/foo/bar.git -> foo/bar
-func ExtractRepoPath(repoURL string) string {
-	httpsURL := SSHToHTTPS(repoURL)
-	if httpsURL == "" {
-		return ""
-	}
-
-	pathPart := strings.TrimPrefix(httpsURL, "https://")
-	pathPart = strings.TrimPrefix(pathPart, "http://")
-	firstSlash := strings.Index(pathPart, "/")
-	if firstSlash == -1 {
-		return ""
-	}
-	pathPart = pathPart[firstSlash+1:]
-	pathPart = strings.TrimSuffix(pathPart, ".git")
-	return strings.Trim(pathPart, "/")
-}
-
 // ExtractRepoName 从 Git 仓库 URL 或路径中提取代码仓的 basename 名称
 func ExtractRepoName(repoURL string) string {
 	u := strings.TrimSuffix(repoURL, "/")
 	u = strings.TrimSuffix(u, ".git")
 
-	// 取最后一个 "/" 后面的部分
 	if idx := strings.LastIndex(u, "/"); idx != -1 {
 		u = u[idx+1:]
 	}
-	// 如果是 ssh 格式类似 git@github.com:org/repo.git ，且刚才没找到 "/" 时只剩下 git@github.com:repo
 	if idx := strings.LastIndex(u, ":"); idx != -1 {
 		u = u[idx+1:]
 	}

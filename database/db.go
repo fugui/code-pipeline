@@ -1,18 +1,15 @@
 package database
 
 import (
-	"io"
+	"code-common/backend/gormdb"
 	"log"
-	"os"
 	"time"
 
 	"code-pipeline/models"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/datatypes"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 var DB *gorm.DB
@@ -20,35 +17,9 @@ var DB *gorm.DB
 func InitDB() {
 	var err error
 
-	var logWriter io.Writer = os.Stdout
-	logFile, errFile := os.OpenFile("slow_sql.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if errFile == nil {
-		logWriter = io.MultiWriter(os.Stdout, logFile)
-		log.Println("[Database] Slow SQL logger initialized with log file: slow_sql.log")
-	} else {
-		log.Printf("[Database] Failed to open slow_sql.log: %v. Fallback to stdout.", errFile)
-	}
-
-	newLogger := logger.New(
-		log.New(logWriter, "\r\n", log.LstdFlags),
-		logger.Config{
-			SlowThreshold:             200 * time.Millisecond,
-			LogLevel:                  logger.Warn,
-			IgnoreRecordNotFoundError: true,
-			Colorful:                  false,
-		},
-	)
-
-	dsn := models.AppConfig.Database.GetDSN()
-	log.Printf("[Database] Connecting to PostgreSQL database (%s)...", models.AppConfig.Database.DBName)
-	dialector := postgres.New(postgres.Config{
-		DSN:                  dsn,
-		PreferSimpleProtocol: true,
-	})
-
-	DB, err = gorm.Open(dialector, &gorm.Config{
-		Logger:                                   newLogger,
-		DisableForeignKeyConstraintWhenMigrating: true,
+	DB, err = gormdb.Connect(models.AppConfig.Database, gormdb.Options{
+		ServiceName:   "Pipeline-DB",
+		SlowThreshold: 200 * time.Millisecond,
 	})
 	if err != nil {
 		log.Fatalf("[Database] Failed to connect database: %v", err)
