@@ -32,18 +32,11 @@ func parseToken(tokenString string) (*PortalClaims, error) {
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenString := c.GetHeader("Authorization")
+		tokenString := commonAuth.ExtractToken(c)
 		if tokenString == "" {
-			tokenString = c.Query("token")
-		}
-		if tokenString == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header missing"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header or token missing"})
 			c.Abort()
 			return
-		}
-
-		if len(tokenString) > 7 && tokenString[:7] == "Bearer " {
-			tokenString = tokenString[7:]
 		}
 
 		claims, err := parseToken(tokenString)

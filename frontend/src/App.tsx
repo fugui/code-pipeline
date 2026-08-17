@@ -26,22 +26,10 @@ import { PipelineModal } from './components/PipelineModal'
 import { ExecutionSchemeModal } from './components/ExecutionSchemeModal'
 import { ExecutionLogModal } from './components/ExecutionLogModal'
 
-import { AUTH_TOKEN_KEY, UnifiedLogin, ConfirmProvider, useConfirm } from '@code/common';
+import { AUTH_TOKEN_KEY, UnifiedLogin, ConfirmProvider, useConfirm, setupFetchInterceptor } from '@code/common';
 
-
-
-// 拦截全局 fetch，处理 401 状态以触发前端自动退出登录并重定向
-const originalFetch = window.fetch;
-window.fetch = async (...args) => {
-  const response = await originalFetch(...args);
-  if (response.status === 401) {
-    if (localStorage.getItem(AUTH_TOKEN_KEY)) {
-      localStorage.removeItem(AUTH_TOKEN_KEY);
-      window.location.reload();
-    }
-  }
-  return response;
-};
+// Setup unified global fetch interceptor
+setupFetchInterceptor({ appPrefix: '/pipeline' });
 
 interface AppProps {
   isEmbedded?: boolean
