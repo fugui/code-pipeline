@@ -1,6 +1,6 @@
 import React from 'react'
 import { AUTH_TOKEN_KEY } from '@code/common'
-import { Trash2, CheckCircle2, XCircle, Loader2, Copy, Check, ClipboardPaste, HelpCircle, FileCode, GitBranch, GitMerge, Clock, RefreshCw, Lock } from 'lucide-react'
+import { Trash2, CheckCircle2, XCircle, Loader2, Copy, Check, ClipboardPaste, HelpCircle, FileCode, GitBranch, GitMerge, Clock, RefreshCw, Lock, AlertTriangle } from 'lucide-react'
 
 interface ExecutionSchemeModalProps {
   isAdmin?: boolean
@@ -76,6 +76,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   const [animateVisible, setAnimateVisible] = React.useState(false);
   const [orderedBranches, setOrderedBranches] = React.useState<string[]>([]);
   const [showPasteModal, setShowPasteModal] = React.useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = React.useState(false);
   const [pasteContent, setPasteContent] = React.useState('');
   const [copied, setCopied] = React.useState(false);
   const [localError, setLocalError] = React.useState<string | null>(null);
@@ -86,14 +87,56 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   const [dailyBuild, setDailyBuild] = React.useState(true);
   const [dailyBuildTime, setDailyBuildTime] = React.useState(getRandomDailyBuildTime);
   const [buildTypes, setBuildTypes] = React.useState<string[]>(['SCH']);
-  const lastCustomAttrsRef = React.useRef('');  const [searchedRepos, setSearchedRepos] = React.useState<any[]>(repos)
+  const lastCustomAttrsRef = React.useRef('');  
+  const [searchedRepos, setSearchedRepos] = React.useState<any[]>(repos);
   // 打开弹窗时记录的原始编程语言，用于区分"清空已有语言"与"旧方案原本就没有语言"
-  const originalLanguagesRef = React.useRef('')
+  const originalLanguagesRef = React.useRef('');
+
+  // 进阶体验保障：记录初始表单数据快照与用户主动操作标记
+  const initialSnapshotRef = React.useRef<string>('');
+  const userInteractedRef = React.useRef<boolean>(false);
+
+  const getFormSnapshot = (
+    scheme: any,
+    attrs: { key: string; value: string }[],
+    types: string[],
+    mr: boolean,
+    daily: boolean,
+    dailyTime: string,
+    manualBranch: string,
+    manualMode: boolean
+  ) => {
+    if (!scheme) return '';
+    const effectiveBranch = (manualMode ? manualBranch : (scheme?.branchs || '')).trim();
+    const sortedAttrs = (attrs || [])
+      .map(a => ({ key: (a.key || '').trim(), value: (a.value || '').trim() }))
+      .filter(a => a.key || a.value)
+      .sort((a, b) => a.key.localeCompare(b.key));
+    const sortedTypes = [...(types || [])].sort();
+    return JSON.stringify({
+      name: (scheme?.name || '').trim(),
+      repository_id: Number(scheme?.repository_id || 0),
+      pipeline_id: Number(scheme?.pipeline_id || 0),
+      branchs: effectiveBranch,
+      languages: (scheme?.languages || '').trim(),
+      mr_trigger: Boolean(mr),
+      daily_build: Boolean(daily),
+      daily_build_time: (dailyTime || '').trim(),
+      buildTypes: sortedTypes,
+      customAttrs: sortedAttrs
+    });
+  };
 
   React.useEffect(() => {
     if (visible) {
       setSearchedRepos(repos);
       setLocalError(null);
+      setShowDiscardConfirm(false);
+      userInteractedRef.current = false;
+    } else {
+      initialSnapshotRef.current = '';
+      userInteractedRef.current = false;
+      setShowDiscardConfirm(false);
     }
   }, [visible, repos]);
 
@@ -115,6 +158,9 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       setDailyBuild(hasDailyBuild);
       setDailyBuildTime(hasDailyBuildTime);
 
+      let currentCustomAttrs: { key: string; value: string }[] = customAttrs;
+      let currentBuildTypes: string[] = buildTypes;
+
       let parsedAttrs = activeScheme.custom_attributes;
       if (parsedAttrs !== lastCustomAttrsRef.current) {
         lastCustomAttrsRef.current = parsedAttrs || '';
@@ -130,10 +176,11 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
           const buildTypeParam = buildParams.find((item: any) => item.name && String(item.name).trim().toLowerCase() === 'build_type');
           if (buildTypeParam && buildTypeParam.value !== undefined && buildTypeParam.value !== null) {
             const codes = String(buildTypeParam.value).split(',').map((s: string) => s.trim()).filter(Boolean);
-            setBuildTypes(codes.length > 0 ? codes : ['SCH']);
+            currentBuildTypes = codes.length > 0 ? codes : ['SCH'];
           } else {
-            setBuildTypes(['SCH']);
+            currentBuildTypes = ['SCH'];
           }
+          setBuildTypes(currentBuildTypes);
 
           const list = buildParams
             .filter((item: any) => item.name && !isReservedAttrKey(String(item.name)))
@@ -141,8 +188,10 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
               key: String(item.name || '').trim(),
               value: String(item.value !== undefined && item.value !== null ? item.value : '')
             }));
+          currentCustomAttrs = list;
           setCustomAttrs(list);
         } catch (e) {
+          currentCustomAttrs = [];
           setCustomAttrs([]);
         }
       }
@@ -178,6 +227,20 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
 
       if (needsUpdate) {
         onChange(updatedScheme);
+      }
+
+      // 仅在用户尚未开始手动交互时，更新/记录初始基准快照
+      if (!userInteractedRef.current) {
+        initialSnapshotRef.current = getFormSnapshot(
+          updatedScheme,
+          currentCustomAttrs,
+          currentBuildTypes,
+          hasMrTrigger,
+          hasDailyBuild,
+          hasDailyBuildTime,
+          currentBranchStr,
+          /[*?]/.test(currentBranchStr)
+        );
       }
     }
   }, [visible, activeScheme?.id, activeScheme?.repository_id, activeScheme?.custom_attributes]);
@@ -247,10 +310,23 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
             const schemeWithLangs = otherSchemes.find((s: any) => (s.languages || '').trim());
             const inheritLangs = schemeWithLangs?.languages || otherSchemes[0]?.languages || '';
             if (inheritLangs && (!activeScheme.languages || activeScheme.languages !== inheritLangs)) {
-              onChange({
+              const updated = {
                 ...activeScheme,
                 languages: inheritLangs
-              });
+              };
+              onChange(updated);
+              if (!userInteractedRef.current) {
+                initialSnapshotRef.current = getFormSnapshot(
+                  updated,
+                  customAttrs,
+                  buildTypes,
+                  mrTrigger,
+                  dailyBuild,
+                  dailyBuildTime,
+                  manualBranchText,
+                  isManualBranchMode
+                );
+              }
             }
           }
         }
@@ -314,7 +390,33 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
     }
   }, [visible]);
 
-  if (!visible || !activeScheme) return null
+  // 计算表单是否已被修改（脏数据检测）
+  const isFormDirty = React.useMemo(() => {
+    if (!visible || !activeScheme || saveSuccess) return false;
+    if (!initialSnapshotRef.current) return false;
+    const currentSnapshot = getFormSnapshot(
+      activeScheme,
+      customAttrs,
+      buildTypes,
+      mrTrigger,
+      dailyBuild,
+      dailyBuildTime,
+      manualBranchText,
+      isManualBranchMode
+    );
+    return currentSnapshot !== initialSnapshotRef.current;
+  }, [
+    visible,
+    activeScheme,
+    saveSuccess,
+    customAttrs,
+    buildTypes,
+    mrTrigger,
+    dailyBuild,
+    dailyBuildTime,
+    manualBranchText,
+    isManualBranchMode
+  ]);
 
   const handleCloseWithAnimation = () => {
     setAnimateVisible(false);
@@ -322,6 +424,42 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       onClose();
     }, 300);
   };
+
+  const handleRequestClose = () => {
+    if (saving) return;
+    // 如果表单已被用户编辑修改且未完成保存，弹出二次确认弹窗
+    if (isFormDirty && !saveSuccess) {
+      setShowDiscardConfirm(true);
+    } else {
+      handleCloseWithAnimation();
+    }
+  };
+
+  const handleConfirmDiscard = () => {
+    setShowDiscardConfirm(false);
+    handleCloseWithAnimation();
+  };
+
+  // 键盘 Esc 键支持：按图层层级依次关闭
+  React.useEffect(() => {
+    if (!visible) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.keyCode === 27) {
+        if (saving) return;
+        if (showDiscardConfirm) {
+          setShowDiscardConfirm(false);
+          return;
+        }
+        if (showPasteModal) {
+          setShowPasteModal(false);
+          return;
+        }
+        handleRequestClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [visible, saving, showDiscardConfirm, showPasteModal, isFormDirty, saveSuccess]);
 
   const selectedRepo = searchedRepos.find(r => r.id === activeScheme.repository_id) || activeScheme.repository
   const existingRepoSchemes = (selectedRepo?.schemes || []).filter((s: any) => s.id && s.id !== activeScheme?.id)
@@ -572,7 +710,6 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
         transition: 'opacity 300ms ease-out',
         pointerEvents: animateVisible ? 'auto' : 'none'
       }}
-      onClick={saving ? undefined : handleCloseWithAnimation}
     >
       <div 
         style={{ 
@@ -616,7 +753,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
               lineHeight: 1,
               opacity: saving ? 0.3 : 1
             }} 
-            onClick={saving ? undefined : handleCloseWithAnimation}
+            onClick={saving ? undefined : handleRequestClose}
           >
             &times;
           </button>
@@ -1232,7 +1369,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
             borderTop: '1px solid var(--border-color, rgba(255,255,255,0.08))',
             background: 'rgba(255, 255, 255, 0.01)'
           }}>
-            <button type="button" className="btn btn-secondary" onClick={handleCloseWithAnimation} disabled={saving}>
+            <button type="button" className="btn btn-secondary" onClick={handleRequestClose} disabled={saving}>
               {isAdmin ? '取消' : '关闭'}
             </button>
             {isAdmin && (
@@ -1265,6 +1402,105 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
               isNew={!activeScheme?.id}
               onDone={onSuccessClose}
             />
+          )}
+
+          {/* 放弃未保存修改确认弹窗 */}
+          {showDiscardConfirm && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(15, 23, 42, 0.85)',
+              backdropFilter: 'blur(8px)',
+              zIndex: 1005,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '24px',
+              animation: 'fadeIn 0.2s ease-out'
+            }}>
+              <div style={{
+                background: 'var(--bg-secondary, #1f2937)',
+                border: '1px solid var(--border-color, rgba(255,255,255,0.12))',
+                borderRadius: 12,
+                width: '100%',
+                maxWidth: 440,
+                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.6), 0 10px 10px -5px rgba(0,0,0,0.5)',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '18px 20px',
+                  borderBottom: '1px solid var(--border-color, rgba(255,255,255,0.08))'
+                }}>
+                  <div style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    color: '#f59e0b',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <AlertTriangle size={20} />
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
+                      放弃未保存的修改？
+                    </h4>
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
+                      当前执行方案存在尚未保存的配置变更
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ padding: '20px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  您对执行方案所做的修改尚未保存。如果现在退出，所有已编辑的配置内容将会丢失。确定要放弃修改并退出吗？
+                </div>
+
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: 10,
+                  padding: '14px 20px',
+                  borderTop: '1px solid var(--border-color, rgba(255,255,255,0.08))',
+                  background: 'rgba(255, 255, 255, 0.01)'
+                }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ padding: '7px 16px', fontSize: 13 }}
+                    onClick={() => setShowDiscardConfirm(false)}
+                  >
+                    继续编辑
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{
+                      padding: '7px 16px',
+                      fontSize: 13,
+                      background: '#ef4444',
+                      borderColor: '#ef4444',
+                      color: '#ffffff',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                    onClick={handleConfirmDiscard}
+                  >
+                    放弃修改并退出
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* 粘贴参数弹窗 */}
