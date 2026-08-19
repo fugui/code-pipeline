@@ -302,7 +302,14 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
 
   const handleSaveScheme = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!activeScheme || !activeScheme.repository_id || !activeScheme.branchs) return
+    if (!activeScheme || !activeScheme.repository_id) {
+      setSchemeError('保存失败：缺少必要的执行方案或代码仓信息')
+      return
+    }
+    if (activeScheme.mr_trigger && (!activeScheme.branchs || !activeScheme.branchs.trim())) {
+      setSchemeError('保存失败：已开启“MR触发”，请至少选择或输入一个生效触发分支')
+      return
+    }
 
     setIsSavingScheme(true)
     setSchemeError(null)

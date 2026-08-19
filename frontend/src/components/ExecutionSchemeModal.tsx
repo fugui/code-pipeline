@@ -331,6 +331,12 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       return;
     }
 
+    // 0.5 校验 MR 触发分支：仅当开启 MR 触发时要求分支必填
+    if (mrTrigger && (!activeScheme.branchs || !activeScheme.branchs.trim())) {
+      setLocalError('保存失败：已开启“MR触发”，请至少选择或手动录入一个生效触发分支 (branchs)');
+      return;
+    }
+
     // 1. 校验构建类型是否为空
     if (buildTypes.length === 0) {
       setLocalError('保存失败：请至少选择一种构建类型 (build_type)');
@@ -377,6 +383,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
     setMrTrigger(newMrTrigger);
     setDailyBuild(newDailyBuild);
     setDailyBuildTime(newTime);
+    if (localError) setLocalError(null);
     
     onChange({
       ...activeScheme,
@@ -667,7 +674,14 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <label style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>MR触发生效分支</label>
+                  <label style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>MR触发生效分支</span>
+                    {mrTrigger ? (
+                      <span style={{ fontSize: 11, color: '#f87171', fontWeight: 600 }}>* (必选)</span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>(未开启MR触发，可选)</span>
+                    )}
+                  </label>
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', margin: 0 }}>
                     <input 
                       type="checkbox" 
@@ -691,7 +705,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                     <textarea
                       value={manualBranchText}
                       disabled={!isAdmin}
-                      placeholder="请输入MR触发生效分支或通配符规则，如: master, develop, feature/*, release/v1.* (多项用逗号或换行分隔)"
+                      placeholder={mrTrigger ? "请输入MR触发生效分支或通配符规则，如: master, develop, feature/* (必填)" : "可选输入生效分支或通配符规则，如: master, develop (未开启MR触发)"}
                       style={{
                         width: '100%',
                         height: 110,
@@ -745,7 +759,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                       }}
                     />
                     <div style={{ marginTop: 4, fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span>💡 提示：支持精确名称（如 master）或通配符规则（如 feature/*）。多个表达用逗号或换行分隔。</span>
+                      <span>💡 提示：支持精确名称（如 master）或通配符规则（如 feature/*）。{mrTrigger ? '开启 MR 触发时必须指定生效分支。' : '当前未开启 MR 触发，分支为可选配置。'}</span>
                     </div>
                   </div>
                 ) : (
