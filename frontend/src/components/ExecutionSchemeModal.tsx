@@ -905,8 +905,22 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                   <label style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span>支持的编程语言</span>
                     {isInheritedMode ? (
-                      <span style={{ fontSize: 11, color: '#38bdf8', background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.25)', padding: '1px 6px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                        <Lock size={10} /> 已继承代码仓配置
+                      <span 
+                        title="提示：该代码仓已建立静态代码检查任务，所有执行方案共享相同的语言扫描基线。"
+                        style={{ 
+                          fontSize: 11, 
+                          color: '#38bdf8', 
+                          background: 'rgba(56, 189, 248, 0.12)', 
+                          border: '1px solid rgba(56, 189, 248, 0.25)', 
+                          padding: '1px 6px', 
+                          borderRadius: 4, 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: 4,
+                          cursor: 'help'
+                        }}
+                      >
+                        <Lock size={10} /> 已继承代码仓配置 <HelpCircle size={11} style={{ opacity: 0.8 }} />
                       </span>
                     ) : (
                       <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>(多选)</span>
@@ -963,11 +977,6 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                     );
                   })}
                 </div>
-                {isInheritedMode && (
-                  <div style={{ marginTop: 4, fontSize: 11, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span>💡 该代码仓已建立静态检查任务，所有方案共享相同扫描语言基线</span>
-                  </div>
-                )}
               </div>
             </div>
 
