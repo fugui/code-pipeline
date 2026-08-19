@@ -148,10 +148,10 @@ func applyDefaults() {
 		AppConfig.Server.Port = ":8082"
 	}
 	if AppConfig.Server.ReadTimeout == 0 {
-		AppConfig.Server.ReadTimeout = 15 * time.Second
+		AppConfig.Server.ReadTimeout = 60 * time.Second
 	}
 	if AppConfig.Server.WriteTimeout == 0 {
-		AppConfig.Server.WriteTimeout = 15 * time.Second
+		AppConfig.Server.WriteTimeout = 60 * time.Second
 	}
 	if AppConfig.Server.WorkerCount <= 0 {
 		AppConfig.Server.WorkerCount = 4

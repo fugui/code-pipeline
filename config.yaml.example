@@ -1,8 +1,8 @@
 server:
   port: ":8082"
   gin_log: true
-  read_timeout: 15s
-  write_timeout: 15s
+  read_timeout: 60s
+  write_timeout: 60s
   worker_count: 4                # 并发执行流水线的 Worker 协程数量
   sandbox_dir: "./workspace"     # 流水线代码克隆与执行命令的本地沙箱目录
 

@@ -11,27 +11,27 @@ func TestSSHToHTTPS(t *testing.T) {
 	}{
 		{
 			input:    "git@github.com:my-org/my-target-repo.git",
-			expected: "https://github.com/my-org/my-target-repo",
+			expected: "https://github.com/my-org/my-target-repo.git",
 		},
 		{
 			input:    "git@github.com:22/my-org/my-target-repo.git",
-			expected: "https://github.com/my-org/my-target-repo",
+			expected: "https://github.com:22/my-org/my-target-repo.git",
 		},
 		{
 			input:    "ssh://git@github.com/my-org/my-target-repo.git",
-			expected: "https://github.com/my-org/my-target-repo",
+			expected: "https://github.com/my-org/my-target-repo.git",
 		},
 		{
 			input:    "ssh://git@github.com:22/my-org/my-target-repo.git",
-			expected: "https://github.com/my-org/my-target-repo",
+			expected: "https://github.com:22/my-org/my-target-repo.git",
 		},
 		{
 			input:    "ssh:git@github.com:22/my-org/my-target-repo.git",
-			expected: "https://github.com/my-org/my-target-repo",
+			expected: "https://github.com:22/my-org/my-target-repo.git",
 		},
 		{
 			input:    "git@my-git-server.example.com:foo/bar.git",
-			expected: "https://my-server.example.com/foo/bar",
+			expected: "https://my-git-server.example.com/foo/bar.git",
 		},
 		{
 			input:    "https://github.com/org/repo",
@@ -39,7 +39,7 @@ func TestSSHToHTTPS(t *testing.T) {
 		},
 		{
 			input:    "http://github.com/org/repo",
-			expected: "http://github.com/org/repo",
+			expected: "https://github.com/org/repo",
 		},
 		{
 			input:    "  ",
