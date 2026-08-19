@@ -105,6 +105,21 @@
   to { opacity: 1; }
 }
 
+@keyframes pipeline-streamer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .pipeline-app .animate-pulse {
   animation: pipeline-pulse 2s infinite ease-in-out;
 }
