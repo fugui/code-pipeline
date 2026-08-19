@@ -319,7 +319,7 @@ export const Repos: React.FC<ReposProps> = ({
                   schemes={repoSchemes[repo.id] !== undefined ? repoSchemes[repo.id] : repo.schemes}
                   schemesLoading={!!schemesLoading[repo.id]}
                   onToggle={() => toggleExpand(repo.id)}
-                  onAddScheme={() => onAddScheme(repo)}
+                  onAddScheme={() => onAddScheme({ ...repo, schemes: repoSchemes[repo.id] !== undefined ? repoSchemes[repo.id] : repo.schemes })}
                   onEditScheme={onEditScheme}
                   onDeleteScheme={onDeleteScheme}
                   onRunScheme={handleRunScheme}
