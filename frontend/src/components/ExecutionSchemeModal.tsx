@@ -679,7 +679,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                     {mrTrigger ? (
                       <span style={{ fontSize: 11, color: '#f87171', fontWeight: 600 }}>* (必选)</span>
                     ) : (
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>(未开启MR触发，可选)</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>(可选)</span>
                     )}
                   </label>
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', margin: 0 }}>
@@ -705,7 +705,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                     <textarea
                       value={manualBranchText}
                       disabled={!isAdmin}
-                      placeholder={mrTrigger ? "请输入MR触发生效分支或通配符规则，如: master, develop, feature/* (必填)" : "可选输入生效分支或通配符规则，如: master, develop (未开启MR触发)"}
+                      placeholder={mrTrigger ? "请输入MR触发生效分支或通配符规则，如: master, develop, feature/* (必填)" : "可选输入生效分支或通配符规则，如: master, develop (可选)"}
                       style={{
                         width: '100%',
                         height: 110,
