@@ -1,6 +1,6 @@
 import React from 'react'
 import { AUTH_TOKEN_KEY } from '@code/common'
-import { Trash2, CheckCircle2, XCircle, Loader2, Copy, Check, ClipboardPaste, HelpCircle, FileCode, GitBranch, GitMerge, Clock, RefreshCw } from 'lucide-react'
+import { Trash2, CheckCircle2, XCircle, Loader2, Copy, Check, ClipboardPaste, HelpCircle, FileCode, GitBranch, GitMerge, Clock, RefreshCw, Lock } from 'lucide-react'
 
 interface ExecutionSchemeModalProps {
   isAdmin?: boolean
@@ -165,6 +165,17 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
         needsUpdate = true;
       }
 
+      if (!updatedScheme.id && !updatedScheme.languages) {
+        const repoObj = repos.find(r => r.id === updatedScheme.repository_id) || searchedRepos.find(r => r.id === updatedScheme.repository_id) || updatedScheme.repository;
+        const existingSchemes = (repoObj?.schemes || []).filter((s: any) => s.id);
+        const existingWithLangs = existingSchemes.find((s: any) => (s.languages || '').trim());
+        const inheritLangs = existingWithLangs?.languages || repoObj?.schemes?.[0]?.languages || '';
+        if (inheritLangs) {
+          updatedScheme.languages = inheritLangs;
+          needsUpdate = true;
+        }
+      }
+
       if (needsUpdate) {
         onChange(updatedScheme);
       }
@@ -277,6 +288,11 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   };
 
   const selectedRepo = searchedRepos.find(r => r.id === activeScheme.repository_id) || activeScheme.repository
+  const existingRepoSchemes = (selectedRepo?.schemes || []).filter((s: any) => s.id && s.id !== activeScheme?.id)
+  const existingSchemeWithLangs = existingRepoSchemes.find((s: any) => (s.languages || '').trim())
+  const existingCheckerTaskId = selectedRepo?.code_checker_task_id || existingRepoSchemes.find((s: any) => s.code_checker_task_id)?.code_checker_task_id
+  const hasExistingChecker = Boolean(existingCheckerTaskId || existingSchemeWithLangs)
+  const isInheritedMode = !isView ? hasExistingChecker : false
 
   const updateCustomAttrs = (newList: { key: string; value: string }[], types: string[] = buildTypes) => {
     const cleanList = newList.filter(item => !isReservedAttrKey(item.key));
@@ -846,31 +862,54 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                  支持的编程语言 (多选)
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>支持的编程语言</span>
+                    {isInheritedMode ? (
+                      <span style={{ fontSize: 11, color: '#38bdf8', background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.25)', padding: '1px 6px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                        <Lock size={10} /> 已继承代码仓配置
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>(多选)</span>
+                    )}
+                  </label>
+                </div>
                 <div style={{ 
-                  border: '1px solid var(--border-color)', 
+                  border: isInheritedMode ? '1px dashed rgba(56, 189, 248, 0.35)' : '1px solid var(--border-color)', 
                   borderRadius: 6, 
                   padding: '10px 12px', 
                   height: 168, 
-                  background: 'rgba(255,255,255,0.01)',
+                  background: isInheritedMode ? 'rgba(56, 189, 248, 0.02)' : 'rgba(255,255,255,0.01)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 10,
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  position: 'relative'
                 }}>
                   {['C', 'C++', 'Python', 'Java', 'JavaScript'].map((lang) => {
                     const activeLangs = activeScheme.languages ? activeScheme.languages.split(',') : [];
                     const checked = activeLangs.includes(lang);
                     return (
-                      <label key={lang} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text-main)', userSelect: 'none' }}>
+                      <label 
+                        key={lang} 
+                        style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 8, 
+                          cursor: isInheritedMode || !isAdmin ? 'not-allowed' : 'pointer', 
+                          fontSize: 13, 
+                          color: checked ? 'var(--text-main)' : 'var(--text-muted)', 
+                          opacity: isInheritedMode && !checked ? 0.4 : 1,
+                          userSelect: 'none' 
+                        }}
+                      >
                         <input 
                           type="checkbox" 
                           checked={checked}
-                          disabled={!isAdmin}
-                          style={{ width: 'auto', margin: 0 }}
+                          disabled={isInheritedMode || !isAdmin}
+                          style={{ width: 'auto', margin: 0, cursor: isInheritedMode || !isAdmin ? 'not-allowed' : 'pointer' }}
                           onChange={(e) => {
+                            if (isInheritedMode) return;
                             let current = activeScheme.languages ? activeScheme.languages.split(',') : [];
                             if (e.target.checked) {
                               if (!current.includes(lang)) current.push(lang);
@@ -885,6 +924,11 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                     );
                   })}
                 </div>
+                {isInheritedMode && (
+                  <div style={{ marginTop: 4, fontSize: 11, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span>💡 该代码仓已建立静态检查任务，所有方案共享相同扫描语言基线</span>
+                  </div>
+                )}
               </div>
             </div>
 
