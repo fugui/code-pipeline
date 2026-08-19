@@ -260,6 +260,11 @@ func SyncExecutionSchemes(c *gin.Context) {
 		}
 	}
 
+	commonAudit.SetAuditContext(c, "pipeline", "sync_overwrite", models.AuditLevelP0,
+		fmt.Sprintf("远程同步并全量覆盖流水线执行方案 (流水线: %s, ID: %d): 重建 %d 项方案", pipeline.Name, pipeline.ID, len(finalSchemes)),
+		"pipeline", fmt.Sprintf("%d", pipeline.ID), pipeline.Name,
+		nil, map[string]interface{}{"synced_schemes_count": len(finalSchemes)})
+
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully synced %d execution schemes", len(finalSchemes))})
 }
 
