@@ -463,19 +463,26 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                               href={webURL} 
                               target="_blank" 
                               rel="noopener noreferrer" 
-                              style={{ color: '#e0e7ff', textDecoration: 'none', transition: 'color 0.2s', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                              style={{ 
+                                color: 'var(--text-main)', 
+                                textDecoration: 'none', 
+                                transition: 'color 0.2s', 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: 6 
+                              }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.color = '#818cf8'
+                                e.currentTarget.style.color = '#6366f1'
                                 e.currentTarget.style.textDecoration = 'underline'
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.color = '#e0e7ff'
+                                e.currentTarget.style.color = 'var(--text-main)'
                                 e.currentTarget.style.textDecoration = 'none'
                               }}
                               title="点击快速跳转至三方流水线控制台"
                             >
                               <span>{p.name}</span>
-                              <ExternalLink size={13} style={{ color: '#818cf8', flexShrink: 0 }} />
+                              <ExternalLink size={13} style={{ color: '#6366f1', opacity: 0.8, flexShrink: 0 }} />
                             </a>
                           ) : (
                             <span style={{ color: 'var(--text-main)' }}>{p.name}</span>
