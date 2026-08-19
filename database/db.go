@@ -43,6 +43,7 @@ func InitDB() {
 		&models.ManagedProtectedBranchRule{},
 		&models.ComplianceBaseline{},
 		&models.RepoComplianceReport{},
+		&models.SysAuditLog{},
 	)
 	if err != nil {
 		log.Fatalf("[Database] Migration failed: %v", err)
