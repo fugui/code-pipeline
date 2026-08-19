@@ -247,7 +247,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
 
   React.useEffect(() => {
     if (activeScheme && activeScheme.repository_id) {
-      const found = repos.find(r => r.id === activeScheme.repository_id) || activeScheme.repository
+      const found = repos.find(r => r.id === activeScheme.repository_id) || activeScheme?.repository
       if (found) {
         setFilterQuery(found.name)
       }
@@ -461,7 +461,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [visible, saving, showDiscardConfirm, showPasteModal, isFormDirty, saveSuccess]);
 
-  const selectedRepo = searchedRepos.find(r => r.id === activeScheme.repository_id) || activeScheme.repository
+  const selectedRepo = searchedRepos.find(r => r.id === activeScheme?.repository_id) || activeScheme?.repository
   const existingRepoSchemes = (selectedRepo?.schemes || []).filter((s: any) => s.id && s.id !== activeScheme?.id)
   const allExistingSchemes = repoExistingSchemes.length > 0 
     ? repoExistingSchemes.filter((s: any) => s.id && s.id !== activeScheme?.id) 
@@ -474,6 +474,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   const updateCustomAttrs = (newList: { key: string; value: string }[], types: string[] = buildTypes) => {
     const cleanList = newList.filter(item => !isReservedAttrKey(item.key));
     setCustomAttrs(cleanList);
+    if (!activeScheme) return;
     let parsed: Record<string, any> = {};
     try {
       let raw = JSON.parse(activeScheme.custom_attributes || '{}');
@@ -516,6 +517,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!activeScheme) return;
     setLocalError(null);
 
     // 0. 校验执行方案名称必填
@@ -577,6 +579,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
     setDailyBuild(newDailyBuild);
     setDailyBuildTime(newTime);
     if (localError) setLocalError(null);
+    if (!activeScheme) return;
     
     onChange({
       ...activeScheme,
@@ -694,6 +697,10 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
         console.error('复制参数失败:', err);
       });
   };
+
+  if ((!visible && !animateVisible) || !activeScheme) {
+    return null;
+  }
 
   return (
     <div 
