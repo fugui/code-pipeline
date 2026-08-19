@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	commonAudit "code-common/backend/audit"
 	"code-pipeline/database"
 	"code-pipeline/models"
 	"code-pipeline/services"
@@ -768,6 +769,11 @@ func ConfirmSyncExecutionSchemes(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "事务提交失败"})
 		return
 	}
+
+	commonAudit.SetAuditContext(c, "pipeline", "sync_diff", models.AuditLevelP0,
+		fmt.Sprintf("批量同步并覆盖流水线执行方案 (流水线 ID: %d): 新增 %d 项, 更新 %d 项, 移除 %d 项", req.PipelineID, len(req.AddSchemes), len(req.UpdateSchemes), len(req.DeleteLocalIDs)),
+		"pipeline", fmt.Sprintf("%d", req.PipelineID), fmt.Sprintf("流水线-%d方案同步", req.PipelineID),
+		req.DeleteLocalIDs, map[string]interface{}{"added": len(req.AddSchemes), "updated": len(req.UpdateSchemes)})
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("成功同步更新：新增 %d 项，更新 %d 项，移除 %d 项", len(req.AddSchemes), len(req.UpdateSchemes), len(req.DeleteLocalIDs)),

@@ -1,16 +1,16 @@
 package handlers
 
 import (
+	commonAudit "code-common/backend/audit"
+	"code-pipeline/database"
+	"code-pipeline/models"
+	"code-pipeline/services"
+	"code-pipeline/utils"
 	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
-
-	"code-pipeline/database"
-	"code-pipeline/models"
-	"code-pipeline/services"
-	"code-pipeline/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -98,6 +98,11 @@ func CreatePipeline(c *gin.Context) {
 		pipeline.WebURL = generateWebURL(&pipeline, template)
 	}
 
+	commonAudit.SetAuditContext(c, "pipeline", "create", models.AuditLevelP1,
+		fmt.Sprintf("创建了流水线配置: %s (%s)", pipeline.Name, pipeline.PipelineID),
+		"pipeline", fmt.Sprintf("%d", pipeline.ID), pipeline.Name,
+		nil, pipeline)
+
 	c.JSON(http.StatusCreated, pipeline)
 }
 
@@ -109,6 +114,8 @@ func UpdatePipeline(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Pipeline not found"})
 		return
 	}
+
+	oldPipeline := pipeline
 
 	var req PipelineRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -136,6 +143,11 @@ func UpdatePipeline(c *gin.Context) {
 	if template != "" {
 		pipeline.WebURL = generateWebURL(&pipeline, template)
 	}
+
+	commonAudit.SetAuditContext(c, "pipeline", "update", models.AuditLevelP1,
+		fmt.Sprintf("修改了流水线配置: %s (%s)", pipeline.Name, pipeline.PipelineID),
+		"pipeline", fmt.Sprintf("%d", pipeline.ID), pipeline.Name,
+		oldPipeline, pipeline)
 
 	c.JSON(http.StatusOK, pipeline)
 }
@@ -185,6 +197,12 @@ func DeletePipeline(c *gin.Context) {
 	}
 
 	tx.Commit()
+
+	commonAudit.SetAuditContext(c, "pipeline", "delete", models.AuditLevelP1,
+		fmt.Sprintf("删除了流水线配置: %s (%s)", pipeline.Name, pipeline.PipelineID),
+		"pipeline", fmt.Sprintf("%d", pipeline.ID), pipeline.Name,
+		pipeline, nil)
+
 	c.JSON(http.StatusOK, gin.H{"message": "Pipeline and associated execution schemes deleted successfully"})
 }
 
@@ -318,6 +336,11 @@ func CreateExecutionScheme(c *gin.Context) {
 		scheme.CodeCheckerTaskWebURL = generateTaskWebURL(scheme.CodeCheckerTaskID, taskTemplate)
 	}
 
+	commonAudit.SetAuditContext(c, "pipeline", "create_scheme", models.AuditLevelP1,
+		fmt.Sprintf("创建了流水线执行方案: %s (关联代码仓 ID: %d)", scheme.Name, scheme.RepositoryID),
+		"execution_scheme", fmt.Sprintf("%d", scheme.ID), scheme.Name,
+		nil, scheme)
+
 	c.JSON(http.StatusCreated, scheme)
 }
 
@@ -329,6 +352,8 @@ func UpdateExecutionScheme(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Execution scheme not found"})
 		return
 	}
+
+	oldBeforeScheme := scheme
 
 	var req ExecutionSchemeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -523,6 +548,11 @@ func UpdateExecutionScheme(c *gin.Context) {
 		scheme.CodeCheckerTaskWebURL = generateTaskWebURL(scheme.CodeCheckerTaskID, taskTemplate)
 	}
 
+	commonAudit.SetAuditContext(c, "pipeline", "update_scheme", models.AuditLevelP1,
+		fmt.Sprintf("修改了流水线执行方案: %s", scheme.Name),
+		"execution_scheme", fmt.Sprintf("%d", scheme.ID), scheme.Name,
+		oldBeforeScheme, scheme)
+
 	c.JSON(http.StatusOK, scheme)
 }
 
@@ -548,6 +578,11 @@ func DeleteExecutionScheme(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete execution scheme locally"})
 		return
 	}
+
+	commonAudit.SetAuditContext(c, "pipeline", "delete_scheme", models.AuditLevelP1,
+		fmt.Sprintf("删除了流水线执行方案: %s", scheme.Name),
+		"execution_scheme", fmt.Sprintf("%d", scheme.ID), scheme.Name,
+		scheme, nil)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Execution scheme deleted successfully"})
 }

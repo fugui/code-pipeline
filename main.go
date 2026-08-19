@@ -5,6 +5,7 @@ import (
 	"embed"
 	"log"
 
+	commonAudit "code-common/backend/audit"
 	commonAuth "code-common/backend/auth"
 	commonServer "code-common/backend/server"
 	"code-pipeline/database"
@@ -28,6 +29,9 @@ func main() {
 
 	// 2. 初始化数据库
 	database.InitDB()
+
+	// 初始化系统全局操作审计引擎
+	commonAudit.Init(database.DB)
 
 	// 确保至少存在默认管理员账号（用于独立部署模式）
 	if err := commonAuth.EnsureSeedAdmin(database.DB, "pipeline_admin"); err != nil {
@@ -53,6 +57,12 @@ func main() {
 		ReadTimeout:  models.AppConfig.Server.ReadTimeout,
 		WriteTimeout: models.AppConfig.Server.WriteTimeout,
 		FrontendFS:   &frontendFS,
+		CustomMiddlewares: []gin.HandlerFunc{
+			commonAudit.Middleware("pipeline"),
+		},
+		OnShutdown: func(ctx context.Context) {
+			_ = commonAudit.Close(ctx)
+		},
 		RegisterRoutes: func(r *gin.Engine) {
 			// API 路由注册
 			api := r.Group("/api")
