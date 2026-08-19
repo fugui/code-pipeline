@@ -1,6 +1,6 @@
 import React from 'react'
 import { AUTH_TOKEN_KEY } from '@code/common'
-import { Trash2, CheckCircle2, XCircle, Loader2, Copy, Check, ClipboardPaste, HelpCircle } from 'lucide-react'
+import { Trash2, CheckCircle2, XCircle, Loader2, Copy, Check, ClipboardPaste, HelpCircle, FileCode, GitBranch, GitMerge, Clock, RefreshCw } from 'lucide-react'
 
 interface ExecutionSchemeModalProps {
   isAdmin?: boolean
@@ -510,7 +510,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
         transition: 'opacity 300ms ease-out',
         pointerEvents: animateVisible ? 'auto' : 'none'
       }}
-      onClick={handleCloseWithAnimation}
+      onClick={saving ? undefined : handleCloseWithAnimation}
     >
       <div 
         style={{ 
@@ -543,22 +543,25 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
           </h3>
           <button 
             type="button" 
+            disabled={saving}
             style={{ 
               background: 'none', 
               border: 'none', 
               color: 'var(--text-secondary)', 
               fontSize: 24, 
-              cursor: 'pointer', 
+              cursor: saving ? 'not-allowed' : 'pointer', 
               padding: '4px 8px',
-              lineHeight: 1
+              lineHeight: 1,
+              opacity: saving ? 0.3 : 1
             }} 
-            onClick={handleCloseWithAnimation}
+            onClick={saving ? undefined : handleCloseWithAnimation}
           >
             &times;
           </button>
         </div>
 
         <form onSubmit={handleSubmit} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+          {saving && <SyncProgressOverlay isEdit={isView} />}
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div>
               <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>关联流水线</label>
@@ -1283,6 +1286,268 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
             </div>
           )}
         </form>
+      </div>
+    </div>
+  )
+}
+
+// 三方多步骤同步加载沉浸式浮层组件
+const SyncProgressOverlay: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
+  const [seconds, setSeconds] = React.useState(0)
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setSeconds(s => s + 1)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  // 根据耗时动态流转 3 个阶段
+  let currentStep = 1
+  if (seconds >= 4 && seconds < 12) {
+    currentStep = 2
+  } else if (seconds >= 12) {
+    currentStep = 3
+  }
+
+  let statusDescription = '正在与三方代码检查平台建立关联，初始化代码扫描任务...'
+  if (seconds >= 4 && seconds < 12) {
+    statusDescription = '正在向远程流水线系统下发方案实体配置与环境变量...'
+  } else if (seconds >= 12 && seconds < 20) {
+    statusDescription = '正在三方平台同步配置 MR 触发规则与门禁策略...'
+  } else if (seconds >= 20) {
+    statusDescription = '三方系统正在深度编排处理中，请勿关闭或刷新页面...'
+  }
+
+  const steps = [
+    {
+      step: 1,
+      title: '代码检查任务初始化',
+      desc: '创建或关联远程多语言代码静态分析任务',
+      icon: FileCode
+    },
+    {
+      step: 2,
+      title: isEdit ? '更新远程流水线方案' : '注册远程流水线方案',
+      desc: '下发分支规则、构建参数及调度策略',
+      icon: GitBranch
+    },
+    {
+      step: 3,
+      title: 'MR 门禁与触发规则绑定',
+      desc: '配置代码合并实时卡口与自动化触发联动',
+      icon: GitMerge
+    }
+  ]
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(15, 23, 42, 0.88)',
+        backdropFilter: 'blur(8px)',
+        zIndex: 50,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '32px 24px',
+        animation: 'fadeIn 0.25s ease-out'
+      }}
+    >
+      {/* 顶部动态流光渐变进度条 */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 3,
+          background: 'linear-gradient(90deg, #6366f1, #a855f7, #ec4899, #6366f1)',
+          backgroundSize: '200% 100%',
+          animation: 'pipeline-streamer 2s linear infinite'
+        }}
+      />
+
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 460,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 20
+        }}
+      >
+        {/* 中心旋转光环 Icon */}
+        <div
+          style={{
+            position: 'relative',
+            width: 60,
+            height: 60,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '50%',
+              border: '2px solid rgba(99, 102, 241, 0.2)',
+              borderTopColor: '#6366f1',
+              animation: 'pipeline-spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite'
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              inset: 6,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, transparent 70%)'
+            }}
+          />
+          <RefreshCw size={24} color="#818cf8" style={{ animation: 'pipeline-spin 3s linear infinite' }} />
+        </div>
+
+        {/* 标题与计时 */}
+        <div style={{ textAlign: 'center', width: '100%' }}>
+          <h4 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-main, #f8fafc)', margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <span>{isEdit ? '正在同步更新执行方案' : '正在同步创建执行方案'}</span>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: '#818cf8',
+                background: 'rgba(99, 102, 241, 0.15)',
+                border: '1px solid rgba(99, 102, 241, 0.3)',
+                padding: '2px 8px',
+                borderRadius: 12
+              }}
+            >
+              {seconds}s
+            </span>
+          </h4>
+          <p
+            style={{
+              fontSize: 13,
+              color: 'var(--text-secondary, #94a3b8)',
+              marginTop: 8,
+              minHeight: 38,
+              lineHeight: 1.5,
+              transition: 'all 0.3s ease'
+            }}
+          >
+            {statusDescription}
+          </p>
+        </div>
+
+        {/* 步骤条卡片 */}
+        <div
+          style={{
+            width: '100%',
+            background: 'rgba(30, 41, 59, 0.7)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: 12,
+            padding: '16px 18px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12
+          }}
+        >
+          {steps.map(item => {
+            const isDone = currentStep > item.step
+            const isCurrent = currentStep === item.step
+            return (
+              <div
+                key={item.step}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  opacity: isDone || isCurrent ? 1 : 0.45,
+                  transition: 'opacity 0.3s ease'
+                }}
+              >
+                {/* 状态指示球 */}
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    background: isDone
+                      ? 'rgba(16, 185, 129, 0.18)'
+                      : isCurrent
+                      ? 'rgba(99, 102, 241, 0.25)'
+                      : 'rgba(255, 255, 255, 0.05)',
+                    border: `1.5px solid ${
+                      isDone
+                        ? '#10b981'
+                        : isCurrent
+                        ? '#6366f1'
+                        : 'rgba(255, 255, 255, 0.15)'
+                    }`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    transition: 'all 0.3s'
+                  }}
+                >
+                  {isDone ? (
+                    <Check size={14} color="#10b981" />
+                  ) : isCurrent ? (
+                    <Loader2 size={14} color="#818cf8" style={{ animation: 'pipeline-spin 1s linear infinite' }} />
+                  ) : (
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>{item.step}</span>
+                  )}
+                </div>
+
+                {/* 步骤文本 */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: isCurrent ? 600 : 500,
+                      color: isDone ? '#34d399' : isCurrent ? '#f8fafc' : '#64748b',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}
+                  >
+                    <span>{item.title}</span>
+                    {isCurrent && (
+                      <span style={{ fontSize: 11, color: '#818cf8', fontWeight: 400 }}>(进行中...)</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>{item.desc}</div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* 底部安全防重提示 */}
+        <div
+          style={{
+            fontSize: 12,
+            color: '#64748b',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'rgba(255, 255, 255, 0.03)',
+            padding: '6px 14px',
+            borderRadius: 20
+          }}
+        >
+          <Clock size={13} color="#94a3b8" />
+          <span>三方平台多步骤通信中，请耐心等待，勿刷新窗口</span>
+        </div>
       </div>
     </div>
   )
