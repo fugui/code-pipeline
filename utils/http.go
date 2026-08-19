@@ -109,7 +109,7 @@ func SendHTTPRequest(ctx context.Context, method, rawURL string, payload interfa
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	client := &http.Client{
-		Timeout:   5 * time.Second,
+		Timeout:   30 * time.Second,
 		Transport: tr,
 	}
 	resp, err := client.Do(req)
