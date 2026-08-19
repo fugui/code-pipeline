@@ -700,21 +700,27 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
                 defaultName = `s_${defaultName}`;
               }
 
+              const knownSchemes = ((repo as any).schemes || []).filter((s: any) => s.id)
+              const existingWithLangs = knownSchemes.find((s: any) => (s.languages || '').trim())
+              const inheritLangs = existingWithLangs?.languages || knownSchemes[0]?.languages || ''
+
               setActiveScheme({
                 pipeline_id: firstPipeline?.id || 0,
                 repository_id: repo.id,
                 name: defaultName,
                 repository: {
+                  ...repo,
                   id: repo.id,
                   name: repo.name,
                   http_url: repo.http_url,
-                  url: repo.http_url || '',
-                  owner_id: 0, // dummy or defaults
+                  url: repo.http_url || (repo as any).url || '',
+                  owner_id: (repo as any).owner_id || 0,
                   is_active: repo.is_active,
-                  created_at: new Date().toISOString()
+                  schemes: knownSchemes,
+                  created_at: (repo as any).created_at || new Date().toISOString()
                 },
                 branchs: 'master',
-                languages: ''
+                languages: inheritLangs
               })
               setShowSchemeModal(true)
             }}

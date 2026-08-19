@@ -11,6 +11,8 @@ export interface Repository {
   created_at: string
   service_group?: string
   owner_name?: string
+  code_checker_task_id?: string
+  schemes?: ExecutionScheme[]
 }
 
 export interface CodeCheckDetails {

@@ -222,10 +222,46 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       .finally(() => {
         setLoadingBranches(false);
       });
-    } else {
-      setBranches([]);
+      } else {
+        setBranches([]);
+      }
+    }, [activeScheme?.repository_id, apiBase])
+
+  const [repoExistingSchemes, setRepoExistingSchemes] = React.useState<any[]>([])
+
+  React.useEffect(() => {
+    if (visible && activeScheme && activeScheme.repository_id) {
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      fetch(`${apiBase}/execution-schemes?repository_id=${activeScheme.repository_id}`, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      })
+      .then(res => res.ok ? res.json() : [])
+      .then(data => {
+        if (Array.isArray(data)) {
+          setRepoExistingSchemes(data);
+          // 如果是新建方案模式，且当前方案尚未填入语言，且已有方案中存在语言配置，自动继承
+          if (!activeScheme.id) {
+            const otherSchemes = data.filter((s: any) => s.id !== activeScheme.id);
+            const schemeWithLangs = otherSchemes.find((s: any) => (s.languages || '').trim());
+            const inheritLangs = schemeWithLangs?.languages || otherSchemes[0]?.languages || '';
+            if (inheritLangs && (!activeScheme.languages || activeScheme.languages !== inheritLangs)) {
+              onChange({
+                ...activeScheme,
+                languages: inheritLangs
+              });
+            }
+          }
+        }
+      })
+      .catch(err => {
+        console.error('Failed to fetch repo existing schemes', err);
+      });
+    } else if (!visible) {
+      setRepoExistingSchemes([]);
     }
-  }, [activeScheme?.repository_id, apiBase])
+  }, [visible, activeScheme?.repository_id, activeScheme?.id, apiBase]);
 
   React.useEffect(() => {
     if (activeScheme) {
@@ -289,9 +325,12 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
 
   const selectedRepo = searchedRepos.find(r => r.id === activeScheme.repository_id) || activeScheme.repository
   const existingRepoSchemes = (selectedRepo?.schemes || []).filter((s: any) => s.id && s.id !== activeScheme?.id)
-  const existingSchemeWithLangs = existingRepoSchemes.find((s: any) => (s.languages || '').trim())
-  const existingCheckerTaskId = selectedRepo?.code_checker_task_id || existingRepoSchemes.find((s: any) => s.code_checker_task_id)?.code_checker_task_id
-  const hasExistingChecker = Boolean(existingCheckerTaskId || existingSchemeWithLangs)
+  const allExistingSchemes = repoExistingSchemes.length > 0 
+    ? repoExistingSchemes.filter((s: any) => s.id && s.id !== activeScheme?.id) 
+    : existingRepoSchemes
+  const existingSchemeWithLangs = allExistingSchemes.find((s: any) => (s.languages || '').trim())
+  const existingCheckerTaskId = selectedRepo?.code_checker_task_id || allExistingSchemes.find((s: any) => s.code_checker_task_id)?.code_checker_task_id
+  const hasExistingChecker = Boolean(existingCheckerTaskId || existingSchemeWithLangs || allExistingSchemes.length > 0)
   const isInheritedMode = !isView ? hasExistingChecker : false
 
   const updateCustomAttrs = (newList: { key: string; value: string }[], types: string[] = buildTypes) => {
@@ -887,7 +926,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                   position: 'relative'
                 }}>
                   {['C', 'C++', 'Python', 'Java', 'JavaScript'].map((lang) => {
-                    const activeLangs = activeScheme.languages ? activeScheme.languages.split(',') : [];
+                    const activeLangs = (activeScheme.languages || (isInheritedMode ? (existingSchemeWithLangs?.languages || '') : '')).split(',').filter(Boolean);
                     const checked = activeLangs.includes(lang);
                     return (
                       <label 
