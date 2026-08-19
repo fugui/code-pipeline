@@ -2,9 +2,7 @@ package handlers
 
 import (
 	commonAuth "code-common/backend/auth"
-	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -16,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type PortalClaims = commonAuth.PortalClaims
@@ -30,128 +29,60 @@ func parseToken(tokenString string) (*PortalClaims, error) {
 	return commonAuth.ParseToken(tokenString, models.AppConfig.Auth.JWTSecret)
 }
 
-func AuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		tokenString := commonAuth.ExtractToken(c)
-		if tokenString == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header or token missing"})
-			c.Abort()
-			return
-		}
+// ProvisionPipelineUser SSO 用户自动注册与 Email 优先匹配（供 commonAuth.AuthMiddleware 回调）
+func ProvisionPipelineUser(c *gin.Context, claims *commonAuth.PortalClaims, db *gorm.DB) (*models.User, error) {
+	var user models.User
 
-		claims, err := parseToken(tokenString)
-		if err != nil {
-			log.Printf("[Auth] JWT validation failed: %v", err)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": fmt.Sprintf("Invalid token signature: %v", err)})
-			c.Abort()
-			return
-		}
-
-		// 从数据库中查找对应用户
-		var user models.User
-		var findErr error
-
-		// 只要有 Email，就应该优先在 code-pipeline 数据库中按 Email 定位本地自增 uint ID。
-		if claims.Email != "" {
-			_ = database.DB.Where("LOWER(email) = LOWER(?)", claims.Email).First(&user).Error
-			if user.ID != 0 {
-				claims.UserID = user.ID
-				updates := map[string]interface{}{}
-				if claims.Name != "" && user.Name != claims.Name {
-					updates["name"] = claims.Name
-					user.Name = claims.Name
-				}
-				if claims.EmployeeID != "" && user.EmployeeID != claims.EmployeeID {
-					updates["employee_id"] = claims.EmployeeID
-					user.EmployeeID = claims.EmployeeID
-				}
-				if len(updates) > 0 {
-					_ = database.DB.Model(&user).Updates(updates).Error
-				}
-			}
-		}
-
-		if claims.UserID != 0 && user.ID == 0 {
-			findErr = database.DB.First(&user, claims.UserID).Error
-		} else if user.ID == 0 {
-			findErr = fmt.Errorf("user not found by email or userID")
-		}
-
-		if findErr != nil {
-			// 如果是合法的 SSO 用户但在本系统尚不存在，自动注册
-			user = models.User{
-				Email:      claims.Email,
-				Username:   claims.Email,
-				Name:       claims.Name,
-				EmployeeID: claims.EmployeeID,
-				IsActive:   true,
-				Password:   "SSO_USER_NO_PASSWORD",
-			}
-			if errCreate := database.DB.Create(&user).Error; errCreate != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to auto-register SSO user"})
-				c.Abort()
-				return
-			}
-			// 自动注册成功后回填用户自增的 ID
-			claims.UserID = user.ID
-		}
-
-		if !user.IsActive {
-			c.JSON(http.StatusForbidden, gin.H{"error": "User account is inactive"})
-			c.Abort()
-			return
-		}
-
-		effectiveRoles := claims.Roles
+	// 只要有 Email，就优先在 code-pipeline 数据库中按 Email 定位本地用户
+	if claims.Email != "" {
+		_ = db.Where("LOWER(email) = LOWER(?)", claims.Email).First(&user).Error
 		if user.ID != 0 {
-			dbRoles := user.GetRoles()
-			if len(dbRoles) > 0 {
-				effectiveRoles = dbRoles
+			claims.UserID = user.ID
+			updates := map[string]interface{}{}
+			if claims.Name != "" && user.Name != claims.Name {
+				updates["name"] = claims.Name
+				user.Name = claims.Name
 			}
+			if claims.EmployeeID != "" && user.EmployeeID != claims.EmployeeID {
+				updates["employee_id"] = claims.EmployeeID
+				user.EmployeeID = claims.EmployeeID
+			}
+			if len(updates) > 0 {
+				_ = db.Model(&user).Updates(updates).Error
+			}
+			return &user, nil
 		}
-
-		c.Set("userID", user.ID)
-		c.Set("email", user.Email)
-		c.Set("username", user.Email)
-		c.Set("roles", effectiveRoles)
-		c.Set("user", user)
-		c.Set("employeeID", user.EmployeeID)
-
-		ctx := context.WithValue(c.Request.Context(), "employeeID", user.EmployeeID)
-		c.Request = c.Request.WithContext(ctx)
-
-		c.Next()
 	}
+
+	// 若未找到，自动注册
+	user = models.User{
+		Email:      claims.Email,
+		Username:   claims.Email,
+		Name:       claims.Name,
+		EmployeeID: claims.EmployeeID,
+		IsActive:   true,
+		Password:   "SSO_USER_NO_PASSWORD",
+	}
+	if errCreate := db.Create(&user).Error; errCreate != nil {
+		return nil, errCreate
+	}
+	claims.UserID = user.ID
+	return &user, nil
 }
 
-func AdminMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		rolesVal, rolesExists := c.Get("roles")
-		hasRole := false
-		if rolesExists {
-			if roles, ok := rolesVal.([]string); ok {
-				for _, r := range roles {
-					if r == "super_admin" || r == "pipeline_admin" {
-						hasRole = true
-						break
-					}
-				}
-			}
-		}
-
-		userVal, userExists := c.Get("user")
-		if userExists {
-			if user, ok := userVal.(models.User); ok && user.HasRole("pipeline_admin") {
-				hasRole = true
-			}
-		}
-
-		if !hasRole {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Admin privilege required"})
-			c.Abort()
-			return
-		}
-		c.Next()
+// SyncPipelineUser 用户已存在时同步字段
+func SyncPipelineUser(c *gin.Context, claims *commonAuth.PortalClaims, user *models.User, db *gorm.DB) {
+	updates := map[string]interface{}{}
+	if claims.Name != "" && user.Name != claims.Name {
+		updates["name"] = claims.Name
+		user.Name = claims.Name
+	}
+	if claims.EmployeeID != "" && user.EmployeeID != claims.EmployeeID {
+		updates["employee_id"] = claims.EmployeeID
+		user.EmployeeID = claims.EmployeeID
+	}
+	if len(updates) > 0 {
+		_ = db.Model(user).Updates(updates).Error
 	}
 }
 

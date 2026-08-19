@@ -73,7 +73,13 @@ func main() {
 				api.POST("/v1/report/code-check-log", handlers.ReportExecutionLog)
 
 				// 受保护路由 (全员登录可访问)
-				api.Use(handlers.AuthMiddleware())
+				api.Use(commonAuth.AuthMiddleware(commonAuth.AuthConfig{
+					JWTSecretGetter: func() string { return models.AppConfig.Auth.JWTSecret },
+					DB:              database.DB,
+					MergeDBRoles:    true,
+					OnUserNotFound:  handlers.ProvisionPipelineUser,
+					OnUserSynced:    handlers.SyncPipelineUser,
+				}))
 				{
 					api.GET("/me", handlers.GetMe)
 					api.PATCH("/password", handlers.UpdatePassword)
@@ -124,7 +130,7 @@ func main() {
 
 					// 管理员专属路由 (需要超级管理员或 pipeline_admin 权限)
 					admin := api.Group("")
-					admin.Use(handlers.AdminMiddleware())
+					admin.Use(commonAuth.RequireAdmin(commonAuth.RolePipelineAdmin))
 					{
 						// 审批单据核准与驳回
 						admin.POST("/managed-approvals/:id/approve", handlers.ApproveManagedApproval)
