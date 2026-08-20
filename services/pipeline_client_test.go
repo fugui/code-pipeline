@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	commonAuth "code-common/backend/auth"
 	"code-pipeline/database"
 	"code-pipeline/models"
 )
@@ -1215,5 +1216,70 @@ func TestSyncUpdateMRBinding_BranchFuzzy(t *testing.T) {
 	}
 	if !fuzzyVal {
 		t.Errorf("expected branch_fuzzy=true for branch %q, got false", scheme.Branch)
+	}
+}
+
+func TestResolveOperatorIdentifier(t *testing.T) {
+	setupTestDB(t)
+
+	// 1. nil context
+	if res := ResolveOperatorIdentifier(nil); res != "system" {
+		t.Errorf("expected 'system' for nil context, got %q", res)
+	}
+
+	// 2. context with employeeID
+	ctx1 := context.WithValue(context.Background(), "employeeID", "fugui 008163")
+	if res := ResolveOperatorIdentifier(ctx1); res != "f008163" {
+		t.Errorf("expected 'f008163', got %q", res)
+	}
+
+	// 3. context with commonAuth.ContextEmployeeID
+	ctx2 := context.WithValue(context.Background(), commonAuth.ContextEmployeeID, "admin 12345")
+	if res := ResolveOperatorIdentifier(ctx2); res != "a12345" {
+		t.Errorf("expected 'a12345', got %q", res)
+	}
+
+	// 4. context with userID query database
+	testUser1 := models.User{
+		ID:         8881,
+		Email:      "tester8881@example.com",
+		Username:   "tester8881",
+		Name:       "Test User",
+		EmployeeID: "tester 008881",
+	}
+	database.DB.Save(&testUser1)
+	defer database.DB.Delete(&models.User{}, 8881)
+
+	ctx3 := context.WithValue(context.Background(), "userID", uint(8881))
+	if res := ResolveOperatorIdentifier(ctx3); res != "t008881" {
+		t.Errorf("expected 't008881', got %q", res)
+	}
+
+	// 5. context with userID where employeeID is empty but username is set
+	testUser2 := models.User{
+		ID:         8882,
+		Email:      "alice@example.com",
+		Username:   "alice",
+		Name:       "Alice",
+		EmployeeID: "",
+	}
+	database.DB.Save(&testUser2)
+	defer database.DB.Delete(&models.User{}, 8882)
+
+	ctx4 := context.WithValue(context.Background(), commonAuth.ContextUserID, uint(8882))
+	if res := ResolveOperatorIdentifier(ctx4); res != "alice" {
+		t.Errorf("expected 'alice', got %q", res)
+	}
+
+	// 6. context with email only (no DB record)
+	ctx5 := context.WithValue(context.Background(), "email", "bob@corp.com")
+	if res := ResolveOperatorIdentifier(ctx5); res != "bob" {
+		t.Errorf("expected 'bob', got %q", res)
+	}
+
+	// 7. empty context
+	ctx6 := context.Background()
+	if res := ResolveOperatorIdentifier(ctx6); res != "system" {
+		t.Errorf("expected 'system', got %q", res)
 	}
 }

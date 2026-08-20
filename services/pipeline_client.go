@@ -11,10 +11,93 @@ import (
 	"strings"
 	"time"
 
+	commonAuth "code-common/backend/auth"
 	"code-pipeline/database"
 	"code-pipeline/models"
 	"code-pipeline/utils"
 )
+
+// ResolveOperatorIdentifier 解析当前操作者的工号/身份标识：
+// 1. 优先从 Context ("employeeID" 或 auth.ContextEmployeeID) 获取
+// 2. 若 Context 中工号为空，尝试通过 Context 中的 UserID / Email / Username 从数据库 users 表查询
+// 3. 若用户数据库中无 EmployeeID，则回退为 Username 或 Email 前缀
+// 4. 对工号进行 FormatEmployeeID 格式化
+// 5. 若上述全为空，最后回退为 "system"
+func ResolveOperatorIdentifier(ctx context.Context) string {
+	if ctx == nil {
+		return "system"
+	}
+
+	var rawEmpID string
+	// 1. 尝试从 Context 读取工号
+	if v, ok := ctx.Value("employeeID").(string); ok && strings.TrimSpace(v) != "" {
+		rawEmpID = strings.TrimSpace(v)
+	} else if v, ok := ctx.Value(commonAuth.ContextEmployeeID).(string); ok && strings.TrimSpace(v) != "" {
+		rawEmpID = strings.TrimSpace(v)
+	}
+
+	// 2. 若 Context 中工号为空，尝试从数据库回源查询
+	if rawEmpID == "" && database.DB != nil {
+		var uid uint
+		if idVal, ok := ctx.Value("userID").(uint); ok && idVal > 0 {
+			uid = idVal
+		} else if idVal, ok := ctx.Value(commonAuth.ContextUserID).(uint); ok && idVal > 0 {
+			uid = idVal
+		}
+
+		var email string
+		if eVal, ok := ctx.Value("email").(string); ok && strings.TrimSpace(eVal) != "" {
+			email = strings.TrimSpace(eVal)
+		} else if eVal, ok := ctx.Value(commonAuth.ContextEmail).(string); ok && strings.TrimSpace(eVal) != "" {
+			email = strings.TrimSpace(eVal)
+		}
+
+		var username string
+		if uVal, ok := ctx.Value("username").(string); ok && strings.TrimSpace(uVal) != "" {
+			username = strings.TrimSpace(uVal)
+		} else if uVal, ok := ctx.Value(commonAuth.ContextUsername).(string); ok && strings.TrimSpace(uVal) != "" {
+			username = strings.TrimSpace(uVal)
+		}
+
+		if uid > 0 || email != "" || username != "" {
+			var user models.User
+			query := database.DB.Select("id", "employee_id", "email", "username", "name")
+			if uid > 0 {
+				query = query.Where("id = ?", uid)
+			} else if email != "" {
+				query = query.Where("LOWER(email) = LOWER(?)", email)
+			} else if username != "" {
+				query = query.Where("LOWER(username) = LOWER(?)", username)
+			}
+
+			if err := query.First(&user).Error; err == nil {
+				if strings.TrimSpace(user.EmployeeID) != "" {
+					rawEmpID = strings.TrimSpace(user.EmployeeID)
+				} else if strings.TrimSpace(user.Username) != "" {
+					rawEmpID = strings.TrimSpace(user.Username)
+				} else if strings.TrimSpace(user.Email) != "" {
+					rawEmpID = strings.Split(strings.TrimSpace(user.Email), "@")[0]
+				}
+			}
+		}
+	}
+
+	// 3. 若数据库中仍未查到，尝试从 Context 携带的 email/username 兜底
+	if rawEmpID == "" {
+		if uVal, ok := ctx.Value("username").(string); ok && strings.TrimSpace(uVal) != "" {
+			rawEmpID = strings.TrimSpace(uVal)
+		} else if eVal, ok := ctx.Value("email").(string); ok && strings.TrimSpace(eVal) != "" {
+			rawEmpID = strings.Split(strings.TrimSpace(eVal), "@")[0]
+		}
+	}
+
+	// 4. 执行工号统一格式化
+	formatted := utils.FormatEmployeeID(rawEmpID)
+	if formatted == "" {
+		return "system"
+	}
+	return formatted
+}
 
 // FetchRemotePipelineInfo 调用远程接口获取三方流水线元数据
 func FetchRemotePipelineInfo(ctx context.Context, pipelineID string, headers map[string]string) (*models.Pipeline, error) {
@@ -538,11 +621,7 @@ func createExecutionSchemeStep(ctx context.Context, pipelineBusinessID string, s
 		escapedCustomAttributes = escapedCustomAttributes[1 : len(escapedCustomAttributes)-1]
 	}
 
-	empID, _ := ctx.Value("employeeID").(string)
-	formattedEmpID := utils.FormatEmployeeID(empID)
-	if formattedEmpID == "" {
-		formattedEmpID = "system"
-	}
+	formattedEmpID := ResolveOperatorIdentifier(ctx)
 
 	payload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
 		"SCHEME_NAME":       schemeName,
@@ -947,11 +1026,7 @@ func SyncUpdateExecutionSchemeRemote(ctx context.Context, scheme *models.Executi
 		escapedCustomAttributes = escapedCustomAttributes[1 : len(escapedCustomAttributes)-1]
 	}
 
-	empID, _ := ctx.Value("employeeID").(string)
-	formattedEmpID := utils.FormatEmployeeID(empID)
-	if formattedEmpID == "" {
-		formattedEmpID = "system"
-	}
+	formattedEmpID := ResolveOperatorIdentifier(ctx)
 
 	payload, err := utils.RenderJSONTemplate(tmpl, map[string]string{
 		"SCHEME_NAME":       schemeName,
@@ -1010,11 +1085,7 @@ func CreateExecutionPlanStep(ctx context.Context, pipelineBusinessID string, sch
 		return "", fmt.Errorf("failed to fetch pipeline with ID %d: %w", scheme.LocalPipelineID, err)
 	}
 
-	empID, _ := ctx.Value("employeeID").(string)
-	formattedEmpID := utils.FormatEmployeeID(empID)
-	if formattedEmpID == "" {
-		formattedEmpID = "system"
-	}
+	formattedEmpID := ResolveOperatorIdentifier(ctx)
 
 	dailyTimeStr := scheme.DailyBuildTime
 	if dailyTimeStr == "" {
