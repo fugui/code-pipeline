@@ -96,3 +96,74 @@ func TestReportExecutionLogAndDashboardStats(t *testing.T) {
 		t.Errorf("Expected task_type 'code_check', got '%v'", firstRun["task_type"])
 	}
 }
+
+func TestReportExecutionLogAndWebhookAuditSkip(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := gin.New()
+	// 验证请求经过审计中间件后，会被 Skip(c) 成功跳过
+	skippedCheckLogged := false
+	r.Use(func(c *gin.Context) {
+		c.Next()
+		if skipVal, exists := c.Get("audit_skip"); exists {
+			if skip, ok := skipVal.(bool); ok && skip {
+				skippedCheckLogged = true
+			}
+		}
+	})
+
+	api := r.Group("/api")
+	{
+		api.POST("/v1/report/code-check-log", ReportExecutionLog)
+		api.POST("/webhook", HandleWebhook)
+	}
+
+	// 1. 测试 code-check-log 跳过审计
+	payload := map[string]interface{}{
+		"task_id":      "check_task_audit_skip_001",
+		"task_type":    "code_check",
+		"repo_url":     "http://192.168.56.18:9080/tech/infra/demo.git",
+		"branch":       "master",
+		"status":       "success",
+		"duration_sec": 10,
+	}
+	payloadBytes, _ := json.Marshal(payload)
+	reqLog, _ := http.NewRequest("POST", "/api/v1/report/code-check-log", bytes.NewBuffer(payloadBytes))
+	reqLog.Header.Set("Content-Type", "application/json")
+	wLog := httptest.NewRecorder()
+	skippedCheckLogged = false
+	r.ServeHTTP(wLog, reqLog)
+
+	if !skippedCheckLogged {
+		t.Errorf("expected audit_skip to be true for ReportExecutionLog, got false")
+	}
+
+	// 2. 测试 webhook 跳过审计
+	webhookPayload := map[string]interface{}{
+		"object_kind": "merge_request",
+		"project": map[string]string{
+			"name":         "test-repo",
+			"git_http_url": "http://192.168.56.18:9080/tech/demo.git",
+		},
+		"user": map[string]string{
+			"name": "developer",
+		},
+		"object_attributes": map[string]interface{}{
+			"id":            1,
+			"source_branch": "feature/1",
+			"target_branch": "master",
+			"action":        "open",
+			"url":           "http://192.168.56.18:9080/tech/demo/merge_requests/1",
+		},
+	}
+	whBytes, _ := json.Marshal(webhookPayload)
+	reqWh, _ := http.NewRequest("POST", "/api/webhook", bytes.NewBuffer(whBytes))
+	reqWh.Header.Set("Content-Type", "application/json")
+	wWh := httptest.NewRecorder()
+	skippedCheckLogged = false
+	r.ServeHTTP(wWh, reqWh)
+
+	if !skippedCheckLogged {
+		t.Errorf("expected audit_skip to be true for HandleWebhook, got false")
+	}
+}

@@ -14,6 +14,8 @@ import (
 	"code-pipeline/database"
 	"code-pipeline/models"
 
+	commonAudit "code-common/backend/audit"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/datatypes"
 )
@@ -42,6 +44,9 @@ type ExecutionReportRequest struct {
 
 // ReportExecutionLog 处理第三方构建与代码检查日志上报 (POST /api/v1/report/execution-log, /build-log, /code-check-log)
 func ReportExecutionLog(c *gin.Context) {
+	// 代码检查/构建执行日志为第三方流水线自动化上报，跳过全局操作审计
+	commonAudit.Skip(c)
+
 	rawData, err := c.GetRawData()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
