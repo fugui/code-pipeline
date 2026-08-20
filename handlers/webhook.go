@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	commonAudit "code-common/backend/audit"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -48,6 +50,9 @@ type WebhookPayload struct {
 
 // HandleWebhook 处理来自代码托管平台的合并请求推送
 func HandleWebhook(c *gin.Context) {
+	// Webhook 为非人工系统自动化回调，跳过全局操作审计
+	commonAudit.Skip(c)
+
 	// 1. 读取原始请求体
 	bodyBytes, err := io.ReadAll(c.Request.Body)
 	if err != nil {
