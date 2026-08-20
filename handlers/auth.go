@@ -1,13 +1,17 @@
 package handlers
 
 import (
-	commonAuth "code-common/backend/auth"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	commonAudit "code-common/backend/audit"
+	commonAuth "code-common/backend/auth"
+	commonModels "code-common/backend/models"
 
 	"code-pipeline/database"
 	"code-pipeline/models"
@@ -128,16 +132,25 @@ func Login(c *gin.Context) {
 
 	var user models.User
 	if err := database.DB.Where("LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)", identifier, identifier).First(&user).Error; err != nil {
+		commonAudit.SetAuditContext(c, "auth", "login", commonModels.AuditLevelP2,
+			fmt.Sprintf("用户登录失败: 尝试账号 [%s], 用户不存在", identifier),
+			"user", "", identifier, nil, nil)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email/username or password"})
 		return
 	}
 
 	if !user.IsActive {
+		commonAudit.SetAuditContext(c, "auth", "login", commonModels.AuditLevelP2,
+			fmt.Sprintf("用户登录失败: 尝试账号 [%s], 账号已被禁用", identifier),
+			"user", fmt.Sprintf("%d", user.ID), user.Name, nil, nil)
 		c.JSON(http.StatusForbidden, gin.H{"error": "Account is inactive"})
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		commonAudit.SetAuditContext(c, "auth", "login", commonModels.AuditLevelP2,
+			fmt.Sprintf("用户登录失败: 尝试账号 [%s], 密码错误", identifier),
+			"user", fmt.Sprintf("%d", user.ID), user.Name, nil, nil)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email/username or password"})
 		return
 	}
@@ -161,6 +174,23 @@ func Login(c *gin.Context) {
 	user.LastLogin = &now
 	user.LastIP = c.ClientIP()
 	database.DB.Save(&user)
+
+	displayName := user.Name
+	if displayName == "" {
+		displayName = user.Email
+	}
+
+	commonAuth.SetUserContext(c, &commonAuth.UserContext{
+		UserID:   user.ID,
+		Username: user.Email,
+		Name:     user.Name,
+		Email:    user.Email,
+		Roles:    user.GetRoles(),
+	})
+
+	commonAudit.SetAuditContext(c, "auth", "login", commonModels.AuditLevelP2,
+		fmt.Sprintf("用户 [%s] 登录系统成功 (IP: %s)", displayName, c.ClientIP()),
+		"user", fmt.Sprintf("%d", user.ID), displayName, nil, nil)
 
 	c.JSON(http.StatusOK, gin.H{
 		"token": tokenString,
@@ -216,6 +246,14 @@ func UpdatePassword(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update password"})
 		return
 	}
+
+	displayName := user.Name
+	if displayName == "" {
+		displayName = user.Email
+	}
+	commonAudit.SetAuditContext(c, "auth", "update_password", commonModels.AuditLevelP1,
+		fmt.Sprintf("用户 [%s] 修改个人密码成功", displayName),
+		"user", fmt.Sprintf("%d", user.ID), displayName, nil, nil)
 
 	c.JSON(http.StatusOK, gin.H{"message": "密码修改成功"})
 }
@@ -388,6 +426,23 @@ func OAuth2Callback(c *gin.Context) {
 		redirectPipelineSSOError(c, "登录凭证生成失败")
 		return
 	}
+
+	displayName := user.Name
+	if displayName == "" {
+		displayName = user.Email
+	}
+
+	commonAuth.SetUserContext(c, &commonAuth.UserContext{
+		UserID:   user.ID,
+		Username: user.Email,
+		Name:     user.Name,
+		Email:    user.Email,
+		Roles:    user.GetRoles(),
+	})
+
+	commonAudit.SetAuditContext(c, "auth", "sso_login", commonModels.AuditLevelP2,
+		fmt.Sprintf("用户 [%s] SSO单点登录系统成功 (IP: %s)", displayName, c.ClientIP()),
+		"user", fmt.Sprintf("%d", user.ID), displayName, nil, nil)
 
 	redirectTarget := "/?token=" + url.QueryEscape(tokenString)
 	c.Redirect(http.StatusFound, redirectTarget)
