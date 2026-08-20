@@ -16,6 +16,7 @@ import (
 func setupTestDB(t *testing.T) {
 	_ = models.LoadConfig("../config.yaml")
 	database.InitDB()
+	database.DB.Where("task_id LIKE ?", "check_task_%").Delete(&models.ExecutionReport{})
 }
 
 func TestReportExecutionLogAndDashboardStats(t *testing.T) {
