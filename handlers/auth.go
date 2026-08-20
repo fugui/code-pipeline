@@ -155,11 +155,12 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	tokenString, err := commonAuth.GenerateToken(
+	tokenString, err := commonAuth.GenerateTokenWithEmployeeID(
 		user.ID,
 		user.Email,
 		user.Email,
 		user.Name,
+		user.EmployeeID,
 		user.IsAdmin,
 		user.GetRoles(),
 		models.AppConfig.Auth.JWTSecret,
@@ -412,11 +413,12 @@ func OAuth2Callback(c *gin.Context) {
 	user.LastIP = c.ClientIP()
 	database.DB.Save(&user)
 
-	tokenString, err := commonAuth.GenerateToken(
+	tokenString, err := commonAuth.GenerateTokenWithEmployeeID(
 		user.ID,
 		user.Email,
 		user.Email,
 		user.Name,
+		user.EmployeeID,
 		user.IsAdmin,
 		user.GetRoles(),
 		models.AppConfig.Auth.JWTSecret,

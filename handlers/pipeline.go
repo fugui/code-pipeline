@@ -633,8 +633,8 @@ func RunExecutionScheme(c *gin.Context) {
 		return
 	}
 
-	// 从 Context 获取 EmployeeID 并格式化，避免重复查询数据库
-	employeeID := utils.FormatEmployeeID(c.GetString("employeeID"))
+	// 获取操作者工号标识，优先从上下文获取，若未命中则回退数据库与用户名
+	employeeID := services.ResolveOperatorIdentifier(c.Request.Context())
 
 	headers := prepareRequestHeaders(c)
 	if headers == nil {
