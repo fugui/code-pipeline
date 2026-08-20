@@ -20,6 +20,8 @@ logs/
 
 # Frontend build products
 /frontend/dist
+/frontend/public/version.json
+/public/version.json
 /frontend/node_modules
 *.tsbuildinfo
 frontend/vite.config.js
