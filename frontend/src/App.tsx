@@ -35,7 +35,7 @@ interface AppProps {
   isEmbedded?: boolean
 }
 
-const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
+const PipelineAppContent: React.FC<AppProps> = ({ isEmbedded = false }) => {
   const confirm = useConfirm()
   const apiBase = isEmbedded ? '/pipeline/api' : '/api'
 
@@ -549,10 +549,9 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
   }
 
   return (
-    <ConfirmProvider>
-      <div className="pipeline-app">
-        <ToastProvider>
-          <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div className="pipeline-app">
+      <ToastProvider>
+        <div style={{ display: 'flex', minHeight: '100vh' }}>
 
       {/* Sidebar */}
       {!isEmbedded && (
@@ -856,6 +855,13 @@ const App: React.FC<AppProps> = ({ isEmbedded = false }) => {
           </div>
         </ToastProvider>
       </div>
+  )
+}
+
+const App: React.FC<AppProps> = (props) => {
+  return (
+    <ConfirmProvider>
+      <PipelineAppContent {...props} />
     </ConfirmProvider>
   )
 }
