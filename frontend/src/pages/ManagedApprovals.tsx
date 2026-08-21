@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Pagination, usePagination } from '@code/common'
-import { FileText, CheckCircle2, XCircle, Clock, RefreshCw, Server, GitBranch, Eye, X } from 'lucide-react'
+import { Pagination, usePagination, Drawer } from '@code/common'
+import { FileText, CheckCircle2, XCircle, Clock, RefreshCw, Server, GitBranch, Eye } from 'lucide-react'
 import { ManagedRepoApproval } from '../types'
 import { useToast } from '../components/Toast'
 
@@ -286,58 +286,35 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
       </div>
 
       {/* Unified Right Drawer (768px Width, Balanced Vertical Layout & Larger Fonts) */}
-      {selectedApproval && (
-        <div 
-          className="drawer-overlay" 
-          onClick={closeModal}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', justifyContent: 'flex-end' }}
-        >
-          <div 
-            className="drawer-card" 
-            onClick={e => e.stopPropagation()}
-            style={{ 
-              width: 768, 
-              maxWidth: '100%', 
-              height: '100vh', 
-              background: 'var(--bg-card, #181825)', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              borderLeft: '1px solid var(--border-color, rgba(255,255,255,0.12))', 
-              boxShadow: '-12px 0 40px rgba(0, 0, 0, 0.75)' 
-            }}
-          >
-            {/* Drawer Header */}
-            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border-color, rgba(255,255,255,0.1))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  单据详情与审批 <span style={{ color: '#6366f1' }}>#{selectedApproval.id}</span>
-                </h3>
-                {selectedApproval.type === 'repo_create' ? (
-                  <span className="badge badge-info" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, padding: '3px 8px' }}>
-                    <Server size={13} /> 新建代码仓
-                  </span>
-                ) : (
-                  <span className="badge badge-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, padding: '3px 8px' }}>
-                    <GitBranch size={13} /> 保护分支
-                  </span>
-                )}
-                {selectedApproval.status === 'pending' && <span className="badge badge-warning" style={{ fontSize: 12, padding: '3px 8px' }}>待审批</span>}
-                {selectedApproval.status === 'approved' && <span className="badge badge-success" style={{ fontSize: 12, padding: '3px 8px' }}>已通过</span>}
-                {selectedApproval.status === 'rejected' && <span className="badge badge-danger" style={{ fontSize: 12, padding: '3px 8px' }}>已驳回</span>}
-              </div>
-              <button 
-                onClick={closeModal} 
-                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6 }}
-                title="关闭抽屉"
-              >
-                <X size={22} />
-              </button>
-            </div>
-
-            {/* Drawer Body (Balanced One-Screen View with 14px Font Sizes) */}
-            <div style={{ padding: '20px 24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>
-              {/* Grid Layout Section 1: 核心元数据 (顺次：组 -> 名称 -> 分支) & 人员 */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <Drawer
+        open={!!selectedApproval}
+        onClose={closeModal}
+        width="768px"
+        title={selectedApproval ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 18, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-color, #fff)' }}>
+              单据详情与审批 <span style={{ color: '#6366f1' }}>#{selectedApproval.id}</span>
+            </span>
+            {selectedApproval.type === 'repo_create' ? (
+              <span className="badge badge-info" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, padding: '3px 8px' }}>
+                <Server size={13} /> 新建代码仓
+              </span>
+            ) : (
+              <span className="badge badge-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, padding: '3px 8px' }}>
+                <GitBranch size={13} /> 保护分支
+              </span>
+            )}
+            {selectedApproval.status === 'pending' && <span className="badge badge-warning" style={{ fontSize: 12, padding: '3px 8px' }}>待审批</span>}
+            {selectedApproval.status === 'approved' && <span className="badge badge-success" style={{ fontSize: 12, padding: '3px 8px' }}>已通过</span>}
+            {selectedApproval.status === 'rejected' && <span className="badge badge-danger" style={{ fontSize: 12, padding: '3px 8px' }}>已驳回</span>}
+          </div>
+        ) : undefined}
+        bodyStyle={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}
+      >
+        {selectedApproval && (
+          <>
+            {/* Grid Layout Section 1: 核心元数据 (顺次：组 -> 名称 -> 分支) & 人员 */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 {/* 核心参数 (严格按【组 ➔ 名称 ➔ 分支】从上到下排列) */}
                 <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '14px 16px', border: '1px solid var(--border-color, rgba(255,255,255,0.06))', display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
@@ -666,10 +643,9 @@ export const ManagedApprovals: React.FC<ManagedApprovalsProps> = ({ isAdmin = tr
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Drawer>
     </div>
   )
 }
