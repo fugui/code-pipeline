@@ -1,5 +1,6 @@
 import React from 'react'
-import { Terminal, Square, AlertCircle, X } from 'lucide-react'
+import { Drawer } from '@code/common'
+import { Terminal, Square, AlertCircle } from 'lucide-react'
 import { ExecutionLog } from '../types'
 
 interface ExecutionLogModalProps {
@@ -13,76 +14,38 @@ export const ExecutionLogModal: React.FC<ExecutionLogModalProps> = ({
   onClose,
   onCancel
 }) => {
-  if (!activeExec) return null
-
   const formatTime = (isoString: string | null | undefined) => {
     if (!isoString) return '-'
     const date = new Date(isoString)
     return date.toLocaleString('zh-CN', { hour12: false })
   }
 
-  return (
-    <div 
-      className="execution-log-drawer-overlay" 
-      onClick={onClose} 
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0, 0, 0, 0.45)',
-        backdropFilter: 'blur(4px)',
-        zIndex: 99,
-        animation: 'pipeline-fade-in 0.2s ease-out'
-      }}
-    >
-      <div 
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          position: 'fixed',
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: '50%',
-          minWidth: 520,
-          background: 'var(--bg-secondary, #111827)',
-          color: 'var(--text-main, #f3f4f6)',
-          borderLeft: '1px solid var(--border-color)',
-          boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.25)',
-          zIndex: 100,
-          display: 'flex',
-          flexDirection: 'column',
-          animation: 'slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-        }}
-      >
-        {/* Modal Header */}
-        <div style={{
-          padding: '20px 24px',
-          borderBottom: '1px solid var(--border-color)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: 'var(--bg-card, rgba(255, 255, 255, 0.03))'
-        }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <Terminal size={18} color="#6366f1" />
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-main)' }}>
-                控制台执行日志 #{activeExec.task_id || activeExec.id}
-              </h3>
-            </div>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-              项目: <strong style={{ color: 'var(--text-main)' }}>{activeExec.repo_name}</strong> | 分支: <strong style={{ color: 'var(--text-main)' }}>{activeExec.branch}</strong>
-            </p>
-          </div>
-          <button className="btn btn-secondary btn-small" onClick={onClose} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <X size={14} /> 关闭
-          </button>
-        </div>
+  const drawerTitle = activeExec ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <Terminal size={18} color="#6366f1" />
+      <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-main)' }}>
+        控制台执行日志 #{activeExec.task_id || activeExec.id}
+      </span>
+    </div>
+  ) : undefined
 
-        {/* Modal Content */}
-        <div style={{ flex: 1, padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+  const drawerSubtitle = activeExec ? (
+    <span>
+      项目: <strong style={{ color: 'var(--text-main)' }}>{activeExec.repo_name}</strong> | 分支: <strong style={{ color: 'var(--text-main)' }}>{activeExec.branch}</strong>
+    </span>
+  ) : undefined
+
+  return (
+    <Drawer
+      open={!!activeExec}
+      onClose={onClose}
+      width="max(520px, 50%)"
+      title={drawerTitle}
+      subtitle={drawerSubtitle}
+      bodyStyle={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}
+    >
+      {activeExec && (
+        <>
           {/* Status overview */}
           <div className="glass-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -134,8 +97,8 @@ export const ExecutionLogModal: React.FC<ExecutionLogModalProps> = ({
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+        </>
+      )}
+    </Drawer>
   )
 }

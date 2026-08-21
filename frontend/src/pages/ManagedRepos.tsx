@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Pagination, usePagination } from '@code/common'
+import { Pagination, usePagination, Drawer, Modal } from '@code/common'
 import { 
   GitBranch, Folder, Plus, FolderPlus, Info, Search, Users, AlertCircle, RefreshCw, Send, CheckCircle2, ChevronRight, ChevronDown, Eye, EyeOff, Trash2, Zap, X, Archive, ExternalLink
 } from 'lucide-react'
@@ -1223,27 +1223,15 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
       </div>
 
       {/* Branch Audit & ACL Sidebar Modal/Drawer */}
-      {activeRepo && (
-        <>
-          {/* Backdrop Overlay to auto-close drawer when clicking outside */}
-          <div 
-            onClick={() => setActiveRepo(null)}
-            style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(0, 0, 0, 0.45)',
-              backdropFilter: 'blur(2px)',
-              zIndex: 99
-            }}
-            title="点击背景区域自动关闭"
-          />
-
-          <div style={{
-            position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(1040px, 94vw)',
-            background: 'var(--bg-secondary)', borderLeft: '1px solid var(--border-color)',
-            boxShadow: '-10px 0 30px rgba(0,0,0,0.2)', zIndex: 100, padding: 32,
-            display: 'flex', flexDirection: 'column', gap: 24,
-            animation: 'slideLeft 0.2s ease-out'
-          }}>
+      <Drawer
+        open={!!activeRepo}
+        onClose={() => setActiveRepo(null)}
+        width="min(1040px, 94vw)"
+        showCloseButton={false}
+        bodyStyle={{ padding: 32, gap: 24, display: 'flex', flexDirection: 'column' }}
+      >
+        {activeRepo && (
+          <>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
@@ -1594,131 +1582,85 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                 </div>
               </div>
             )}
-          </div>
-        </>
-      )}
+          </>
+        )}
+      </Drawer>
 
 
       {/* MODAL 1: Import Group */}
-      {showGroupModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex',
-          justifyContent: 'center', alignItems: 'center'
-        }}>
-          <form onSubmit={handleCreateGroup} className="glass-card" style={{ width: 500, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <FolderPlus size={20} color="var(--border-active)" />
-                引入远程根组
-              </h3>
-              <button type="button" onClick={() => setShowGroupModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                <X size={18} />
-              </button>
+      <Modal
+        open={showGroupModal}
+        onClose={() => setShowGroupModal(false)}
+        title="引入远程根组"
+        width="sm"
+        footer={null}
+      >
+        <form onSubmit={handleCreateGroup} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Alert Banner */}
+          <div style={{
+            padding: '10px 14px',
+            background: 'rgba(59, 130, 246, 0.1)',
+            border: '1px solid rgba(59, 130, 246, 0.3)',
+            borderRadius: 6,
+            fontSize: 12,
+            color: 'var(--text-main)',
+            lineHeight: 1.5,
+            display: 'flex',
+            gap: 10,
+            alignItems: 'flex-start'
+          }}>
+            <Info size={16} color="#3b82f6" style={{ marginTop: 2, flexShrink: 0 }} />
+            <div>
+              此功能用于将代码托管平台（CodeHub / GitLab 等）上<b>已存在的顶层根组</b>引入本平台。系统<b>不会</b>在远程平台创建新组。如需引入子组，请在根组导入后点击“同步”按钮递归拉取。
             </div>
+          </div>
 
-            {/* Alert Banner */}
-            <div style={{
-              padding: '10px 14px',
-              background: 'rgba(59, 130, 246, 0.1)',
-              border: '1px solid rgba(59, 130, 246, 0.3)',
-              borderRadius: 6,
-              fontSize: 12,
-              color: 'var(--text-main)',
-              lineHeight: 1.5,
-              display: 'flex',
-              gap: 10,
-              alignItems: 'flex-start'
-            }}>
-              <Info size={16} color="#3b82f6" style={{ marginTop: 2, flexShrink: 0 }} />
-              <div>
-                此功能用于将代码托管平台（CodeHub / GitLab 等）上<b>已存在的顶层根组</b>引入本平台。系统<b>不会</b>在远程平台创建新组。如需引入子组，请在根组导入后点击“同步”按钮递归拉取。
-              </div>
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 600 }}>组显示名称</label>
+            <input 
+              type="text" 
+              required
+              placeholder="例如：后端开发组" 
+              value={newGroupName}
+              onChange={(e) => setNewGroupName(e.target.value)}
+              style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+            />
+          </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600 }}>组显示名称</label>
-              <input 
-                type="text" 
-                required
-                placeholder="例如：后端开发组" 
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
-                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
-              />
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 600 }}>远程组路径 (Path)</label>
+            <input 
+              type="text" 
+              required
+              placeholder="例如：backend (需与托管平台上的 Path 准确一致)" 
+              value={newGroupPath}
+              onChange={(e) => setNewGroupPath(e.target.value)}
+              style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+            />
+          </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600 }}>远程组路径 (Path)</label>
-              <input 
-                type="text" 
-                required
-                placeholder="例如：backend (需与托管平台上的 Path 准确一致)" 
-                value={newGroupPath}
-                onChange={(e) => setNewGroupPath(e.target.value)}
-                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
-              <button type="button" onClick={() => setShowGroupModal(false)} className="btn btn-secondary">
-                取消
-              </button>
-              <button type="submit" className="btn btn-primary">
-                确认引入
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
+            <button type="button" onClick={() => setShowGroupModal(false)} className="btn btn-secondary">
+              取消
+            </button>
+            <button type="submit" className="btn btn-primary">
+              确认引入
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* SIDEBAR DRAWER: Create Repo */}
-      {showRepoModal && (
-        <div className="drawer-overlay" onClick={resetRepoForm}>
-          <div className="drawer-panel" onClick={e => e.stopPropagation()}>
-            {/* Drawer Header */}
-            <div style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid var(--border-color)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: 'rgba(255, 255, 255, 0.02)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
-                  background: 'rgba(99, 102, 241, 0.12)',
-                  color: '#6366f1',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <Plus size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
-                    申请新建被管代码仓
-                  </h3>
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                    标准化远程仓库配置与安全监控注册
-                  </span>
-                </div>
-              </div>
-              <button 
-                type="button" 
-                onClick={resetRepoForm}
-                style={{
-                  background: 'transparent', border: 'none', color: 'var(--text-secondary)',
-                  cursor: 'pointer', padding: 6, borderRadius: 6, display: 'flex', alignItems: 'center'
-                }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
+      <Drawer
+        open={showRepoModal}
+        onClose={resetRepoForm}
+        width="min(640px, 90vw)"
+        title="申请新建被管代码仓"
+        subtitle="标准化远程仓库配置与安全监控注册"
+        bodyStyle={{ padding: 0, display: 'flex', flexDirection: 'column', height: '100%' }}
+      >
+        {showRepoModal && (
+          <form onSubmit={handleCreateRepo} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* Approval Notice Banner */}
             <div style={{ padding: '14px 24px 0 24px' }}>
               <div style={{
@@ -1742,9 +1684,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
               </div>
             </div>
 
-            {/* Form Container */}
-            <form onSubmit={handleCreateRepo} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
                 {/* 1. 基础配置 */}
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#818cf8', borderBottom: '1px solid var(--border-color)', paddingBottom: 6 }}>
                   1. 基础配置
@@ -2149,141 +2089,136 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+          )}
+        </Drawer>
 
       {/* MODAL 3: Create Branch */}
-      {showBranchModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.6)', zIndex: 210, display: 'flex',
-          justifyContent: 'center', alignItems: 'center'
-        }}>
-          <form onSubmit={handleCreateBranch} className="glass-card" style={{ width: 480, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>新建保护 feature 开发分支</h3>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600 }}>分支名称</label>
-              <input 
-                type="text" 
-                required
-                placeholder="必须以 'feature' 开头，例如 feature/payment" 
-                value={newBranchName}
-                onChange={(e) => {
-                  setNewBranchName(e.target.value)
-                  if (e.target.value && !e.target.value.startsWith('feature')) {
-                    setBranchNameError('警告：必须以 "feature" 前缀开头')
-                  } else {
-                    setBranchNameError('')
-                  }
-                }}
-                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
-              />
-              {branchNameError && <span style={{ color: '#ef4444', fontSize: 11, fontWeight: 600 }}>{branchNameError}</span>}
-            </div>
+      <Modal
+        open={showBranchModal}
+        onClose={() => setShowBranchModal(false)}
+        title="新建保护 feature 开发分支"
+        width="sm"
+        footer={null}
+      >
+        <form onSubmit={handleCreateBranch} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 600 }}>分支名称</label>
+            <input 
+              type="text" 
+              required
+              placeholder="必须以 'feature' 开头，例如 feature/payment" 
+              value={newBranchName}
+              onChange={(e) => {
+                setNewBranchName(e.target.value)
+                if (e.target.value && !e.target.value.startsWith('feature')) {
+                  setBranchNameError('警告：必须以 "feature" 前缀开头')
+                } else {
+                  setBranchNameError('')
+                }
+              }}
+              style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+            />
+            {branchNameError && <span style={{ color: '#ef4444', fontSize: 11, fontWeight: 600 }}>{branchNameError}</span>}
+          </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600 }}>拉取源基线 (Source Ref)</label>
-              <input 
-                type="text" 
-                required
-                placeholder="例如 master 或 main" 
-                value={newBranchSource}
-                onChange={(e) => setNewBranchSource(e.target.value)}
-                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
-              />
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 600 }}>拉取源基线 (Source Ref)</label>
+            <input 
+              type="text" 
+              required
+              placeholder="例如 master 或 main" 
+              value={newBranchSource}
+              onChange={(e) => setNewBranchSource(e.target.value)}
+              style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+            />
+          </div>
 
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
-              <button type="button" onClick={() => setShowBranchModal(false)} className="btn btn-secondary">
-                取消
-              </button>
-              <button type="submit" disabled={isCreatingBranch || !!branchNameError} className="btn btn-primary">
-                {isCreatingBranch ? '拉取并锁定中...' : '提交创建'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
+            <button type="button" onClick={() => setShowBranchModal(false)} className="btn btn-secondary">
+              取消
+            </button>
+            <button type="submit" disabled={isCreatingBranch || !!branchNameError} className="btn btn-primary">
+              {isCreatingBranch ? '拉取并锁定中...' : '提交创建'}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* MODAL 4: Add ACL Member */}
-      {showAddAclModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.6)', zIndex: 210, display: 'flex',
-          justifyContent: 'center', alignItems: 'center'
-        }}>
-          <form onSubmit={handleAddAcl} className="glass-card" style={{ width: 480, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>为被管仓新增成员/群组授权</h3>
-            
-            <div style={{ display: 'flex', gap: 16 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-                <input 
-                  type="radio" 
-                  name="principal_type" 
-                  checked={newAclPrincipalType === 'user'} 
-                  onChange={() => setNewAclPrincipalType('user')} 
-                /> 👤 授权给个人
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-                <input 
-                  type="radio" 
-                  name="principal_type" 
-                  checked={newAclPrincipalType === 'user_group'} 
-                  onChange={() => setNewAclPrincipalType('user_group')} 
-                /> 👥 授权给外部群组
-              </label>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600 }}>主体系统唯一 ID (Principal ID)</label>
+      <Modal
+        open={showAddAclModal}
+        onClose={() => setShowAddAclModal(false)}
+        title="为被管仓新增成员/群组授权"
+        width="sm"
+        footer={null}
+      >
+        <form onSubmit={handleAddAcl} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
               <input 
-                type="number" 
-                required
-                placeholder="例如用户或外部群组在系统中的自增 ID" 
-                value={newAclPrincipalID || ''}
-                onChange={(e) => setNewAclPrincipalID(Number(e.target.value))}
-                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600 }}>主体名称 (Principal Name)</label>
+                type="radio" 
+                name="principal_type" 
+                checked={newAclPrincipalType === 'user'} 
+                onChange={() => setNewAclPrincipalType('user')} 
+              /> 👤 授权给个人
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
               <input 
-                type="text" 
-                required
-                placeholder="缓存用于看板展示的名称" 
-                value={newAclPrincipalName}
-                onChange={(e) => setNewAclPrincipalName(e.target.value)}
-                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
-              />
-            </div>
+                type="radio" 
+                name="principal_type" 
+                checked={newAclPrincipalType === 'user_group'} 
+                onChange={() => setNewAclPrincipalType('user_group')} 
+              /> 👥 授权给外部群组
+            </label>
+          </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600 }}>Git平台授权级别</label>
-              <select 
-                value={newAclLevel} 
-                onChange={(e) => setNewAclLevel(Number(e.target.value))}
-                style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
-              >
-                <option value={10}>📖 Reporter (只读查看)</option>
-                <option value={30}>🛠️ Developer (开发者，允许在受限范围内通过MR提交)</option>
-                <option value={50}>👑 Owner (拥有者，拥有最高修改及删除权)</option>
-              </select>
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 600 }}>主体系统唯一 ID (Principal ID)</label>
+            <input 
+              type="number" 
+              required
+              placeholder="例如用户或外部群组在系统中的自增 ID" 
+              value={newAclPrincipalID || ''}
+              onChange={(e) => setNewAclPrincipalID(Number(e.target.value))}
+              style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+            />
+          </div>
 
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
-              <button type="button" onClick={() => setShowAddAclModal(false)} className="btn btn-secondary">
-                取消
-              </button>
-              <button type="submit" className="btn btn-primary">
-                提交授权并同步
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 600 }}>主体名称 (Principal Name)</label>
+            <input 
+              type="text" 
+              required
+              placeholder="缓存用于看板展示的名称" 
+              value={newAclPrincipalName}
+              onChange={(e) => setNewAclPrincipalName(e.target.value)}
+              style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 600 }}>Git平台授权级别</label>
+            <select 
+              value={newAclLevel} 
+              onChange={(e) => setNewAclLevel(Number(e.target.value))}
+              style={{ padding: '8px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-main)' }}
+            >
+              <option value={10}>📖 Reporter (只读查看)</option>
+              <option value={30}>🛠️ Developer (开发者，允许在受限范围内通过MR提交)</option>
+              <option value={50}>👑 Owner (拥有者，拥有最高修改及删除权)</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
+            <button type="button" onClick={() => setShowAddAclModal(false)} className="btn btn-secondary">
+              取消
+            </button>
+            <button type="submit" className="btn btn-primary">
+              提交授权并同步
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }
