@@ -602,7 +602,7 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
 
   return (
     <div style={{ overflowX: 'auto' }}>
-    <table style={{ width: '100%', minWidth: 860, borderCollapse: 'collapse', fontSize: 12 }}>
+    <table style={{ width: '100%', minWidth: 960, borderCollapse: 'collapse', fontSize: 12 }}>
       <thead>
         <tr style={{ background: 'rgba(99,102,241,0.06)', borderBottom: '1px solid rgba(99,102,241,0.12)' }}>
           <th style={subThStyle({ width: 40 })}></th>
@@ -611,8 +611,8 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
           <th style={subThStyle({ width: 80 })}>语言</th>
           <th style={subThStyle({ width: 130 })}>MR触发</th>
           <th style={subThStyle({ width: 130 })}>每日构建</th>
-          <th style={subThStyle({ width: 130 })}>检查任务</th>
-          <th style={subThStyle({ width: 130 })}>执行方案</th>
+          <th style={subThStyle({ width: 180 })}>检查任务</th>
+          <th style={subThStyle({ width: 180 })}>执行方案</th>
           <th style={subThStyle({ width: 100, textAlign: 'right' })}>操作</th>
         </tr>
       </thead>
@@ -785,15 +785,16 @@ const SubSchemeTable: React.FC<SubSchemeTableProps> = ({
 }
 
 
-// ---- Name 单元格：优先显示 Name，hover 提示 ID ----
+// ---- Name 单元格：优先显示 Name，hover 提示 ID 与完整名称 ----
 const NameCell: React.FC<{ name?: string; id?: string; linkUrl?: string }> = ({ name, id, linkUrl }) => {
   if (!name && !id) return <span style={{ color: 'var(--text-muted)' }}>-</span>
   
   const renderContent = () => {
     if (name && id) {
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 130 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 180 }}>
           <span
+            title={name}
             style={{
               fontSize: 12,
               color: linkUrl ? 'inherit' : 'var(--text-secondary)',
@@ -806,10 +807,15 @@ const NameCell: React.FC<{ name?: string; id?: string; linkUrl?: string }> = ({ 
             {name}
           </span>
           <span
+            title={id}
             style={{
               fontSize: 10,
               color: linkUrl ? 'inherit' : 'var(--text-muted)',
               opacity: linkUrl ? 0.7 : 1,
+              display: 'block',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             }}
           >
             ({id})
@@ -821,11 +827,12 @@ const NameCell: React.FC<{ name?: string; id?: string; linkUrl?: string }> = ({ 
     const displayName = name || id;
     return (
       <span
+        title={displayName}
         style={{
           fontSize: 12,
           color: linkUrl ? 'inherit' : 'var(--text-secondary)',
           display: 'block',
-          maxWidth: 130,
+          maxWidth: 180,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
