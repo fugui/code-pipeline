@@ -1,7 +1,7 @@
 @import '@code/common/src/styles/theme.css';
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
 
-.pipeline-app {
+:root {
   --bg-primary: var(--bg-color);
   --bg-secondary: var(--card-bg);
   --bg-card: var(--card-bg);
@@ -27,7 +27,9 @@
   --transition: var(--transition-normal);
   --shadow: var(--shadow-md);
   --radius: var(--radius-lg, 12px);
+}
 
+.pipeline-app {
   font-family: var(--font-sans);
   background-color: var(--bg-primary);
   background-image: 
@@ -39,7 +41,10 @@
   -webkit-font-smoothing: antialiased;
 }
 
-.pipeline-app * {
+.pipeline-app *,
+.modal-root-wrapper *,
+.drawer-root-wrapper *,
+.confirm-dialog-root-wrapper * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -47,22 +52,31 @@
 }
 
 /* Scrollbar styling */
-.pipeline-app ::-webkit-scrollbar {
+.pipeline-app ::-webkit-scrollbar,
+.modal-root-wrapper ::-webkit-scrollbar,
+.drawer-root-wrapper ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-.pipeline-app ::-webkit-scrollbar-track {
+.pipeline-app ::-webkit-scrollbar-track,
+.modal-root-wrapper ::-webkit-scrollbar-track,
+.drawer-root-wrapper ::-webkit-scrollbar-track {
   background: var(--color-bg-muted);
 }
-.pipeline-app ::-webkit-scrollbar-thumb {
+.pipeline-app ::-webkit-scrollbar-thumb,
+.modal-root-wrapper ::-webkit-scrollbar-thumb,
+.drawer-root-wrapper ::-webkit-scrollbar-thumb {
   background: var(--color-border-primary);
   border-radius: var(--radius-xs, 4px);
 }
-.pipeline-app ::-webkit-scrollbar-thumb:hover {
+.pipeline-app ::-webkit-scrollbar-thumb:hover,
+.modal-root-wrapper ::-webkit-scrollbar-thumb:hover,
+.drawer-root-wrapper ::-webkit-scrollbar-thumb:hover {
   background: var(--color-border-hover);
 }
 
 /* Glass Card */
+.glass-card,
 .pipeline-app .glass-card {
   background: var(--bg-card);
   backdrop-filter: blur(12px);
@@ -74,6 +88,7 @@
   transition: var(--transition);
 }
 
+.glass-card:hover,
 .pipeline-app .glass-card:hover {
   border-color: var(--color-border-hover);
 }
@@ -120,18 +135,22 @@
   to { opacity: 1; }
 }
 
+.animate-pulse,
 .pipeline-app .animate-pulse {
   animation: pipeline-pulse 2s infinite ease-in-out;
 }
 
+.animate-spin,
 .pipeline-app .animate-spin {
   animation: pipeline-spin 1.2s linear infinite;
 }
 
+.animate-slide-in,
 .pipeline-app .animate-slide-in {
   animation: pipeline-slide-in 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
+.animate-fade-in,
 .pipeline-app .animate-fade-in {
   animation: pipeline-fade-in 0.4s ease-out forwards;
 }
@@ -233,7 +252,16 @@
 /* Forms and inputs */
 .pipeline-app input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]),
 .pipeline-app textarea,
-.pipeline-app select {
+.pipeline-app select,
+.modal-root-wrapper input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]),
+.modal-root-wrapper textarea,
+.modal-root-wrapper select,
+.drawer-root-wrapper input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]),
+.drawer-root-wrapper textarea,
+.drawer-root-wrapper select,
+.confirm-dialog-root-wrapper input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]),
+.confirm-dialog-root-wrapper textarea,
+.confirm-dialog-root-wrapper select {
   background: var(--color-bg-input, var(--bg-color));
   border: 1px solid var(--border-color);
   color: var(--text-main);
@@ -243,17 +271,44 @@
   font-size: 14px;
   transition: var(--transition);
   width: 100%;
+  box-sizing: border-box;
 }
 
 .pipeline-app input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]):focus,
 .pipeline-app textarea:focus,
-.pipeline-app select:focus {
+.pipeline-app select:focus,
+.modal-root-wrapper input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]):focus,
+.modal-root-wrapper textarea:focus,
+.modal-root-wrapper select:focus,
+.drawer-root-wrapper input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]):focus,
+.drawer-root-wrapper textarea:focus,
+.drawer-root-wrapper select:focus,
+.confirm-dialog-root-wrapper input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]):focus,
+.confirm-dialog-root-wrapper textarea:focus,
+.confirm-dialog-root-wrapper select:focus {
   border-color: var(--primary-color);
   background: var(--card-bg);
   box-shadow: 0 0 0 2px var(--color-primary-subtle);
 }
 
+.pipeline-app input:disabled,
+.pipeline-app textarea:disabled,
+.pipeline-app select:disabled,
+.modal-root-wrapper input:disabled,
+.modal-root-wrapper textarea:disabled,
+.modal-root-wrapper select:disabled,
+.drawer-root-wrapper input:disabled,
+.drawer-root-wrapper textarea:disabled,
+.drawer-root-wrapper select:disabled {
+  background: var(--color-bg-muted, rgba(255, 255, 255, 0.04));
+  color: var(--text-secondary);
+  border-color: var(--color-border-subtle);
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
 /* Beautiful buttons */
+.btn,
 .pipeline-app .btn {
   display: inline-flex;
   align-items: center;
@@ -264,42 +319,65 @@
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: var(--transition);
-  border: none;
+  transition: var(--transition, all 0.2s ease);
+  border: 1px solid transparent;
   color: var(--color-text-white, #ffffff);
+  box-sizing: border-box;
+  font-family: inherit;
 }
 
+.btn:disabled,
+.pipeline-app .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.btn-primary,
 .pipeline-app .btn-primary {
-  background: var(--accent-primary);
+  background: var(--accent-primary, var(--color-primary));
+  color: var(--color-text-white, #ffffff);
   box-shadow: var(--shadow-sm);
+  border-color: transparent;
 }
 
-.pipeline-app .btn-primary:hover {
+.btn-primary:hover:not(:disabled),
+.pipeline-app .btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover, #2563eb);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
 
+.btn-secondary,
 .pipeline-app .btn-secondary {
   background: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-main);
 }
 
-.pipeline-app .btn-secondary:hover {
+.btn-secondary:hover:not(:disabled),
+.pipeline-app .btn-secondary:hover:not(:disabled) {
   background: var(--color-bg-hover);
   border-color: var(--border-active);
 }
 
+.btn-danger,
 .pipeline-app .btn-danger {
-  background: var(--accent-error);
+  background: var(--accent-error, var(--color-danger));
+  color: var(--color-text-white, #ffffff);
   box-shadow: var(--shadow-sm);
+  border-color: transparent;
 }
 
-.pipeline-app .btn-danger:hover {
+.btn-danger:hover:not(:disabled),
+.pipeline-app .btn-danger:hover:not(:disabled) {
+  background: var(--color-danger-hover, #dc2626);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
 
+.btn-small,
 .pipeline-app .btn-small {
   padding: 6px 12px;
   font-size: 12px;
