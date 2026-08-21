@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Pagination, usePagination, Drawer, Modal } from '@code/common'
+import { Pagination, usePagination, Drawer, Modal, useToast } from '@code/common'
 import { 
-  GitBranch, Folder, Plus, FolderPlus, Info, Search, Users, AlertCircle, RefreshCw, Send, CheckCircle2, ChevronRight, ChevronDown, Eye, EyeOff, Trash2, Zap, X, Archive, ExternalLink
+  GitBranch, Folder, Plus, FolderPlus, Info, Search, Users, AlertCircle, RefreshCw, Send, ChevronRight, ChevronDown, Eye, EyeOff, Trash2, Zap, X, Archive, ExternalLink
 } from 'lucide-react'
 
 interface ManagedGroup {
@@ -322,13 +322,11 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
 
   const [isSyncingGroup, setIsSyncingGroup] = useState(false)
 
-  // Toast message
-  const [toastMsg, setToastMsg] = useState<{ type: 'success' | 'error' | 'warning', text: string } | null>(null)
-
-  const showToast = (type: 'success' | 'error' | 'warning', text: string) => {
-    setToastMsg({ type, text })
-    setTimeout(() => setToastMsg(null), 4000)
-  }
+  // Unified Toast message Hook
+  const { showToast: toast } = useToast()
+  const showToast = useCallback((type: 'success' | 'error' | 'warning', text: string) => {
+    toast(text, type)
+  }, [toast])
 
   const [expandedGroups, setExpandedGroups] = useState<Record<number, boolean>>({})
 
@@ -823,20 +821,6 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
 
   return (
     <div style={{ display: 'flex', gap: 24, height: 'calc(100vh - 120px)' }}>
-      {/* Toast Alert */}
-      {toastMsg && (
-        <div style={{
-          position: 'fixed', top: 24, right: 24, zIndex: 1000,
-          padding: '12px 24px', borderRadius: 8,
-          background: toastMsg.type === 'success' ? '#10b981' : toastMsg.type === 'error' ? '#ef4444' : '#f59e0b',
-          color: '#ffffff', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
-          display: 'flex', alignItems: 'center', gap: 8,
-          animation: 'slideIn 0.2s ease-out'
-        }}>
-          {toastMsg.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-          <span style={{ fontWeight: 600 }}>{toastMsg.text}</span>
-        </div>
-      )}
 
       {/* Group Sidebar */}
       <div className="glass-card" style={{ width: 280, display: 'flex', flexDirection: 'column', padding: 20 }}>
@@ -1843,7 +1827,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                     {showOwnerDropdown && (
                       <>
                         <div 
-                          style={{ position: 'fixed', inset: 0, zIndex: 90 }} 
+                          style={{ position: 'fixed', inset: 0, zIndex: 200 }} 
                           onClick={() => setShowOwnerDropdown(false)} 
                         />
                         <div
@@ -1852,7 +1836,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                             top: '100%',
                             left: 0,
                             right: 0,
-                            zIndex: 100,
+                            zIndex: 201,
                             maxHeight: 240,
                             overflowY: 'auto',
                             background: 'var(--bg-card, #1e293b)',
