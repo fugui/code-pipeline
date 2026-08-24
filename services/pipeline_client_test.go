@@ -803,9 +803,24 @@ func TestSyncDeleteExecutionScheme_LastSchemeDeletesCheckerTask(t *testing.T) {
 	models.AppConfig.PipelineSystem.DeleteCheckerTaskURL = server.URL + "/delete-checker-task"
 	models.AppConfig.PipelineSystem.GetExecutionSchemeURL = server.URL + "/schemes/delete"
 
-	// 初始化测试 DB 数据
+	// 初始化测试 DB 数据 (保证 DepartmentID 与 OwnerID 满足外键约束)
+	var dept models.Department
+	_ = database.DB.First(&dept)
+	deptID := dept.ID
+	if deptID == 0 {
+		deptID = 1
+	}
+	var user models.User
+	_ = database.DB.First(&user)
+	ownerID := user.ID
+	if ownerID == 0 {
+		ownerID = 1
+	}
+
 	repo := models.Repository{
 		ID:                  9991,
+		DepartmentID:        deptID,
+		OwnerID:             ownerID,
 		Name:                "test-repo-delete-checker",
 		CodeCheckerTaskID:   "checker-task-9991",
 		CodeCheckerTaskName: "test-repo-delete-checker",
@@ -972,11 +987,26 @@ func TestSyncCreateExecutionSchemeRemote_ReuseFromExistingScheme(t *testing.T) {
 
 	// 准备测试数据：仓库 ID 为 9992，Repository 表中的 CodeCheckerTaskID 为空，
 	// 但 execution_schemes 表中已存在该仓的已有方案 scheme_old，且包含 CodeCheckerTaskID
+	var dept models.Department
+	_ = database.DB.First(&dept)
+	deptID := dept.ID
+	if deptID == 0 {
+		deptID = 1
+	}
+	var user models.User
+	_ = database.DB.First(&user)
+	ownerID := user.ID
+	if ownerID == 0 {
+		ownerID = 1
+	}
+
 	repo := models.Repository{
 		ID:                  9992,
+		DepartmentID:        deptID,
+		OwnerID:             ownerID,
 		Name:                "test-repo-reuse",
 		HTTPURL:             "https://github.com/org/test-repo-reuse.git",
-		CodeCheckerTaskID:   "", // 仓记录为空
+		CodeCheckerTaskID:   "",
 		CodeCheckerTaskName: "",
 	}
 	database.DB.Delete(&models.Repository{}, 9992)
@@ -1222,9 +1252,9 @@ func TestSyncUpdateMRBinding_BranchFuzzy(t *testing.T) {
 func TestResolveOperatorIdentifier(t *testing.T) {
 	setupTestDB(t)
 
-	// 1. nil context
-	if res := ResolveOperatorIdentifier(nil); res != "system" {
-		t.Errorf("expected 'system' for nil context, got %q", res)
+	// 1. empty context
+	if res := ResolveOperatorIdentifier(context.TODO()); res != "system" {
+		t.Errorf("expected 'system' for empty context, got %q", res)
 	}
 
 	// 2. context with employeeID

@@ -20,6 +20,8 @@ type PipelineRequest struct {
 	PipelineID  string `json:"pipeline_id" binding:"required"`
 	Name        string `json:"name" binding:"required"`
 	Type        string `json:"type" binding:"required"`
+	GroupID     *uint  `json:"group_id"`
+	Status      string `json:"status"`
 	GroupName   string `json:"group_name"`
 	Description string `json:"description"`
 	ServiceID   string `json:"service_id"`
@@ -29,9 +31,10 @@ type PipelineRequest struct {
 	ServiceName string `json:"service_name"`
 }
 
-// ExecutionSchemeRequest 执行方案输入结构体
+// ExecutionSchemeRequest 执行方案输入结构体 (支持 group_id 自动调度与 pipeline_id 物理指定)
 type ExecutionSchemeRequest struct {
-	PipelineID       *uint  `json:"pipeline_id" binding:"required"`
+	GroupID          *uint  `json:"group_id"`    // 推荐：指定流水线组 ID 自动负载均衡调度
+	PipelineID       *uint  `json:"pipeline_id"` // 兼容模式：直接指定特定物理流水线 ID
 	RepositoryID     *uint  `json:"repository_id" binding:"required"`
 	Name             string `json:"name" binding:"required"`
 	Branchs          string `json:"branchs" binding:"required"`
@@ -45,11 +48,18 @@ type ExecutionSchemeRequest struct {
 // GetPipelines 获取流水线列表
 func GetPipelines(c *gin.Context) {
 	var pipelines []models.Pipeline
-	query := database.DB.Model(&models.Pipeline{})
+	query := database.DB.Model(&models.Pipeline{}).Preload("Group")
 
 	search := c.Query("search")
 	if search != "" {
 		query = query.Where("name LIKE ? OR pipeline_id LIKE ? OR group_name LIKE ?", "%"+search+"%", "%"+search+"%", "%"+search+"%")
+	}
+
+	groupIDStr := c.Query("group_id")
+	if groupIDStr != "" {
+		if gID, err := strconv.ParseUint(groupIDStr, 10, 32); err == nil {
+			query = query.Where("group_id = ?", uint(gID))
+		}
 	}
 
 	if err := query.Find(&pipelines).Error; err != nil {
@@ -75,10 +85,17 @@ func CreatePipeline(c *gin.Context) {
 		return
 	}
 
+	status := strings.TrimSpace(req.Status)
+	if status == "" {
+		status = "active"
+	}
+
 	pipeline := models.Pipeline{
 		PipelineID:  req.PipelineID,
 		Name:        req.Name,
 		Type:        req.Type,
+		GroupID:     req.GroupID,
+		Status:      status,
 		GroupName:   req.GroupName,
 		Description: req.Description,
 		ServiceID:   req.ServiceID,
@@ -126,6 +143,10 @@ func UpdatePipeline(c *gin.Context) {
 	pipeline.PipelineID = req.PipelineID
 	pipeline.Name = req.Name
 	pipeline.Type = req.Type
+	pipeline.GroupID = req.GroupID
+	if req.Status != "" {
+		pipeline.Status = req.Status
+	}
 	pipeline.GroupName = req.GroupName
 	pipeline.Description = req.Description
 	pipeline.ServiceID = req.ServiceID
@@ -259,20 +280,60 @@ func CreateExecutionScheme(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if req.PipelineID == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "pipeline_id is required"})
-		return
-	}
 	if req.RepositoryID == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "repository_id is required"})
 		return
 	}
 
-	// 检查 Pipeline 是否存在
-	var pipeline models.Pipeline
-	if err := database.DB.First(&pipeline, *req.PipelineID).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Associated pipeline not found"})
-		return
+	var pipeline *models.Pipeline
+
+	// 1. 优先根据 group_id 从流水线组中智能调度负载最低且未满载的物理流水线
+	if req.GroupID != nil && *req.GroupID > 0 {
+		selected, err := services.SelectPipelineInGroup(c.Request.Context(), database.DB, *req.GroupID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("流水线组调度失败: %v", err)})
+			return
+		}
+		pipeline = selected
+	} else if req.PipelineID != nil && *req.PipelineID > 0 {
+		// 2. 兼容模式：直接指定了具体的物理流水线 ID
+		var p models.Pipeline
+		if err := database.DB.Preload("Group").First(&p, *req.PipelineID).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "指定关联的物理流水线不存在"})
+			return
+		}
+
+		// 检查该指定流水线是否已达容量上限
+		capacityLimit := 200
+		if p.Group != nil && p.Group.MaxSchemesPerPipeline > 0 {
+			capacityLimit = p.Group.MaxSchemesPerPipeline
+		}
+		var currentCount int64
+		database.DB.Model(&models.ExecutionScheme{}).Where("pipeline_id = ?", p.ID).Count(&currentCount)
+		if currentCount >= int64(capacityLimit) {
+			// 标记满载并提示
+			database.DB.Model(&p).Update("status", "full")
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("物理流水线 [%s] 当前已达容量上限 (%d/%d)，请选择流水线组进行智能调度或联系管理员扩容",
+					p.Name, currentCount, capacityLimit),
+			})
+			return
+		}
+		pipeline = &p
+	} else {
+		// 3. 兜底：尝试获取系统第一个可用的默认流水线组
+		var defaultGroup models.PipelineGroup
+		if err := database.DB.Where("is_active = ?", true).Order("id ASC").First(&defaultGroup).Error; err == nil {
+			selected, err := services.SelectPipelineInGroup(c.Request.Context(), database.DB, defaultGroup.ID)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("默认流水线组调度失败: %v", err)})
+				return
+			}
+			pipeline = selected
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "请选择关联的流水线组 (group_id) 或物理流水线 (pipeline_id)"})
+			return
+		}
 	}
 
 	name := strings.TrimSpace(req.Name)
@@ -282,7 +343,7 @@ func CreateExecutionScheme(c *gin.Context) {
 	}
 
 	scheme := models.ExecutionScheme{
-		LocalPipelineID:  *req.PipelineID,
+		LocalPipelineID:  pipeline.ID,
 		RepositoryID:     *req.RepositoryID,
 		Name:             name,
 		Branch:           req.Branchs,
@@ -328,8 +389,8 @@ func CreateExecutionScheme(c *gin.Context) {
 		return
 	}
 
-	// 加载 repository
-	database.DB.Preload("Repository").First(&scheme, scheme.ID)
+	// 加载 repository 与 pipeline
+	database.DB.Preload("Repository").Preload("PipelineInfo").First(&scheme, scheme.ID)
 
 	taskTemplate := models.AppConfig.PipelineSystem.LinkCheckerTaskURL
 	if taskTemplate != "" {
@@ -578,6 +639,9 @@ func DeleteExecutionScheme(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete execution scheme locally"})
 		return
 	}
+
+	// 方案删除后，触发对应物理流水线的状态自愈检查 (若曾为 full 则回落恢复为 active)
+	services.HealPipelineStatus(scheme.LocalPipelineID)
 
 	commonAudit.SetAuditContext(c, "pipeline", "delete_scheme", models.AuditLevelP1,
 		fmt.Sprintf("删除了流水线执行方案: %s", scheme.Name),

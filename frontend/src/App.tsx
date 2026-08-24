@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 
 // Import types
-import { User, ExecutionLog, DashboardStats, Pipeline, ExecutionScheme } from './types'
+import { User, ExecutionLog, DashboardStats, Pipeline, ExecutionScheme, PipelineGroup } from './types'
 
 // Import page components
 import { Dashboard } from './pages/Dashboard'
@@ -51,6 +51,7 @@ const PipelineAppContent: React.FC<AppProps> = ({ isEmbedded = false }) => {
   
   // Pipelines and plans states
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
+  const [pipelineGroups, setPipelineGroups] = useState<PipelineGroup[]>([])
   const [showPipelineModal, setShowPipelineModal] = useState(false)
   const [activePipeline, setActivePipeline] = useState<Pipeline | null>(null)
   const [pipelineFetchError, setPipelineFetchError] = useState('')
@@ -143,9 +144,11 @@ const PipelineAppContent: React.FC<AppProps> = ({ isEmbedded = false }) => {
     } else if (currentView === 'repos') {
       // 预加载流水线列表，以便"新增方案"时能取到默认 pipeline_id
       if (pipelines.length === 0) fetchPipelines()
+      fetchPipelineGroups()
       fetchRepos("")
     } else if (currentView === 'pipeline-config') {
       fetchPipelines()
+      fetchPipelineGroups()
       fetchRepos("")
     }
   }, [token, user, currentView, searchQuery])
@@ -228,6 +231,15 @@ const PipelineAppContent: React.FC<AppProps> = ({ isEmbedded = false }) => {
       }
     })
     .catch(err => console.error('Failed to fetch pipelines', err))
+  }
+
+  const fetchPipelineGroups = () => {
+    fetch(`${apiBase}/pipeline-groups`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(data => setPipelineGroups(Array.isArray(data) ? data : []))
+    .catch(err => console.error('Failed to fetch pipeline groups', err))
   }
 
   const fetchSchemes = (pipelineId: number) => {
@@ -783,6 +795,8 @@ const PipelineAppContent: React.FC<AppProps> = ({ isEmbedded = false }) => {
             apiBase={apiBase}
             token={token}
             pipelines={pipelines}
+            pipelineGroups={pipelineGroups}
+            onRefreshGroups={fetchPipelineGroups}
             selectedPipeline={selectedPipeline}
             schemes={schemes}
             loading={loading}
@@ -821,6 +835,7 @@ const PipelineAppContent: React.FC<AppProps> = ({ isEmbedded = false }) => {
         isAdmin={isAdmin}
         visible={showPipelineModal}
         activePipeline={activePipeline}
+        pipelineGroups={pipelineGroups}
         onChange={setActivePipeline}
         onSave={handleSavePipeline}
         onClose={() => { setShowPipelineModal(false); setActivePipeline(null); setPipelineFetchError(''); }}
@@ -840,6 +855,7 @@ const PipelineAppContent: React.FC<AppProps> = ({ isEmbedded = false }) => {
         apiBase={apiBase}
         repos={repos}
         pipelines={pipelines}
+        pipelineGroups={pipelineGroups}
         saving={isSavingScheme}
         saveError={schemeError}
         saveSuccess={schemeSaveSuccess}

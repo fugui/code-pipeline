@@ -75,21 +75,38 @@ type Repository struct {
 	CreatedAt           time.Time         `json:"created_at"`
 }
 
+// PipelineGroup 流水线组模型 (聚合相同模板与能力的物理流水线)
+type PipelineGroup struct {
+	ID                    uint       `gorm:"primaryKey" json:"id"`
+	GroupKey              string     `gorm:"size:100;uniqueIndex;not null;default:''" json:"group_key"` // 组唯一标识，如 "mr-gate-default"
+	Name                  string     `gorm:"size:150;not null;default:''" json:"name"`                  // 组展示名称
+	Type                  string     `gorm:"size:50;index;not null;default:'MR'" json:"type"`           // 类型: "MR" | "每日构建"
+	MaxSchemesPerPipeline int        `gorm:"default:200" json:"max_schemes_per_pipeline"`              // 单节点方案容量上限 (默认 200)
+	IsActive              bool       `gorm:"default:true;index" json:"is_active"`                       // 是否启用
+	Description           string     `gorm:"type:text" json:"description"`                              // 描述说明
+	Pipelines             []Pipeline `gorm:"foreignKey:GroupID" json:"pipelines,omitempty"`             // 组内物理流水线
+	CreatedAt             time.Time  `json:"created_at"`
+	UpdatedAt             time.Time  `json:"updated_at"`
+}
+
 type Pipeline struct {
-	ID          uint      `gorm:"primaryKey" json:"id"`
-	PipelineID  string    `gorm:"uniqueIndex;not null;default:''" json:"pipeline_id"` // 流水线 ID
-	Name        string    `gorm:"not null;default:''" json:"name"`                    // 名称
-	Type        string    `gorm:"not null;default:''" json:"type"`                    // 类型 (MR, 每日构建)
-	GroupName   string    `json:"group_name"`                                         // 组名称
-	Description string    `json:"description"`                                        // 描述
-	ServiceID   string    `json:"service_id"`                                         // 第三方服务 ID
-	WorkspaceID string    `json:"workspace_id"`                                       // 第三方工作区 ID
-	OwnerID     string    `json:"owner_id"`                                           // 三方项目 ID
-	OwnerName   string    `json:"owner_name"`                                         // 三方项目名称
-	ServiceName string    `json:"service_name"`                                       // 第三方服务名称
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	WebURL      string    `gorm:"-" json:"web_url"` // 排除字段，仅在 JSON 序列化中返回
+	ID          uint           `gorm:"primaryKey" json:"id"`
+	GroupID     *uint          `gorm:"index" json:"group_id"`                                       // 关联的流水线组 ID (空代表独立流水线)
+	Group       *PipelineGroup `gorm:"foreignKey:GroupID" json:"group,omitempty"`                   // 关联流水线组对象
+	PipelineID  string         `gorm:"uniqueIndex;not null;default:''" json:"pipeline_id"`           // 流水线 ID
+	Name        string         `gorm:"not null;default:''" json:"name"`                              // 名称
+	Type        string         `gorm:"not null;default:''" json:"type"`                              // 类型 (MR, 每日构建)
+	Status      string         `gorm:"size:20;default:'active';index" json:"status"`                 // 节点状态: "active" | "full"
+	GroupName   string         `json:"group_name"`                                                   // 组名称 (兼容保留)
+	Description string         `json:"description"`                                                  // 描述
+	ServiceID   string         `json:"service_id"`                                                   // 第三方服务 ID
+	WorkspaceID string         `json:"workspace_id"`                                                 // 第三方工作区 ID
+	OwnerID     string         `json:"owner_id"`                                                     // 三方项目 ID
+	OwnerName   string         `json:"owner_name"`                                                   // 三方项目名称
+	ServiceName string         `json:"service_name"`                                                 // 第三方服务名称
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	WebURL      string         `gorm:"-" json:"web_url"` // 排除字段，仅在 JSON 序列化中返回
 }
 
 type ExecutionScheme struct {

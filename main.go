@@ -131,6 +131,7 @@ func main() {
 					api.GET("/managed-repos/dashboard/stats", handlers.GetManagedDashboardStats)
 
 					// 流水线配置与方案只读/触发接口
+					api.GET("/pipeline-groups", handlers.GetPipelineGroups)
 					api.GET("/pipelines", handlers.GetPipelines)
 					api.GET("/execution-schemes", handlers.GetExecutionSchemes)
 					api.POST("/execution-schemes/:id/run", handlers.RunExecutionScheme)
@@ -171,6 +172,12 @@ func main() {
 						admin.POST("/managed-repos/compliance/audit", handlers.TriggerComplianceAudit)
 						admin.POST("/managed-repos/:id/compliance/audit", handlers.TriggerSingleRepoComplianceAudit)
 						admin.POST("/managed-repos/:id/compliance/remote-check", handlers.TriggerRepoRemoteProtectionCheck)
+
+						// 流水线组写/管控接口
+						admin.POST("/pipeline-groups", handlers.CreatePipelineGroup)
+						admin.PUT("/pipeline-groups/:id", handlers.UpdatePipelineGroup)
+						admin.DELETE("/pipeline-groups/:id", handlers.DeletePipelineGroup)
+						admin.POST("/pipeline-groups/:id/pipelines", handlers.AttachDetachPipelinesToGroup)
 
 						// 流水线配置写/管控接口
 						admin.POST("/pipelines", handlers.CreatePipeline)

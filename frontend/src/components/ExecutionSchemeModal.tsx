@@ -1,6 +1,7 @@
 import React from 'react'
 import { AUTH_TOKEN_KEY } from '@code/common'
-import { Trash2, CheckCircle2, XCircle, Loader2, Copy, Check, ClipboardPaste, HelpCircle, FileCode, GitBranch, GitMerge, Clock, RefreshCw, Lock, AlertTriangle } from 'lucide-react'
+import { Trash2, CheckCircle2, XCircle, Loader2, Copy, Check, ClipboardPaste, HelpCircle, FileCode, GitBranch, GitMerge, Clock, RefreshCw, Lock, AlertTriangle, ChevronDown, ChevronRight, Sparkles } from 'lucide-react'
+import { PipelineGroup } from '../types'
 
 interface ExecutionSchemeModalProps {
   isAdmin?: boolean
@@ -12,6 +13,7 @@ interface ExecutionSchemeModalProps {
   apiBase: string
   repos: any[]
   pipelines: any[]
+  pipelineGroups?: PipelineGroup[]
   saving?: boolean
   saveError?: string | null
   saveSuccess?: boolean
@@ -63,12 +65,14 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   apiBase,
   repos,
   pipelines = [],
+  pipelineGroups = [],
   saving = false,
   saveError = null,
   saveSuccess = false,
   onSuccessClose
 }) => {
   const isView = !!activeScheme?.id
+  const [showAdvancedPipelineSelect, setShowAdvancedPipelineSelect] = React.useState(false)
   const [filterQuery, setFilterQuery] = React.useState('')
   const [branches, setBranches] = React.useState<string[]>([])
   const [loadingBranches, setLoadingBranches] = React.useState(false)
@@ -770,7 +774,9 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
           {saving && <SyncProgressOverlay isEdit={isView} />}
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>关联流水线</label>
+              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                {activeScheme.id ? '关联物理流水线' : '关联流水线组 (资源池)'}
+              </label>
               {activeScheme.id ? (
                 <input 
                   type="text" 
@@ -784,24 +790,82 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                   disabled 
                 />
               ) : (
-                <select
-                  value={activeScheme.pipeline_id || ''}
-                  onChange={(e) => {
-                    const val = e.target.value ? Number(e.target.value) : 0;
-                    onChange({
-                      ...activeScheme,
-                      pipeline_id: val
-                    });
-                  }}
-                  required
-                >
-                  <option value="" disabled>-- 请选择关联的流水线 --</option>
-                  {pipelines.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} (ID: {p.pipeline_id}) - 负责人: {p.owner || '未分配'}
-                    </option>
-                  ))}
-                </select>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {pipelineGroups.length > 0 ? (
+                    <div>
+                      <select
+                        value={activeScheme.group_id || ''}
+                        onChange={(e) => {
+                          const val = e.target.value ? Number(e.target.value) : undefined;
+                          onChange({
+                            ...activeScheme,
+                            group_id: val,
+                            // 当选择了流水线组时，如果之前未在高级模式明确锁定流水线，清空 pipeline_id 让后端自动调度
+                            pipeline_id: showAdvancedPipelineSelect ? activeScheme.pipeline_id : undefined
+                          });
+                        }}
+                      >
+                        <option value="">-- 请选择流水线组 (推荐自动负载均衡) --</option>
+                        {pipelineGroups.map(g => (
+                          <option key={g.id} value={g.id}>
+                            {g.name} [{g.type}] (已用: {g.used_schemes || 0}/{g.total_capacity || 0}, 负载: {(g.usage_rate || 0).toFixed(1)}%)
+                          </option>
+                        ))}
+                      </select>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 12, color: 'var(--color-primary, #3b82f6)' }}>
+                        <Sparkles size={13} />
+                        <span>智能调度：系统将在创建时自动为您选择该组中方案数最少且未满载的物理流水线</span>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* 高级选项：允许管理员或特定需求指定具体物理流水线 */}
+                  <div style={{ marginTop: 4 }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvancedPipelineSelect(!showAdvancedPipelineSelect)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        padding: 0,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}
+                    >
+                      {showAdvancedPipelineSelect ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                      <span>高级选项：手动指定物理流水线</span>
+                    </button>
+
+                    {(showAdvancedPipelineSelect || pipelineGroups.length === 0) && (
+                      <div style={{ marginTop: 8, padding: 12, background: 'var(--color-bg-muted, rgba(255,255,255,0.02))', borderRadius: 8, border: '1px dashed var(--border-color)' }}>
+                        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                          指定物理流水线节点 {pipelineGroups.length > 0 && <span style={{ color: 'var(--text-muted)' }}>(指定后将覆盖组调度)</span>}
+                        </label>
+                        <select
+                          value={activeScheme.pipeline_id || ''}
+                          onChange={(e) => {
+                            const val = e.target.value ? Number(e.target.value) : undefined;
+                            onChange({
+                              ...activeScheme,
+                              pipeline_id: val
+                            });
+                          }}
+                        >
+                          <option value="">-- 由流水线组自动调度分配 --</option>
+                          {pipelines.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} (ID: {p.pipeline_id}) {p.status === 'full' ? '[已满载]' : ''} - 负责人: {p.owner || '未分配'}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
 
