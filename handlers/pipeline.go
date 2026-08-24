@@ -143,7 +143,9 @@ func UpdatePipeline(c *gin.Context) {
 	pipeline.PipelineID = req.PipelineID
 	pipeline.Name = req.Name
 	pipeline.Type = req.Type
-	pipeline.GroupID = req.GroupID
+	if req.GroupID != nil {
+		pipeline.GroupID = req.GroupID
+	}
 	if req.Status != "" {
 		pipeline.Status = req.Status
 	}
@@ -287,53 +289,26 @@ func CreateExecutionScheme(c *gin.Context) {
 
 	var pipeline *models.Pipeline
 
-	// 1. 优先根据 group_id 从流水线组中智能调度负载最低且未满载的物理流水线
-	if req.GroupID != nil && *req.GroupID > 0 {
+	// 1. 若显式指定了具体的物理流水线 (pipeline_id > 0)，优先直接绑定该节点 (支持精确覆盖组调度)
+	if req.PipelineID != nil && *req.PipelineID > 0 {
+		var p models.Pipeline
+		if err := database.DB.Preload("Group").First(&p, *req.PipelineID).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "指定关联的物理流水线不存在"})
+			return
+		}
+		pipeline = &p
+	} else if req.GroupID != nil && *req.GroupID > 0 {
+		// 2. 若指定了流水线组 (group_id > 0)，从组内智能调度负载最低 (方案数最少) 的物理流水线
 		selected, err := services.SelectPipelineInGroup(c.Request.Context(), database.DB, *req.GroupID)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("流水线组调度失败: %v", err)})
 			return
 		}
 		pipeline = selected
-	} else if req.PipelineID != nil && *req.PipelineID > 0 {
-		// 2. 兼容模式：直接指定了具体的物理流水线 ID
-		var p models.Pipeline
-		if err := database.DB.Preload("Group").First(&p, *req.PipelineID).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "指定关联的物理流水线不存在"})
-			return
-		}
-
-		// 检查该指定流水线是否已达容量上限
-		capacityLimit := 200
-		if p.Group != nil && p.Group.MaxSchemesPerPipeline > 0 {
-			capacityLimit = p.Group.MaxSchemesPerPipeline
-		}
-		var currentCount int64
-		database.DB.Model(&models.ExecutionScheme{}).Where("pipeline_id = ?", p.ID).Count(&currentCount)
-		if currentCount >= int64(capacityLimit) {
-			// 标记满载并提示
-			database.DB.Model(&p).Update("status", "full")
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": fmt.Sprintf("物理流水线 [%s] 当前已达容量上限 (%d/%d)，请选择流水线组进行智能调度或联系管理员扩容",
-					p.Name, currentCount, capacityLimit),
-			})
-			return
-		}
-		pipeline = &p
 	} else {
-		// 3. 兜底：尝试获取系统第一个可用的默认流水线组
-		var defaultGroup models.PipelineGroup
-		if err := database.DB.Where("is_active = ?", true).Order("id ASC").First(&defaultGroup).Error; err == nil {
-			selected, err := services.SelectPipelineInGroup(c.Request.Context(), database.DB, defaultGroup.ID)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("默认流水线组调度失败: %v", err)})
-				return
-			}
-			pipeline = selected
-		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "请选择关联的流水线组 (group_id) 或物理流水线 (pipeline_id)"})
-			return
-		}
+		// 3. group_id 和 pipeline_id 至少需明确指定一个，不做任何隐式兜底
+		c.JSON(http.StatusBadRequest, gin.H{"error": "创建执行方案必须指定流水线组 (group_id) 或具体物理流水线 (pipeline_id)"})
+		return
 	}
 
 	name := strings.TrimSpace(req.Name)
@@ -639,9 +614,6 @@ func DeleteExecutionScheme(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete execution scheme locally"})
 		return
 	}
-
-	// 方案删除后，触发对应物理流水线的状态自愈检查 (若曾为 full 则回落恢复为 active)
-	services.HealPipelineStatus(scheme.LocalPipelineID)
 
 	commonAudit.SetAuditContext(c, "pipeline", "delete_scheme", models.AuditLevelP1,
 		fmt.Sprintf("删除了流水线执行方案: %s", scheme.Name),

@@ -40,25 +40,13 @@ erDiagram
 - **流水线（Pipeline）**：对应三方 CI/CD 平台中的一条顶层 Pipeline 实例，定义构建阶段、插件链、运行环境。
 - **执行方案（ExecutionScheme）**：具体代码仓在特定分支下的个性化执行配置，包含 CheckerTask、MRBinding、ExecutionPlan 等三方资源。
 
-### 1.2 核心痛点
+### 1.2 核心诉求与关键澄清
 
-三方流水线引擎对单条流水线支持挂载的执行方案数量存在**硬性上限**。随着纳管代码仓与分支数量增长，单条流水线的方案数量逼近上限，导致：
+**关键事实澄清**：流水线没有强制方案数的硬上限，引入流水线组的核心诉求是**同一组内做负载均衡与方案平摊**，避免方案集中挂载在单一节点上。
 
-1. **创建失败**：超出上限后三方系统拒绝创建新方案。
-2. **人工调度负担**：管理员被迫手工创建多条同质流水线（如 `Pipeline-01`、`Pipeline-02`），开发人员需要人工猜测哪条还有空位。
-3. **负载不均衡**：部分流水线过载，另一些空置，缺乏自动均衡能力。
-
-### 1.3 解决思路
-
-引入**"流水线组 (Pipeline Group)"** 概念——将功能相同的多条物理流水线聚合为一个逻辑资源池，创建执行方案时系统自动选择负载最轻的流水线。
-
-> **需确认的关键事实**（影响实施细节与优先级）：
->
-> | 问题 | 影响 |
-> | :--- | :--- |
-> | 三方平台单条流水线的方案上限具体是多少？ | 决定 `max_schemes_per_pipeline` 默认值 |
-> | 当前方案数最多的流水线挂了多少个方案？ | 决定实施紧迫度 |
-> | 同类型流水线在三方平台的阶段配置是否完全相同？ | 决定分组策略是否成立 |
+1. **自动负载均衡**：通过逻辑资源池，在创建方案时系统自动选择组内当前方案数最少的物理流水线。
+2. **免除人工选择负担**：研发与运维人员只需关注业务流水线组（如 MR 门禁组、每日构建组），无需人工猜测和分流。
+3. **输入严格约束**：创建方案时，必须明确指定 `group_id`（由组自动调度均衡）或 `pipeline_id`（直接指定特定节点），**不做任何隐式兜底**。
 
 ---
 
@@ -67,21 +55,21 @@ erDiagram
 ```
                           ┌──────────────────────────────────────────────┐
                           │          流水线组 (Pipeline Group)            │
-                          │  - 容量: 3 条物理流水线 (总容量 600, 已用 245) │
-                          │  - 调度: 自动选方案数最少的节点                │
+                          │  - 物理节点: 3 条物理流水线                    │
+                          │  - 负载调度: 自动选方案数最少的节点 (平摊方案)  │
                           └──────────────────────┬───────────────────────┘
-                                                 │ 自动路由
+                                                 │ 自动负载均衡
                ┌─────────────────────────────────┼─────────────────────────────────┐
                ▼                                 ▼                                 ▼
 ┌──────────────────────────────┐  ┌──────────────────────────────┐  ┌──────────────────────────────┐
 │  物理流水线 A (active)       │  │  物理流水线 B (active)       │  │  物理流水线 C (active)       │
-│  方案数: 100/200 (50%)       │  │  方案数: 140/200 (70%)       │  │  方案数: 5/200 (2.5%)        │
+│  当前方案数: 100 个          │  │  当前方案数: 140 个          │  │  当前方案数: 5 个            │
 └──────────────────────────────┘  └──────────────────────────────┘  └──────────────────────────────┘
                                                                            ▲
                                                                     [新方案自动分配至此]
 ```
 
-**同质性要求**：组内流水线必须具备相同的触发类型、阶段步骤和参数兼容性——对执行方案而言，分配到组内的哪条流水线，执行效果完全等价且透明。
+**同质性要求**：组内流水线必须具备相同的触发类型（如均为 MR 门禁或均为每日构建），在将流水线加入组时做类型一致性约束。
 
 ---
 
@@ -91,8 +79,8 @@ erDiagram
 
 1. **不在 `ExecutionScheme` 上冗余 `group_id`**——方案的组归属可通过 `pipeline_id → Pipeline → group_id` 推导，避免数据不一致。
 2. **不使用冗余计数器**——用实时 `COUNT(*)` 查询真实方案数，避免并发场景下计数器漂移。
-3. **只有两个节点状态** (`active` / `full`)——取消 readonly/draining/offline，减少运维复杂度。
-4. **路由策略只有一种**——最小方案数优先（硬编码），不做策略模式抽象。
+3. **纯粹负载均衡**——不引入复杂的满载/自愈状态机，调度算法专注选择当前方案数最少者。
+4. **确定性输入**——`group_id` 与 `pipeline_id` 至少需指定其一，拒绝无参盲目兜底。
 
 ### 3.2 实体关系图
 
@@ -107,18 +95,18 @@ erDiagram
         string group_key UK "组唯一标识 (如 mr-gate-default)"
         string name "组展示名称"
         string type "类型 (MR / 每日构建)"
-        int max_schemes_per_pipeline "单节点容量上限 (默认 200)"
+        int max_schemes_per_pipeline "软参考容量 (默认 200, 仅供前端水位展示)"
         bool is_active "是否启用"
         string description "描述"
     }
 
     Pipeline {
         uint id PK "物理流水线 ID"
-        uint group_id FK "关联流水线组 (可为空)"
+        uint group_id FK "关联流水线组 (可为空, 空代表独立流水线)"
         string pipeline_id UK "三方流水线 ID"
         string name "名称"
         string type "类型"
-        string status "节点状态 (active / full)"
+        string status "节点状态 (active)"
     }
 
     ExecutionScheme {
@@ -129,46 +117,6 @@ erDiagram
     }
 ```
 
-### 3.3 Go Struct 定义
-
-#### (1) 新增 `PipelineGroup`
-
-```go
-// PipelineGroup 流水线组
-type PipelineGroup struct {
-    ID                    uint      `gorm:"primaryKey" json:"id"`
-    GroupKey              string    `gorm:"size:100;uniqueIndex;not null;default:''" json:"group_key"` // 组唯一标识，如 "mr-gate-default"
-    Name                  string    `gorm:"size:150;not null;default:''" json:"name"`                  // 组展示名称
-    Type                  string    `gorm:"size:50;index;not null;default:'MR'" json:"type"`           // 类型: "MR" | "每日构建"
-    MaxSchemesPerPipeline int       `gorm:"default:200" json:"max_schemes_per_pipeline"`              // 单节点容量上限
-    IsActive              bool      `gorm:"default:true" json:"is_active"`                             // 是否启用
-    Description           string    `gorm:"type:text" json:"description"`
-    CreatedAt             time.Time `json:"created_at"`
-    UpdatedAt             time.Time `json:"updated_at"`
-}
-```
-
-#### (2) 改造 `Pipeline`（仅新增 2 个字段）
-
-```diff
- type Pipeline struct {
-     ID          uint      `gorm:"primaryKey" json:"id"`
-+    GroupID     *uint     `gorm:"index" json:"group_id"`                             // 关联的流水线组 ID (空代表独立流水线)
-+    Group       *PipelineGroup `gorm:"foreignKey:GroupID" json:"group,omitempty"`
-     PipelineID  string    `gorm:"uniqueIndex;not null;default:''" json:"pipeline_id"`
-     Name        string    `gorm:"not null;default:''" json:"name"`
-     Type        string    `gorm:"not null;default:''" json:"type"`
-+    Status      string    `gorm:"size:20;default:'active'" json:"status"`            // "active" | "full"
-     GroupName   string    `json:"group_name"`     // 保留兼容旧字段
-     Description string    `json:"description"`
-     // ... 其余字段完全不变 ...
- }
-```
-
-#### (3) `ExecutionScheme` —— 零改动
-
-现有结构完全保持不变。方案的组归属通过已有的 `pipeline_id → Pipeline.group_id` 关联链获取。
-
 ---
 
 ## 4. 核心调度算法
@@ -177,21 +125,17 @@ type PipelineGroup struct {
 
 ```mermaid
 flowchart TD
-    Start([创建执行方案请求]) --> CheckInput{入参指定了 group_id?}
+    Start([创建执行方案请求]) --> CheckInput{入参检查}
 
-    CheckInput -- 否, 指定了 pipeline_id --> DirectCheck[兼容模式: 校验该流水线容量]
-    DirectCheck --> CapOK{方案数 < 上限?}
-    CapOK -- 否 --> ErrFull[返回错误: 该流水线已满载]
-    CapOK -- 是 --> UseDirect[使用该流水线]
+    CheckInput -- 指定了 pipeline_id > 0 --> UseDirect[优先级1: 直接绑定该物理流水线]
+    CheckInput -- 指定了 group_id > 0 且无 pipeline_id --> QueryGroup[优先级2: 组内最小负载调度]
+    CheckInput -- 两者均未指定/为0 --> ErrNoTarget[参数错误: 请指定 group_id 或 pipeline_id]
 
-    CheckInput -- 是 --> QueryGroup[查询组内 status='active' 的流水线]
-    QueryGroup --> HasNodes{有可用节点?}
+    QueryGroup --> HasNodes{组内有可用节点?}
     HasNodes -- 否 --> ErrNoNode[返回错误: 流水线组无可用节点]
     HasNodes -- 是 --> CountSchemes[实时 COUNT 各节点方案数]
-    CountSchemes --> FindMin[选方案数最少且未超上限的节点]
-    FindMin --> Found{找到?}
-    Found -- 否 --> ErrGroupFull[返回错误: 组内所有节点已满载, 请扩容]
-    Found -- 是 --> UseMin[使用该流水线]
+    CountSchemes --> FindMin[选方案数最少节点: ORDER BY cnt ASC, id ASC]
+    FindMin --> UseMin[使用该物理流水线]
 
     UseDirect --> CreateRemote[调用三方创建 Scheme/MR/CheckerTask]
     UseMin --> CreateRemote

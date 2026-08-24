@@ -91,7 +91,7 @@ func InitDB() {
 	}
 }
 
-// migratePipelineGroups 自动初始化默认流水线组并将孤立流水线归组
+// migratePipelineGroups 自动初始化默认流水线组并在初次建组时将历史孤立流水线归组
 func migratePipelineGroups(db *gorm.DB) {
 	defaults := []models.PipelineGroup{
 		{
@@ -116,21 +116,15 @@ func migratePipelineGroups(db *gorm.DB) {
 		var existing models.PipelineGroup
 		if err := db.Where("group_key = ?", g.GroupKey).First(&existing).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
+				// 初次建组：创建默认组并一次性对历史流水线按精确 Type 进行归集
 				if createErr := db.Create(&g).Error; createErr == nil {
 					log.Printf("[Database] Seeded default pipeline group: %s (%s)\n", g.Name, g.GroupKey)
+					// 仅在首次创建默认组时执行历史数据一次性归组，保证后续管理员手动移出组的操作持久化
+					db.Model(&models.Pipeline{}).
+						Where("type = ? AND (group_id IS NULL OR group_id = 0)", g.Type).
+						Update("group_id", g.ID)
 				}
 			}
-		}
-	}
-
-	// 将现有没有归属组的流水线，按照其 Type 自动归入对应默认组
-	for _, g := range defaults {
-		var savedGroup models.PipelineGroup
-		if err := db.Where("group_key = ?", g.GroupKey).First(&savedGroup).Error; err == nil {
-			// 匹配对应类型的未归组流水线
-			db.Model(&models.Pipeline{}).
-				Where("type LIKE ? AND (group_id IS NULL OR group_id = 0)", "%"+savedGroup.Type+"%").
-				Update("group_id", savedGroup.ID)
 		}
 	}
 

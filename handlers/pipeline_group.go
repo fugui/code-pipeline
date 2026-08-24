@@ -272,6 +272,16 @@ func AttachDetachPipelinesToGroup(c *gin.Context) {
 	}
 
 	if req.Action == "attach" {
+		// 校验流水线类型是否与流水线组类型一致 (保证组内同质性)
+		var mismatched []models.Pipeline
+		if err := database.DB.Where("id IN ? AND type != ?", req.PipelineIDs, group.Type).Find(&mismatched).Error; err == nil && len(mismatched) > 0 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("流水线类型不匹配: 流水线组类型为 [%s]，但物理流水线 [%s] 的类型为 [%s]，无法加入该组",
+					group.Type, mismatched[0].Name, mismatched[0].Type),
+			})
+			return
+		}
+
 		if err := database.DB.Model(&models.Pipeline{}).
 			Where("id IN ?", req.PipelineIDs).
 			Updates(map[string]interface{}{
