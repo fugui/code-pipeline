@@ -30,6 +30,7 @@ func InitDB() {
 		&models.User{},
 		&models.Department{},
 		&models.Repository{},
+		&models.PipelineGroup{},
 		&models.Pipeline{},
 		&models.ExecutionScheme{},
 		&models.MrEvent{},
@@ -48,6 +49,9 @@ func InitDB() {
 	if err != nil {
 		log.Fatalf("[Database] Migration failed: %v", err)
 	}
+
+	// 自动迁移并初始化默认流水线组
+	migratePipelineGroups(DB)
 
 	// Seed admin user
 	var count int64
@@ -85,4 +89,53 @@ func InitDB() {
 		}
 		log.Println("[Database] Seeded default system departments successfully")
 	}
+}
+
+// migratePipelineGroups 自动初始化默认流水线组并将孤立流水线归组
+func migratePipelineGroups(db *gorm.DB) {
+	defaults := []models.PipelineGroup{
+		{
+			GroupKey:              "mr-gate-default",
+			Name:                  "默认 MR 门禁流水线组",
+			Type:                  "MR",
+			MaxSchemesPerPipeline: 200,
+			IsActive:              true,
+			Description:           "承载组织内所有代码合并请求 (MR) 自动化检查流水线资源池",
+		},
+		{
+			GroupKey:              "daily-build-default",
+			Name:                  "默认每日构建流水线组",
+			Type:                  "每日构建",
+			MaxSchemesPerPipeline: 200,
+			IsActive:              true,
+			Description:           "承载组织内所有夜间与定时每日构建流水线资源池",
+		},
+	}
+
+	for _, g := range defaults {
+		var existing models.PipelineGroup
+		if err := db.Where("group_key = ?", g.GroupKey).First(&existing).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				if createErr := db.Create(&g).Error; createErr == nil {
+					log.Printf("[Database] Seeded default pipeline group: %s (%s)\n", g.Name, g.GroupKey)
+				}
+			}
+		}
+	}
+
+	// 将现有没有归属组的流水线，按照其 Type 自动归入对应默认组
+	for _, g := range defaults {
+		var savedGroup models.PipelineGroup
+		if err := db.Where("group_key = ?", g.GroupKey).First(&savedGroup).Error; err == nil {
+			// 匹配对应类型的未归组流水线
+			db.Model(&models.Pipeline{}).
+				Where("type LIKE ? AND (group_id IS NULL OR group_id = 0)", "%"+savedGroup.Type+"%").
+				Update("group_id", savedGroup.ID)
+		}
+	}
+
+	// 统一初始化所有 status 为空或为未设置状态的流水线为 active
+	db.Model(&models.Pipeline{}).
+		Where("status = '' OR status IS NULL").
+		Update("status", "active")
 }

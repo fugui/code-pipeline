@@ -80,11 +80,31 @@ export interface DashboardStats {
   recent_runs: ExecutionLog[]
 }
 
+export interface PipelineGroup {
+  id: number
+  group_key: string
+  name: string
+  type: string
+  max_schemes_per_pipeline: number
+  is_active: boolean
+  description?: string
+  pipeline_count?: number
+  total_capacity?: number
+  used_schemes?: number
+  usage_rate?: number
+  pipelines?: Pipeline[]
+  created_at?: string
+  updated_at?: string
+}
+
 export interface Pipeline {
   id?: number
+  group_id?: number
+  group?: PipelineGroup
   pipeline_id: string
   name: string
   type: string
+  status?: string // 'active' | 'full'
   group_name?: string
   description?: string
   service_id?: string

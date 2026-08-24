@@ -1,12 +1,13 @@
 import React from 'react'
 import { Loader2, HelpCircle, RefreshCw, Cloud, Info } from 'lucide-react'
 import { Modal } from '@code/common'
-import { Pipeline } from '../types'
+import { Pipeline, PipelineGroup } from '../types'
 
 interface PipelineModalProps {
   isAdmin?: boolean
   visible: boolean
   activePipeline: Pipeline | null
+  pipelineGroups?: PipelineGroup[]
   onChange: (pipeline: Pipeline) => void
   onSave: (e: React.FormEvent) => void
   onClose: () => void
@@ -19,6 +20,7 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
   isAdmin = true,
   visible,
   activePipeline,
+  pipelineGroups = [],
   onChange,
   onSave,
   onClose,
@@ -179,15 +181,23 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 8 }}>
-              所属分组
+              所属流水线组 (资源池)
             </label>
-            <input 
-              type="text" 
-              placeholder="例如: 基础架构组"
-              value={activePipeline.group_name || ''} 
-              onChange={(e) => onChange({ ...activePipeline, group_name: e.target.value })}
+            <select
+              value={activePipeline.group_id || ''}
+              onChange={(e) => {
+                const val = e.target.value ? Number(e.target.value) : undefined
+                onChange({ ...activePipeline, group_id: val })
+              }}
               disabled={!isAdmin}
-            />
+            >
+              <option value="">-- 未加入流水线组 (独立流水线) --</option>
+              {pipelineGroups.map(g => (
+                <option key={g.id} value={g.id}>
+                  {g.name} ({g.group_key}) - [{g.type}]
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
