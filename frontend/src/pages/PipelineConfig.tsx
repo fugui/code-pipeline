@@ -51,7 +51,6 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
   onDeletePipeline
 }) => {
   const [selectedType, setSelectedType] = useState<string>('ALL')
-  const [selectedGroup, setSelectedGroup] = useState<string>('ALL')
   const [selectedPipelineGroup, setSelectedPipelineGroup] = useState<string>('ALL')
   const { page: currentPage, pageSize, setPage: setCurrentPage } = usePagination({ defaultPageSize: 15 })
   const [allSchemes, setAllSchemes] = useState<ExecutionScheme[]>([])
@@ -224,12 +223,6 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
     return Array.from(types)
   }, [pipelines])
 
-  const availableGroups = useMemo(() => {
-    const groups = new Set<string>()
-    pipelines.forEach(p => { if (p.group_name) groups.add(p.group_name) })
-    return Array.from(groups)
-  }, [pipelines])
-
   // Overview Statistics
   const stats = useMemo(() => {
     const total = pipelines.length
@@ -243,10 +236,9 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
       dailyCount,
       mrCount,
       manualCount,
-      totalSchemesBound,
-      groupCount: availableGroups.length
+      totalSchemesBound
     }
-  }, [pipelines, availableGroups, allSchemes])
+  }, [pipelines, allSchemes])
 
   // Filtered Pipelines
   const filteredPipelines = useMemo(() => {
@@ -287,19 +279,14 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
         }
       }
 
-      // Group Name filter
-      if (selectedGroup !== 'ALL' && (p.group_name || '默认组') !== selectedGroup) {
-        return false
-      }
-
       return true
     })
-  }, [pipelines, searchQuery, selectedType, selectedPipelineGroup, selectedGroup, schemesByPipelineId])
+  }, [pipelines, searchQuery, selectedType, selectedPipelineGroup, schemesByPipelineId])
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, selectedType, selectedPipelineGroup, selectedGroup, pageSize])
+  }, [searchQuery, selectedType, selectedPipelineGroup, pageSize])
 
   // Pagination calculation
   const paginatedPipelines = useMemo(() => {
@@ -368,13 +355,6 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
             {pipelineGroups.map(g => {
-              const usageRate = g.usage_rate || 0
-              let progressColor = '#10b981' // 绿色健康
-              if (usageRate >= 90) {
-                progressColor = '#ef4444' // 红色警告
-              } else if (usageRate >= 70) {
-                progressColor = '#f59e0b' // 橙色关注
-              }
 
               return (
                 <div 
@@ -425,21 +405,15 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                     )}
                   </div>
 
-                  {/* 容量水位条 */}
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
-                      <span>已用方案: <strong>{g.used_schemes || 0}</strong> / 总容量: {g.total_capacity || 0}</span>
-                      <span style={{ fontWeight: 600, color: progressColor }}>{usageRate.toFixed(1)}%</span>
-                    </div>
-                    <div style={{ width: '100%', height: 6, background: 'rgba(255, 255, 255, 0.08)', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ width: `${Math.min(usageRate, 100)}%`, height: '100%', background: progressColor, borderRadius: 3, transition: 'width 0.3s' }} />
-                    </div>
+                  {/* 方案占用概览 */}
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                    已挂载方案: <strong style={{ color: 'var(--text-main)', fontSize: 15 }}>{g.used_schemes || 0}</strong> 个
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
-                    <span>组内流水线: <strong>{g.pipeline_count || 0}</strong> 条 (单节点上限 {g.max_schemes_per_pipeline})</span>
+                    <span>组内物理节点: <strong>{g.pipeline_count || 0}</strong> 条</span>
                     {selectedPipelineGroup === String(g.id) && (
-                      <span style={{ color: 'var(--accent-primary, #6366f1)', fontWeight: 600 }}>已过滤</span>
+                      <span style={{ color: 'var(--accent-primary, #6366f1)', fontWeight: 600 }}>已筛选</span>
                     )}
                   </div>
                 </div>
@@ -561,12 +535,11 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
         </div>
 
         {/* Reset filter button */}
-        {(selectedType !== 'ALL' || selectedGroup !== 'ALL' || selectedPipelineGroup !== 'ALL' || searchQuery.trim()) && (
+        {(selectedType !== 'ALL' || selectedPipelineGroup !== 'ALL' || searchQuery.trim()) && (
           <button 
             className="btn btn-secondary btn-small"
             onClick={() => {
               setSelectedType('ALL')
-              setSelectedGroup('ALL')
               setSelectedPipelineGroup('ALL')
               setSearchQuery('')
             }}
@@ -680,15 +653,9 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
 
                       {/* Status */}
                       <td style={{ padding: '14px 16px' }}>
-                        {p.status === 'full' ? (
-                          <span style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', fontSize: 11, padding: '2px 8px', borderRadius: 12, fontWeight: 500 }}>
-                            已满载
-                          </span>
-                        ) : (
-                          <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', fontSize: 11, padding: '2px 8px', borderRadius: 12, fontWeight: 500 }}>
-                            活跃中
-                          </span>
-                        )}
+                        <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', fontSize: 11, padding: '2px 8px', borderRadius: 12, fontWeight: 500 }}>
+                          活跃中
+                        </span>
                       </td>
 
                       {/* Execution Schemes Column */}

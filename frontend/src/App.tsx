@@ -142,15 +142,19 @@ const PipelineAppContent: React.FC<AppProps> = ({ isEmbedded = false }) => {
     if (currentView === 'dashboard') {
       fetchStats()
     } else if (currentView === 'repos') {
-      // 预加载流水线列表，以便"新增方案"时能取到默认 pipeline_id
       if (pipelines.length === 0) fetchPipelines()
       fetchPipelineGroups()
       fetchRepos("")
     } else if (currentView === 'pipeline-config') {
-      fetchPipelines()
       fetchPipelineGroups()
       fetchRepos("")
     }
+  }, [token, user, currentView])
+
+  // Refresh pipelines on pipeline-config view when search query changes
+  useEffect(() => {
+    if (!token || !user || currentView !== 'pipeline-config') return
+    fetchPipelines()
   }, [token, user, currentView, searchQuery])
 
   // Auto-refresh Dashboard Stats

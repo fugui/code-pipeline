@@ -530,6 +530,12 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       return;
     }
 
+    // 0.4 校验新建时流水线组与物理流水线必选其一
+    if (!activeScheme.id && !activeScheme.group_id && !activeScheme.pipeline_id) {
+      setLocalError('保存失败：请选择关联的流水线组 (推荐) 或指定物理流水线');
+      return;
+    }
+
     // 0.5 校验 MR 触发分支：仅当开启 MR 触发时要求分支必填
     if (mrTrigger && (!activeScheme.branchs || !activeScheme.branchs.trim())) {
       setLocalError('保存失败：已开启“MR触发”，请至少选择或手动录入一个生效触发分支 (branchs)');
@@ -800,21 +806,20 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                           onChange({
                             ...activeScheme,
                             group_id: val,
-                            // 当选择了流水线组时，如果之前未在高级模式明确锁定流水线，清空 pipeline_id 让后端自动调度
-                            pipeline_id: showAdvancedPipelineSelect ? activeScheme.pipeline_id : undefined
+                            pipeline_id: undefined // 选组时清空直接指定的流水线
                           });
                         }}
                       >
                         <option value="">-- 请选择流水线组 (推荐自动负载均衡) --</option>
                         {pipelineGroups.map(g => (
                           <option key={g.id} value={g.id}>
-                            {g.name} [{g.type}] (已用: {g.used_schemes || 0}/{g.total_capacity || 0}, 负载: {(g.usage_rate || 0).toFixed(1)}%)
+                            {g.name} [{g.type}] (已用方案: {g.used_schemes || 0})
                           </option>
                         ))}
                       </select>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 12, color: 'var(--color-primary, #3b82f6)' }}>
                         <Sparkles size={13} />
-                        <span>智能调度：系统将在创建时自动为您选择该组中方案数最少且未满载的物理流水线</span>
+                        <span>智能调度：系统将在创建时自动为您选择该组中方案数最少 (最空闲) 的物理流水线</span>
                       </div>
                     </div>
                   ) : null}
@@ -837,13 +842,13 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                       }}
                     >
                       {showAdvancedPipelineSelect ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                      <span>高级选项：手动指定物理流水线</span>
+                      <span>高级选项：手动指定具体物理流水线节点</span>
                     </button>
 
                     {(showAdvancedPipelineSelect || pipelineGroups.length === 0) && (
                       <div style={{ marginTop: 8, padding: 12, background: 'var(--color-bg-muted, rgba(255,255,255,0.02))', borderRadius: 8, border: '1px dashed var(--border-color)' }}>
                         <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
-                          指定物理流水线节点 {pipelineGroups.length > 0 && <span style={{ color: 'var(--text-muted)' }}>(指定后将覆盖组调度)</span>}
+                          指定物理流水线节点 {pipelineGroups.length > 0 && <span style={{ color: '#f59e0b' }}>(指定后将精确绑定该物理节点，覆盖组自动调度)</span>}
                         </label>
                         <select
                           value={activeScheme.pipeline_id || ''}
@@ -851,14 +856,15 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                             const val = e.target.value ? Number(e.target.value) : undefined;
                             onChange({
                               ...activeScheme,
-                              pipeline_id: val
+                              pipeline_id: val,
+                              group_id: val ? undefined : activeScheme.group_id // 指定具体流水线时清空 group_id
                             });
                           }}
                         >
                           <option value="">-- 由流水线组自动调度分配 --</option>
                           {pipelines.map(p => (
                             <option key={p.id} value={p.id}>
-                              {p.name} (ID: {p.pipeline_id}) {p.status === 'full' ? '[已满载]' : ''} - 负责人: {p.owner || '未分配'}
+                              {p.name} (ID: {p.pipeline_id}) - 类型: {p.type} - 负责人: {p.owner || '未分配'}
                             </option>
                           ))}
                         </select>
