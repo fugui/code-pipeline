@@ -231,13 +231,15 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
   // 当搜索框输入时，自动展开有匹配子项的组
   useEffect(() => {
     if (searchQuery.trim()) {
-      const newExpanded = new Set(expandedGroupIds)
-      groupedData.forEach(item => {
-        if (item.hasChildMatch) {
-          newExpanded.add(item.group.id)
-        }
+      setExpandedGroupIds(prev => {
+        const newExpanded = new Set(prev)
+        groupedData.forEach(item => {
+          if (item.hasChildMatch) {
+            newExpanded.add(item.group.id)
+          }
+        })
+        return newExpanded
       })
-      setExpandedGroupIds(newExpanded)
     }
   }, [searchQuery, groupedData])
 
