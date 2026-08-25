@@ -194,7 +194,7 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
               <option value="">-- 未加入流水线组 (独立流水线) --</option>
               {pipelineGroups.map(g => (
                 <option key={g.id} value={g.id}>
-                  {g.name} ({g.group_key}) - [{g.type}]
+                  {g.name} ({g.group_key})
                 </option>
               ))}
             </select>
