@@ -98,6 +98,31 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
       return pipelines.some(p => p.group_id === g.id);
     });
   }, [pipelineGroups, pipelines]);
+
+  // 按照所属流水线组进行聚类排序，并在名称后标注所属组名或(独立流水线)
+  const sortedPipelinesWithGroupInfo = React.useMemo(() => {
+    const groupMap = new Map<number, PipelineGroup>();
+    pipelineGroups.forEach(g => {
+      if (g.id) groupMap.set(g.id, g);
+    });
+
+    return [...pipelines].map(p => {
+      const group = p.group_id ? groupMap.get(p.group_id) : undefined;
+      const displayLabel = group 
+        ? `${p.name} [${group.name}]`
+        : `${p.name} (独立流水线)`;
+      return {
+        ...p,
+        groupOrder: group ? group.id : 999999, // 有组的排在前面，独立流水线归纳在最后
+        displayLabel
+      };
+    }).sort((a, b) => {
+      if (a.groupOrder !== b.groupOrder) {
+        return a.groupOrder - b.groupOrder;
+      }
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  }, [pipelines, pipelineGroups]);
   const [dailyBuild, setDailyBuild] = React.useState(true);
   const [dailyBuildTime, setDailyBuildTime] = React.useState(getRandomDailyBuildTime);
   const [buildTypes, setBuildTypes] = React.useState<string[]>(['SCH']);
@@ -797,9 +822,9 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                 <input 
                   type="text" 
                   value={(() => {
-                    const matched = pipelines.find(p => p.id === activeScheme.pipeline_id);
+                    const matched = sortedPipelinesWithGroupInfo.find(p => p.id === activeScheme.pipeline_id);
                     if (matched) {
-                      return matched.name;
+                      return matched.displayLabel;
                     }
                     return `流水线 ID: ${activeScheme.pipeline_id}`;
                   })()}
@@ -876,9 +901,9 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                             }}
                           >
                             <option value="">-- 由流水线组自动调度分配 --</option>
-                            {pipelines.map(p => (
+                            {sortedPipelinesWithGroupInfo.map(p => (
                               <option key={p.id} value={p.id}>
-                                {p.name}
+                                {p.displayLabel}
                               </option>
                             ))}
                           </select>
@@ -899,9 +924,9 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                         }}
                       >
                         <option value="">-- 请选择要关联的物理流水线 --</option>
-                        {pipelines.map(p => (
+                        {sortedPipelinesWithGroupInfo.map(p => (
                           <option key={p.id} value={p.id}>
-                            {p.name}
+                            {p.displayLabel}
                           </option>
                         ))}
                       </select>
