@@ -801,6 +801,7 @@ const PipelineAppContent: React.FC<AppProps> = ({ isEmbedded = false }) => {
             pipelines={pipelines}
             pipelineGroups={pipelineGroups}
             onRefreshGroups={fetchPipelineGroups}
+            onRefreshPipelines={fetchPipelines}
             selectedPipeline={selectedPipeline}
             schemes={schemes}
             loading={loading}
