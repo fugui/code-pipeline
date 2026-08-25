@@ -702,7 +702,6 @@ const PipelineAppContent: React.FC<AppProps> = ({ isEmbedded = false }) => {
           <Repos
             isAdmin={isAdmin}
             onAddScheme={(repo) => {
-              const firstPipeline = pipelines[0]
               const lastPart = (repo.name || 'scheme').split('/').pop() || repo.name || 'scheme';
               const cleanRepo = lastPart
                 .toLowerCase()
@@ -720,7 +719,8 @@ const PipelineAppContent: React.FC<AppProps> = ({ isEmbedded = false }) => {
               const inheritLangs = existingWithLangs?.languages || knownSchemes[0]?.languages || ''
 
               setActiveScheme({
-                pipeline_id: firstPipeline?.id || 0,
+                pipeline_id: undefined,
+                group_id: undefined,
                 repository_id: repo.id,
                 name: defaultName,
                 repository: {

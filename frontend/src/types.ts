@@ -118,7 +118,8 @@ export interface Pipeline {
 export interface ExecutionScheme {
   id?: number
   name?: string
-  pipeline_id: number
+  group_id?: number
+  pipeline_id?: number
   pipeline_name?: string
   pipeline?: Pipeline
   repository_id: number
