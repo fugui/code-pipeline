@@ -84,9 +84,9 @@ export interface PipelineGroup {
   id: number
   group_key: string
   name: string
-  type: string
-  max_schemes_per_pipeline: number
-  is_active: boolean
+  type?: string
+  max_schemes_per_pipeline?: number
+  is_active?: boolean
   description?: string
   pipeline_count?: number
   total_capacity?: number
