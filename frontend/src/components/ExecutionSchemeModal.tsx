@@ -799,7 +799,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                   value={(() => {
                     const matched = pipelines.find(p => p.id === activeScheme.pipeline_id);
                     if (matched) {
-                      return `${matched.name} (ID: ${matched.pipeline_id}) - 负责人: ${matched.owner_name || '未分配'}`;
+                      return matched.name;
                     }
                     return `流水线 ID: ${activeScheme.pipeline_id}`;
                   })()}
@@ -878,7 +878,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                             <option value="">-- 由流水线组自动调度分配 --</option>
                             {pipelines.map(p => (
                               <option key={p.id} value={p.id}>
-                                {p.name} (ID: {p.pipeline_id}) - 类型: {p.type} - 负责人: {p.owner_name || '未分配'}
+                                {p.name}
                               </option>
                             ))}
                           </select>
@@ -901,7 +901,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                         <option value="">-- 请选择要关联的物理流水线 --</option>
                         {pipelines.map(p => (
                           <option key={p.id} value={p.id}>
-                            {p.name} (ID: {p.pipeline_id}) - 类型: {p.type} - 负责人: {p.owner_name || '未分配'}
+                            {p.name}
                           </option>
                         ))}
                       </select>
