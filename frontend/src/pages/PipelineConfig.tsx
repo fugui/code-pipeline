@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import { Pagination, usePagination } from '@code/common'
 import { 
   Plus, 
   Search, 
@@ -10,7 +9,15 @@ import {
   Layers,
   Box,
   GitBranch,
-  Filter
+  Filter,
+  ChevronRight,
+  ChevronDown,
+  FolderPlus,
+  LogOut,
+  AlertCircle,
+  CheckCircle2,
+  FolderTree,
+  Unlink
 } from 'lucide-react'
 import { Pipeline, ExecutionScheme, PipelineGroup } from '../types'
 import { SyncDiffModal, CalculateDiffResponse } from '../components/SyncDiffModal'
@@ -51,14 +58,26 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
   onDeletePipeline
 }) => {
   const [selectedType, setSelectedType] = useState<string>('ALL')
-  const [selectedPipelineGroup, setSelectedPipelineGroup] = useState<string>('ALL')
-  const { page: currentPage, pageSize, setPage: setCurrentPage } = usePagination({ defaultPageSize: 15 })
   const [allSchemes, setAllSchemes] = useState<ExecutionScheme[]>([])
 
-  // Pipeline Group Modal State
+  // 展开折叠状态管理
+  const [expandedGroupIds, setExpandedGroupIds] = useState<Set<number>>(new Set())
+  const [unassignedExpanded, setUnassignedExpanded] = useState<boolean>(true)
+
+  // 流水线组新建 / 编辑弹窗
   const [showGroupModal, setShowGroupModal] = useState<boolean>(false)
   const [activeGroup, setActiveGroup] = useState<Partial<PipelineGroup> | null>(null)
   const [savingGroup, setSavingGroup] = useState<boolean>(false)
+
+  // 批量关联流水线到组弹窗 (从组发起)
+  const [attachModalGroup, setAttachModalGroup] = useState<PipelineGroup | null>(null)
+  const [selectedPipelineIdsToAttach, setSelectedPipelineIdsToAttach] = useState<number[]>([])
+  const [attaching, setAttaching] = useState<boolean>(false)
+
+  // 单条流水线加入组弹窗 (从未纳入分组发起)
+  const [joinModalPipeline, setJoinModalPipeline] = useState<Pipeline | null>(null)
+  const [targetGroupIdToJoin, setTargetGroupIdToJoin] = useState<number | ''>('')
+  const [joining, setJoining] = useState<boolean>(false)
 
   // Diff Modal States
   const [diffModalVisible, setDiffModalVisible] = useState<boolean>(false)
@@ -66,7 +85,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
   const [diffResult, setDiffResult] = useState<CalculateDiffResponse | null>(null)
   const [syncTargetPipeline, setSyncTargetPipeline] = useState<Pipeline | null>(null)
 
-  // Fetch all execution schemes
+  // 获取所有执行方案
   const fetchAllSchemes = async () => {
     try {
       const res = await fetch(`${apiBase}/execution-schemes`, {
@@ -85,7 +104,167 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
     fetchAllSchemes()
   }, [apiBase, token])
 
-  // Save Pipeline Group
+  // 初始化展开所有有数据的流水线组
+  useEffect(() => {
+    if (pipelineGroups.length > 0) {
+      setExpandedGroupIds(new Set(pipelineGroups.map(g => g.id)))
+    }
+  }, [pipelineGroups.length])
+
+  // 方案映射
+  const schemesByPipelineId = useMemo(() => {
+    const map = new Map<number, ExecutionScheme[]>()
+    const strMap = new Map<string, ExecutionScheme[]>()
+
+    allSchemes.forEach(s => {
+      if (s.pipeline_id) {
+        const existing = map.get(s.pipeline_id) || []
+        existing.push(s)
+        map.set(s.pipeline_id, existing)
+      }
+      if (s.pipeline?.pipeline_id) {
+        const existing = strMap.get(s.pipeline.pipeline_id) || []
+        existing.push(s)
+        strMap.set(s.pipeline.pipeline_id, existing)
+      }
+    })
+
+    return { map, strMap }
+  }, [allSchemes])
+
+  const getSchemesForPipeline = (p: Pipeline): ExecutionScheme[] => {
+    if (p.id && schemesByPipelineId.map.has(p.id)) {
+      return schemesByPipelineId.map.get(p.id) || []
+    }
+    if (p.pipeline_id && schemesByPipelineId.strMap.has(p.pipeline_id)) {
+      return schemesByPipelineId.strMap.get(p.pipeline_id) || []
+    }
+    return []
+  }
+
+  const getPipelineWebURL = (p: Pipeline): string => {
+    if (p.web_url) return p.web_url
+    const pSchemes = getSchemesForPipeline(p)
+    const schemeWithUrl = pSchemes.find(s => s.pipeline?.web_url)
+    return schemeWithUrl?.pipeline?.web_url || ''
+  }
+
+  // 触发类型选项
+  const availableTypes = useMemo(() => {
+    const types = new Set<string>()
+    pipelineGroups.forEach(g => { if (g.type) types.add(g.type) })
+    pipelines.forEach(p => { if (p.type) types.add(p.type) })
+    return Array.from(types)
+  }, [pipelineGroups, pipelines])
+
+  // 汇总统计指标
+  const stats = useMemo(() => {
+    const totalPipelines = pipelines.length
+    const totalGroups = pipelineGroups.length
+    const assignedCount = pipelines.filter(p => p.group_id && p.group_id > 0).length
+    const unassignedCount = totalPipelines - assignedCount
+    const totalSchemes = allSchemes.length
+
+    return {
+      totalPipelines,
+      totalGroups,
+      assignedCount,
+      unassignedCount,
+      totalSchemes
+    }
+  }, [pipelines, pipelineGroups, allSchemes])
+
+  // 流水线匹配过滤判断函数
+  const isPipelineMatched = (p: Pipeline, query: string, typeFilter: string) => {
+    if (typeFilter !== 'ALL' && p.type !== typeFilter) return false
+    if (!query) return true
+
+    const q = query.toLowerCase()
+    const matchId = p.pipeline_id?.toLowerCase().includes(q)
+    const matchName = p.name?.toLowerCase().includes(q)
+    const matchService = p.service_name?.toLowerCase().includes(q)
+    const matchDesc = p.description?.toLowerCase().includes(q)
+    const matchOwner = p.owner_name?.toLowerCase().includes(q)
+
+    const pSchemes = getSchemesForPipeline(p)
+    const matchScheme = pSchemes.some(s => 
+      s.repository?.name?.toLowerCase().includes(q) || 
+      s.branchs?.toLowerCase().includes(q)
+    )
+
+    return matchId || matchName || matchService || matchDesc || matchOwner || matchScheme
+  }
+
+  // 计算每个组及其过滤后的流水线
+  const groupedData = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+
+    return pipelineGroups.map(g => {
+      // 组内所有流水线
+      const groupPipelines = pipelines.filter(p => p.group_id === g.id)
+      
+      // 过滤后的流水线
+      const matchedPipelines = groupPipelines.filter(p => isPipelineMatched(p, q, selectedType))
+
+      // 组自身是否匹配搜索与类型
+      const matchType = selectedType === 'ALL' || g.type === selectedType
+      const matchGroupSelf = !q || g.name?.toLowerCase().includes(q) || g.group_key?.toLowerCase().includes(q) || g.description?.toLowerCase().includes(q)
+
+      const isGroupVisible = (matchType && matchGroupSelf) || matchedPipelines.length > 0
+
+      // 计算该组挂载的方案总数
+      const totalSchemesInGroup = groupPipelines.reduce((acc, p) => acc + getSchemesForPipeline(p).length, 0)
+
+      return {
+        group: g,
+        allPipelines: groupPipelines,
+        matchedPipelines,
+        totalSchemesInGroup,
+        isVisible: isGroupVisible,
+        hasChildMatch: matchedPipelines.length > 0
+      }
+    })
+  }, [pipelineGroups, pipelines, searchQuery, selectedType, schemesByPipelineId])
+
+  // 当搜索框输入时，自动展开有匹配子项的组
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      const newExpanded = new Set(expandedGroupIds)
+      groupedData.forEach(item => {
+        if (item.hasChildMatch) {
+          newExpanded.add(item.group.id)
+        }
+      })
+      setExpandedGroupIds(newExpanded)
+    }
+  }, [searchQuery, groupedData])
+
+  // 未纳入分组的流水线列表
+  const unassignedPipelinesData = useMemo(() => {
+    const unassigned = pipelines.filter(p => !p.group_id || p.group_id === 0)
+    const q = searchQuery.trim().toLowerCase()
+    const matched = unassigned.filter(p => isPipelineMatched(p, q, selectedType))
+    return {
+      all: unassigned,
+      matched,
+      isVisible: matched.length > 0 || (!q && selectedType === 'ALL' && unassigned.length > 0)
+    }
+  }, [pipelines, searchQuery, selectedType, schemesByPipelineId])
+
+  // 切换组展开折叠
+  const toggleGroupExpand = (groupId: number) => {
+    setExpandedGroupIds(prev => {
+      const next = new Set(prev)
+      if (next.has(groupId)) {
+        next.delete(groupId)
+      } else {
+        next.add(groupId)
+      }
+      return next
+    })
+  }
+
+  // 保存流水线组 (新建 / 编辑)
   const handleSaveGroup = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!activeGroup || !activeGroup.group_key || !activeGroup.name || !activeGroup.type) return
@@ -120,7 +299,147 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
     }
   }
 
-  // Trigger Diff calculation modal
+  // 删除流水线组
+  const handleDeleteGroup = async (group: PipelineGroup) => {
+    const pipelinesInThisGroup = pipelines.filter(p => p.group_id === group.id)
+    if (pipelinesInThisGroup.length > 0) {
+      alert(`无法删除流水线组 "${group.name}": 组内仍有 ${pipelinesInThisGroup.length} 条物理流水线，请先将流水线移出组后再删除。`)
+      return
+    }
+
+    if (!confirm(`确定要删除流水线组 "${group.name}" 吗？此操作不可撤销。`)) {
+      return
+    }
+
+    try {
+      const res = await fetch(`${apiBase}/pipeline-groups/${group.id}`, {
+        method: 'DELETE',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        onRefreshGroups && onRefreshGroups()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        alert(`删除流水线组失败: ${err.error || res.statusText}`)
+      }
+    } catch (err) {
+      console.error(err)
+      alert('删除流水线组请求异常')
+    }
+  }
+
+  // 打开从组发起的关联流水线弹窗
+  const handleOpenAttachModal = (group: PipelineGroup) => {
+    setAttachModalGroup(group)
+    setSelectedPipelineIdsToAttach([])
+  }
+
+  // 提交关联流水线入组
+  const handleConfirmAttach = async () => {
+    if (!attachModalGroup || selectedPipelineIdsToAttach.length === 0) return
+    setAttaching(true)
+    try {
+      const res = await fetch(`${apiBase}/pipeline-groups/${attachModalGroup.id}/pipelines`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          pipeline_ids: selectedPipelineIdsToAttach,
+          action: 'attach'
+        })
+      })
+
+      if (res.ok) {
+        setAttachModalGroup(null)
+        setSelectedPipelineIdsToAttach([])
+        onRefreshGroups && onRefreshGroups()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        alert(`关联流水线入组失败: ${err.error || res.statusText}`)
+      }
+    } catch (err) {
+      console.error(err)
+      alert('关联流水线请求异常')
+    } finally {
+      setAttaching(false)
+    }
+  }
+
+  // 移出流水线出组
+  const handleDetachPipeline = async (pipeline: Pipeline) => {
+    if (!pipeline.group_id) return
+    if (!confirm(`确定要将流水线 "${pipeline.name}" 移出当前流水线组吗？移出后它将变为未纳入分组状态。`)) {
+      return
+    }
+
+    try {
+      const res = await fetch(`${apiBase}/pipeline-groups/${pipeline.group_id}/pipelines`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          pipeline_ids: [pipeline.id],
+          action: 'detach'
+        })
+      })
+
+      if (res.ok) {
+        onRefreshGroups && onRefreshGroups()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        alert(`移出流水线失败: ${err.error || res.statusText}`)
+      }
+    } catch (err) {
+      console.error(err)
+      alert('移出流水线请求异常')
+    }
+  }
+
+  // 单条流水线加入组 (从未纳入分组发起)
+  const handleOpenJoinModal = (pipeline: Pipeline) => {
+    setJoinModalPipeline(pipeline)
+    // 默认选择同类型的第一个组
+    const matchedGroup = pipelineGroups.find(g => g.type === pipeline.type)
+    setTargetGroupIdToJoin(matchedGroup ? matchedGroup.id : '')
+  }
+
+  const handleConfirmJoin = async () => {
+    if (!joinModalPipeline || !targetGroupIdToJoin) return
+    setJoining(true)
+    try {
+      const res = await fetch(`${apiBase}/pipeline-groups/${targetGroupIdToJoin}/pipelines`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          pipeline_ids: [joinModalPipeline.id],
+          action: 'attach'
+        })
+      })
+
+      if (res.ok) {
+        setJoinModalPipeline(null)
+        setTargetGroupIdToJoin('')
+        onRefreshGroups && onRefreshGroups()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        alert(`加入流水线组失败: ${err.error || res.statusText}`)
+      }
+    } catch (err) {
+      console.error(err)
+      alert('加入流水线组请求异常')
+    } finally {
+      setJoining(false)
+    }
+  }
+
+  // 触发三方差异对比
   const handleTriggerSync = async (p: Pipeline) => {
     setSyncTargetPipeline(p)
     setDiffModalVisible(true)
@@ -150,7 +469,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
     }
   }
 
-  // Confirm Sync Submit
+  // 提交同步确认
   const handleConfirmSync = async (payload: {
     pipeline_id: number
     add_schemes: any[]
@@ -176,129 +495,12 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
     }
   }
 
-  // Group schemes by pipeline ID
-  const schemesByPipelineId = useMemo(() => {
-    const map = new Map<number, ExecutionScheme[]>()
-    const strMap = new Map<string, ExecutionScheme[]>()
-
-    allSchemes.forEach(s => {
-      if (s.pipeline_id) {
-        const existing = map.get(s.pipeline_id) || []
-        existing.push(s)
-        map.set(s.pipeline_id, existing)
-      }
-      if (s.pipeline?.pipeline_id) {
-        const existing = strMap.get(s.pipeline.pipeline_id) || []
-        existing.push(s)
-        strMap.set(s.pipeline.pipeline_id, existing)
-      }
-    })
-
-    return { map, strMap }
-  }, [allSchemes])
-
-  // Get schemes for a single pipeline
-  const getSchemesForPipeline = (p: Pipeline): ExecutionScheme[] => {
-    if (p.id && schemesByPipelineId.map.has(p.id)) {
-      return schemesByPipelineId.map.get(p.id) || []
-    }
-    if (p.pipeline_id && schemesByPipelineId.strMap.has(p.pipeline_id)) {
-      return schemesByPipelineId.strMap.get(p.pipeline_id) || []
-    }
-    return []
-  }
-
-  // Extract third-party URL
-  const getPipelineWebURL = (p: Pipeline): string => {
-    if (p.web_url) return p.web_url
-    const pSchemes = getSchemesForPipeline(p)
-    const schemeWithUrl = pSchemes.find(s => s.pipeline?.web_url)
-    return schemeWithUrl?.pipeline?.web_url || ''
-  }
-
-  // Distinct groups & types for filter dropdowns
-  const availableTypes = useMemo(() => {
-    const types = new Set<string>()
-    pipelines.forEach(p => { if (p.type) types.add(p.type) })
-    return Array.from(types)
-  }, [pipelines])
-
-  // Overview Statistics
-  const stats = useMemo(() => {
-    const total = pipelines.length
-    const dailyCount = pipelines.filter(p => p.type === '每日构建').length
-    const mrCount = pipelines.filter(p => p.type === 'MR触发' || p.type?.toLowerCase().includes('mr')).length
-    const manualCount = pipelines.filter(p => p.type === '手动触发').length
-    const totalSchemesBound = allSchemes.length
-
-    return {
-      total,
-      dailyCount,
-      mrCount,
-      manualCount,
-      totalSchemesBound
-    }
-  }, [pipelines, allSchemes])
-
-  // Filtered Pipelines
-  const filteredPipelines = useMemo(() => {
-    return pipelines.filter(p => {
-      // Keyword search
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim()
-        const matchId = p.pipeline_id?.toLowerCase().includes(q)
-        const matchName = p.name?.toLowerCase().includes(q)
-        const matchGroup = p.group_name?.toLowerCase().includes(q)
-        const matchGroupName = p.group?.name?.toLowerCase().includes(q)
-        const matchService = p.service_name?.toLowerCase().includes(q)
-        const matchDesc = p.description?.toLowerCase().includes(q)
-        
-        // Also match scheme repo or branch
-        const pSchemes = getSchemesForPipeline(p)
-        const matchScheme = pSchemes.some(s => 
-          s.repository?.name?.toLowerCase().includes(q) || 
-          s.branchs?.toLowerCase().includes(q)
-        )
-
-        if (!matchId && !matchName && !matchGroup && !matchGroupName && !matchService && !matchDesc && !matchScheme) {
-          return false
-        }
-      }
-
-      // Type filter
-      if (selectedType !== 'ALL' && p.type !== selectedType) {
-        return false
-      }
-
-      // Pipeline Group filter
-      if (selectedPipelineGroup !== 'ALL') {
-        if (selectedPipelineGroup === 'NONE') {
-          if (p.group_id) return false
-        } else {
-          if (String(p.group_id) !== selectedPipelineGroup) return false
-        }
-      }
-
-      return true
-    })
-  }, [pipelines, searchQuery, selectedType, selectedPipelineGroup, schemesByPipelineId])
-
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchQuery, selectedType, selectedPipelineGroup, pageSize])
-
-  // Pagination calculation
-  const paginatedPipelines = useMemo(() => {
-    const start = (currentPage - 1) * pageSize
-    return filteredPipelines.slice(start, start + pageSize)
-  }, [filteredPipelines, currentPage, pageSize])
-
-  // Type badge styling helper
+  // 类型 Badge 样式
   const getTypeBadgeStyle = (type: string) => {
     switch (type) {
       case '每日构建':
         return { background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.3)' }
+      case 'MR':
       case 'MR触发':
         return { background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)' }
       case '手动触发':
@@ -308,14 +510,16 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
     }
   }
 
+  const visibleGroups = groupedData.filter(g => g.isVisible)
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 20, height: '100%' }}>
-      {/* Top Header */}
+      {/* 顶部标题与操作栏 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>构建与流水线管理</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-            集中管理流水线组（资源池）与底层物理流水线节点，支持按容量智能调度与负载均衡。
+            按业务与触发类型自主组织流水线组，实时查看物理节点与方案负载，支持按容量智能调度。
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -346,177 +550,76 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
         </div>
       </div>
 
-      {/* 流水线组 (资源池) 总览卡片 */}
-      {pipelineGroups.length > 0 && (
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Layers size={16} style={{ color: 'var(--accent-primary, #6366f1)' }} />
-            <span>流水线组资源池容量概览 (Pipeline Groups)</span>
+      {/* 极简概览统计胶囊栏 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+        <div className="glass-card" style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ padding: 10, borderRadius: 8, background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
+            <FolderTree size={20} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
-            {pipelineGroups.map(g => {
-
-              return (
-                <div 
-                  key={g.id} 
-                  className="glass-card" 
-                  style={{ 
-                    padding: '16px 20px', 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    gap: 12,
-                    border: selectedPipelineGroup === String(g.id) ? '1px solid var(--accent-primary, #6366f1)' : '1px solid var(--border-color)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onClick={() => setSelectedPipelineGroup(selectedPipelineGroup === String(g.id) ? 'ALL' : String(g.id))}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-main)' }}>{g.name}</span>
-                        <span style={{ 
-                          fontSize: 11, 
-                          padding: '2px 6px', 
-                          borderRadius: 4, 
-                          background: g.type === 'MR' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(99, 102, 241, 0.15)',
-                          color: g.type === 'MR' ? '#34d399' : '#818cf8',
-                          fontWeight: 500
-                        }}>
-                          {g.type}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
-                        {g.group_key}
-                      </div>
-                    </div>
-                    {isAdmin && (
-                      <button
-                        className="btn btn-secondary btn-small"
-                        style={{ padding: '4px 8px', fontSize: 12 }}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setActiveGroup(g)
-                          setShowGroupModal(true)
-                        }}
-                      >
-                        <Edit size={13} />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* 方案占用概览 */}
-                  <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                    已挂载方案: <strong style={{ color: 'var(--text-main)', fontSize: 15 }}>{g.used_schemes || 0}</strong> 个
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
-                    <span>组内物理节点: <strong>{g.pipeline_count || 0}</strong> 条</span>
-                    {selectedPipelineGroup === String(g.id) && (
-                      <span style={{ color: 'var(--accent-primary, #6366f1)', fontWeight: 600 }}>已筛选</span>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+          <div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>流水线组</div>
+            <div style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>{stats.totalGroups} <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>个组</span></div>
           </div>
         </div>
-      )}
 
-      {/* Top Overview Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-        <div className="glass-card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ padding: 12, borderRadius: 10, background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
-            <Layers size={22} />
+        <div className="glass-card" style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ padding: 10, borderRadius: 8, background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
+            <Layers size={20} />
           </div>
           <div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>物理流水线总数</div>
-            <div style={{ fontSize: 24, fontWeight: 700, marginTop: 2 }}>{stats.total} <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>条配置</span></div>
+            <div style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>{stats.totalPipelines} <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>条节点</span></div>
           </div>
         </div>
 
-        <div className="glass-card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ padding: 12, borderRadius: 10, background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
-            <Box size={22} />
+        <div className="glass-card" style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ padding: 10, borderRadius: 8, background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+            <CheckCircle2 size={20} />
           </div>
           <div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>构建类型分布</div>
-            <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-              <span style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', fontSize: 11, padding: '2px 6px', borderRadius: 4 }}>
-                每日 {stats.dailyCount}
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>分组归属分布</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginTop: 4, display: 'flex', gap: 8 }}>
+              <span style={{ color: '#34d399' }}>已纳入 {stats.assignedCount}</span>
+              <span style={{ color: 'var(--text-muted)' }}>/</span>
+              <span style={{ color: stats.unassignedCount > 0 ? '#f59e0b' : 'var(--text-muted)' }}>
+                未分组 {stats.unassignedCount}
               </span>
-              <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', fontSize: 11, padding: '2px 6px', borderRadius: 4 }}>
-                MR {stats.mrCount}
-              </span>
-              {stats.manualCount > 0 && (
-                <span style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', fontSize: 11, padding: '2px 6px', borderRadius: 4 }}>
-                  手动 {stats.manualCount}
-                </span>
-              )}
             </div>
           </div>
         </div>
 
-        <div className="glass-card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ padding: 12, borderRadius: 10, background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
-            <GitBranch size={22} />
+        <div className="glass-card" style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ padding: 10, borderRadius: 8, background: 'rgba(244, 63, 94, 0.15)', color: '#fb7185' }}>
+            <GitBranch size={20} />
           </div>
           <div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>绑定执行方案数</div>
-            <div style={{ fontSize: 24, fontWeight: 700, marginTop: 2 }}>
-              {stats.totalSchemesBound} <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>个方案</span>
-            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>绑定执行方案</div>
+            <div style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>{stats.totalSchemes} <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>个方案</span></div>
           </div>
         </div>
       </div>
 
-      {/* Toolbar & Filters */}
-      <div className="glass-card" style={{ padding: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 300, flexWrap: 'wrap' }}>
-          {/* Keyword search input */}
-          <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-            <Search style={{ position: 'absolute', left: 12, top: 11, color: 'var(--text-muted)' }} size={16} />
+      {/* 搜索与类型过滤工具栏 */}
+      <div className="glass-card" style={{ padding: 14, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 280, flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
+            <Search style={{ position: 'absolute', left: 12, top: 10, color: 'var(--text-muted)' }} size={16} />
             <input 
               type="text" 
-              placeholder="搜索流水线 ID、名称、所属组或关联方案..." 
-              style={{ paddingLeft: 40, width: '100%', height: 38, fontSize: 13, borderRadius: 8 }}
+              placeholder="搜索流水线组名称、标识、物理流水线 ID 或关联方案..." 
+              style={{ paddingLeft: 38, width: '100%', height: 36, fontSize: 13, borderRadius: 8 }}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
-          {/* Pipeline Group dropdown filter */}
-          {pipelineGroups.length > 0 && (
-            <select
-              value={selectedPipelineGroup}
-              onChange={(e) => setSelectedPipelineGroup(e.target.value)}
-              style={{ 
-                height: 38, 
-                padding: '0 12px', 
-                fontSize: 13, 
-                borderRadius: 8, 
-                background: 'var(--bg-secondary, rgba(255, 255, 255, 0.05))',
-                color: 'var(--text-main)',
-                border: '1px solid var(--border-color)',
-                cursor: 'pointer'
-              }}
-            >
-              <option value="ALL">全部流水线组</option>
-              {pipelineGroups.map(g => (
-                <option key={g.id} value={String(g.id)}>{g.name} [{g.type}]</option>
-              ))}
-              <option value="NONE">未归组流水线</option>
-            </select>
-          )}
-
-          {/* Type dropdown */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Filter size={14} style={{ color: 'var(--text-muted)' }} />
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
               style={{ 
-                height: 38, 
+                height: 36, 
                 padding: '0 12px', 
                 fontSize: 13, 
                 borderRadius: 8, 
@@ -526,7 +629,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 cursor: 'pointer'
               }}
             >
-              <option value="ALL">全部触发类型</option>
+              <option value="ALL">全部类型</option>
               {availableTypes.map(t => (
                 <option key={t} value={t}>{t}</option>
               ))}
@@ -534,203 +637,498 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
           </div>
         </div>
 
-        {/* Reset filter button */}
-        {(selectedType !== 'ALL' || selectedPipelineGroup !== 'ALL' || searchQuery.trim()) && (
+        {(selectedType !== 'ALL' || searchQuery.trim()) && (
           <button 
             className="btn btn-secondary btn-small"
             onClick={() => {
               setSelectedType('ALL')
-              setSelectedPipelineGroup('ALL')
               setSearchQuery('')
             }}
-            style={{ fontSize: 12, height: 38 }}
+            style={{ fontSize: 12, height: 36 }}
           >
             重置筛选
           </button>
         )}
       </div>
 
-      {/* Main Full-Width Data Table */}
-      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 400, overflow: 'hidden' }}>
+      {/* 主双层折叠表格 (Master-Detail Table) */}
+      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 450, overflow: 'hidden' }}>
         <div style={{ flex: 1, overflowX: 'auto', overflowY: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, textAlign: 'left' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-color)', background: 'rgba(255, 255, 255, 0.02)', color: 'var(--text-secondary)' }}>
-                <th style={{ padding: '14px 16px', fontWeight: 600, width: 130 }}>流水线 ID</th>
-                <th style={{ padding: '14px 16px', fontWeight: 600, minWidth: 200 }}>流水线名称</th>
-                <th style={{ padding: '14px 16px', fontWeight: 600, width: 120 }}>触发类型</th>
-                <th style={{ padding: '14px 16px', fontWeight: 600, width: 150 }}>所属流水线组</th>
-                <th style={{ padding: '14px 16px', fontWeight: 600, width: 100 }}>节点状态</th>
-                <th style={{ padding: '14px 16px', fontWeight: 600, width: 110 }}>执行方案数</th>
-                <th style={{ padding: '14px 16px', fontWeight: 600 }}>详细描述</th>
-                <th style={{ padding: '14px 16px', fontWeight: 600, textAlign: 'right', width: 140 }}>操作</th>
+                <th style={{ padding: '12px 14px', width: 44, textAlign: 'center' }}></th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, minWidth: 220 }}>流水线组名称 / 标识 (Key)</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, width: 120 }}>触发类型</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, width: 130 }}>组内物理节点</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, width: 130 }}>挂载方案数</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600 }}>组功能描述</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right', width: 180 }}>操作</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--text-secondary)' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--text-secondary)' }}>
                     <RefreshCw size={24} className="spin" style={{ marginBottom: 12, opacity: 0.7 }} />
                     <div>正在读取流水线配置数据...</div>
                   </td>
                 </tr>
-              ) : paginatedPipelines.length > 0 ? (
-                paginatedPipelines.map((p) => {
-                  const badgeStyle = getTypeBadgeStyle(p.type)
-                  const pSchemes = getSchemesForPipeline(p)
-                  const webURL = getPipelineWebURL(p)
-                  const groupObj = p.group || pipelineGroups.find(g => g.id === p.group_id)
+              ) : visibleGroups.length > 0 || unassignedPipelinesData.isVisible ? (
+                <>
+                  {/* 自建流水线组列表 */}
+                  {visibleGroups.map(({ group: g, matchedPipelines, allPipelines, totalSchemesInGroup }) => {
+                    const isExpanded = expandedGroupIds.has(g.id)
+                    const badgeStyle = getTypeBadgeStyle(g.type)
 
-                  return (
-                    <tr 
-                      key={p.id || p.pipeline_id} 
-                      style={{ 
-                        borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
-                        transition: 'background-color 0.15s ease'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.025)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      {/* Pipeline ID */}
-                      <td style={{ padding: '14px 16px', fontFamily: 'var(--font-mono)', fontSize: 13, color: '#a5b4fc', fontWeight: 500 }}>
-                        <span style={{ background: 'rgba(99, 102, 241, 0.1)', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-                          {p.pipeline_id}
-                        </span>
-                      </td>
+                    return (
+                      <React.Fragment key={`group-${g.id}`}>
+                        {/* 顶层父行 (流水线组) */}
+                        <tr 
+                          style={{ 
+                            borderBottom: isExpanded ? 'none' : '1px solid rgba(255, 255, 255, 0.05)',
+                            background: isExpanded ? 'rgba(99, 102, 241, 0.04)' : 'transparent',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.15s ease'
+                          }}
+                          onClick={() => toggleGroupExpand(g.id)}
+                          onMouseEnter={(e) => {
+                            if (!isExpanded) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.025)'
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isExpanded) e.currentTarget.style.background = 'transparent'
+                          }}
+                        >
+                          {/* 展开/收起箭头 */}
+                          <td style={{ padding: '14px 10px 14px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 4, background: 'rgba(255, 255, 255, 0.04)' }}>
+                              {isExpanded ? <ChevronDown size={15} style={{ color: 'var(--accent-primary, #6366f1)' }} /> : <ChevronRight size={15} />}
+                            </div>
+                          </td>
 
-                      {/* Name */}
-                      <td style={{ padding: '14px 16px', fontWeight: 600 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {webURL ? (
-                            <a 
-                              href={webURL} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              style={{ 
-                                color: 'var(--text-main)', 
-                                textDecoration: 'none', 
-                                transition: 'color 0.2s', 
-                                display: 'inline-flex', 
-                                alignItems: 'center', 
-                                gap: 6 
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.color = '#6366f1'
-                                e.currentTarget.style.textDecoration = 'underline'
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.color = 'var(--text-main)'
-                                e.currentTarget.style.textDecoration = 'none'
-                              }}
-                              title="点击快速跳转至三方流水线控制台"
-                            >
-                              <span>{p.name}</span>
-                              <ExternalLink size={13} style={{ color: '#6366f1', opacity: 0.8, flexShrink: 0 }} />
-                            </a>
-                          ) : (
-                            <span style={{ color: 'var(--text-main)' }}>{p.name}</span>
-                          )}
-                        </div>
-                      </td>
+                          {/* 组名称 / Key */}
+                          <td style={{ padding: '14px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-main)' }}>{g.name}</span>
+                              <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', padding: '1px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>
+                                {g.group_key}
+                              </span>
+                            </div>
+                          </td>
 
-                      {/* Type */}
-                      <td style={{ padding: '14px 16px' }}>
-                        <span style={{ ...badgeStyle, fontSize: 11, padding: '2px 8px', borderRadius: 12, fontWeight: 500, display: 'inline-block' }}>
-                          {p.type}
-                        </span>
-                      </td>
+                          {/* 触发类型 */}
+                          <td style={{ padding: '14px 16px' }}>
+                            <span style={{ ...badgeStyle, fontSize: 11, padding: '2px 8px', borderRadius: 12, fontWeight: 500, display: 'inline-block' }}>
+                              {g.type}
+                            </span>
+                          </td>
 
-                      {/* Pipeline Group */}
-                      <td style={{ padding: '14px 16px' }}>
-                        {groupObj ? (
-                          <span style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#818cf8', fontSize: 12, padding: '3px 8px', borderRadius: 6, fontWeight: 500 }}>
-                            {groupObj.name}
-                          </span>
-                        ) : (
-                          <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>未归组</span>
+                          {/* 组内物理流水线数 */}
+                          <td style={{ padding: '14px 16px' }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: allPipelines.length > 0 ? 'var(--text-main)' : 'var(--text-muted)' }}>
+                              {allPipelines.length} 条物理节点
+                            </span>
+                          </td>
+
+                          {/* 挂载执行方案数 */}
+                          <td style={{ padding: '14px 16px' }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: totalSchemesInGroup > 0 ? '#38bdf8' : 'var(--text-muted)' }}>
+                              {totalSchemesInGroup} 个方案
+                            </span>
+                          </td>
+
+                          {/* 组功能描述 */}
+                          <td style={{ padding: '14px 16px', color: 'var(--text-secondary)', fontSize: 13 }}>
+                            {g.description || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>暂无描述</span>}
+                          </td>
+
+                          {/* 操作列 */}
+                          <td style={{ padding: '14px 16px', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                              {isAdmin && (
+                                <>
+                                  <button
+                                    className="btn btn-secondary btn-small"
+                                    onClick={() => handleOpenAttachModal(g)}
+                                    title="关联物理流水线入组"
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 8px', fontSize: 12, color: 'var(--accent-primary, #6366f1)' }}
+                                  >
+                                    <FolderPlus size={13} />
+                                    <span>关联流水线</span>
+                                  </button>
+                                  <button
+                                    className="btn btn-secondary btn-small"
+                                    onClick={() => {
+                                      setActiveGroup(g)
+                                      setShowGroupModal(true)
+                                    }}
+                                    title="编辑流水线组"
+                                    style={{ padding: '4px 8px', fontSize: 12 }}
+                                  >
+                                    <Edit size={13} />
+                                  </button>
+                                  <button
+                                    className="btn btn-danger btn-small"
+                                    onClick={() => handleDeleteGroup(g)}
+                                    title={allPipelines.length > 0 ? '组内仍有流水线，不可直接删除' : '删除流水线组'}
+                                    disabled={allPipelines.length > 0}
+                                    style={{ padding: '4px 8px', fontSize: 12, opacity: allPipelines.length > 0 ? 0.35 : 1 }}
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+
+                        {/* 嵌套子表格 (组内物理流水线节点) */}
+                        {isExpanded && (
+                          <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)', background: 'rgba(0, 0, 0, 0.2)' }}>
+                            <td colSpan={7} style={{ padding: '0 0 16px 44px' }}>
+                              <div style={{ 
+                                margin: '8px 16px 8px 0', 
+                                padding: 14, 
+                                borderRadius: 10, 
+                                background: 'var(--bg-secondary, rgba(255, 255, 255, 0.03))', 
+                                border: '1px solid rgba(255, 255, 255, 0.06)' 
+                              }}>
+                                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Layers size={13} style={{ color: 'var(--accent-primary, #6366f1)' }} />
+                                    <span>组内物理流水线节点 ({matchedPipelines.length} 条)</span>
+                                  </div>
+                                  {allPipelines.length === 0 && (
+                                    <span style={{ color: '#f59e0b' }}>提示：当前组暂无物理流水线，无法接收智能调度，请点击右上方“关联流水线”添加</span>
+                                  )}
+                                </div>
+
+                                {matchedPipelines.length > 0 ? (
+                                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                                    <thead>
+                                      <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.06)', color: 'var(--text-muted)' }}>
+                                        <th style={{ padding: '8px 10px', fontWeight: 500, width: 140 }}>物理流水线 ID</th>
+                                        <th style={{ padding: '8px 10px', fontWeight: 500, minWidth: 180 }}>流水线名称</th>
+                                        <th style={{ padding: '8px 10px', fontWeight: 500, width: 100 }}>类型</th>
+                                        <th style={{ padding: '8px 10px', fontWeight: 500, width: 90 }}>节点状态</th>
+                                        <th style={{ padding: '8px 10px', fontWeight: 500, width: 110 }}>绑定方案数</th>
+                                        <th style={{ padding: '8px 10px', fontWeight: 500, width: 110 }}>负责人</th>
+                                        <th style={{ padding: '8px 10px', fontWeight: 500 }}>描述</th>
+                                        <th style={{ padding: '8px 10px', fontWeight: 500, textAlign: 'right', width: 160 }}>操作</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {matchedPipelines.map((p) => {
+                                        const pSchemes = getSchemesForPipeline(p)
+                                        const webURL = getPipelineWebURL(p)
+
+                                        return (
+                                          <tr 
+                                            key={p.id || p.pipeline_id}
+                                            style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)' }}
+                                          >
+                                            <td style={{ padding: '10px', fontFamily: 'var(--font-mono)', fontSize: 12, color: '#a5b4fc' }}>
+                                              <span style={{ background: 'rgba(99, 102, 241, 0.1)', padding: '2px 6px', borderRadius: 4 }}>
+                                                {p.pipeline_id}
+                                              </span>
+                                            </td>
+                                            <td style={{ padding: '10px', fontWeight: 600 }}>
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                {webURL ? (
+                                                  <a 
+                                                    href={webURL} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer" 
+                                                    style={{ color: 'var(--text-main)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                                    title="跳转至三方控制台"
+                                                  >
+                                                    <span>{p.name}</span>
+                                                    <ExternalLink size={12} style={{ color: '#6366f1' }} />
+                                                  </a>
+                                                ) : (
+                                                  <span>{p.name}</span>
+                                                )}
+                                              </div>
+                                            </td>
+                                            <td style={{ padding: '10px' }}>
+                                              <span style={{ ...getTypeBadgeStyle(p.type), fontSize: 11, padding: '1px 6px', borderRadius: 10 }}>
+                                                {p.type}
+                                              </span>
+                                            </td>
+                                            <td style={{ padding: '10px' }}>
+                                              <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', fontSize: 11, padding: '1px 6px', borderRadius: 10 }}>
+                                                活跃中
+                                              </span>
+                                            </td>
+                                            <td style={{ padding: '10px' }}>
+                                              <span style={{ 
+                                                fontSize: 12, 
+                                                fontWeight: 600,
+                                                color: pSchemes.length > 0 ? '#38bdf8' : 'var(--text-muted)' 
+                                              }}>
+                                                {pSchemes.length} 个方案
+                                              </span>
+                                            </td>
+                                            <td style={{ padding: '10px', color: 'var(--text-secondary)' }}>
+                                              {p.owner_name || <span style={{ color: 'var(--text-muted)' }}>-</span>}
+                                            </td>
+                                            <td style={{ padding: '10px', color: 'var(--text-muted)', fontSize: 12 }}>
+                                              {p.description || '-'}
+                                            </td>
+                                            <td style={{ padding: '10px', textAlign: 'right' }}>
+                                              <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                                                {isAdmin && (
+                                                  <>
+                                                    <button
+                                                      className="btn btn-secondary btn-small"
+                                                      onClick={() => handleDetachPipeline(p)}
+                                                      title="移出流水线组"
+                                                      style={{ padding: '3px 6px', fontSize: 11, color: '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: 2 }}
+                                                    >
+                                                      <LogOut size={11} /> 移出组
+                                                    </button>
+                                                    <button
+                                                      className="btn btn-secondary btn-small"
+                                                      onClick={() => handleTriggerSync(p)}
+                                                      title="同步三方执行方案"
+                                                      style={{ padding: '3px 6px', fontSize: 11 }}
+                                                    >
+                                                      <RefreshCw size={11} />
+                                                    </button>
+                                                    <button
+                                                      className="btn btn-secondary btn-small"
+                                                      onClick={() => onEditPipeline(p)}
+                                                      title="编辑物理流水线"
+                                                      style={{ padding: '3px 6px', fontSize: 11 }}
+                                                    >
+                                                      <Edit size={11} />
+                                                    </button>
+                                                    {p.id && (
+                                                      <button
+                                                        className="btn btn-danger btn-small"
+                                                        onClick={() => onDeletePipeline(p.id!)}
+                                                        title="删除物理流水线"
+                                                        style={{ padding: '3px 6px', fontSize: 11 }}
+                                                      >
+                                                        <Trash2 size={11} />
+                                                      </button>
+                                                    )}
+                                                  </>
+                                                )}
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        )
+                                      })}
+                                    </tbody>
+                                  </table>
+                                ) : (
+                                  <div style={{ textAlign: 'center', padding: '18px 0', color: 'var(--text-muted)', fontSize: 12 }}>
+                                    {allPipelines.length === 0 ? '该组下尚未添加任何物理流水线节点' : '没有匹配筛选条件的物理流水线'}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
                         )}
-                      </td>
+                      </React.Fragment>
+                    )
+                  })}
 
-                      {/* Status */}
-                      <td style={{ padding: '14px 16px' }}>
-                        <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', fontSize: 11, padding: '2px 8px', borderRadius: 12, fontWeight: 500 }}>
-                          活跃中
-                        </span>
-                      </td>
+                  {/* 底部独立特殊区域：未纳入分组的物理流水线 (Unassigned Pipelines) */}
+                  {unassignedPipelinesData.isVisible && (
+                    <React.Fragment key="unassigned-group">
+                      <tr 
+                        style={{ 
+                          borderTop: '2px dashed var(--border-color)',
+                          borderBottom: unassignedExpanded ? 'none' : '1px solid var(--border-color)',
+                          background: unassignedExpanded ? 'rgba(245, 158, 11, 0.04)' : 'rgba(255, 255, 255, 0.01)',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.15s ease'
+                        }}
+                        onClick={() => setUnassignedExpanded(!unassignedExpanded)}
+                      >
+                        <td style={{ padding: '14px 10px 14px 16px', textAlign: 'center', color: '#f59e0b' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 4, background: 'rgba(245, 158, 11, 0.1)' }}>
+                            {unassignedExpanded ? <ChevronDown size={15} style={{ color: '#f59e0b' }} /> : <ChevronRight size={15} />}
+                          </div>
+                        </td>
+                        <td style={{ padding: '14px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Unlink size={16} style={{ color: '#f59e0b' }} />
+                            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-main)' }}>未纳入分组</span>
+                            <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
+                              独立物理流水线
+                            </span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '14px 16px' }}>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>多类型混合</span>
+                        </td>
+                        <td style={{ padding: '14px 16px' }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: unassignedPipelinesData.all.length > 0 ? '#f59e0b' : 'var(--text-muted)' }}>
+                            {unassignedPipelinesData.all.length} 条未归组
+                          </span>
+                        </td>
+                        <td style={{ padding: '14px 16px' }}>
+                          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>-</span>
+                        </td>
+                        <td style={{ padding: '14px 16px', color: 'var(--text-muted)', fontSize: 12 }}>
+                          尚未加入任何流水线组，不会参与组智能负载均衡调度，可点击“加入组”快速分配。
+                        </td>
+                        <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                          <span style={{ fontSize: 12, color: '#f59e0b' }}>
+                            {unassignedExpanded ? '点击收起' : '点击展开'}
+                          </span>
+                        </td>
+                      </tr>
 
-                      {/* Execution Schemes Column */}
-                      <td style={{ padding: '14px 16px', fontSize: 14, fontWeight: 500, color: pSchemes.length > 0 ? 'var(--text-main)' : 'var(--text-muted)' }}>
-                        {pSchemes.length}
-                      </td>
+                      {/* 未纳入分组流水线子表格 */}
+                      {unassignedExpanded && (
+                        <tr style={{ borderBottom: '1px solid var(--border-color)', background: 'rgba(0, 0, 0, 0.15)' }}>
+                          <td colSpan={7} style={{ padding: '0 0 16px 44px' }}>
+                            <div style={{ 
+                              margin: '8px 16px 8px 0', 
+                              padding: 14, 
+                              borderRadius: 10, 
+                              background: 'var(--bg-secondary, rgba(255, 255, 255, 0.02))', 
+                              border: '1px solid rgba(245, 158, 11, 0.2)' 
+                            }}>
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                                <thead>
+                                  <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.06)', color: 'var(--text-muted)' }}>
+                                    <th style={{ padding: '8px 10px', fontWeight: 500, width: 140 }}>物理流水线 ID</th>
+                                    <th style={{ padding: '8px 10px', fontWeight: 500, minWidth: 180 }}>流水线名称</th>
+                                    <th style={{ padding: '8px 10px', fontWeight: 500, width: 100 }}>类型</th>
+                                    <th style={{ padding: '8px 10px', fontWeight: 500, width: 90 }}>节点状态</th>
+                                    <th style={{ padding: '8px 10px', fontWeight: 500, width: 110 }}>绑定方案数</th>
+                                    <th style={{ padding: '8px 10px', fontWeight: 500, width: 110 }}>负责人</th>
+                                    <th style={{ padding: '8px 10px', fontWeight: 500 }}>描述</th>
+                                    <th style={{ padding: '8px 10px', fontWeight: 500, textAlign: 'right', width: 200 }}>操作</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {unassignedPipelinesData.matched.map((p) => {
+                                    const pSchemes = getSchemesForPipeline(p)
+                                    const webURL = getPipelineWebURL(p)
 
-                      {/* Description */}
-                      <td style={{ padding: '14px 16px', color: 'var(--text-secondary)', fontSize: 13, maxWidth: 260 }}>
-                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.description}>
-                          {p.description || '暂无描述信息'}
-                        </div>
-                      </td>
-
-                      {/* Actions */}
-                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
-                          <button 
-                            className="btn btn-secondary btn-small"
-                            style={{ padding: '5px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                            onClick={() => handleTriggerSync(p)}
-                            title="比对并同步最新三方配置"
-                          >
-                            <RefreshCw size={13} />
-                            同步
-                          </button>
-                          {isAdmin && (
-                            <>
-                              <button 
-                                className="btn btn-secondary btn-small" 
-                                style={{ padding: '5px 8px' }}
-                                onClick={() => onEditPipeline(p)}
-                                title="编辑流水线"
-                              >
-                                <Edit size={13} />
-                              </button>
-                              <button 
-                                className="btn btn-danger btn-small" 
-                                style={{ padding: '5px 8px' }}
-                                onClick={() => p.id && onDeletePipeline(p.id)}
-                                title="删除流水线"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })
+                                    return (
+                                      <tr 
+                                        key={p.id || p.pipeline_id}
+                                        style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)' }}
+                                      >
+                                        <td style={{ padding: '10px', fontFamily: 'var(--font-mono)', fontSize: 12, color: '#a5b4fc' }}>
+                                          <span style={{ background: 'rgba(99, 102, 241, 0.1)', padding: '2px 6px', borderRadius: 4 }}>
+                                            {p.pipeline_id}
+                                          </span>
+                                        </td>
+                                        <td style={{ padding: '10px', fontWeight: 600 }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            {webURL ? (
+                                              <a 
+                                                href={webURL} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer" 
+                                                style={{ color: 'var(--text-main)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                                title="跳转至三方控制台"
+                                              >
+                                                <span>{p.name}</span>
+                                                <ExternalLink size={12} style={{ color: '#6366f1' }} />
+                                              </a>
+                                            ) : (
+                                              <span>{p.name}</span>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td style={{ padding: '10px' }}>
+                                          <span style={{ ...getTypeBadgeStyle(p.type), fontSize: 11, padding: '1px 6px', borderRadius: 10 }}>
+                                            {p.type}
+                                          </span>
+                                        </td>
+                                        <td style={{ padding: '10px' }}>
+                                          <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', fontSize: 11, padding: '1px 6px', borderRadius: 10 }}>
+                                            活跃中
+                                          </span>
+                                        </td>
+                                        <td style={{ padding: '10px' }}>
+                                          <span style={{ fontSize: 12, fontWeight: 600, color: pSchemes.length > 0 ? '#38bdf8' : 'var(--text-muted)' }}>
+                                            {pSchemes.length} 个方案
+                                          </span>
+                                        </td>
+                                        <td style={{ padding: '10px', color: 'var(--text-secondary)' }}>
+                                          {p.owner_name || <span style={{ color: 'var(--text-muted)' }}>-</span>}
+                                        </td>
+                                        <td style={{ padding: '10px', color: 'var(--text-muted)', fontSize: 12 }}>
+                                          {p.description || '-'}
+                                        </td>
+                                        <td style={{ padding: '10px', textAlign: 'right' }}>
+                                          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                                            {isAdmin && (
+                                              <>
+                                                <button
+                                                  className="btn btn-primary btn-small"
+                                                  onClick={() => handleOpenJoinModal(p)}
+                                                  title="将该物理流水线加入指定组"
+                                                  style={{ padding: '3px 8px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                                                >
+                                                  <FolderPlus size={12} /> 加入组
+                                                </button>
+                                                <button
+                                                  className="btn btn-secondary btn-small"
+                                                  onClick={() => handleTriggerSync(p)}
+                                                  title="同步三方执行方案"
+                                                  style={{ padding: '3px 6px', fontSize: 11 }}
+                                                >
+                                                  <RefreshCw size={11} />
+                                                </button>
+                                                <button
+                                                  className="btn btn-secondary btn-small"
+                                                  onClick={() => onEditPipeline(p)}
+                                                  title="编辑物理流水线"
+                                                  style={{ padding: '3px 6px', fontSize: 11 }}
+                                                >
+                                                  <Edit size={11} />
+                                                </button>
+                                                {p.id && (
+                                                  <button
+                                                    className="btn btn-danger btn-small"
+                                                    onClick={() => onDeletePipeline(p.id!)}
+                                                    title="删除物理流水线"
+                                                    style={{ padding: '3px 6px', fontSize: 11 }}
+                                                  >
+                                                    <Trash2 size={11} />
+                                                  </button>
+                                                )}
+                                              </>
+                                            )}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  )}
+                </>
               ) : (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--text-secondary)' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--text-secondary)' }}>
                     <Box size={24} style={{ marginBottom: 12, opacity: 0.5 }} />
-                    <div>未找到匹配的流水线配置记录</div>
+                    <div>未找到匹配的流水线组或流水线记录</div>
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-
-        {/* Pagination Footer */}
-        {filteredPipelines.length > 0 && (
-          <div style={{ padding: '0 1rem 1rem 1rem' }}>
-            <Pagination 
-              totalItems={filteredPipelines.length} 
-              defaultPageSize={15} 
-            />
-          </div>
-        )}
       </div>
 
-      {/* Pipeline Group Create / Edit Modal */}
+      {/* 流水线组新建 / 编辑 Modal */}
       {showGroupModal && activeGroup && (
         <div style={{
           position: 'fixed',
@@ -757,7 +1155,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="例如: mr-gate-default"
+                  placeholder="例如: mr-backend-group"
                   value={activeGroup.group_key || ''}
                   onChange={(e) => setActiveGroup({ ...activeGroup, group_key: e.target.value })}
                   disabled={!!activeGroup.id}
@@ -771,7 +1169,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="例如: 默认 MR 门禁流水线组"
+                  placeholder="例如: 后端 MR 门禁流水线组"
                   value={activeGroup.name || ''}
                   onChange={(e) => setActiveGroup({ ...activeGroup, name: e.target.value })}
                   required
@@ -793,7 +1191,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                    单节点方案容量上限
+                    单节点方案容量参考
                   </label>
                   <input
                     type="number"
@@ -840,6 +1238,207 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
         </div>
       )}
 
+      {/* 批量关联物理流水线入组 Modal (从组发起) */}
+      {attachModalGroup && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: 20
+        }}>
+          <div className="glass-card" style={{ width: '100%', maxWidth: 540, padding: 24, borderRadius: 12 }}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FolderPlus size={20} style={{ color: 'var(--accent-primary, #6366f1)' }} />
+              <span>关联物理流水线至 [{attachModalGroup.name}]</span>
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 16 }}>
+              请勾选同属于 <strong>{attachModalGroup.type}</strong> 类型且尚未归组的物理流水线节点：
+            </p>
+
+            {(() => {
+              const eligiblePipelines = pipelines.filter(p => (!p.group_id || p.group_id === 0) && p.type === attachModalGroup.type)
+
+              if (eligiblePipelines.length === 0) {
+                return (
+                  <div style={{ padding: '24px 16px', textAlign: 'center', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 8, color: 'var(--text-muted)' }}>
+                    <AlertCircle size={20} style={{ margin: '0 auto 8px', opacity: 0.6 }} />
+                    <div>当前没有可加入该组的未归组 {attachModalGroup.type} 物理流水线</div>
+                  </div>
+                )
+              }
+
+              return (
+                <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16, paddingRight: 4 }}>
+                  {eligiblePipelines.map(p => {
+                    const isChecked = p.id ? selectedPipelineIdsToAttach.includes(p.id) : false
+                    return (
+                      <label 
+                        key={p.id || p.pipeline_id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '10px 12px',
+                          borderRadius: 8,
+                          background: isChecked ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                          border: isChecked ? '1px solid var(--accent-primary, #6366f1)' : '1px solid rgba(255, 255, 255, 0.06)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        <input 
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (!p.id) return
+                            if (e.target.checked) {
+                              setSelectedPipelineIdsToAttach([...selectedPipelineIdsToAttach, p.id])
+                            } else {
+                              setSelectedPipelineIdsToAttach(selectedPipelineIdsToAttach.filter(id => id !== p.id))
+                            }
+                          }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>ID: {p.pipeline_id} - 负责人: {p.owner_name || '未分配'}</div>
+                        </div>
+                      </label>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setAttachModalGroup(null)}
+                disabled={attaching}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleConfirmAttach}
+                disabled={attaching || selectedPipelineIdsToAttach.length === 0}
+              >
+                {attaching ? '正在关联...' : `确认添加 (${selectedPipelineIdsToAttach.length})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 单条流水线加入指定组 Modal (从未纳入分组发起) */}
+      {joinModalPipeline && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: 20
+        }}>
+          <div className="glass-card" style={{ width: '100%', maxWidth: 460, padding: 24, borderRadius: 12 }}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FolderPlus size={20} style={{ color: 'var(--accent-primary, #6366f1)' }} />
+              <span>将流水线加入流水线组</span>
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 16 }}>
+              流水线 <strong>{joinModalPipeline.name}</strong> ({joinModalPipeline.type}) 将被加入以下同类型资源池：
+            </p>
+
+            {(() => {
+              const eligibleGroups = pipelineGroups.filter(g => g.type === joinModalPipeline.type)
+
+              if (eligibleGroups.length === 0) {
+                return (
+                  <div style={{ padding: '24px 16px', textAlign: 'center', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 8, color: 'var(--text-muted)' }}>
+                    <AlertCircle size={20} style={{ margin: '0 auto 8px', opacity: 0.6 }} />
+                    <div>当前系统中暂无类型为 <strong>{joinModalPipeline.type}</strong> 的流水线组，请先在上方点击“新建流水线组”。</div>
+                  </div>
+                )
+              }
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                  {eligibleGroups.map(g => {
+                    const isSelected = targetGroupIdToJoin === g.id
+                    return (
+                      <label 
+                        key={g.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '10px 12px',
+                          borderRadius: 8,
+                          background: isSelected ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                          border: isSelected ? '1px solid var(--accent-primary, #6366f1)' : '1px solid rgba(255, 255, 255, 0.06)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        <input 
+                          type="radio"
+                          name="targetGroup"
+                          checked={isSelected}
+                          onChange={() => setTargetGroupIdToJoin(g.id)}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span>{g.name}</span>
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>({g.group_key})</span>
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                            已挂载方案: {g.used_schemes || 0} 个 | 组内节点: {g.pipeline_count || 0} 条
+                          </div>
+                        </div>
+                      </label>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setJoinModalPipeline(null)}
+                disabled={joining}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleConfirmJoin}
+                disabled={joining || !targetGroupIdToJoin}
+              >
+                {joining ? '正在加入...' : '确认加入'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sync Diff Modal */}
       <SyncDiffModal 
         visible={diffModalVisible}
@@ -854,5 +1453,3 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
     </div>
   )
 }
-
-

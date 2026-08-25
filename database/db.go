@@ -91,43 +91,8 @@ func InitDB() {
 	}
 }
 
-// migratePipelineGroups 自动初始化默认流水线组并在初次建组时将历史孤立流水线归组
+// migratePipelineGroups 统一初始化所有 status 为空或为未设置状态的流水线为 active
 func migratePipelineGroups(db *gorm.DB) {
-	defaults := []models.PipelineGroup{
-		{
-			GroupKey:              "mr-gate-default",
-			Name:                  "默认 MR 门禁流水线组",
-			Type:                  "MR",
-			MaxSchemesPerPipeline: 200,
-			IsActive:              true,
-			Description:           "承载组织内所有代码合并请求 (MR) 自动化检查流水线资源池",
-		},
-		{
-			GroupKey:              "daily-build-default",
-			Name:                  "默认每日构建流水线组",
-			Type:                  "每日构建",
-			MaxSchemesPerPipeline: 200,
-			IsActive:              true,
-			Description:           "承载组织内所有夜间与定时每日构建流水线资源池",
-		},
-	}
-
-	for _, g := range defaults {
-		var existing models.PipelineGroup
-		if err := db.Where("group_key = ?", g.GroupKey).First(&existing).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				// 初次建组：创建默认组并一次性对历史流水线按精确 Type 进行归集
-				if createErr := db.Create(&g).Error; createErr == nil {
-					log.Printf("[Database] Seeded default pipeline group: %s (%s)\n", g.Name, g.GroupKey)
-					// 仅在首次创建默认组时执行历史数据一次性归组，保证后续管理员手动移出组的操作持久化
-					db.Model(&models.Pipeline{}).
-						Where("type = ? AND (group_id IS NULL OR group_id = 0)", g.Type).
-						Update("group_id", g.ID)
-				}
-			}
-		}
-	}
-
 	// 统一初始化所有 status 为空或为未设置状态的流水线为 active
 	db.Model(&models.Pipeline{}).
 		Where("status = '' OR status IS NULL").
