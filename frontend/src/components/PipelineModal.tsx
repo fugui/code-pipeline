@@ -61,7 +61,7 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
       onClose={onClose}
       title={activePipeline.id ? (isAdmin ? '编辑流水线元数据' : '查看流水线元数据 (只读)') : '导入流水线'}
       subtitle={activePipeline.id ? '维护流水线基本配置及关联的三方元数据' : '通过流水线唯一 ID 同步三方元数据并导入本地管理'}
-      width="md"
+      width="lg"
       footer={modalFooter}
     >
       <form id="pipeline-modal-form" onSubmit={onSave} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
