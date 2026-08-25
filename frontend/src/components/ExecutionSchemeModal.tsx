@@ -824,53 +824,79 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                     </div>
                   ) : null}
 
-                  {/* 高级选项：允许管理员或特定需求指定具体物理流水线 */}
-                  <div style={{ marginTop: 4 }}>
-                    <button
-                      type="button"
-                      onClick={() => setShowAdvancedPipelineSelect(!showAdvancedPipelineSelect)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--text-muted)',
-                        fontSize: 12,
-                        cursor: 'pointer',
-                        padding: 0,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4
-                      }}
-                    >
-                      {showAdvancedPipelineSelect ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                      <span>高级选项：手动指定具体物理流水线节点</span>
-                    </button>
+                  {/* 高级选项 / 物理流水线选择 */}
+                  {pipelineGroups.length > 0 ? (
+                    <div style={{ marginTop: 4 }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowAdvancedPipelineSelect(!showAdvancedPipelineSelect)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-muted)',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                          padding: 0,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4
+                        }}
+                      >
+                        {showAdvancedPipelineSelect ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                        <span>高级选项：手动指定具体物理流水线节点</span>
+                      </button>
 
-                    {(showAdvancedPipelineSelect || pipelineGroups.length === 0) && (
-                      <div style={{ marginTop: 8, padding: 12, background: 'var(--color-bg-muted, rgba(255,255,255,0.02))', borderRadius: 8, border: '1px dashed var(--border-color)' }}>
-                        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
-                          指定物理流水线节点 {pipelineGroups.length > 0 && <span style={{ color: '#f59e0b' }}>(指定后将精确绑定该物理节点，覆盖组自动调度)</span>}
-                        </label>
-                        <select
-                          value={activeScheme.pipeline_id || ''}
-                          onChange={(e) => {
-                            const val = e.target.value ? Number(e.target.value) : undefined;
-                            onChange({
-                              ...activeScheme,
-                              pipeline_id: val,
-                              group_id: val ? undefined : activeScheme.group_id // 指定具体流水线时清空 group_id
-                            });
-                          }}
-                        >
-                          <option value="">-- 由流水线组自动调度分配 --</option>
-                          {pipelines.map(p => (
-                            <option key={p.id} value={p.id}>
-                              {p.name} (ID: {p.pipeline_id}) - 类型: {p.type} - 负责人: {p.owner || '未分配'}
-                            </option>
-                          ))}
-                        </select>
+                      {showAdvancedPipelineSelect && (
+                        <div style={{ marginTop: 8, padding: 12, background: 'var(--color-bg-muted, rgba(255,255,255,0.02))', borderRadius: 8, border: '1px dashed var(--border-color)' }}>
+                          <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                            指定物理流水线节点 <span style={{ color: '#f59e0b' }}>(指定后将精确绑定该物理节点，覆盖组自动调度)</span>
+                          </label>
+                          <select
+                            value={activeScheme.pipeline_id || ''}
+                            onChange={(e) => {
+                              const val = e.target.value ? Number(e.target.value) : undefined;
+                              onChange({
+                                ...activeScheme,
+                                pipeline_id: val,
+                                group_id: val ? undefined : activeScheme.group_id
+                              });
+                            }}
+                          >
+                            <option value="">-- 由流水线组自动调度分配 --</option>
+                            {pipelines.map(p => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} (ID: {p.pipeline_id}) - 类型: {p.type} - 负责人: {p.owner || '未分配'}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <select
+                        value={activeScheme.pipeline_id || ''}
+                        onChange={(e) => {
+                          const val = e.target.value ? Number(e.target.value) : undefined;
+                          onChange({
+                            ...activeScheme,
+                            pipeline_id: val,
+                            group_id: undefined
+                          });
+                        }}
+                      >
+                        <option value="">-- 请选择要关联的物理流水线 --</option>
+                        {pipelines.map(p => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} (ID: {p.pipeline_id}) - 类型: {p.type} - 负责人: {p.owner || '未分配'}
+                          </option>
+                        ))}
+                      </select>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                        提示：系统中暂无自建流水线组，已切换为直接绑定物理流水线。可在“流水线管理”页面按需创建流水线组。
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
