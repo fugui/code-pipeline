@@ -851,7 +851,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                           const pCount = g.pipeline_count ?? pipelines.filter(p => p.group_id === g.id).length;
                           return (
                             <option key={g.id} value={g.id}>
-                              {g.name} ({g.group_key}) - 组内物理节点: {pCount} 条 | 已用方案: {g.used_schemes || 0} 个
+                              {g.name} ({g.group_key}) - 包含 {pCount} 条物理流水线
                             </option>
                           );
                         })}
