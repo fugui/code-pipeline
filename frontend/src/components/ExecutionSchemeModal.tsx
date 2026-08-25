@@ -99,29 +99,27 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
     });
   }, [pipelineGroups, pipelines]);
 
-  // 按照所属流水线组进行聚类排序，并在名称后标注所属组名或(独立流水线)
-  const sortedPipelinesWithGroupInfo = React.useMemo(() => {
+  // 按照流水线组结构化聚合物理流水线，用于 optgroup 分组与优雅展示
+  const groupedPipelines = React.useMemo(() => {
     const groupMap = new Map<number, PipelineGroup>();
     pipelineGroups.forEach(g => {
       if (g.id) groupMap.set(g.id, g);
     });
 
-    return [...pipelines].map(p => {
-      const group = p.group_id ? groupMap.get(p.group_id) : undefined;
-      const displayLabel = group 
-        ? `${p.name} [${group.name}]`
-        : `${p.name} (独立流水线)`;
-      return {
-        ...p,
-        groupOrder: group ? group.id : 999999, // 有组的排在前面，独立流水线归纳在最后
-        displayLabel
-      };
-    }).sort((a, b) => {
-      if (a.groupOrder !== b.groupOrder) {
-        return a.groupOrder - b.groupOrder;
-      }
-      return (a.name || '').localeCompare(b.name || '');
-    });
+    const groupList = pipelineGroups
+      .map(g => ({
+        ...g,
+        pipelineList: pipelines.filter(p => p.group_id === g.id)
+      }))
+      .filter(g => g.pipelineList.length > 0);
+
+    const unassigned = pipelines.filter(p => !p.group_id || p.group_id === 0);
+
+    return {
+      groupMap,
+      groupList,
+      unassigned
+    };
   }, [pipelines, pipelineGroups]);
   const [dailyBuild, setDailyBuild] = React.useState(true);
   const [dailyBuildTime, setDailyBuildTime] = React.useState(getRandomDailyBuildTime);
@@ -822,9 +820,12 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                 <input 
                   type="text" 
                   value={(() => {
-                    const matched = sortedPipelinesWithGroupInfo.find(p => p.id === activeScheme.pipeline_id);
+                    const matched = pipelines.find(p => p.id === activeScheme.pipeline_id);
                     if (matched) {
-                      return matched.displayLabel;
+                      const group = matched.group_id ? groupedPipelines.groupMap.get(matched.group_id) : undefined;
+                      return group 
+                        ? `${matched.name}  [所属组: ${group.name}]` 
+                        : `${matched.name}  (独立流水线)`;
                     }
                     return `流水线 ID: ${activeScheme.pipeline_id}`;
                   })()}
@@ -864,7 +865,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
 
                   {/* 高级选项 / 物理流水线选择 */}
                   {availableGroups.length > 0 ? (
-                    <div style={{ marginTop: 4 }}>
+                    <div style={{ marginTop: 6 }}>
                       <button
                         type="button"
                         onClick={() => setShowAdvancedPipelineSelect(!showAdvancedPipelineSelect)}
@@ -885,9 +886,9 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                       </button>
 
                       {showAdvancedPipelineSelect && (
-                        <div style={{ marginTop: 8, padding: 12, background: 'var(--color-bg-muted, rgba(255,255,255,0.02))', borderRadius: 8, border: '1px dashed var(--border-color)' }}>
-                          <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
-                            指定物理流水线节点 <span style={{ color: '#f59e0b' }}>(指定后将精确绑定该物理节点，覆盖组自动调度)</span>
+                        <div style={{ marginTop: 8, padding: '14px 16px', background: 'var(--color-bg-muted, rgba(255,255,255,0.02))', borderRadius: 10, border: '1px dashed var(--border-color)' }}>
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                            指定物理流水线节点 <span style={{ color: '#f59e0b', fontWeight: 'normal' }}>(指定后将精确绑定该物理节点，覆盖组自动调度)</span>
                           </label>
                           <select
                             value={activeScheme.pipeline_id || ''}
@@ -899,13 +900,31 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                                 group_id: val ? undefined : activeScheme.group_id
                               });
                             }}
+                            style={{ width: '100%', padding: '10px 12px', fontSize: 14 }}
                           >
                             <option value="">-- 由流水线组自动调度分配 --</option>
-                            {sortedPipelinesWithGroupInfo.map(p => (
-                              <option key={p.id} value={p.id}>
-                                {p.displayLabel}
-                              </option>
+
+                            {/* 1. 分组内的物理流水线 */}
+                            {groupedPipelines.groupList.map(group => (
+                              <optgroup key={group.id} label={`【流水线组】${group.name} (${group.group_key})`}>
+                                {group.pipelineList.map(p => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.name}
+                                  </option>
+                                ))}
+                              </optgroup>
                             ))}
+
+                            {/* 2. 独立物理流水线 */}
+                            {groupedPipelines.unassigned.length > 0 && (
+                              <optgroup label="【独立流水线】未归组物理节点">
+                                {groupedPipelines.unassigned.map(p => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.name}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
                           </select>
                         </div>
                       )}
@@ -922,13 +941,31 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                             group_id: undefined
                           });
                         }}
+                        style={{ width: '100%', padding: '10px 12px', fontSize: 14 }}
                       >
                         <option value="">-- 请选择要关联的物理流水线 --</option>
-                        {sortedPipelinesWithGroupInfo.map(p => (
-                          <option key={p.id} value={p.id}>
-                            {p.displayLabel}
-                          </option>
+
+                        {/* 1. 分组内的物理流水线 */}
+                        {groupedPipelines.groupList.map(group => (
+                          <optgroup key={group.id} label={`【流水线组】${group.name} (${group.group_key})`}>
+                            {group.pipelineList.map(p => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </optgroup>
                         ))}
+
+                        {/* 2. 独立物理流水线 */}
+                        {groupedPipelines.unassigned.length > 0 && (
+                          <optgroup label="【独立流水线】未归组物理节点">
+                            {groupedPipelines.unassigned.map(p => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
                       </select>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
                         提示：系统中暂无已关联物理节点的可用流水线组，已自动切换为直接绑定物理流水线。可在“流水线管理”页面按需建组并关联物理节点。
