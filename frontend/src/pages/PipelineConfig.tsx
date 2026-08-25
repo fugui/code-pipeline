@@ -29,6 +29,7 @@ export interface PipelineConfigProps {
   pipelines: Pipeline[]
   pipelineGroups?: PipelineGroup[]
   onRefreshGroups?: () => void
+  onRefreshPipelines?: () => void
   selectedPipeline?: Pipeline | null
   schemes?: ExecutionScheme[]
   loading?: boolean
@@ -50,6 +51,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
   pipelines = [],
   pipelineGroups = [],
   onRefreshGroups,
+  onRefreshPipelines,
   loading = false,
   searchQuery,
   setSearchQuery,
@@ -289,6 +291,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
         setShowGroupModal(false)
         setActiveGroup(null)
         onRefreshGroups && onRefreshGroups()
+        onRefreshPipelines && onRefreshPipelines()
       } else {
         const err = await res.json().catch(() => ({}))
         alert(`保存流水线组失败: ${err.error || res.statusText}`)
@@ -320,6 +323,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
       })
       if (res.ok) {
         onRefreshGroups && onRefreshGroups()
+        onRefreshPipelines && onRefreshPipelines()
       } else {
         const err = await res.json().catch(() => ({}))
         alert(`删除流水线组失败: ${err.error || res.statusText}`)
@@ -357,6 +361,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
         setAttachModalGroup(null)
         setSelectedPipelineIdsToAttach([])
         onRefreshGroups && onRefreshGroups()
+        onRefreshPipelines && onRefreshPipelines()
       } else {
         const err = await res.json().catch(() => ({}))
         alert(`关联流水线入组失败: ${err.error || res.statusText}`)
@@ -391,6 +396,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
 
       if (res.ok) {
         onRefreshGroups && onRefreshGroups()
+        onRefreshPipelines && onRefreshPipelines()
       } else {
         const err = await res.json().catch(() => ({}))
         alert(`移出流水线失败: ${err.error || res.statusText}`)
@@ -427,6 +433,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
         setJoinModalPipeline(null)
         setTargetGroupIdToJoin('')
         onRefreshGroups && onRefreshGroups()
+        onRefreshPipelines && onRefreshPipelines()
       } else {
         const err = await res.json().catch(() => ({}))
         alert(`加入流水线组失败: ${err.error || res.statusText}`)
