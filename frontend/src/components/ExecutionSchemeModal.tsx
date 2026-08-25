@@ -179,6 +179,17 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
 
   React.useEffect(() => {
     if (visible && activeScheme) {
+      // 若当前为新建方案且尚未选择任何组或物理流水线，检测是否存在 mr-gate-default 组作为默认选项
+      if (!activeScheme.id && !activeScheme.group_id && !activeScheme.pipeline_id) {
+        const defaultMrGroup = availableGroups.find(g => g.group_key === 'mr-gate-default');
+        if (defaultMrGroup) {
+          onChange({
+            ...activeScheme,
+            group_id: defaultMrGroup.id
+          });
+        }
+      }
+
       originalLanguagesRef.current = activeScheme.languages || '';
       const currentBranchStr = activeScheme.branchs || '';
       setManualBranchText(currentBranchStr);
