@@ -718,9 +718,14 @@ const PipelineAppContent: React.FC<AppProps> = ({ isEmbedded = false }) => {
               const existingWithLangs = knownSchemes.find((s: any) => (s.languages || '').trim())
               const inheritLangs = existingWithLangs?.languages || knownSchemes[0]?.languages || ''
 
+              const defaultMrGroup = pipelineGroups.find(g => 
+                (g.group_key === 'mr-gate-default' || String(g.id) === 'mr-gate-default') &&
+                (typeof g.pipeline_count === 'number' ? g.pipeline_count > 0 : pipelines.some(p => p.group_id === g.id))
+              )
+
               setActiveScheme({
                 pipeline_id: undefined,
-                group_id: undefined,
+                group_id: defaultMrGroup ? defaultMrGroup.id : undefined,
                 repository_id: repo.id,
                 name: defaultName,
                 repository: {
