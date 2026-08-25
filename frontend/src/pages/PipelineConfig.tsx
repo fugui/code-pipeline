@@ -1301,7 +1301,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
         </div>
       )}
 
-      {/* 单条流水线加入指定组 Modal (从未纳入分组发起，无类型限制) */}
+      {/* 单条流水线加入指定组 Modal (从未纳入分组发起，下拉框模式) */}
       {joinModalPipeline && (
         <div style={{
           position: 'fixed',
@@ -1317,13 +1317,13 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
           zIndex: 1000,
           padding: 20
         }}>
-          <div className="glass-card" style={{ width: '100%', maxWidth: 460, padding: 24, borderRadius: 12 }}>
+          <div className="glass-card" style={{ width: '100%', maxWidth: 480, padding: 24, borderRadius: 12 }}>
             <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
               <FolderPlus size={20} style={{ color: 'var(--accent-primary, #6366f1)' }} />
               <span>将流水线加入流水线组</span>
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 16 }}>
-              请选择要将流水线 <strong>{joinModalPipeline.name}</strong> ({joinModalPipeline.type}) 归入的目标流水线组：
+              请选择要将物理流水线 <strong>{joinModalPipeline.name}</strong> {joinModalPipeline.type ? `(${joinModalPipeline.type})` : ''} 归入的目标组：
             </p>
 
             {(() => {
@@ -1336,48 +1336,70 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 )
               }
 
+              const selectedGroup = pipelineGroups.find(g => g.id === Number(targetGroupIdToJoin))
+
               return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                  {pipelineGroups.map(g => {
-                    const isSelected = targetGroupIdToJoin === g.id
-                    return (
-                      <label 
-                        key={g.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 10,
-                          padding: '10px 12px',
-                          borderRadius: 8,
-                          background: isSelected ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255, 255, 255, 0.03)',
-                          border: isSelected ? '1px solid var(--accent-primary, #6366f1)' : '1px solid rgba(255, 255, 255, 0.06)',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s'
-                        }}
-                      >
-                        <input 
-                          type="radio"
-                          name="targetGroup"
-                          checked={isSelected}
-                          onChange={() => setTargetGroupIdToJoin(g.id)}
-                        />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span>{g.name}</span>
-                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>({g.group_key})</span>
-                          </div>
-                          <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                            已挂载方案: {g.used_schemes || 0} 个 | 组内节点: {g.pipeline_count || 0} 条
-                          </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                      目标流水线组 (资源池) <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <select
+                      value={targetGroupIdToJoin || ''}
+                      onChange={(e) => setTargetGroupIdToJoin(e.target.value ? Number(e.target.value) : '')}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        fontSize: 14,
+                        borderRadius: 8,
+                        background: 'var(--bg-secondary, rgba(255, 255, 255, 0.05))',
+                        color: 'var(--text-main)',
+                        border: '1px solid var(--border-color)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="">-- 请选择目标流水线组 --</option>
+                      {pipelineGroups.map(g => (
+                        <option key={g.id} value={g.id}>
+                          {g.name} ({g.group_key}) - 已挂载方案: {g.used_schemes || 0} 个 | 组内节点: {g.pipeline_count || 0} 条
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 选中组的详情提示卡片 */}
+                  {selectedGroup && (
+                    <div style={{
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      background: 'rgba(99, 102, 241, 0.06)',
+                      border: '1px solid rgba(99, 102, 241, 0.2)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-main)' }}>{selectedGroup.name}</span>
+                        <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: '#a5b4fc', background: 'rgba(99, 102, 241, 0.15)', padding: '1px 6px', borderRadius: 4 }}>
+                          {selectedGroup.group_key}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', gap: 12 }}>
+                        <span>组内节点: <strong>{selectedGroup.pipeline_count || 0}</strong> 条</span>
+                        <span>已挂载方案: <strong>{selectedGroup.used_schemes || 0}</strong> 个</span>
+                      </div>
+                      {selectedGroup.description && (
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                          {selectedGroup.description}
                         </div>
-                      </label>
-                    )
-                  })}
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             })()}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
               <button
                 type="button"
                 className="btn btn-secondary"
