@@ -75,13 +75,13 @@ type Repository struct {
 	CreatedAt           time.Time         `json:"created_at"`
 }
 
-// PipelineGroup 流水线组模型 (聚合相同模板与能力的物理流水线)
+// PipelineGroup 流水线组模型 (纯逻辑物理流水线资源池)
 type PipelineGroup struct {
 	ID                    uint       `gorm:"primaryKey" json:"id"`
-	GroupKey              string     `gorm:"size:100;uniqueIndex;not null;default:''" json:"group_key"` // 组唯一标识，如 "mr-gate-default"
+	GroupKey              string     `gorm:"size:100;uniqueIndex;not null;default:''" json:"group_key"` // 组唯一标识，如 "backend-group"
 	Name                  string     `gorm:"size:150;not null;default:''" json:"name"`                  // 组展示名称
-	Type                  string     `gorm:"size:50;index;not null;default:'MR'" json:"type"`           // 类型: "MR" | "每日构建"
-	MaxSchemesPerPipeline int        `gorm:"default:200" json:"max_schemes_per_pipeline"`              // 单节点方案容量上限 (默认 200)
+	Type                  string     `gorm:"size:50;default:''" json:"type,omitempty"`                  // 兼容保留
+	MaxSchemesPerPipeline int        `gorm:"default:0" json:"max_schemes_per_pipeline,omitempty"`      // 兼容保留
 	IsActive              bool       `gorm:"default:true;index" json:"is_active"`                       // 是否启用
 	Description           string     `gorm:"type:text" json:"description"`                              // 描述说明
 	Pipelines             []Pipeline `gorm:"foreignKey:GroupID" json:"pipelines,omitempty"`             // 组内物理流水线

@@ -267,7 +267,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
   // 保存流水线组 (新建 / 编辑)
   const handleSaveGroup = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!activeGroup || !activeGroup.group_key || !activeGroup.name || !activeGroup.type) return
+    if (!activeGroup || !activeGroup.group_key || !activeGroup.name) return
     setSavingGroup(true)
     try {
       const method = activeGroup.id ? 'PUT' : 'POST'
@@ -279,8 +279,10 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
-          ...activeGroup,
-          max_schemes_per_pipeline: Number(activeGroup.max_schemes_per_pipeline) || 200
+          group_key: activeGroup.group_key,
+          name: activeGroup.name,
+          is_active: activeGroup.is_active ?? true,
+          description: activeGroup.description || ''
         })
       })
       if (res.ok) {
@@ -402,9 +404,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
   // 单条流水线加入组 (从未纳入分组发起)
   const handleOpenJoinModal = (pipeline: Pipeline) => {
     setJoinModalPipeline(pipeline)
-    // 默认选择同类型的第一个组
-    const matchedGroup = pipelineGroups.find(g => g.type === pipeline.type)
-    setTargetGroupIdToJoin(matchedGroup ? matchedGroup.id : '')
+    setTargetGroupIdToJoin(pipelineGroups.length > 0 ? pipelineGroups[0].id : '')
   }
 
   const handleConfirmJoin = async () => {
@@ -519,7 +519,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
         <div>
           <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>构建与流水线管理</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-            按业务与触发类型自主组织流水线组，实时查看物理节点与方案负载，支持按容量智能调度。
+            自主创建流水线组并组织物理流水线，实时查看节点方案负载，支持按容量最小方案数智能调度。
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -530,8 +530,6 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 setActiveGroup({
                   group_key: '',
                   name: '',
-                  type: 'MR',
-                  max_schemes_per_pipeline: 200,
                   is_active: true,
                   description: ''
                 })
@@ -629,7 +627,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 cursor: 'pointer'
               }}
             >
-              <option value="ALL">全部类型</option>
+              <option value="ALL">全部物理流水线类型</option>
               {availableTypes.map(t => (
                 <option key={t} value={t}>{t}</option>
               ))}
@@ -659,9 +657,8 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
               <tr style={{ borderBottom: '1px solid var(--border-color)', background: 'rgba(255, 255, 255, 0.02)', color: 'var(--text-secondary)' }}>
                 <th style={{ padding: '12px 14px', width: 44, textAlign: 'center' }}></th>
                 <th style={{ padding: '12px 16px', fontWeight: 600, minWidth: 220 }}>流水线组名称 / 标识 (Key)</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600, width: 120 }}>触发类型</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600, width: 130 }}>组内物理节点</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600, width: 130 }}>挂载方案数</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, width: 140 }}>组内物理节点</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, width: 140 }}>挂载方案数</th>
                 <th style={{ padding: '12px 16px', fontWeight: 600 }}>组功能描述</th>
                 <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right', width: 180 }}>操作</th>
               </tr>
@@ -669,7 +666,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--text-secondary)' }}>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--text-secondary)' }}>
                     <RefreshCw size={24} className="spin" style={{ marginBottom: 12, opacity: 0.7 }} />
                     <div>正在读取流水线配置数据...</div>
                   </td>
@@ -679,7 +676,6 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                   {/* 自建流水线组列表 */}
                   {visibleGroups.map(({ group: g, matchedPipelines, allPipelines, totalSchemesInGroup }) => {
                     const isExpanded = expandedGroupIds.has(g.id)
-                    const badgeStyle = getTypeBadgeStyle(g.type)
 
                     return (
                       <React.Fragment key={`group-${g.id}`}>
@@ -714,13 +710,6 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                                 {g.group_key}
                               </span>
                             </div>
-                          </td>
-
-                          {/* 触发类型 */}
-                          <td style={{ padding: '14px 16px' }}>
-                            <span style={{ ...badgeStyle, fontSize: 11, padding: '2px 8px', borderRadius: 12, fontWeight: 500, display: 'inline-block' }}>
-                              {g.type}
-                            </span>
                           </td>
 
                           {/* 组内物理流水线数 */}
@@ -785,7 +774,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                         {/* 嵌套子表格 (组内物理流水线节点) */}
                         {isExpanded && (
                           <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)', background: 'rgba(0, 0, 0, 0.2)' }}>
-                            <td colSpan={7} style={{ padding: '0 0 16px 44px' }}>
+                            <td colSpan={6} style={{ padding: '0 0 16px 44px' }}>
                               <div style={{ 
                                 margin: '8px 16px 8px 0', 
                                 padding: 14, 
@@ -963,9 +952,6 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                           </div>
                         </td>
                         <td style={{ padding: '14px 16px' }}>
-                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>多类型混合</span>
-                        </td>
-                        <td style={{ padding: '14px 16px' }}>
                           <span style={{ fontSize: 13, fontWeight: 600, color: unassignedPipelinesData.all.length > 0 ? '#f59e0b' : 'var(--text-muted)' }}>
                             {unassignedPipelinesData.all.length} 条未归组
                           </span>
@@ -986,7 +972,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                       {/* 未纳入分组流水线子表格 */}
                       {unassignedExpanded && (
                         <tr style={{ borderBottom: '1px solid var(--border-color)', background: 'rgba(0, 0, 0, 0.15)' }}>
-                          <td colSpan={7} style={{ padding: '0 0 16px 44px' }}>
+                          <td colSpan={6} style={{ padding: '0 0 16px 44px' }}>
                             <div style={{ 
                               margin: '8px 16px 8px 0', 
                               padding: 14, 
@@ -1117,7 +1103,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 </>
               ) : (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--text-secondary)' }}>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--text-secondary)' }}>
                     <Box size={24} style={{ marginBottom: 12, opacity: 0.5 }} />
                     <div>未找到匹配的流水线组或流水线记录</div>
                   </td>
@@ -1128,7 +1114,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
         </div>
       </div>
 
-      {/* 流水线组新建 / 编辑 Modal */}
+      {/* 流水线组新建 / 编辑 Modal (去除了触发类型与容量) */}
       {showGroupModal && activeGroup && (
         <div style={{
           position: 'fixed',
@@ -1144,7 +1130,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
           zIndex: 1000,
           padding: 20
         }}>
-          <div className="glass-card" style={{ width: '100%', maxWidth: 500, padding: 24, borderRadius: 12 }}>
+          <div className="glass-card" style={{ width: '100%', maxWidth: 480, padding: 24, borderRadius: 12 }}>
             <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
               {activeGroup.id ? '编辑流水线组' : '新建流水线组 (资源池)'}
             </h3>
@@ -1155,7 +1141,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="例如: mr-backend-group"
+                  placeholder="例如: backend-group"
                   value={activeGroup.group_key || ''}
                   onChange={(e) => setActiveGroup({ ...activeGroup, group_key: e.target.value })}
                   disabled={!!activeGroup.id}
@@ -1169,38 +1155,11 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="例如: 后端 MR 门禁流水线组"
+                  placeholder="例如: 后端流水线组"
                   value={activeGroup.name || ''}
                   onChange={(e) => setActiveGroup({ ...activeGroup, name: e.target.value })}
                   required
                 />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                    触发类型
-                  </label>
-                  <select
-                    value={activeGroup.type || 'MR'}
-                    onChange={(e) => setActiveGroup({ ...activeGroup, type: e.target.value })}
-                  >
-                    <option value="MR">MR 门禁</option>
-                    <option value="每日构建">每日构建</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                    单节点方案容量参考
-                  </label>
-                  <input
-                    type="number"
-                    min={10}
-                    max={1000}
-                    value={activeGroup.max_schemes_per_pipeline || 200}
-                    onChange={(e) => setActiveGroup({ ...activeGroup, max_schemes_per_pipeline: Number(e.target.value) })}
-                  />
-                </div>
               </div>
 
               <div>
@@ -1238,7 +1197,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
         </div>
       )}
 
-      {/* 批量关联物理流水线入组 Modal (从组发起) */}
+      {/* 批量关联物理流水线入组 Modal (从组发起，无类型限制) */}
       {attachModalGroup && (
         <div style={{
           position: 'fixed',
@@ -1260,17 +1219,17 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
               <span>关联物理流水线至 [{attachModalGroup.name}]</span>
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 16 }}>
-              请勾选同属于 <strong>{attachModalGroup.type}</strong> 类型且尚未归组的物理流水线节点：
+              请勾选尚未归组的物理流水线节点加入该组：
             </p>
 
             {(() => {
-              const eligiblePipelines = pipelines.filter(p => (!p.group_id || p.group_id === 0) && p.type === attachModalGroup.type)
+              const eligiblePipelines = pipelines.filter(p => !p.group_id || p.group_id === 0)
 
               if (eligiblePipelines.length === 0) {
                 return (
                   <div style={{ padding: '24px 16px', textAlign: 'center', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 8, color: 'var(--text-muted)' }}>
                     <AlertCircle size={20} style={{ margin: '0 auto 8px', opacity: 0.6 }} />
-                    <div>当前没有可加入该组的未归组 {attachModalGroup.type} 物理流水线</div>
+                    <div>当前没有可加入该组的未归组物理流水线</div>
                   </div>
                 )
               }
@@ -1307,7 +1266,10 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                           }}
                         />
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
+                          <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span>{p.name}</span>
+                            <span style={{ ...getTypeBadgeStyle(p.type), fontSize: 11, padding: '1px 6px', borderRadius: 10 }}>{p.type}</span>
+                          </div>
                           <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>ID: {p.pipeline_id} - 负责人: {p.owner_name || '未分配'}</div>
                         </div>
                       </label>
@@ -1339,7 +1301,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
         </div>
       )}
 
-      {/* 单条流水线加入指定组 Modal (从未纳入分组发起) */}
+      {/* 单条流水线加入指定组 Modal (从未纳入分组发起，无类型限制) */}
       {joinModalPipeline && (
         <div style={{
           position: 'fixed',
@@ -1361,24 +1323,22 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
               <span>将流水线加入流水线组</span>
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 16 }}>
-              流水线 <strong>{joinModalPipeline.name}</strong> ({joinModalPipeline.type}) 将被加入以下同类型资源池：
+              请选择要将流水线 <strong>{joinModalPipeline.name}</strong> ({joinModalPipeline.type}) 归入的目标流水线组：
             </p>
 
             {(() => {
-              const eligibleGroups = pipelineGroups.filter(g => g.type === joinModalPipeline.type)
-
-              if (eligibleGroups.length === 0) {
+              if (pipelineGroups.length === 0) {
                 return (
                   <div style={{ padding: '24px 16px', textAlign: 'center', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 8, color: 'var(--text-muted)' }}>
                     <AlertCircle size={20} style={{ margin: '0 auto 8px', opacity: 0.6 }} />
-                    <div>当前系统中暂无类型为 <strong>{joinModalPipeline.type}</strong> 的流水线组，请先在上方点击“新建流水线组”。</div>
+                    <div>当前系统中暂无流水线组，请先在上方点击“新建流水线组”。</div>
                   </div>
                 )
               }
 
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                  {eligibleGroups.map(g => {
+                  {pipelineGroups.map(g => {
                     const isSelected = targetGroupIdToJoin === g.id
                     return (
                       <label 

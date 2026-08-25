@@ -15,21 +15,17 @@ import (
 
 // PipelineGroupRequest 流水线组请求结构体
 type PipelineGroupRequest struct {
-	GroupKey              string `json:"group_key" binding:"required"`
-	Name                  string `json:"name" binding:"required"`
-	Type                  string `json:"type" binding:"required"`
-	MaxSchemesPerPipeline int    `json:"max_schemes_per_pipeline"`
-	IsActive              *bool  `json:"is_active"`
-	Description           string `json:"description"`
+	GroupKey    string `json:"group_key" binding:"required"`
+	Name        string `json:"name" binding:"required"`
+	IsActive    *bool  `json:"is_active"`
+	Description string `json:"description"`
 }
 
-// PipelineGroupResponse 流水线组响应结构体 (包含聚合容量与负载统计)
+// PipelineGroupResponse 流水线组响应结构体 (包含实时方案数统计)
 type PipelineGroupResponse struct {
 	models.PipelineGroup
-	PipelineCount int     `json:"pipeline_count"`
-	TotalCapacity int     `json:"total_capacity"`
-	UsedSchemes   int     `json:"used_schemes"`
-	UsageRate     float64 `json:"usage_rate"`
+	PipelineCount int `json:"pipeline_count"`
+	UsedSchemes   int `json:"used_schemes"`
 }
 
 // AttachDetachPipelinesRequest 批量关联/解绑流水线请求结构体
@@ -38,16 +34,11 @@ type AttachDetachPipelinesRequest struct {
 	Action      string `json:"action" binding:"required"` // "attach" | "detach"
 }
 
-// GetPipelineGroups 获取流水线组列表 (包含实时方案数与容量统计)
+// GetPipelineGroups 获取流水线组列表 (包含实时方案数统计)
 func GetPipelineGroups(c *gin.Context) {
-	groupType := c.Query("type")
 	search := c.Query("search")
 
 	query := database.DB.Model(&models.PipelineGroup{}).Preload("Pipelines")
-
-	if groupType != "" && groupType != "ALL" {
-		query = query.Where("type = ?", groupType)
-	}
 
 	if search != "" {
 		query = query.Where("name LIKE ? OR group_key LIKE ?", "%"+search+"%", "%"+search+"%")
@@ -79,28 +70,15 @@ func GetPipelineGroups(c *gin.Context) {
 	responses := make([]PipelineGroupResponse, 0, len(groups))
 	for _, g := range groups {
 		pCount := len(g.Pipelines)
-		maxCapPerNode := g.MaxSchemesPerPipeline
-		if maxCapPerNode <= 0 {
-			maxCapPerNode = 200
-		}
-		totalCap := pCount * maxCapPerNode
-
 		used := 0
 		for _, p := range g.Pipelines {
 			used += pipelineSchemeCountMap[p.ID]
 		}
 
-		usageRate := 0.0
-		if totalCap > 0 {
-			usageRate = float64(used) / float64(totalCap) * 100.0
-		}
-
 		responses = append(responses, PipelineGroupResponse{
 			PipelineGroup: g,
 			PipelineCount: pCount,
-			TotalCapacity: totalCap,
 			UsedSchemes:   used,
-			UsageRate:     usageRate,
 		})
 	}
 
@@ -122,23 +100,16 @@ func CreatePipelineGroup(c *gin.Context) {
 		return
 	}
 
-	maxCap := req.MaxSchemesPerPipeline
-	if maxCap <= 0 {
-		maxCap = 200
-	}
-
 	isActive := true
 	if req.IsActive != nil {
 		isActive = *req.IsActive
 	}
 
 	group := models.PipelineGroup{
-		GroupKey:              groupKey,
-		Name:                  name,
-		Type:                  req.Type,
-		MaxSchemesPerPipeline: maxCap,
-		IsActive:              isActive,
-		Description:           req.Description,
+		GroupKey:    groupKey,
+		Name:        name,
+		IsActive:    isActive,
+		Description: req.Description,
 	}
 
 	if err := database.DB.Create(&group).Error; err != nil {
@@ -182,12 +153,6 @@ func UpdatePipelineGroup(c *gin.Context) {
 	}
 	if req.GroupKey != "" {
 		group.GroupKey = strings.TrimSpace(req.GroupKey)
-	}
-	if req.Type != "" {
-		group.Type = req.Type
-	}
-	if req.MaxSchemesPerPipeline > 0 {
-		group.MaxSchemesPerPipeline = req.MaxSchemesPerPipeline
 	}
 	if req.IsActive != nil {
 		group.IsActive = *req.IsActive
@@ -272,16 +237,6 @@ func AttachDetachPipelinesToGroup(c *gin.Context) {
 	}
 
 	if req.Action == "attach" {
-		// 校验流水线类型是否与流水线组类型一致 (保证组内同质性)
-		var mismatched []models.Pipeline
-		if err := database.DB.Where("id IN ? AND type != ?", req.PipelineIDs, group.Type).Find(&mismatched).Error; err == nil && len(mismatched) > 0 {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": fmt.Sprintf("流水线类型不匹配: 流水线组类型为 [%s]，但物理流水线 [%s] 的类型为 [%s]，无法加入该组",
-					group.Type, mismatched[0].Name, mismatched[0].Type),
-			})
-			return
-		}
-
 		if err := database.DB.Model(&models.Pipeline{}).
 			Where("id IN ?", req.PipelineIDs).
 			Updates(map[string]interface{}{

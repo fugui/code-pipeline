@@ -225,59 +225,42 @@ func TestCreateExecutionScheme_RoutingPriorityAndNoFallback(t *testing.T) {
 	}
 }
 
-func TestAttachPipelinesToGroup_TypeValidation(t *testing.T) {
+func TestAttachDetachPipelinesToGroup(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
 
-	// 创建 MR 类型的测试组
+	// 创建测试组
 	group := models.PipelineGroup{
-		GroupKey: fmt.Sprintf("test-type-group-%d", time.Now().UnixNano()),
-		Name:     "MR同质性测试组",
-		Type:     "MR",
+		GroupKey: fmt.Sprintf("test-attach-group-%d", time.Now().UnixNano()),
+		Name:     "附加测试组",
 		IsActive: true,
 	}
 	database.DB.Create(&group)
 	defer database.DB.Delete(&group)
 
-	// 创建一个 MR 流水线和一个 每日构建 流水线
-	pMr := models.Pipeline{
-		PipelineID: fmt.Sprintf("p-mr-%d", time.Now().UnixNano()),
-		Name:       "MR-Pipeline",
+	// 创建两条物理流水线
+	p1 := models.Pipeline{
+		PipelineID: fmt.Sprintf("p-attach-1-%d", time.Now().UnixNano()),
+		Name:       "Pipeline-1",
 		Type:       "MR",
 	}
-	pDaily := models.Pipeline{
-		PipelineID: fmt.Sprintf("p-daily-%d", time.Now().UnixNano()),
-		Name:       "Daily-Pipeline",
+	p2 := models.Pipeline{
+		PipelineID: fmt.Sprintf("p-attach-2-%d", time.Now().UnixNano()),
+		Name:       "Pipeline-2",
 		Type:       "每日构建",
 	}
-	database.DB.Create(&pMr)
-	database.DB.Create(&pDaily)
-	defer database.DB.Delete(&pMr)
-	defer database.DB.Delete(&pDaily)
+	database.DB.Create(&p1)
+	database.DB.Create(&p2)
+	defer database.DB.Delete(&p1)
+	defer database.DB.Delete(&p2)
 
 	r := gin.New()
 	r.POST("/api/pipeline-groups/:id/pipelines", AttachDetachPipelinesToGroup)
 
-	// 1. 尝试将异质流水线 (每日构建) 加入 MR 组 -> 必须返回 400 且提示类型不匹配
+	// 1. 将流水线加入组 (attach) -> 成功
 	{
 		body, _ := json.Marshal(AttachDetachPipelinesRequest{
-			PipelineIDs: []uint{pDaily.ID},
-			Action:      "attach",
-		})
-		req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("/api/pipeline-groups/%d/pipelines", group.ID), bytes.NewBuffer(body))
-		req.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-		r.ServeHTTP(w, req)
-
-		if w.Code != http.StatusBadRequest {
-			t.Fatalf("预期类型不匹配返回 400, 实际返回: %d, body: %s", w.Code, w.Body.String())
-		}
-	}
-
-	// 2. 将同质流水线 (MR) 加入 MR 组 -> 成功
-	{
-		body, _ := json.Marshal(AttachDetachPipelinesRequest{
-			PipelineIDs: []uint{pMr.ID},
+			PipelineIDs: []uint{p1.ID, p2.ID},
 			Action:      "attach",
 		})
 		req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("/api/pipeline-groups/%d/pipelines", group.ID), bytes.NewBuffer(body))
@@ -286,13 +269,36 @@ func TestAttachPipelinesToGroup_TypeValidation(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		if w.Code != http.StatusOK {
-			t.Fatalf("同质流水线加入组失败, status: %d, body: %s", w.Code, w.Body.String())
+			t.Fatalf("流水线批量加入组失败, status: %d, body: %s", w.Code, w.Body.String())
 		}
 
-		var checkP models.Pipeline
-		database.DB.First(&checkP, pMr.ID)
-		if checkP.GroupID == nil || *checkP.GroupID != group.ID {
+		var checkP1, checkP2 models.Pipeline
+		database.DB.First(&checkP1, p1.ID)
+		database.DB.First(&checkP2, p2.ID)
+		if checkP1.GroupID == nil || *checkP1.GroupID != group.ID || checkP2.GroupID == nil || *checkP2.GroupID != group.ID {
 			t.Fatalf("流水线 group_id 未正确更新")
+		}
+	}
+
+	// 2. 将流水线移出组 (detach) -> 成功
+	{
+		body, _ := json.Marshal(AttachDetachPipelinesRequest{
+			PipelineIDs: []uint{p1.ID},
+			Action:      "detach",
+		})
+		req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("/api/pipeline-groups/%d/pipelines", group.ID), bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("流水线移出组失败, status: %d, body: %s", w.Code, w.Body.String())
+		}
+
+		var checkP1 models.Pipeline
+		database.DB.First(&checkP1, p1.ID)
+		if checkP1.GroupID != nil {
+			t.Fatalf("流水线移出组后 group_id 应为 nil")
 		}
 	}
 }

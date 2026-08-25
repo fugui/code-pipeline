@@ -789,7 +789,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                   value={(() => {
                     const matched = pipelines.find(p => p.id === activeScheme.pipeline_id);
                     if (matched) {
-                      return `${matched.name} (ID: ${matched.pipeline_id}) - 负责人: ${matched.owner || '未分配'}`;
+                      return `${matched.name} (ID: ${matched.pipeline_id}) - 负责人: ${matched.owner_name || '未分配'}`;
                     }
                     return `流水线 ID: ${activeScheme.pipeline_id}`;
                   })()}
@@ -813,7 +813,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                         <option value="">-- 请选择流水线组 (推荐自动负载均衡) --</option>
                         {pipelineGroups.map(g => (
                           <option key={g.id} value={g.id}>
-                            {g.name} [{g.type}] (已用方案: {g.used_schemes || 0})
+                            {g.name} ({g.group_key}) - 已用方案: {g.used_schemes || 0}
                           </option>
                         ))}
                       </select>
