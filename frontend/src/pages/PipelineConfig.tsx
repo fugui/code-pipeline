@@ -1128,15 +1128,15 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1000,
-          padding: 20
+          padding: 24
         }}>
-          <div className="glass-card" style={{ width: '100%', maxWidth: 480, padding: 24, borderRadius: 12 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
+          <div className="glass-card" style={{ width: '100%', maxWidth: 560, padding: 28, borderRadius: 14 }}>
+            <h3 style={{ fontSize: 19, fontWeight: 700, marginBottom: 18 }}>
               {activeGroup.id ? '编辑流水线组' : '新建流水线组 (资源池)'}
             </h3>
-            <form onSubmit={handleSaveGroup} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <form onSubmit={handleSaveGroup} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>
                   组唯一标识 (Group Key) <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <input
@@ -1145,12 +1145,13 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                   value={activeGroup.group_key || ''}
                   onChange={(e) => setActiveGroup({ ...activeGroup, group_key: e.target.value })}
                   disabled={!!activeGroup.id}
+                  style={{ width: '100%', padding: '10px 12px', fontSize: 14 }}
                   required
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>
                   流水线组展示名称 <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <input
@@ -1158,12 +1159,13 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                   placeholder="例如: 后端流水线组"
                   value={activeGroup.name || ''}
                   onChange={(e) => setActiveGroup({ ...activeGroup, name: e.target.value })}
+                  style={{ width: '100%', padding: '10px 12px', fontSize: 14 }}
                   required
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>
                   描述说明
                 </label>
                 <textarea
@@ -1171,16 +1173,17 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                   placeholder="请输入该流水线组的功能用途与承载说明..."
                   value={activeGroup.description || ''}
                   onChange={(e) => setActiveGroup({ ...activeGroup, description: e.target.value })}
-                  style={{ resize: 'vertical' }}
+                  style={{ width: '100%', padding: '10px 12px', fontSize: 14, resize: 'vertical' }}
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 10 }}>
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => setShowGroupModal(false)}
                   disabled={savingGroup}
+                  style={{ padding: '8px 16px', fontSize: 13 }}
                 >
                   取消
                 </button>
@@ -1188,6 +1191,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                   type="submit"
                   className="btn btn-primary"
                   disabled={savingGroup}
+                  style={{ padding: '8px 20px', fontSize: 13 }}
                 >
                   {savingGroup ? '正在保存...' : '确认保存'}
                 </button>
@@ -1211,14 +1215,14 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1000,
-          padding: 20
+          padding: 24
         }}>
-          <div className="glass-card" style={{ width: '100%', maxWidth: 540, padding: 24, borderRadius: 12 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <FolderPlus size={20} style={{ color: 'var(--accent-primary, #6366f1)' }} />
+          <div className="glass-card" style={{ width: '100%', maxWidth: 620, padding: 28, borderRadius: 14 }}>
+            <h3 style={{ fontSize: 19, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FolderPlus size={22} style={{ color: 'var(--accent-primary, #6366f1)' }} />
               <span>关联物理流水线至 [{attachModalGroup.name}]</span>
             </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 16 }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 18 }}>
               请勾选尚未归组的物理流水线节点加入该组：
             </p>
 
@@ -1227,15 +1231,15 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
 
               if (eligiblePipelines.length === 0) {
                 return (
-                  <div style={{ padding: '24px 16px', textAlign: 'center', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 8, color: 'var(--text-muted)' }}>
-                    <AlertCircle size={20} style={{ margin: '0 auto 8px', opacity: 0.6 }} />
+                  <div style={{ padding: '32px 16px', textAlign: 'center', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 10, color: 'var(--text-muted)' }}>
+                    <AlertCircle size={22} style={{ margin: '0 auto 10px', opacity: 0.6 }} />
                     <div>当前没有可加入该组的未归组物理流水线</div>
                   </div>
                 )
               }
 
               return (
-                <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16, paddingRight: 4 }}>
+                <div style={{ maxHeight: 320, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20, paddingRight: 4 }}>
                   {eligiblePipelines.map(p => {
                     const isChecked = p.id ? selectedPipelineIdsToAttach.includes(p.id) : false
                     return (
@@ -1244,8 +1248,8 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 10,
-                          padding: '10px 12px',
+                          gap: 12,
+                          padding: '12px 14px',
                           borderRadius: 8,
                           background: isChecked ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255, 255, 255, 0.03)',
                           border: isChecked ? '1px solid var(--accent-primary, #6366f1)' : '1px solid rgba(255, 255, 255, 0.06)',
@@ -1266,11 +1270,11 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                           }}
                         />
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span>{p.name}</span>
                             <span style={{ ...getTypeBadgeStyle(p.type), fontSize: 11, padding: '1px 6px', borderRadius: 10 }}>{p.type}</span>
                           </div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>ID: {p.pipeline_id} - 负责人: {p.owner_name || '未分配'}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>ID: {p.pipeline_id} - 负责人: {p.owner_name || '未分配'}</div>
                         </div>
                       </label>
                     )
@@ -1279,12 +1283,13 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
               )
             })()}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 10 }}>
               <button
                 type="button"
                 className="btn btn-secondary"
                 onClick={() => setAttachModalGroup(null)}
                 disabled={attaching}
+                style={{ padding: '8px 16px', fontSize: 13 }}
               >
                 取消
               </button>
@@ -1293,6 +1298,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 className="btn btn-primary"
                 onClick={handleConfirmAttach}
                 disabled={attaching || selectedPipelineIdsToAttach.length === 0}
+                style={{ padding: '8px 20px', fontSize: 13 }}
               >
                 {attaching ? '正在关联...' : `确认添加 (${selectedPipelineIdsToAttach.length})`}
               </button>
@@ -1315,22 +1321,22 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1000,
-          padding: 20
+          padding: 24
         }}>
-          <div className="glass-card" style={{ width: '100%', maxWidth: 480, padding: 24, borderRadius: 12 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <FolderPlus size={20} style={{ color: 'var(--accent-primary, #6366f1)' }} />
+          <div className="glass-card" style={{ width: '100%', maxWidth: 580, padding: 28, borderRadius: 14 }}>
+            <h3 style={{ fontSize: 19, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FolderPlus size={22} style={{ color: 'var(--accent-primary, #6366f1)' }} />
               <span>将流水线加入流水线组</span>
             </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 16 }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 18 }}>
               请选择要将物理流水线 <strong>{joinModalPipeline.name}</strong> {joinModalPipeline.type ? `(${joinModalPipeline.type})` : ''} 归入的目标组：
             </p>
 
             {(() => {
               if (pipelineGroups.length === 0) {
                 return (
-                  <div style={{ padding: '24px 16px', textAlign: 'center', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 8, color: 'var(--text-muted)' }}>
-                    <AlertCircle size={20} style={{ margin: '0 auto 8px', opacity: 0.6 }} />
+                  <div style={{ padding: '32px 16px', textAlign: 'center', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 10, color: 'var(--text-muted)' }}>
+                    <AlertCircle size={22} style={{ margin: '0 auto 10px', opacity: 0.6 }} />
                     <div>当前系统中暂无流水线组，请先在上方点击“新建流水线组”。</div>
                   </div>
                 )
@@ -1339,9 +1345,9 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
               const selectedGroup = pipelineGroups.find(g => g.id === Number(targetGroupIdToJoin))
 
               return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 8 }}>
                       目标流水线组 (资源池) <span style={{ color: '#ef4444' }}>*</span>
                     </label>
                     <select
@@ -1349,7 +1355,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                       onChange={(e) => setTargetGroupIdToJoin(e.target.value ? Number(e.target.value) : '')}
                       style={{
                         width: '100%',
-                        padding: '10px 12px',
+                        padding: '11px 14px',
                         fontSize: 14,
                         borderRadius: 8,
                         background: 'var(--bg-secondary, rgba(255, 255, 255, 0.05))',
@@ -1370,26 +1376,26 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                   {/* 选中组的详情提示卡片 */}
                   {selectedGroup && (
                     <div style={{
-                      padding: '12px 14px',
-                      borderRadius: 8,
+                      padding: '14px 16px',
+                      borderRadius: 10,
                       background: 'rgba(99, 102, 241, 0.06)',
                       border: '1px solid rgba(99, 102, 241, 0.2)',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: 4
+                      gap: 6
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-main)' }}>{selectedGroup.name}</span>
-                        <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: '#a5b4fc', background: 'rgba(99, 102, 241, 0.15)', padding: '1px 6px', borderRadius: 4 }}>
+                        <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-main)' }}>{selectedGroup.name}</span>
+                        <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: '#a5b4fc', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 8px', borderRadius: 4 }}>
                           {selectedGroup.group_key}
                         </span>
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', gap: 12 }}>
-                        <span>组内节点: <strong>{selectedGroup.pipeline_count || 0}</strong> 条</span>
-                        <span>已挂载方案: <strong>{selectedGroup.used_schemes || 0}</strong> 个</span>
+                      <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', gap: 16 }}>
+                        <span>组内节点: <strong style={{ color: 'var(--text-main)' }}>{selectedGroup.pipeline_count || 0}</strong> 条</span>
+                        <span>已挂载方案: <strong style={{ color: '#38bdf8' }}>{selectedGroup.used_schemes || 0}</strong> 个</span>
                       </div>
                       {selectedGroup.description && (
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
                           {selectedGroup.description}
                         </div>
                       )}
@@ -1399,12 +1405,13 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
               )
             })()}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 22 }}>
               <button
                 type="button"
                 className="btn btn-secondary"
                 onClick={() => setJoinModalPipeline(null)}
                 disabled={joining}
+                style={{ padding: '8px 16px', fontSize: 13 }}
               >
                 取消
               </button>
@@ -1413,6 +1420,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 className="btn btn-primary"
                 onClick={handleConfirmJoin}
                 disabled={joining || !targetGroupIdToJoin}
+                style={{ padding: '8px 20px', fontSize: 13 }}
               >
                 {joining ? '正在加入...' : '确认加入'}
               </button>
