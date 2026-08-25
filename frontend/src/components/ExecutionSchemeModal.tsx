@@ -88,6 +88,16 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
   const [manualBranchText, setManualBranchText] = React.useState('');
 
   const [mrTrigger, setMrTrigger] = React.useState(true);
+
+  // 过滤出物理流水线节点数量大于 0 的有效可用流水线组
+  const availableGroups = React.useMemo(() => {
+    return pipelineGroups.filter(g => {
+      if (typeof g.pipeline_count === 'number') {
+        return g.pipeline_count > 0;
+      }
+      return pipelines.some(p => p.group_id === g.id);
+    });
+  }, [pipelineGroups, pipelines]);
   const [dailyBuild, setDailyBuild] = React.useState(true);
   const [dailyBuildTime, setDailyBuildTime] = React.useState(getRandomDailyBuildTime);
   const [buildTypes, setBuildTypes] = React.useState<string[]>(['SCH']);
@@ -797,7 +807,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                 />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {pipelineGroups.length > 0 ? (
+                  {availableGroups.length > 0 ? (
                     <div>
                       <select
                         value={activeScheme.group_id || ''}
@@ -811,11 +821,14 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                         }}
                       >
                         <option value="">-- 请选择流水线组 (推荐自动负载均衡) --</option>
-                        {pipelineGroups.map(g => (
-                          <option key={g.id} value={g.id}>
-                            {g.name} ({g.group_key}) - 已用方案: {g.used_schemes || 0}
-                          </option>
-                        ))}
+                        {availableGroups.map(g => {
+                          const pCount = g.pipeline_count ?? pipelines.filter(p => p.group_id === g.id).length;
+                          return (
+                            <option key={g.id} value={g.id}>
+                              {g.name} ({g.group_key}) - 组内物理节点: {pCount} 条 | 已用方案: {g.used_schemes || 0} 个
+                            </option>
+                          );
+                        })}
                       </select>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 12, color: 'var(--color-primary, #3b82f6)' }}>
                         <Sparkles size={13} />
@@ -825,7 +838,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                   ) : null}
 
                   {/* 高级选项 / 物理流水线选择 */}
-                  {pipelineGroups.length > 0 ? (
+                  {availableGroups.length > 0 ? (
                     <div style={{ marginTop: 4 }}>
                       <button
                         type="button"
@@ -865,7 +878,7 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                             <option value="">-- 由流水线组自动调度分配 --</option>
                             {pipelines.map(p => (
                               <option key={p.id} value={p.id}>
-                                {p.name} (ID: {p.pipeline_id}) - 类型: {p.type} - 负责人: {p.owner || '未分配'}
+                                {p.name} (ID: {p.pipeline_id}) - 类型: {p.type} - 负责人: {p.owner_name || '未分配'}
                               </option>
                             ))}
                           </select>
@@ -888,12 +901,12 @@ export const ExecutionSchemeModal: React.FC<ExecutionSchemeModalProps> = ({
                         <option value="">-- 请选择要关联的物理流水线 --</option>
                         {pipelines.map(p => (
                           <option key={p.id} value={p.id}>
-                            {p.name} (ID: {p.pipeline_id}) - 类型: {p.type} - 负责人: {p.owner || '未分配'}
+                            {p.name} (ID: {p.pipeline_id}) - 类型: {p.type} - 负责人: {p.owner_name || '未分配'}
                           </option>
                         ))}
                       </select>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                        提示：系统中暂无自建流水线组，已切换为直接绑定物理流水线。可在“流水线管理”页面按需创建流水线组。
+                        提示：系统中暂无已关联物理节点的可用流水线组，已自动切换为直接绑定物理流水线。可在“流水线管理”页面按需建组并关联物理节点。
                       </div>
                     </div>
                   )}
