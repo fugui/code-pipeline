@@ -1374,7 +1374,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                       <option value="">-- 请选择目标流水线组 --</option>
                       {pipelineGroups.map(g => (
                         <option key={g.id} value={g.id}>
-                          {g.name} ({g.group_key}) - 已挂载方案: {g.used_schemes || 0} 个 | 组内节点: {g.pipeline_count || 0} 条
+                          {g.name} ({g.group_key}) - 包含 {g.pipeline_count || 0} 条物理流水线
                         </option>
                       ))}
                     </select>
@@ -1398,8 +1398,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                         </span>
                       </div>
                       <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', gap: 16 }}>
-                        <span>组内节点: <strong style={{ color: 'var(--text-main)' }}>{selectedGroup.pipeline_count || 0}</strong> 条</span>
-                        <span>已挂载方案: <strong style={{ color: '#38bdf8' }}>{selectedGroup.used_schemes || 0}</strong> 个</span>
+                        <span>组内物理节点: <strong style={{ color: 'var(--text-main)' }}>{selectedGroup.pipeline_count || 0}</strong> 条</span>
                       </div>
                       {selectedGroup.description && (
                         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
