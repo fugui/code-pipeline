@@ -357,8 +357,90 @@ func ConfigureRemoteACL(ctx context.Context, targetType string, targetID string,
 	return nil
 }
 
-// GetRemoteProjectBranchCount 调用托管平台接口获取特定代码仓的分支总数
-func GetRemoteProjectBranchCount(ctx context.Context, projectID string) (int, error) {
+// RemoteRepoDetail 远程仓库基本信息详情 (对应 body.json)
+type RemoteRepoDetail struct {
+	ID                       uint     `json:"id"`
+	Name                     string   `json:"name"`
+	NameWithNamespace        string   `json:"name_with_namespace"`
+	Path                     string   `json:"path"`
+	PathWithNamespace        string   `json:"path_with_namespace"`
+	Description              string   `json:"description"`
+	DefaultBranch            string   `json:"default_branch"`
+	MainRepositoryLanguage   *string  `json:"main_repository_language"`
+	Visibility               string   `json:"visibility"`
+	Security                 string   `json:"security"`
+	NetworkType              string   `json:"network_type"`
+	IsKIA                    bool     `json:"is_kia"`
+	Archived                 bool     `json:"archived"`
+	EmptyRepo                bool     `json:"empty_repo"`
+	MergeRequestsEnabled     bool     `json:"merge_requests_enabled"`
+	IssuesEnabled            bool     `json:"issues_enabled"`
+	WikiEnabled              bool     `json:"wiki_enabled"`
+	JobsEnabled              bool     `json:"jobs_enabled"`
+	ContainerRegistryEnabled bool     `json:"container_registry_enabled"`
+	SharedRunnersEnabled     bool     `json:"shared_runners_enabled"`
+	PublicJobs               bool     `json:"public_jobs"`
+	LFSEnabled               bool     `json:"lfs_enabled"`
+	RequestAccessEnabled     bool     `json:"request_access_enabled"`
+	MergeMethod              string   `json:"merge_method"`
+	OnlyAllowMergeIfPipelineSucceeds bool `json:"only_allow_merge_if_pipeline_succeeds"`
+	OnlyAllowMergeIfAllDiscussionsAreResolved bool `json:"only_allow_merge_if_all_discussions_are_resolved"`
+	ResolveOutdatedDiffDiscussions bool `json:"resolve_outdated_diff_discussions"`
+	BranchCount              int      `json:"branch_count"`
+	TagCount                 int      `json:"tag_count"`
+	MemberCount              int      `json:"member_count"`
+	Statistics               struct {
+		CommitCount      int     `json:"commit_count"`
+		StorageSize      float64 `json:"storage_size"`
+		RepositorySize   float64 `json:"repository_size"`
+		LfsObjectsSize   float64 `json:"lfs_objects_size"`
+		JobArtifactsSize float64 `json:"job_artifacts_size"`
+	} `json:"statistics"`
+	Creator struct {
+		ID       uint   `json:"id"`
+		Name     string `json:"name"`
+		Username string `json:"username"`
+		Email    string `json:"email"`
+		NameCn   string `json:"name_cn"`
+	} `json:"creator"`
+}
+
+// RemoteMrSetting 远程代码仓 MR 设置详情 (对应 mr_setting.json)
+type RemoteMrSetting struct {
+	MergeRequestSetting struct {
+		ID                               uint   `json:"id"`
+		ProjectID                        uint   `json:"project_id"`
+		DisableMergeBySelf               bool   `json:"disable_merge_by_self"`
+		CanForceMerge                    bool   `json:"can_force_merge"`
+		ResetApprovalsOnPush             bool   `json:"reset_approvals_on_push"`
+		ResetReviewersOnPush             bool   `json:"reset_reviewers_on_push"`
+		ReviewMode                       string `json:"review_mode"`
+		ApprovalRequiredReviewers        int    `json:"approval_required_reviewers"`
+		ApprovalRequiredApprovers        int    `json:"approval_required_approvers"`
+		OnlyCommitterCanApprove          bool   `json:"only_committer_can_approve"`
+		CommitterMustCastTwoVotes        bool   `json:"committer_must_cast_two_votes"`
+		OnlyAllowMergeIfVoteBiggerThan   int    `json:"only_allow_merge_if_vote_bigger_than"`
+		MustPassQualityGate              bool   `json:"must_pass_quality_gate"`
+		MrCodeCheck                      bool   `json:"mr_codecheck"`
+		ForcedRebuildPipelineBeforeMerge  bool   `json:"forced_rebuild_pipeline_before_merge"`
+		SourceBranchPipelineMustSucceeds bool   `json:"source_branch_pipeline_must_succeeds"`
+		NewestPremergePipelineMustSucceeds bool `json:"newest_premerge_pipeline_must_succeeds"`
+		MustRelateIssue                  bool   `json:"must_relate_issue"`
+		NeedAllIssuesCheckPassed         bool   `json:"need_all_issues_check_passed"`
+		DeleteSourceBranchWhenMerged     bool   `json:"delete_source_branch_when_merged"`
+		AutoSquashMerge                  bool   `json:"auto_squash_merge"`
+		ForbiddenGuestCreateMr           bool   `json:"forbidden_guest_create_mr"`
+		CloseIssueWhenMrMerged           bool   `json:"close_issue_when_mr_merged"`
+		EvaluationMergeGate              bool   `json:"evaluation_merge_gate"`
+	} `json:"merge_request_setting"`
+	OnlyAllowMergeIfAllDiscussionsAreResolved bool   `json:"only_allow_merge_if_all_discussions_are_resolved"`
+	OnlyAllowMergeIfPipelineSucceeds          bool   `json:"only_allow_merge_if_pipeline_succeeds"`
+	MergeMethod                               string `json:"merge_method"`
+	OnlyAllowMergeIfVoteBiggerThan           int    `json:"only_allow_merge_if_vote_bigger_than"`
+}
+
+// GetRemoteRepoDetail 调用托管平台接口获取特定代码仓的详细信息
+func GetRemoteRepoDetail(ctx context.Context, projectID string) (*RemoteRepoDetail, error) {
 	apiURL := fmt.Sprintf("%s/projects/%s", GitPlatformBaseURL, projectID)
 
 	reqHeaders := make(map[string]string)
@@ -369,30 +451,70 @@ func GetRemoteProjectBranchCount(ctx context.Context, projectID string) (int, er
 
 	body, err := utils.SendHTTPRequest(ctx, "GET", apiURL, nil, utils.HTTPOptions{
 		Headers: reqHeaders,
-	}, []int{http.StatusOK}, "GetRemoteProjectBranchCount")
+	}, []int{http.StatusOK}, "GetRemoteRepoDetail")
 	if err != nil {
-		return 0, err
-	}
-
-	type ProjectDetail struct {
-		BranchCount int `json:"branch_count"`
+		return nil, err
 	}
 
 	type WrappedResp struct {
-		Status string        `json:"status"`
-		Result ProjectDetail `json:"result"`
+		Status string           `json:"status"`
+		Result RemoteRepoDetail `json:"result"`
+	}
+
+	var resp WrappedResp
+	if err := json.Unmarshal(body, &resp); err == nil && resp.Status == "success" && resp.Result.ID > 0 {
+		return &resp.Result, nil
+	}
+
+	var detail RemoteRepoDetail
+	if err := json.Unmarshal(body, &detail); err != nil {
+		return nil, fmt.Errorf("failed to parse project details JSON: %w", err)
+	}
+
+	return &detail, nil
+}
+
+// GetRemoteMrSetting 调用托管平台接口获取特定代码仓的 MR 设置信息
+func GetRemoteMrSetting(ctx context.Context, projectID string) (*RemoteMrSetting, error) {
+	apiURL := fmt.Sprintf("%s/projects/%s/merge_requests/settings", GitPlatformBaseURL, projectID)
+
+	reqHeaders := make(map[string]string)
+	for k, v := range models.AppConfig.CodeHub.Headers {
+		reqHeaders[k] = v
+	}
+	reqHeaders["Accept"] = "application/json"
+
+	body, err := utils.SendHTTPRequest(ctx, "GET", apiURL, nil, utils.HTTPOptions{
+		Headers: reqHeaders,
+	}, []int{http.StatusOK}, "GetRemoteMrSetting")
+	if err != nil {
+		return nil, err
+	}
+
+	type WrappedResp struct {
+		Status string          `json:"status"`
+		Result RemoteMrSetting `json:"result"`
 	}
 
 	var resp WrappedResp
 	if err := json.Unmarshal(body, &resp); err == nil && resp.Status == "success" {
-		return resp.Result.BranchCount, nil
+		return &resp.Result, nil
 	}
 
-	var detail ProjectDetail
-	if err := json.Unmarshal(body, &detail); err != nil {
-		return 0, fmt.Errorf("failed to parse project details JSON: %w", err)
+	var setting RemoteMrSetting
+	if err := json.Unmarshal(body, &setting); err != nil {
+		return nil, fmt.Errorf("failed to parse mr settings JSON: %w", err)
 	}
 
+	return &setting, nil
+}
+
+// GetRemoteProjectBranchCount 调用托管平台接口获取特定代码仓的分支总数
+func GetRemoteProjectBranchCount(ctx context.Context, projectID string) (int, error) {
+	detail, err := GetRemoteRepoDetail(ctx, projectID)
+	if err != nil {
+		return 0, err
+	}
 	return detail.BranchCount, nil
 }
 
