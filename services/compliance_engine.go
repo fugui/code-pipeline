@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"code-pipeline/database"
@@ -56,6 +57,7 @@ func DefaultComplianceRules() []models.ComplianceRule {
 		{Dimension: "ownership", CheckKey: "has_owner", Label: "有明确负责人", Severity: "critical", Enabled: true},
 		{Dimension: "ownership", CheckKey: "has_department", Label: "已归属部门", Severity: "important", Enabled: true},
 		{Dimension: "ownership", CheckKey: "has_subsystem", Label: "已归属子系统", Severity: "suggestion", Enabled: true},
+		{Dimension: "ownership", CheckKey: "committer_group_required", Label: "Committer 必须来自群组受控", Severity: "important", Enabled: true},
 		{Dimension: "engineering", CheckKey: "webhook_registered", Label: "Webhook 已注册", Severity: "important", Enabled: true},
 	}
 }
@@ -217,17 +219,21 @@ func AuditRepoCompliance(ctx context.Context, repo *models.ManagedRepository, ba
 		}
 	}
 
-	// 尝试获取远程仓库详情及 MR 设置（容错降级）
+	// 尝试获取远程仓库详情、MR 设置及成员列表（容错降级）
 	repoStrID := strconv.Itoa(int(repo.ID))
 	var remoteDetail *RemoteRepoDetail
 	var remoteMRSetting *RemoteMrSetting
+	var remoteMembers []RemoteRepoMember
 
-	if GitPlatformBaseURL != "" {
+	if GitPlatformBaseURL != "" || models.AppConfig.CodeHub.GetMembersURL != "" {
 		if rd, err := GetRemoteRepoDetail(ctx, repoStrID); err == nil && rd != nil {
 			remoteDetail = rd
 		}
 		if ms, err := GetRemoteMrSetting(ctx, repoStrID); err == nil && ms != nil {
 			remoteMRSetting = ms
+		}
+		if members, err := GetRemoteRepoMembers(ctx, repoStrID); err == nil && members != nil {
+			remoteMembers = members
 		}
 	}
 
@@ -502,6 +508,47 @@ func AuditRepoCompliance(ctx context.Context, repo *models.ManagedRepository, ba
 			}
 			result.CurrentValue = fmt.Sprintf("SubsystemID: %d", subID)
 			result.ExpectedValue = "已归属子系统"
+
+		case "committer_group_required":
+			if len(remoteMembers) > 0 {
+				var committers []RemoteRepoMember
+				var invalidCommitters []string
+				groupNames := make(map[string]bool)
+
+				for _, m := range remoteMembers {
+					if m.IsCommitter() {
+						committers = append(committers, m)
+						if m.DomainGroup == nil || strings.TrimSpace(*m.DomainGroup) == "" {
+							name := m.Username
+							if m.NameCn != "" {
+								name = fmt.Sprintf("%s(%s)", m.NameCn, m.Username)
+							}
+							invalidCommitters = append(invalidCommitters, name)
+						} else {
+							groupNames[*m.DomainGroup] = true
+						}
+					}
+				}
+
+				if len(committers) == 0 {
+					result.Passed = true
+					result.CurrentValue = "未配置独立 Committer 角色"
+				} else if len(invalidCommitters) > 0 {
+					result.Passed = false
+					result.CurrentValue = fmt.Sprintf("发现 %d 位非群组 Committer: %s", len(invalidCommitters), strings.Join(invalidCommitters, ", "))
+				} else {
+					result.Passed = true
+					var groupList []string
+					for g := range groupNames {
+						groupList = append(groupList, g)
+					}
+					result.CurrentValue = fmt.Sprintf("共 %d 位 Committer，全部归属群组: %s", len(committers), strings.Join(groupList, ", "))
+				}
+			} else {
+				result.Passed = true
+				result.CurrentValue = "未配置成员接口或暂无成员数据"
+			}
+			result.ExpectedValue = "所有 Committer 必须来自群组 (domain_group != null)"
 
 		case "webhook_registered":
 			result.Passed = repo.WebhookRegistered

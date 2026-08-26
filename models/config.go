@@ -73,6 +73,7 @@ type Config struct {
 	CodeHub struct {
 		BaseURL                 string            `yaml:"base_url"`
 		GetMRsURL               string            `yaml:"get_mrs_url"`
+		GetMembersURL           string            `yaml:"get_members_url"`
 		Headers                 map[string]string `yaml:"headers"`
 		CreateRepoBody          string            `yaml:"create_repo_body"`
 		CreateBranchBody        string            `yaml:"create_branch_body"`

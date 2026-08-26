@@ -140,6 +140,38 @@ func TestAuditRepoComplianceWithMockServer(t *testing.T) {
 			return
 		}
 
+		if r.URL.Path == "/projects/101/members" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`[
+				{
+					"id": 405,
+					"username": "u00000001",
+					"name_cn": "用户A",
+					"domain_group": "GROUP-A",
+					"new_member_roles": [
+						{
+							"access_level": 30,
+							"role_name": "Developer"
+						}
+					]
+				},
+				{
+					"id": 14049,
+					"username": "u00000002",
+					"name_cn": "用户B",
+					"domain_group": "GROUP-B",
+					"committer_system_from": true,
+					"new_member_roles": [
+						{
+							"access_level": 40,
+							"role_name": "Committer"
+						}
+					]
+				}
+			]`))
+			return
+		}
+
 		http.NotFound(w, r)
 	}))
 	defer mockServer.Close()
@@ -214,5 +246,8 @@ func TestAuditRepoComplianceWithMockServer(t *testing.T) {
 	}
 	if r, ok := checkMap["must_relate_issue"]; !ok || !r.Passed {
 		t.Errorf("Expected must_relate_issue to pass, got %+v", r)
+	}
+	if r, ok := checkMap["committer_group_required"]; !ok || !r.Passed {
+		t.Errorf("Expected committer_group_required to pass, got %+v", r)
 	}
 }
