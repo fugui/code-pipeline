@@ -14,6 +14,7 @@ import { ManagedDashboard } from './pages/ManagedDashboard'
 import { ManagedRepos } from './pages/ManagedRepos'
 import { ManagedCompliance } from './pages/ManagedCompliance'
 import { ManagedApprovals } from './pages/ManagedApprovals'
+import { ManagedCommitters } from './pages/ManagedCommitters'
 import { ManagedBranchHealth } from './pages/ManagedBranchHealth'
 import { PipelineConfig } from './pages/PipelineConfig'
 import RealtimeMr from './pages/RealtimeMr'
@@ -44,7 +45,7 @@ const PipelineAppContent: React.FC<AppProps> = ({ isEmbedded = false }) => {
   })
   const [user, setUser] = useState<User | null>(null)
   const isAdmin = !!(Array.isArray(user?.roles) && (user.roles.includes('super_admin') || user.roles.includes('pipeline_admin')))
-  const [currentView, setCurrentView] = useState<'dashboard' | 'repos' | 'managed-dashboard' | 'managed-repos' | 'managed-compliance' | 'managed-approvals' | 'managed-branch-health' | 'pipeline-config' | 'mr-hook' | 'mr-list'>('dashboard')
+  const [currentView, setCurrentView] = useState<'dashboard' | 'repos' | 'managed-dashboard' | 'managed-repos' | 'managed-compliance' | 'managed-approvals' | 'managed-committers' | 'managed-branch-health' | 'pipeline-config' | 'mr-hook' | 'mr-list'>('dashboard')
   
   // Data lists — repos 仅用于 ExecutionSchemeModal 的候选项
   const [repos, setRepos] = useState<{ id: number; name: string; url: string; service_group?: string; owner_name?: string }[]>([])
@@ -93,6 +94,8 @@ const PipelineAppContent: React.FC<AppProps> = ({ isEmbedded = false }) => {
       setCurrentView('managed-compliance')
     } else if (path.includes('/managed-repos/approvals')) {
       setCurrentView('managed-approvals')
+    } else if (path.includes('/managed-repos/committers')) {
+      setCurrentView('managed-committers')
     } else if (path.includes('/managed-repos/branch-health')) {
       setCurrentView('managed-branch-health')
     } else if (path.includes('/managed-repos')) {
@@ -785,6 +788,15 @@ const PipelineAppContent: React.FC<AppProps> = ({ isEmbedded = false }) => {
             isAdmin={isAdmin}
             apiBase={apiBase}
             token={token}
+          />
+        )}
+
+        {/* VIEW 3.4: MANAGED COMMITTERS Committer 管理 */}
+        {currentView === 'managed-committers' && (
+          <ManagedCommitters 
+            isAdmin={isAdmin}
+            apiBase={apiBase}
+            token={token || ''}
           />
         )}
 

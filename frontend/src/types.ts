@@ -339,3 +339,22 @@ export interface ManagedDashboardStats {
   compliance_bottom5: Array<{ repo_id: number; repo_name: string; score: number; grade: string }>
 }
 
+// Committer 组模型
+export interface ManagedCommitterGroup {
+  id: number
+  name: string
+  level: string
+  department_id?: number
+  department?: Department
+  admin_id?: number
+  admin?: User
+  iright_group_name?: string
+  iright_group_id?: string
+  member_count?: number
+  description?: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+

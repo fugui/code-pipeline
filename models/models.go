@@ -393,3 +393,21 @@ type ComplianceCheckResult struct {
 	CurrentValue  string `json:"current_value"`  // 当前值，如 "stale_unmerged_count: 12"
 	ExpectedValue string `json:"expected_value"` // 期望值，如 "≤ 5"
 }
+
+// ManagedCommitterGroup Committer 组管理模型
+type ManagedCommitterGroup struct {
+	ID              uint        `gorm:"primaryKey" json:"id"`
+	Name            string      `gorm:"size:150;uniqueIndex;not null;default:''" json:"name"` // Committer Group 名称
+	Level           string      `gorm:"size:50;not null;default:'L1'" json:"level"`           // 所属层级 (如 "L1-公司级", "L2-产品线/域级", "L3-项目/模块级")
+	DepartmentID    *uint       `gorm:"index" json:"department_id,omitempty"`                 // 归属部门 ID
+	Department      *Department `gorm:"foreignKey:DepartmentID" json:"department,omitempty"`  // 部门对象
+	AdminID         *uint       `gorm:"index" json:"admin_id,omitempty"`                      // 管理员用户 ID
+	Admin           *User       `gorm:"foreignKey:AdminID" json:"admin,omitempty"`            // 管理员对象
+	IRightGroupName string      `gorm:"column:iright_group_name;size:150;default:''" json:"iright_group_name"`     // 第三方 iRight 群组名称
+	IRightGroupID   string      `gorm:"column:iright_group_id;size:128;index;default:''" json:"iright_group_id"` // 第三方 iRight 群组 UUID 标识
+	MemberCount     int         `gorm:"default:0" json:"member_count"`                                            // 成员数量
+	Description     string      `gorm:"type:text" json:"description"`                                             // 备注/描述说明
+	IsActive        bool        `gorm:"default:true;index" json:"is_active"`                                      // 是否启用
+	CreatedAt       time.Time   `json:"created_at"`
+	UpdatedAt       time.Time   `json:"updated_at"`
+}

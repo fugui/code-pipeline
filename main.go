@@ -136,6 +136,10 @@ func main() {
 					api.GET("/execution-schemes", handlers.GetExecutionSchemes)
 					api.POST("/execution-schemes/:id/run", handlers.RunExecutionScheme)
 
+					// Committer 组管理只读接口
+					api.GET("/managed-repos/committer-groups", handlers.GetManagedCommitterGroups)
+					api.GET("/managed-repos/committer-groups/:id", handlers.GetManagedCommitterGroup)
+
 					// 看板状态大屏接口
 					api.GET("/dashboard/stats", handlers.GetDashboardStats)
 
@@ -172,6 +176,11 @@ func main() {
 						admin.POST("/managed-repos/compliance/audit", handlers.TriggerComplianceAudit)
 						admin.POST("/managed-repos/:id/compliance/audit", handlers.TriggerSingleRepoComplianceAudit)
 						admin.POST("/managed-repos/:id/compliance/remote-check", handlers.TriggerRepoRemoteProtectionCheck)
+
+						// Committer 组写/管控接口
+						admin.POST("/managed-repos/committer-groups", handlers.CreateManagedCommitterGroup)
+						admin.PUT("/managed-repos/committer-groups/:id", handlers.UpdateManagedCommitterGroup)
+						admin.DELETE("/managed-repos/committer-groups/:id", handlers.DeleteManagedCommitterGroup)
 
 						// 流水线组写/管控接口
 						admin.POST("/pipeline-groups", handlers.CreatePipelineGroup)
