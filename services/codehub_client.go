@@ -509,6 +509,95 @@ func GetRemoteMrSetting(ctx context.Context, projectID string) (*RemoteMrSetting
 	return &setting, nil
 }
 
+// RemoteMemberRole 成员所属角色明细
+type RemoteMemberRole struct {
+	AccessLevel int         `json:"access_level"`
+	ExpiresAt   *string     `json:"expires_at"`
+	RoleName    string      `json:"role_name"`
+	RoleType    string      `json:"role_type"`
+	Type        string      `json:"type"`
+	SourceName  string      `json:"source_name"`
+	Group       interface{} `json:"group"`
+	Branches    interface{} `json:"branches"`
+}
+
+// RemoteRepoMember 远程代码仓成员信息 (对应 list_member.json)
+type RemoteRepoMember struct {
+	ID                    uint               `json:"id"`
+	Name                  string             `json:"name"`
+	NameCn                string             `json:"name_cn"`
+	Username              string             `json:"username"`
+	AvatarURL             string             `json:"avatar_url"`
+	Email                 string             `json:"email"`
+	AccessLevel           int                `json:"access_level"`
+	ExpiresAt             *string            `json:"expires_at"`
+	Type                  string             `json:"type"`
+	State                 string             `json:"state"`
+	WebURL                string             `json:"web_url"`
+	IsCurrentSourceMember bool               `json:"is_current_source_member"`
+	JoinWay               string             `json:"join_way"`
+	DomainGroup           *string            `json:"domain_group"`
+	InheritFrom           *string            `json:"inherit_from"`
+	InheritFromPath       *string            `json:"inherit_from_path"`
+	SourceName            string             `json:"source_name"`
+	NewMemberRoles        []RemoteMemberRole `json:"new_member_roles"`
+	CommitterSystemFrom   bool               `json:"committer_system_from"`
+}
+
+// IsCommitter 判断当前成员是否具备 Committer 角色
+func (m *RemoteRepoMember) IsCommitter() bool {
+	if m.CommitterSystemFrom {
+		return true
+	}
+	for _, role := range m.NewMemberRoles {
+		if strings.EqualFold(role.RoleName, "committer") || strings.Contains(strings.ToLower(role.RoleName), "committer") {
+			return true
+		}
+	}
+	return false
+}
+
+// GetRemoteRepoMembers 调用托管平台接口获取特定代码仓的成员列表 (支持用户自定义 get_members_url)
+func GetRemoteRepoMembers(ctx context.Context, projectID string) ([]RemoteRepoMember, error) {
+	apiURL := models.AppConfig.CodeHub.GetMembersURL
+	if apiURL == "" {
+		apiURL = fmt.Sprintf("%s/projects/%s/members", GitPlatformBaseURL, projectID)
+	} else {
+		apiURL = strings.ReplaceAll(apiURL, "{REPO_ID}", projectID)
+		apiURL = strings.ReplaceAll(apiURL, "{PROJECT_ID}", projectID)
+	}
+
+	reqHeaders := make(map[string]string)
+	for k, v := range models.AppConfig.CodeHub.Headers {
+		reqHeaders[k] = v
+	}
+	reqHeaders["Accept"] = "application/json"
+
+	body, err := utils.SendHTTPRequest(ctx, "GET", apiURL, nil, utils.HTTPOptions{
+		Headers: reqHeaders,
+	}, []int{http.StatusOK}, "GetRemoteRepoMembers")
+	if err != nil {
+		return nil, err
+	}
+
+	type WrappedResp struct {
+		Status string             `json:"status"`
+		Result []RemoteRepoMember `json:"result"`
+	}
+
+	var resp WrappedResp
+	if err := json.Unmarshal(body, &resp); err == nil && resp.Status == "success" {
+		return resp.Result, nil
+	}
+
+	var members []RemoteRepoMember
+	if err := json.Unmarshal(body, &members); err != nil {
+		return nil, fmt.Errorf("failed to parse members JSON: %w", err)
+	}
+
+	return members, nil
+}
+
 // GetRemoteProjectBranchCount 调用托管平台接口获取特定代码仓的分支总数
 func GetRemoteProjectBranchCount(ctx context.Context, projectID string) (int, error) {
 	detail, err := GetRemoteRepoDetail(ctx, projectID)

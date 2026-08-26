@@ -1,0 +1,89 @@
+[
+    {
+        "id": 405,
+        "name": "userA 00000001",
+        "name_cn": "用户A 00000001",
+        "username": "u00000001",
+        "avatar_url": "",
+        "email": "u00000001@example.com",
+        "access_level": 30,
+        "expires_at": null,
+        "type": "ProjectMember",
+        "state": "active",
+        "avatar_path": null,
+        "custom_attributes": null,
+        "web_url": "https://repo.example.com/u00000001",
+        "invite_email": null,
+        "limited": false,
+        "last_owner": null,
+        "is_current_source_member": true,
+        "last_source_owner": false,
+        "join_way": "domain",
+        "domain_group": "GROUP-A",
+        "inherit_from": null,
+        "inherit_from_path": null,
+        "source_name": "projectA",
+        "member_roles": null,
+        "new_member_roles": [
+            {
+                "access_level": 30,
+                "expires_at": null,
+                "role_name": "Developer",
+                "role_type": "built-in",
+                "type": "DomainGroupMember",
+                "source_name": "projectA",
+                "group": null,
+                "branches": null
+            }
+        ],
+        "department": null,
+        "committer_system_from": false
+    },
+    {
+        "id": 14049,
+        "name": "userB 00000002",
+        "name_cn": "用户B 00000002",
+        "username": "u00000002",
+        "avatar_url": "https://example.com/avatar/u00000002/120",
+        "email": "u00000002@example.com",
+        "access_level": 50,
+        "expires_at": null,
+        "type": "GroupMember",
+        "state": "active",
+        "avatar_path": null,
+        "custom_attributes": null,
+        "web_url": "https://repo.example.com/u00000002",
+        "invite_email": null,
+        "limited": false,
+        "last_owner": null,
+        "is_current_source_member": false,
+        "last_source_owner": true,
+        "join_way": "inherit",
+        "domain_group": null,
+        "inherit_from": "GROUP-B",
+        "inherit_from_path": "GROUP-B",
+        "source_name": "GROUP-B",
+        "member_roles": null,
+        "new_member_roles": [
+            {
+                "access_level": 50,
+                "expires_at": null,
+                "role_name": "Owner",
+                "role_type": "built-in",
+                "type": "GroupMember",
+                "source_name": "GROUP-B",
+                "group": {
+                    "id": 288678,
+                    "path": "GROUP-B",
+                    "name": "GROUP-B",
+                    "visibility": "internal",
+                    "full_path": "GROUP-B",
+                    "full_name": "GROUP-B"
+                },
+                "branches": null
+            }
+        ],
+        "department": null,
+        "committer_system_from": false
+    }
+]

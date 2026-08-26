@@ -79,6 +79,7 @@ const ruleDescriptions: Record<string, string> = {
   has_owner: '代码仓具备明确的第一责任人（Owner）。',
   has_department: '代码仓已明确关联归属组织部门。',
   has_subsystem: '代码仓已明确绑定架构第一层级业务子系统。',
+  committer_group_required: '【权限治理】所有 Committer 必须来源于受控群组（Domain Group），严禁直接挂载散装个人账号。',
   webhook_registered: '代码仓已注册自动化 Webhook，实现事件与 CI/CD 深度联动。',
 }
 
