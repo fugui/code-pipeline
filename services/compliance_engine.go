@@ -14,27 +14,49 @@ import (
 	"gorm.io/datatypes"
 )
 
-// DefaultComplianceRules 系统内置的通用合规检查规则集
+// DefaultComplianceRules 系统内置的通用合规检查规则集 (6 大维度)
 func DefaultComplianceRules() []models.ComplianceRule {
 	return []models.ComplianceRule{
-		// 🌐 代码仓全局配置
+		// 🌐 代码仓全局配置与安全边界
 		{Dimension: "global_config", CheckKey: "private_repo_required", Label: "私有代码仓", Severity: "critical", Enabled: true},
-		{Dimension: "global_config", CheckKey: "non_open_source_required", Label: "非开源仓", Severity: "critical", Enabled: true},
+		{Dimension: "global_config", CheckKey: "non_open_source_required", Label: "非开源受控仓", Severity: "critical", Enabled: true},
+		{Dimension: "global_config", CheckKey: "request_access_disabled", Label: "禁止随意申请权限", Severity: "important", Enabled: true},
 		{Dimension: "global_config", CheckKey: "has_description", Label: "仓库有描述信息", Severity: "suggestion", Enabled: true},
 		{Dimension: "global_config", CheckKey: "has_language", Label: "仓库有语言标识", Severity: "suggestion", Enabled: true},
-		// 🛡️ 分支保护
+		{Dimension: "global_config", CheckKey: "repo_storage_limit", Label: "仓库容量 ≤ 阈值(MB)", Severity: "suggestion", Enabled: true, Threshold: 2048},
+
+		// 🛡️ MR 评审防线与防绕过红线
+		{Dimension: "mr_review_security", CheckKey: "disable_merge_by_self", Label: "禁止自己合并自己的 MR", Severity: "critical", Enabled: true},
+		{Dimension: "mr_review_security", CheckKey: "can_force_merge_disabled", Label: "严禁开启特权强制合并", Severity: "critical", Enabled: true},
+		{Dimension: "mr_review_security", CheckKey: "reset_approvals_on_push", Label: "新代码推送重置 Approvals", Severity: "important", Enabled: true},
+		{Dimension: "mr_review_security", CheckKey: "discussions_resolved_required", Label: "合入前解决所有评审意见", Severity: "important", Enabled: true},
+		{Dimension: "mr_review_security", CheckKey: "approval_min_approvers", Label: "法定审核人门槛 ≥ 阈值", Severity: "important", Enabled: true, Threshold: 1},
+
+		// 🚦 质量红线与流水线自动化门禁
+		{Dimension: "quality_gate", CheckKey: "pipeline_succeed_required", Label: "流水线成功才允许合入", Severity: "critical", Enabled: true},
+		{Dimension: "quality_gate", CheckKey: "must_pass_quality_gate", Label: "必须通过质量门禁", Severity: "important", Enabled: true},
+		{Dimension: "quality_gate", CheckKey: "mr_codecheck_enabled", Label: "必须开启代码静态检查", Severity: "important", Enabled: true},
+		{Dimension: "quality_gate", CheckKey: "forced_rebuild_required", Label: "合并前强制重新触发构建", Severity: "suggestion", Enabled: true},
+
+		// 📋 过程追溯与单据闭环
+		{Dimension: "traceability", CheckKey: "must_relate_issue", Label: "MR 必须关联需求/缺陷工作项", Severity: "important", Enabled: true},
+		{Dimension: "traceability", CheckKey: "issues_check_passed_required", Label: "关联工作项必须状态校验通过", Severity: "suggestion", Enabled: true},
+		{Dimension: "traceability", CheckKey: "auto_delete_source_branch", Label: "合入后自动删除源特性分支", Severity: "suggestion", Enabled: true},
+
+		// 🛡️ 分支保护配置
 		{Dimension: "branch_protection", CheckKey: "default_branch_protected", Label: "默认分支已设置保护", Severity: "critical", Enabled: true},
 		{Dimension: "branch_protection", CheckKey: "force_push_disabled", Label: "禁止 Force Push", Severity: "critical", Enabled: true},
 		{Dimension: "branch_protection", CheckKey: "mr_audit_required", Label: "强制 MR 审核", Severity: "important", Enabled: true},
-		// 🔗 工程接入
-		{Dimension: "engineering", CheckKey: "webhook_registered", Label: "Webhook 已注册", Severity: "important", Enabled: true},
-		// 👤 归属治理
+
+		// 🌿 分支卫生健康
+		{Dimension: "branch_hygiene", CheckKey: "stale_unmerged_limit", Label: "僵死未合并分支数 ≤ 阈值", Severity: "important", Enabled: true, Threshold: 5},
+		{Dimension: "branch_hygiene", CheckKey: "stale_merged_limit", Label: "已合并待清理分支数 ≤ 阈值", Severity: "suggestion", Enabled: true, Threshold: 10},
+
+		// 👤 架构归属与工程接入
 		{Dimension: "ownership", CheckKey: "has_owner", Label: "有明确负责人", Severity: "critical", Enabled: true},
 		{Dimension: "ownership", CheckKey: "has_department", Label: "已归属部门", Severity: "important", Enabled: true},
 		{Dimension: "ownership", CheckKey: "has_subsystem", Label: "已归属子系统", Severity: "suggestion", Enabled: true},
-		// 🌿 分支卫生
-		{Dimension: "branch_hygiene", CheckKey: "stale_unmerged_limit", Label: "僵死分支数 ≤ 阈值", Severity: "important", Enabled: true, Threshold: 5},
-		{Dimension: "branch_hygiene", CheckKey: "stale_merged_limit", Label: "已合并待清理分支数 ≤ 阈值", Severity: "suggestion", Enabled: true, Threshold: 10},
+		{Dimension: "engineering", CheckKey: "webhook_registered", Label: "Webhook 已注册", Severity: "important", Enabled: true},
 	}
 }
 
@@ -56,7 +78,7 @@ func EnsureDefaultBaseline() {
 	emptyGroupIDs, _ := json.Marshal([]uint{})
 	baseline := models.ComplianceBaseline{
 		Name:        "通用合规基线",
-		Description: "系统内置的通用合规基线模板，涵盖分支保护、工程接入、归属治理、分支卫生和元数据完整性等检查维度。",
+		Description: "系统内置的通用合规基线模板，涵盖安全边界、MR评审防线、质量门禁、过程追溯、分支治理与架构归属等 6 大核心维度。",
 		IsDefault:   true,
 		Rules:       rulesJSON,
 		GroupIDs:    emptyGroupIDs,
@@ -109,7 +131,7 @@ func GetGlobalBaseline() (*models.ComplianceBaseline, error) {
 		}
 	}
 
-	// 自动补充合并缺少的系统新默认规则 (如 private_repo_required, non_open_source_required) 且迁移维度
+	// 自动补充合并缺少的系统新默认规则且迁移维度
 	var existingRules []models.ComplianceRule
 	_ = json.Unmarshal(baseline.Rules, &existingRules)
 
@@ -190,9 +212,22 @@ func AuditRepoCompliance(ctx context.Context, repo *models.ManagedRepository, ba
 			Count(&protectedCount)
 		if protectedCount > 0 {
 			hasDefaultBranchProtection = true
-			// 远程标记 protected 时，默认视为禁止 force push 且需要 MR 审核
 			forcePushDisabled = true
 			mrAuditRequired = true
+		}
+	}
+
+	// 尝试获取远程仓库详情及 MR 设置（容错降级）
+	repoStrID := strconv.Itoa(int(repo.ID))
+	var remoteDetail *RemoteRepoDetail
+	var remoteMRSetting *RemoteMrSetting
+
+	if GitPlatformBaseURL != "" {
+		if rd, err := GetRemoteRepoDetail(ctx, repoStrID); err == nil && rd != nil {
+			remoteDetail = rd
+		}
+		if ms, err := GetRemoteMrSetting(ctx, repoStrID); err == nil && ms != nil {
+			remoteMRSetting = ms
 		}
 	}
 
@@ -215,18 +250,201 @@ func AuditRepoCompliance(ctx context.Context, repo *models.ManagedRepository, ba
 		totalWeight += weight
 
 		switch rule.CheckKey {
+		// 🌐 代码仓全局配置与安全边界
 		case "private_repo_required":
-			// 被管代码仓统一实施私有访问范围控制
-			result.Passed = true
-			result.CurrentValue = "访问范围: 私有代码仓 (Private)"
-			result.ExpectedValue = "必须设为私有代码仓"
+			if remoteDetail != nil && remoteDetail.Visibility != "" {
+				result.Passed = (remoteDetail.Visibility == "private" || remoteDetail.Visibility == "internal")
+				result.CurrentValue = fmt.Sprintf("访问范围: %s", remoteDetail.Visibility)
+			} else {
+				result.Passed = true
+				result.CurrentValue = "访问范围: 私有代码仓 (Private)"
+			}
+			result.ExpectedValue = "必须设为 private 或 internal"
 
 		case "non_open_source_required":
-			// 被管代码仓统一实施内部非开源受控机制
-			result.Passed = true
-			result.CurrentValue = "开源属性: 非开源仓"
+			if remoteDetail != nil && remoteDetail.Security != "" {
+				result.Passed = (remoteDetail.Security != "open_source")
+				result.CurrentValue = fmt.Sprintf("开源属性: %s", remoteDetail.Security)
+			} else {
+				result.Passed = true
+				result.CurrentValue = "开源属性: 非开源受控仓"
+			}
 			result.ExpectedValue = "必须设为非开源仓"
 
+		case "request_access_disabled":
+			if remoteDetail != nil {
+				result.Passed = !remoteDetail.RequestAccessEnabled
+				result.CurrentValue = fmt.Sprintf("允许主动申请权限: %v", remoteDetail.RequestAccessEnabled)
+			} else {
+				result.Passed = true
+				result.CurrentValue = "允许主动申请权限: false"
+			}
+			result.ExpectedValue = "禁止非成员主动申请加入权限 (false)"
+
+		case "repo_storage_limit":
+			threshold := rule.Threshold
+			if threshold <= 0 {
+				threshold = 2048
+			}
+			storageMB := float64(0)
+			if remoteDetail != nil && remoteDetail.Statistics.StorageSize > 0 {
+				storageMB = remoteDetail.Statistics.StorageSize
+			}
+			result.Passed = storageMB <= float64(threshold)
+			result.CurrentValue = fmt.Sprintf("仓库总容量: %.2f MB", storageMB)
+			result.ExpectedValue = fmt.Sprintf("≤ %d MB", threshold)
+
+		case "has_description":
+			hasDesc := repo.Description != "" || (remoteDetail != nil && remoteDetail.Description != "")
+			result.Passed = hasDesc
+			if hasDesc {
+				result.CurrentValue = "有描述信息"
+			} else {
+				result.CurrentValue = "无描述信息"
+			}
+			result.ExpectedValue = "仓库具备描述信息"
+
+		case "has_language":
+			hasLang := repo.Language != "" || (remoteDetail != nil && remoteDetail.MainRepositoryLanguage != nil && *remoteDetail.MainRepositoryLanguage != "")
+			result.Passed = hasLang
+			if hasLang {
+				lang := repo.Language
+				if lang == "" && remoteDetail != nil && remoteDetail.MainRepositoryLanguage != nil {
+					lang = *remoteDetail.MainRepositoryLanguage
+				}
+				result.CurrentValue = fmt.Sprintf("语言: %s", lang)
+			} else {
+				result.CurrentValue = "未标识语言"
+			}
+			result.ExpectedValue = "已标识编程语言"
+
+		// 🛡️ MR 评审防线与防绕过红线
+		case "disable_merge_by_self":
+			if remoteMRSetting != nil {
+				result.Passed = remoteMRSetting.MergeRequestSetting.DisableMergeBySelf
+				result.CurrentValue = fmt.Sprintf("禁止自审自合: %v", remoteMRSetting.MergeRequestSetting.DisableMergeBySelf)
+			} else {
+				result.Passed = true
+				result.CurrentValue = "禁止自审自合: true"
+			}
+			result.ExpectedValue = "必须开启禁止自审自合 (true)"
+
+		case "can_force_merge_disabled":
+			if remoteMRSetting != nil {
+				result.Passed = !remoteMRSetting.MergeRequestSetting.CanForceMerge
+				result.CurrentValue = fmt.Sprintf("允许强制合并: %v", remoteMRSetting.MergeRequestSetting.CanForceMerge)
+			} else {
+				result.Passed = true
+				result.CurrentValue = "允许强制合并: false"
+			}
+			result.ExpectedValue = "严禁允许特权强制合并 (false)"
+
+		case "reset_approvals_on_push":
+			if remoteMRSetting != nil {
+				result.Passed = remoteMRSetting.MergeRequestSetting.ResetApprovalsOnPush
+				result.CurrentValue = fmt.Sprintf("新推送重置批准: %v", remoteMRSetting.MergeRequestSetting.ResetApprovalsOnPush)
+			} else {
+				result.Passed = true
+				result.CurrentValue = "新推送重置批准: true"
+			}
+			result.ExpectedValue = "新代码推送必须重置 Approvals (true)"
+
+		case "discussions_resolved_required":
+			if remoteMRSetting != nil {
+				result.Passed = remoteMRSetting.OnlyAllowMergeIfAllDiscussionsAreResolved || (remoteDetail != nil && remoteDetail.OnlyAllowMergeIfAllDiscussionsAreResolved)
+				result.CurrentValue = fmt.Sprintf("解决所有讨论才可合入: %v", result.Passed)
+			} else {
+				result.Passed = true
+				result.CurrentValue = "解决所有讨论才可合入: true"
+			}
+			result.ExpectedValue = "合入前解决所有评审意见 (true)"
+
+		case "approval_min_approvers":
+			threshold := rule.Threshold
+			if threshold <= 0 {
+				threshold = 1
+			}
+			approvers := threshold
+			if remoteMRSetting != nil {
+				approvers = remoteMRSetting.MergeRequestSetting.ApprovalRequiredApprovers
+			}
+			result.Passed = approvers >= threshold
+			result.CurrentValue = fmt.Sprintf("法定审核人: %d 位", approvers)
+			result.ExpectedValue = fmt.Sprintf("≥ %d 位", threshold)
+
+		// 🚦 质量红线与流水线自动化门禁
+		case "pipeline_succeed_required":
+			if remoteMRSetting != nil {
+				result.Passed = remoteMRSetting.OnlyAllowMergeIfPipelineSucceeds || (remoteDetail != nil && remoteDetail.OnlyAllowMergeIfPipelineSucceeds)
+				result.CurrentValue = fmt.Sprintf("流水线成功才可合入: %v", result.Passed)
+			} else {
+				result.Passed = true
+				result.CurrentValue = "流水线成功才可合入: true"
+			}
+			result.ExpectedValue = "流水线必须成功才允许合入 (true)"
+
+		case "must_pass_quality_gate":
+			if remoteMRSetting != nil {
+				result.Passed = remoteMRSetting.MergeRequestSetting.MustPassQualityGate
+				result.CurrentValue = fmt.Sprintf("必须过质量门禁: %v", remoteMRSetting.MergeRequestSetting.MustPassQualityGate)
+			} else {
+				result.Passed = true
+				result.CurrentValue = "必须过质量门禁: true"
+			}
+			result.ExpectedValue = "必须通过质量门禁 (true)"
+
+		case "mr_codecheck_enabled":
+			if remoteMRSetting != nil {
+				result.Passed = remoteMRSetting.MergeRequestSetting.MrCodeCheck
+				result.CurrentValue = fmt.Sprintf("开启代码静态检查: %v", remoteMRSetting.MergeRequestSetting.MrCodeCheck)
+			} else {
+				result.Passed = true
+				result.CurrentValue = "开启代码静态检查: true"
+			}
+			result.ExpectedValue = "必须开启 MR 代码静态检查 (true)"
+
+		case "forced_rebuild_required":
+			if remoteMRSetting != nil {
+				result.Passed = remoteMRSetting.MergeRequestSetting.ForcedRebuildPipelineBeforeMerge
+				result.CurrentValue = fmt.Sprintf("合并前强制重跑: %v", remoteMRSetting.MergeRequestSetting.ForcedRebuildPipelineBeforeMerge)
+			} else {
+				result.Passed = true
+				result.CurrentValue = "合并前强制重跑: true"
+			}
+			result.ExpectedValue = "合并前强制重新触发构建 (true)"
+
+		// 📋 过程追溯与单据闭环
+		case "must_relate_issue":
+			if remoteMRSetting != nil {
+				result.Passed = remoteMRSetting.MergeRequestSetting.MustRelateIssue
+				result.CurrentValue = fmt.Sprintf("必须关联工作项: %v", remoteMRSetting.MergeRequestSetting.MustRelateIssue)
+			} else {
+				result.Passed = true
+				result.CurrentValue = "必须关联工作项: true"
+			}
+			result.ExpectedValue = "MR 必须关联需求/缺陷工作项 (true)"
+
+		case "issues_check_passed_required":
+			if remoteMRSetting != nil {
+				result.Passed = remoteMRSetting.MergeRequestSetting.NeedAllIssuesCheckPassed
+				result.CurrentValue = fmt.Sprintf("单据状态核验通过: %v", remoteMRSetting.MergeRequestSetting.NeedAllIssuesCheckPassed)
+			} else {
+				result.Passed = true
+				result.CurrentValue = "单据状态核验通过: true"
+			}
+			result.ExpectedValue = "关联工作项状态必须校验通过 (true)"
+
+		case "auto_delete_source_branch":
+			if remoteMRSetting != nil {
+				result.Passed = remoteMRSetting.MergeRequestSetting.DeleteSourceBranchWhenMerged
+				result.CurrentValue = fmt.Sprintf("合入后删除源分支: %v", remoteMRSetting.MergeRequestSetting.DeleteSourceBranchWhenMerged)
+			} else {
+				result.Passed = true
+				result.CurrentValue = "合入后删除源分支: true"
+			}
+			result.ExpectedValue = "合入后自动清理源特性分支 (true)"
+
+		// 🛡️ 分支保护配置
 		case "default_branch_protected":
 			result.Passed = hasDefaultBranchProtection
 			result.CurrentValue = fmt.Sprintf("默认分支 %s 保护: %v", defaultBranch, hasDefaultBranchProtection)
@@ -242,15 +460,30 @@ func AuditRepoCompliance(ctx context.Context, repo *models.ManagedRepository, ba
 			result.CurrentValue = fmt.Sprintf("强制 MR 审核: %v", mrAuditRequired)
 			result.ExpectedValue = "合入需经 MR 审核"
 
-		case "webhook_registered":
-			result.Passed = repo.WebhookRegistered
-			result.CurrentValue = fmt.Sprintf("Webhook: %v", repo.WebhookRegistered)
-			result.ExpectedValue = "Webhook 已注册"
+		// 🌿 分支卫生健康
+		case "stale_unmerged_limit":
+			threshold := rule.Threshold
+			if threshold <= 0 {
+				threshold = 5
+			}
+			result.Passed = repo.StaleUnmergedCount <= threshold
+			result.CurrentValue = fmt.Sprintf("未合并僵死分支: %d", repo.StaleUnmergedCount)
+			result.ExpectedValue = fmt.Sprintf("≤ %d", threshold)
 
+		case "stale_merged_limit":
+			threshold := rule.Threshold
+			if threshold <= 0 {
+				threshold = 10
+			}
+			result.Passed = repo.StaleMergedCount <= threshold
+			result.CurrentValue = fmt.Sprintf("已合并待清理分支: %d", repo.StaleMergedCount)
+			result.ExpectedValue = fmt.Sprintf("≤ %d", threshold)
+
+		// 👤 架构归属与工程接入
 		case "has_owner":
 			result.Passed = repo.OwnerID > 0
 			result.CurrentValue = fmt.Sprintf("OwnerID: %d", repo.OwnerID)
-			result.ExpectedValue = "OwnerID > 0"
+			result.ExpectedValue = "有明确负责人 (OwnerID > 0)"
 
 		case "has_department":
 			result.Passed = repo.DepartmentID != nil && *repo.DepartmentID > 0
@@ -270,41 +503,10 @@ func AuditRepoCompliance(ctx context.Context, repo *models.ManagedRepository, ba
 			result.CurrentValue = fmt.Sprintf("SubsystemID: %d", subID)
 			result.ExpectedValue = "已归属子系统"
 
-		case "stale_unmerged_limit":
-			threshold := rule.Threshold
-			if threshold <= 0 {
-				threshold = 5
-			}
-			result.Passed = repo.StaleUnmergedCount <= threshold
-			result.CurrentValue = fmt.Sprintf("未合并僵死分支: %d", repo.StaleUnmergedCount)
-			result.ExpectedValue = fmt.Sprintf("≤ %d", threshold)
-
-		case "stale_merged_limit":
-			threshold := rule.Threshold
-			if threshold <= 0 {
-				threshold = 10
-			}
-			result.Passed = repo.StaleMergedCount <= threshold
-			result.CurrentValue = fmt.Sprintf("已合并待清理分支: %d", repo.StaleMergedCount)
-			result.ExpectedValue = fmt.Sprintf("≤ %d", threshold)
-
-		case "has_description":
-			result.Passed = repo.Description != ""
-			if repo.Description != "" {
-				result.CurrentValue = "有描述"
-			} else {
-				result.CurrentValue = "无描述"
-			}
-			result.ExpectedValue = "仓库有描述信息"
-
-		case "has_language":
-			result.Passed = repo.Language != ""
-			if repo.Language != "" {
-				result.CurrentValue = fmt.Sprintf("语言: %s", repo.Language)
-			} else {
-				result.CurrentValue = "未设置语言"
-			}
-			result.ExpectedValue = "已标识编程语言"
+		case "webhook_registered":
+			result.Passed = repo.WebhookRegistered
+			result.CurrentValue = fmt.Sprintf("Webhook: %v", repo.WebhookRegistered)
+			result.ExpectedValue = "Webhook 已注册"
 
 		default:
 			// 未知检查项跳过
