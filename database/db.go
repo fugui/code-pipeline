@@ -44,6 +44,7 @@ func InitDB() {
 		&models.ManagedProtectedBranchRule{},
 		&models.ComplianceBaseline{},
 		&models.RepoComplianceReport{},
+		&models.ManagedCommitterGroup{},
 		&models.SysAuditLog{},
 	)
 	if err != nil {
