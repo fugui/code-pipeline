@@ -101,8 +101,8 @@ func SendHTTPRequest(ctx context.Context, method, rawURL string, payload interfa
 		}
 	}
 
-	if len(req.Header["accept"]) == 0 {
-		req.Header["accept"] = []string{"application/json, text/plain, */*"}
+	if req.Header.Get("Accept") == "" && len(req.Header["accept"]) == 0 {
+		req.Header.Set("Accept", "application/json, text/plain, */*")
 	}
 
 	tr := &http.Transport{
