@@ -8,6 +8,7 @@ import (
 
 	"code-pipeline/database"
 	"code-pipeline/models"
+	"code-pipeline/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -227,3 +228,28 @@ func DeleteManagedCommitterGroup(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "已成功删除 Committer Group"})
 }
+
+// GetIRightGroup 查询 iRight 群组详情与成员人数
+func GetIRightGroup(c *gin.Context) {
+	groupID := strings.TrimSpace(c.Param("id"))
+	if groupID == "" {
+		groupID = strings.TrimSpace(c.Query("group_id"))
+	}
+	if groupID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "群组 ID (group_id) 不能为空"})
+		return
+	}
+
+	data, err := services.GetIRightGroup(c.Request.Context(), groupID, c.Request.Header)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":    data,
+		"message": "success",
+		"status":  200,
+	})
+}
+

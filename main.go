@@ -136,9 +136,11 @@ func main() {
 					api.GET("/execution-schemes", handlers.GetExecutionSchemes)
 					api.POST("/execution-schemes/:id/run", handlers.RunExecutionScheme)
 
-					// Committer 组管理只读接口
+					// Committer 组管理与 iRight 查询接口
 					api.GET("/managed-repos/committer-groups", handlers.GetManagedCommitterGroups)
 					api.GET("/managed-repos/committer-groups/:id", handlers.GetManagedCommitterGroup)
+					api.GET("/managed-repos/iright/groups/:id", handlers.GetIRightGroup)
+					api.GET("/managed-repos/iright/groups", handlers.GetIRightGroup)
 
 					// 看板状态大屏接口
 					api.GET("/dashboard/stats", handlers.GetDashboardStats)

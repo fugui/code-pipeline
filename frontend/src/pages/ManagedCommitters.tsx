@@ -15,9 +15,12 @@ import {
   Copy,
   Check,
   CheckCircle2,
-  FileText
+  AlertCircle,
+  FileText,
+  Sparkles,
+  ShieldCheck
 } from 'lucide-react'
-import { ManagedCommitterGroup, Department } from '../types'
+import { ManagedCommitterGroup, Department, IRightGroupData } from '../types'
 import { useToast } from '../components/Toast'
 
 interface ManagedCommittersProps {
@@ -59,6 +62,15 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
   const [editingGroup, setEditingGroup] = useState<ManagedCommitterGroup | null>(null)
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [copiedUUID, setCopiedUUID] = useState<string | null>(null)
+
+  // iRight Live Query & Verification State
+  const [queryingIRight, setQueryingIRight] = useState<boolean>(false)
+  const [iRightVerifiedData, setIRightVerifiedData] = useState<IRightGroupData | null>(null)
+  const [iRightError, setIRightError] = useState<string | null>(null)
+
+  // Detail Drawer Live iRight lookup
+  const [detailIRightData, setDetailIRightData] = useState<IRightGroupData | null>(null)
+  const [detailQueryingIRight, setDetailQueryingIRight] = useState<boolean>(false)
 
   // Form State
   const [formData, setFormData] = useState({
@@ -137,9 +149,76 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
     fetchCommitterGroups()
   }
 
+  // Live Query & Verify iRight Group ID
+  const handleVerifyIRightGroup = async (customGroupId?: string) => {
+    const targetId = (customGroupId !== undefined ? customGroupId : formData.iright_group_id).trim()
+    if (!targetId) {
+      showToast('请输入 iRight 群组 ID (UUID)', 'error')
+      return
+    }
+
+    setQueryingIRight(true)
+    setIRightError(null)
+    try {
+      const res = await fetch(`${apiBase}/managed-repos/iright/groups/${encodeURIComponent(targetId)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const result = await res.json()
+      if (res.ok && result.data) {
+        const data: IRightGroupData = result.data
+        setIRightVerifiedData(data)
+        setIRightError(null)
+        showToast(`成功核验 iRight 群组：${data.groupNameCn} (${data.memberCount} 人)`, 'success')
+
+        // 自动带入群组名称与成员人数
+        setFormData(prev => ({
+          ...prev,
+          iright_group_name: data.groupNameCn || prev.iright_group_name,
+          member_count: data.memberCount !== undefined ? data.memberCount : prev.member_count,
+          name: prev.name ? prev.name : (data.groupNameCn || '')
+        }))
+      } else {
+        const errMsg = result.error || result.message || '未在 iRight 系统中查询到该群组 ID'
+        setIRightError(errMsg)
+        setIRightVerifiedData(null)
+        showToast(errMsg, 'error')
+      }
+    } catch (err: any) {
+      const errMsg = '请求 iRight 查询接口失败，请检查网络或后端配置'
+      setIRightError(errMsg)
+      setIRightVerifiedData(null)
+      showToast(errMsg, 'error')
+    } finally {
+      setQueryingIRight(false)
+    }
+  }
+
+  // Detail Drawer live lookup
+  const handleFetchDetailIRight = async (groupId: string) => {
+    if (!groupId) return
+    setDetailQueryingIRight(true)
+    try {
+      const res = await fetch(`${apiBase}/managed-repos/iright/groups/${encodeURIComponent(groupId)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const result = await res.json()
+        if (result.data) {
+          setDetailIRightData(result.data)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch detail iRight info:', err)
+    } finally {
+      setDetailQueryingIRight(false)
+    }
+  }
+
   // Open Create Drawer
   const handleOpenCreateDrawer = () => {
     setEditingGroup(null)
+    setIRightVerifiedData(null)
+    setIRightError(null)
     setFormData({
       name: '',
       level: 'L1-公司级',
@@ -157,6 +236,8 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
   // Open Edit Drawer
   const handleOpenEditDrawer = (group: ManagedCommitterGroup) => {
     setEditingGroup(group)
+    setIRightVerifiedData(null)
+    setIRightError(null)
     setFormData({
       name: group.name,
       level: group.level || 'L1-公司级',
@@ -169,6 +250,18 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
       description: group.description || ''
     })
     setIsFormDrawerOpen(true)
+    if (group.iright_group_id) {
+      handleVerifyIRightGroup(group.iright_group_id)
+    }
+  }
+
+  // Open Detail Drawer
+  const handleOpenDetailDrawer = (group: ManagedCommitterGroup) => {
+    setViewGroup(group)
+    setDetailIRightData(null)
+    if (group.iright_group_id) {
+      handleFetchDetailIRight(group.iright_group_id)
+    }
   }
 
   // Submit Form (Create / Edit)
@@ -683,7 +776,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                     }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg-hover)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                    onClick={() => setViewGroup(group)}
+                    onClick={() => handleOpenDetailDrawer(group)}
                   >
                     <td style={{ padding: '14px 16px', color: 'var(--text-secondary)', fontSize: 12 }}>
                       {(currentPage - 1) * pageSize + idx + 1}
@@ -824,7 +917,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                     <td style={{ padding: '14px 16px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                         <button
-                          onClick={() => setViewGroup(group)}
+                          onClick={() => handleOpenDetailDrawer(group)}
                           className="btn btn-secondary"
                           style={{ padding: '5px 8px', borderRadius: 6, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
                           title="查看详情"
@@ -996,10 +1089,25 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                 border: '1px solid var(--color-primary-border)'
               }}
             >
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Link size={16} />
-                iRight 群组管理系统关联映射
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Link size={16} />
+                  iRight 群组管理系统关联映射
+                </div>
+                {viewGroup.iright_group_id && (
+                  <button
+                    onClick={() => handleFetchDetailIRight(viewGroup.iright_group_id || '')}
+                    className="btn btn-secondary"
+                    style={{ padding: '2px 8px', fontSize: 11, borderRadius: 4, height: 24, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    title="从远程 iRight 重新核验并拉取最新详情"
+                    disabled={detailQueryingIRight}
+                  >
+                    <RefreshCw size={11} className={detailQueryingIRight ? 'spin' : ''} />
+                    {detailQueryingIRight ? '拉取中...' : '核验详情'}
+                  </button>
+                )}
               </div>
+
               {viewGroup.iright_group_id ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div>
@@ -1032,6 +1140,38 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                       </button>
                     </div>
                   </div>
+
+                  {/* 实时核验详情卡片 */}
+                  {detailIRightData && (
+                    <div
+                      style={{
+                        background: 'var(--card-bg)',
+                        border: '1px solid var(--color-success-border)',
+                        borderRadius: 6,
+                        padding: 10,
+                        marginTop: 4,
+                        fontSize: 12,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <ShieldCheck size={14} /> 远程系统实时状态 (已通过验证)
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                        <div><span style={{ color: 'var(--text-secondary)' }}>当前人数:</span> <span style={{ fontWeight: 600, color: 'var(--color-success)' }}>{detailIRightData.memberCount} 人</span></div>
+                        <div><span style={{ color: 'var(--text-secondary)' }}>所属部门:</span> <span style={{ color: 'var(--text-main)' }}>{detailIRightData.fullName || '-'}</span></div>
+                        <div><span style={{ color: 'var(--text-secondary)' }}>群组管理员:</span> <span style={{ color: 'var(--text-main)' }}>{detailIRightData.groupAdmin || '-'}</span></div>
+                        <div><span style={{ color: 'var(--text-secondary)' }}>群组Owner:</span> <span style={{ color: 'var(--text-main)' }}>{detailIRightData.groupOwner || '-'}</span></div>
+                      </div>
+                      {detailIRightData.remark && (
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                          备注说明: {detailIRightData.remark}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>未关联 iRight 群组管理系统标识</div>
@@ -1095,7 +1235,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
       <Drawer
         open={isFormDrawerOpen}
         onClose={() => setIsFormDrawerOpen(false)}
-        width="620px"
+        width="640px"
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {editingGroup ? <Edit3 size={18} color="var(--color-primary)" /> : <Plus size={18} color="var(--color-primary)" />}
@@ -1113,7 +1253,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
             </label>
             <input
               type="text"
-              placeholder="例如：CORE-ENGINE-COMMITTERS / GROUP-FINANCE"
+              placeholder="例如：CORE-ENGINE-COMMITTERS / XGLS-SW_LTCOMM-Committer"
               value={formData.name}
               onChange={e => setFormData({ ...formData, name: e.target.value })}
               required
@@ -1209,7 +1349,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
             </div>
           </div>
 
-          {/* iRight 群组管理系统配置 */}
+          {/* iRight 群组管理系统配置与实时核验 */}
           <div
             style={{
               background: 'var(--color-primary-subtle)',
@@ -1221,16 +1361,184 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
               gap: 12
             }}
           >
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Link size={15} />
-              iRight 群组管理系统配置
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Link size={15} />
+                iRight 群组管理系统配置与校验
+              </div>
+              {iRightVerifiedData && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    background: 'var(--color-success-subtle)',
+                    color: 'var(--color-success)',
+                    border: '1px solid var(--color-success-border)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontWeight: 600
+                  }}
+                >
+                  <CheckCircle2 size={12} /> iRight 已核验通过
+                </span>
+              )}
             </div>
 
+            {/* iRight 群组 ID (UUID) 与实时校验按钮 */}
             <div>
-              <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>iRight 群组名称</label>
+              <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                iRight 群组 ID (UUID 字符串) <span style={{ color: 'var(--text-muted)' }}>- 输入后后台立即查询核验</span>
+              </label>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="text"
+                  placeholder="例如：B95D36E3-7CB0-4B50-901C-C2A1982241B3"
+                  value={formData.iright_group_id}
+                  onChange={e => {
+                    setFormData({ ...formData, iright_group_id: e.target.value })
+                    setIRightError(null)
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleVerifyIRightGroup()
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    background: 'var(--color-bg-input)',
+                    border: iRightError
+                      ? '1px solid var(--color-danger)'
+                      : iRightVerifiedData
+                      ? '1px solid var(--color-success)'
+                      : '1px solid var(--border-color)',
+                    color: 'var(--color-primary)',
+                    fontFamily: 'monospace',
+                    fontSize: 12
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleVerifyIRightGroup()}
+                  disabled={queryingIRight || !formData.iright_group_id.trim()}
+                  className="btn btn-secondary"
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: 6,
+                    fontSize: 12,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    whiteSpace: 'nowrap',
+                    background: 'var(--card-bg)'
+                  }}
+                >
+                  <RefreshCw size={13} className={queryingIRight ? 'spin' : ''} />
+                  {queryingIRight ? '查询校验中...' : '校验并获取'}
+                </button>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
+                系统将通过后台配置的 API 实时查询该 ID 的名称、组织归属与成员规模并自动校验同步。
+              </div>
+            </div>
+
+            {/* 核验成功展示卡片 */}
+            {iRightVerifiedData && (
+              <div
+                style={{
+                  background: 'var(--card-bg)',
+                  border: '1px solid var(--color-success-border)',
+                  borderRadius: 8,
+                  padding: 12,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderBottom: '1px solid var(--border-color)',
+                    paddingBottom: 6
+                  }}
+                >
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <CheckCircle2 size={14} />
+                    已成功匹配 iRight 真实群组
+                  </div>
+                  {formData.name !== iRightVerifiedData.groupNameCn && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, name: iRightVerifiedData.groupNameCn }))}
+                      className="btn btn-secondary"
+                      style={{ padding: '2px 8px', fontSize: 11, height: 24, borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      title="将 Committer Group 组名设置为 iRight 中文名称"
+                    >
+                      <Sparkles size={11} color="var(--color-primary)" /> 同步至组名
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
+                  <div>
+                    <span style={{ color: 'var(--text-secondary)' }}>群组名称：</span>
+                    <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{iRightVerifiedData.groupNameCn}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-secondary)' }}>有效成员数：</span>
+                    <span style={{ color: 'var(--color-success)', fontWeight: 700 }}>{iRightVerifiedData.memberCount} 人</span>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-secondary)' }}>组织全称：</span>
+                    <span style={{ color: 'var(--text-main)' }}>{iRightVerifiedData.fullName || iRightVerifiedData.fullEnglishName || '-'}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-secondary)' }}>群组负责人：</span>
+                    <span style={{ color: 'var(--text-main)' }}>{iRightVerifiedData.groupOwner || iRightVerifiedData.groupAdmin || '-'}</span>
+                  </div>
+                </div>
+                {iRightVerifiedData.remark && (
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', background: 'var(--color-bg-muted)', padding: '4px 8px', borderRadius: 4 }}>
+                    备注说明：{iRightVerifiedData.remark}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 核验失败/异常警告 */}
+            {iRightError && (
+              <div
+                style={{
+                  background: 'var(--color-danger-subtle)',
+                  border: '1px solid var(--color-danger-border)',
+                  borderRadius: 6,
+                  padding: '8px 12px',
+                  fontSize: 12,
+                  color: 'var(--color-danger)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}
+              >
+                <AlertCircle size={14} />
+                <span>{iRightError}</span>
+              </div>
+            )}
+
+            {/* iRight 群组名称 (自动填充 / 可选调整) */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                iRight 群组名称 (已自动同步)
+              </label>
               <input
                 type="text"
-                placeholder="例如：IRIGHT-SEC-DEV-GROUP"
+                placeholder="例如：XGLS-SW_LTCOMM-Committer"
                 value={formData.iright_group_name}
                 onChange={e => setFormData({ ...formData, iright_group_name: e.target.value })}
                 style={{
@@ -1244,33 +1552,14 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                 }}
               />
             </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>iRight 群组 ID (UUID 字符串)</label>
-              <input
-                type="text"
-                placeholder="例如：3fa85f64-5717-4562-b3fc-2c963f66afa6"
-                value={formData.iright_group_id}
-                onChange={e => setFormData({ ...formData, iright_group_id: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: 6,
-                  background: 'var(--color-bg-input)',
-                  border: '1px solid var(--border-color)',
-                  color: 'var(--color-primary)',
-                  fontFamily: 'monospace',
-                  fontSize: 12
-                }}
-              />
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>用于在 iRight 群组管理系统中对齐并自动拉取群组成员凭证。</div>
-            </div>
           </div>
 
           {/* 成员规模 & 启用开关 */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, alignItems: 'center' }}>
             <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>成员规模 (预估/当前人数)</label>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
+                成员规模 (人) <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-secondary)' }}>- 由 iRight 自动拉取</span>
+              </label>
               <input
                 type="number"
                 min={0}
