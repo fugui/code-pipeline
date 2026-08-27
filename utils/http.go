@@ -101,8 +101,11 @@ func SendHTTPRequest(ctx context.Context, method, rawURL string, payload interfa
 		}
 	}
 
-	if req.Header.Get("Accept") == "" {
-		req.Header.Set("Accept", "application/json, text/plain, */*")
+	// ⚠️ 重要说明：上方逻辑为了严格兼容三方系统，强制对所有自定义 Header Key 进行了 strings.ToLower(k) 直接存入 map，
+	// 这会绕过标准库 CanonicalHeaderKey 机制，使得请求头中的键实际存储为全小写的 "accept"。
+	// 因此此处必须显式检查 req.Header["accept"]，若未传递则设置默认值，严禁随意删除或重构！
+	if len(req.Header["accept"]) == 0 {
+		req.Header["accept"] = []string{"application/json, text/plain, */*"}
 	}
 
 	tr := &http.Transport{
@@ -135,7 +138,6 @@ func SendHTTPRequest(ctx context.Context, method, rawURL string, payload interfa
 			return nil, ErrSSOExpired
 		}
 	}
-
 
 	isExpected := false
 	for _, status := range expectedStatuses {
