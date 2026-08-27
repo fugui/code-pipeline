@@ -65,11 +65,13 @@ func TestGetIRightGroup_Success(t *testing.T) {
 		"status": 200
 	}`
 
-	var receivedAuthHeader string
+	var receivedCookie string
+	var receivedCftk string
 	var receivedCustomHeader string
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		receivedAuthHeader = r.Header.Get("Authorization")
+		receivedCookie = r.Header.Get("Cookie")
+		receivedCftk = r.Header.Get("cftk")
 		receivedCustomHeader = r.Header.Get("X-User-Token")
 
 		if r.URL.Path != "/api/v1/iright/groups/B95D36E3-7CB0-4B50-901C-C2A1982241B3" {
@@ -90,11 +92,14 @@ func TestGetIRightGroup_Success(t *testing.T) {
 		"Accept": "application/json",
 	}
 
-	userHeaders := http.Header{}
-	userHeaders.Set("Authorization", "Bearer test-user-jwt")
-	userHeaders.Set("X-User-Token", "custom-token-xyz")
+	contextHeaders := map[string]string{
+		"Cookie":           "prod_cftk=test-token; prod_J_SESSION_ID=test-session",
+		"cftk":             "test-token",
+		"x-requested-with": "XMLHttpRequest",
+		"X-User-Token":     "custom-token-xyz",
+	}
 
-	data, err := GetIRightGroup(context.Background(), "B95D36E3-7CB0-4B50-901C-C2A1982241B3", userHeaders)
+	data, err := GetIRightGroup(context.Background(), "B95D36E3-7CB0-4B50-901C-C2A1982241B3", contextHeaders)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -113,8 +118,11 @@ func TestGetIRightGroup_Success(t *testing.T) {
 	}
 
 	// 检查 Header 传递
-	if receivedAuthHeader != "Bearer test-user-jwt" {
-		t.Errorf("expected Authorization header 'Bearer test-user-jwt', got '%s'", receivedAuthHeader)
+	if receivedCookie != "prod_cftk=test-token; prod_J_SESSION_ID=test-session" {
+		t.Errorf("expected Cookie header, got '%s'", receivedCookie)
+	}
+	if receivedCftk != "test-token" {
+		t.Errorf("expected cftk header 'test-token', got '%s'", receivedCftk)
 	}
 	if receivedCustomHeader != "custom-token-xyz" {
 		t.Errorf("expected X-User-Token header 'custom-token-xyz', got '%s'", receivedCustomHeader)

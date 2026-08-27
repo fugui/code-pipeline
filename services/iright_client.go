@@ -72,7 +72,7 @@ type IRightGroupResponse struct {
 }
 
 // GetIRightGroup 从 iRight 远程系统根据 groupID 实时查询群组详情与成员人数等信息
-func GetIRightGroup(ctx context.Context, groupID string, userHeaders http.Header) (*IRightGroupData, error) {
+func GetIRightGroup(ctx context.Context, groupID string, contextHeaders map[string]string) (*IRightGroupData, error) {
 	cleanGroupID := strings.TrimSpace(groupID)
 	if cleanGroupID == "" {
 		return nil, fmt.Errorf("iRight 群组 ID 不能为空")
@@ -88,23 +88,13 @@ func GetIRightGroup(ctx context.Context, groupID string, userHeaders http.Header
 	apiURLStr = strings.ReplaceAll(apiURLStr, "{ID}", cleanGroupID)
 	apiURLStr = strings.ReplaceAll(apiURLStr, "{groupId}", cleanGroupID)
 
-	// 组合请求 Headers：预置配置 + 用户请求中的身份授权 Headers (Authorization, Cookie, X-* 等)
+	// 融合 Header 配置 (预置 Header + 上下文透传 Header)
 	reqHeaders := make(map[string]string)
 	for k, v := range models.AppConfig.IRight.Headers {
 		reqHeaders[k] = v
 	}
-
-	if userHeaders != nil {
-		for k, vList := range userHeaders {
-			if len(vList) > 0 {
-				lowerK := strings.ToLower(k)
-				// 过滤掉服务端/传输专用的 Header
-				if lowerK == "host" || lowerK == "content-length" || lowerK == "connection" {
-					continue
-				}
-				reqHeaders[k] = strings.Join(vList, ", ")
-			}
-		}
+	for k, v := range contextHeaders {
+		reqHeaders[k] = v
 	}
 
 	body, err := utils.SendHTTPRequest(ctx, "GET", apiURLStr, nil, utils.HTTPOptions{
