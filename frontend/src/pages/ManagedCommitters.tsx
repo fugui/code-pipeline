@@ -170,16 +170,106 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
         const data: IRightGroupData = result.data
         setIRightVerifiedData(data)
         setIRightError(null)
-        showToast(`成功核验 iRight 群组：${data.groupNameCn} (${data.memberCount} 人)`, 'success')
 
-        // 统一自动带入群组名称与成员人数
+        // 1. 统一自动带入群组名称与成员人数
         const finalName = data.groupNameCn || data.groupNameEn || ''
+
+        // 2. 匹配归属部门：取 fullName / fullEnglishName 最后的部门名称进行匹配
+        let matchedDeptId: number | undefined = undefined
+        let matchedDeptName = ''
+        const rawDeptPath = (data.fullName || data.fullEnglishName || '').trim()
+        let currentDepts = departments
+        if (currentDepts.length === 0) {
+          try {
+            const optRes = await fetch(`${apiBase}/system-options`, {
+              headers: { Authorization: `Bearer ${token}` }
+            })
+            if (optRes.ok) {
+              const optData = await optRes.json()
+              if (Array.isArray(optData.departments)) {
+                currentDepts = optData.departments
+                setDepartments(optData.departments)
+              }
+            }
+          } catch (_) {}
+        }
+
+        if (rawDeptPath && currentDepts.length > 0) {
+          const segments = rawDeptPath.split(/[\\/]+/).map(s => s.trim()).filter(Boolean)
+          if (segments.length > 0) {
+            const lastDeptName = segments[segments.length - 1]
+            // 优先完全一致匹配
+            let found = currentDepts.find(d => d.name.trim() === lastDeptName)
+            // 次选相互包含匹配
+            if (!found) {
+              found = currentDepts.find(d => d.name.trim().includes(lastDeptName) || lastDeptName.includes(d.name.trim()))
+            }
+            if (found) {
+              matchedDeptId = found.id
+              matchedDeptName = found.name
+            }
+          }
+        }
+
+        // 3. 匹配群组管理员：优先提取 groupAdmin / groupOwner 中的工号和用户名
+        let matchedAdminId: number | undefined = undefined
+        let matchedAdminName = ''
+        const adminRawStr = (data.groupAdmin || data.groupOwner || data.creator || '').trim()
+        if (adminRawStr) {
+          const tokens = adminRawStr.split(/\s+/).filter(Boolean)
+          const employeeIdToken = tokens.find(t => /\d+/.test(t))
+          const nameToken = tokens.find(t => !/^\d+$/.test(t))
+
+          const searchKeywords = [employeeIdToken, nameToken, adminRawStr].filter(Boolean) as string[]
+          for (const kw of searchKeywords) {
+            try {
+              const userRes = await fetch(`${apiBase}/users?search=${encodeURIComponent(kw)}&pageSize=20`, {
+                headers: { Authorization: `Bearer ${token}` }
+              })
+              if (userRes.ok) {
+                const userData = await userRes.json()
+                const userList: Array<{ id: number; employee_id?: string; username?: string; name?: string }> = userData.items || []
+
+                let matchedUser = employeeIdToken ? userList.find(u => u.employee_id === employeeIdToken) : undefined
+                if (!matchedUser && employeeIdToken) {
+                  const stripped = employeeIdToken.replace(/^0+/, '')
+                  matchedUser = userList.find(u => u.employee_id?.replace(/^0+/, '') === stripped)
+                }
+                if (!matchedUser && nameToken) {
+                  matchedUser = userList.find(u => u.username?.toLowerCase() === nameToken.toLowerCase() || u.name?.trim() === nameToken.trim())
+                }
+                if (!matchedUser && userList.length === 1 && employeeIdToken && kw === employeeIdToken) {
+                  matchedUser = userList[0]
+                }
+
+                if (matchedUser) {
+                  matchedAdminId = matchedUser.id
+                  matchedAdminName = matchedUser.name || matchedUser.username || ''
+                  break
+                }
+              }
+            } catch (e) {
+              console.warn('匹配管理员异常:', e)
+            }
+          }
+        }
+
+        // 4. 更新 Form 表单状态
         setFormData(prev => ({
           ...prev,
           name: finalName,
           iright_group_name: finalName,
-          member_count: data.memberCount !== undefined ? data.memberCount : prev.member_count
+          member_count: data.memberCount !== undefined ? data.memberCount : prev.member_count,
+          department_id: matchedDeptId !== undefined ? matchedDeptId : prev.department_id,
+          admin_id: matchedAdminId !== undefined ? matchedAdminId : prev.admin_id
         }))
+
+        // 5. 提示信息
+        const matchDetails: string[] = []
+        if (matchedDeptName) matchDetails.push(`归属部门: ${matchedDeptName}`)
+        if (matchedAdminName) matchDetails.push(`管理员: ${matchedAdminName}`)
+        const extraMsg = matchDetails.length > 0 ? ` (已自动匹配 ${matchDetails.join('，')})` : ''
+        showToast(`成功核验 iRight 群组：${data.groupNameCn} (${data.memberCount} 人)${extraMsg}`, 'success')
       } else {
         const errMsg = result.error || result.message || '未在 iRight 系统中查询到该群组 ID'
         setIRightError(errMsg)
