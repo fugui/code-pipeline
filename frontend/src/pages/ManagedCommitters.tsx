@@ -1384,10 +1384,10 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <input
                   type="text"
-                  placeholder="例如：3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  placeholder="例如：3FA85F64-5717-4562-B3FC-2C963F66AFA6"
                   value={formData.iright_group_id}
                   onChange={e => {
-                    setFormData({ ...formData, iright_group_id: e.target.value })
+                    setFormData({ ...formData, iright_group_id: e.target.value.toUpperCase() })
                     setIRightError(null)
                   }}
                   onKeyDown={e => {
