@@ -333,7 +333,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
             </span>
           </div>
           <p style={{ color: 'var(--text-secondary)', marginTop: 6, marginBottom: 0, fontSize: 13 }}>
-            集中维护各层级受控 Committer Group、关联组织部门、管理负责人及 iRight 第三方鉴权标识，保障代码仓合并审批合法合规。
+            集中维护各层级受控 Committer Group、关联组织部门、管理负责人及 iRight 群组管理系统鉴权标识，保障代码仓合并审批合法合规。
           </p>
         </div>
 
@@ -977,7 +977,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
               )}
             </div>
 
-            {/* 第三方 iRight 绑定卡片 */}
+            {/* iRight 群组管理系统 绑定卡片 */}
             <div
               style={{
                 background: 'var(--color-primary-subtle)',
@@ -988,7 +988,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
             >
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Link size={16} />
-                第三方 iRight 群组关联映射
+                iRight 群组管理系统关联映射
               </div>
               {viewGroup.iright_group_id ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1024,7 +1024,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                   </div>
                 </div>
               ) : (
-                <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>未关联 iRight 第三方群组标识</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>未关联 iRight 群组管理系统标识</div>
               )}
             </div>
 
@@ -1199,7 +1199,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
             </div>
           </div>
 
-          {/* iRight 关联群组名称 & ID (UUID) */}
+          {/* iRight 群组管理系统配置 */}
           <div
             style={{
               background: 'var(--color-primary-subtle)',
@@ -1213,7 +1213,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
           >
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Link size={15} />
-              第三方 iRight 鉴权关联配置
+              iRight 群组管理系统配置
             </div>
 
             <div>
@@ -1253,7 +1253,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                   fontSize: 12
                 }}
               />
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>用于在第三方权限系统对齐并自动拉取群组成员凭证。</div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>用于在 iRight 群组管理系统中对齐并自动拉取群组成员凭证。</div>
             </div>
           </div>
 

@@ -403,8 +403,8 @@ type ManagedCommitterGroup struct {
 	Department      *Department `gorm:"foreignKey:DepartmentID" json:"department,omitempty"`  // 部门对象
 	AdminID         *uint       `gorm:"index" json:"admin_id,omitempty"`                      // 管理员用户 ID
 	Admin           *User       `gorm:"foreignKey:AdminID" json:"admin,omitempty"`            // 管理员对象
-	IRightGroupName string      `gorm:"column:iright_group_name;size:150;default:''" json:"iright_group_name"`     // 第三方 iRight 群组名称
-	IRightGroupID   string      `gorm:"column:iright_group_id;size:128;index;default:''" json:"iright_group_id"` // 第三方 iRight 群组 UUID 标识
+	IRightGroupName string      `gorm:"column:iright_group_name;size:150;default:''" json:"iright_group_name"`     // iRight 群组管理系统名称
+	IRightGroupID   string      `gorm:"column:iright_group_id;size:128;index;default:''" json:"iright_group_id"` // iRight 群组管理系统 UUID 标识
 	MemberCount     int         `gorm:"default:0" json:"member_count"`                                            // 成员数量
 	Description     string      `gorm:"type:text" json:"description"`                                             // 备注/描述说明
 	IsActive        bool        `gorm:"default:true;index" json:"is_active"`                                      // 是否启用
