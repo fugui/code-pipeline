@@ -398,7 +398,7 @@ type ComplianceCheckResult struct {
 type ManagedCommitterGroup struct {
 	ID              uint        `gorm:"primaryKey" json:"id"`
 	Name            string      `gorm:"size:150;uniqueIndex;not null;default:''" json:"name"` // Committer Group 名称
-	Level           string      `gorm:"size:50;not null;default:'L1'" json:"level"`           // 所属层级 (如 "L0-集团级", "L1-公司级", "L2-一层部门级（SW为二层资源部门级）", "L3-项目组级")
+	Level           string      `gorm:"size:50;not null;default:'L1'" json:"level"`           // 所属层级 (如 "L0-集团级", "L1-公司级", "L2-一层部门级", "L3-项目组级")
 	DepartmentID    *uint       `gorm:"index" json:"department_id,omitempty"`                 // 归属部门 ID
 	Department      *Department `gorm:"foreignKey:DepartmentID" json:"department,omitempty"`  // 部门对象
 	AdminID         *uint       `gorm:"index" json:"admin_id,omitempty"`                      // 管理员用户 ID

@@ -191,7 +191,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                 setDepartments(optData.departments)
               }
             }
-          } catch (_) {}
+          } catch (_) { }
         }
 
         if (rawDeptPath && currentDepts.length > 0) {
@@ -782,7 +782,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
               <option value="all">全部层级</option>
               <option value="L0-集团级">L0-集团级</option>
               <option value="L1-公司级">L1-公司级</option>
-              <option value="L2-一层部门级（SW为二层资源部门级）">L2-一层部门级（SW为二层资源部门级）</option>
+              <option value="L2-一层部门级">L2-一层部门级</option>
               <option value="L3-项目组级">L3-项目组级</option>
             </select>
           </div>
@@ -1404,8 +1404,8 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                     border: iRightError
                       ? '1px solid var(--color-danger)'
                       : iRightVerifiedData
-                      ? '1px solid var(--color-success)'
-                      : '1px solid var(--border-color)',
+                        ? '1px solid var(--color-success)'
+                        : '1px solid var(--border-color)',
                     color: 'var(--color-primary)',
                     fontFamily: 'monospace',
                     fontSize: 12
@@ -1565,9 +1565,12 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
             >
               <option value="L0-集团级">L0-集团级</option>
               <option value="L1-公司级">L1-公司级</option>
-              <option value="L2-一层部门级（SW为二层资源部门级）">L2-一层部门级（SW为二层资源部门级）</option>
+              <option value="L2-一层部门级">L2-一层部门级 (SW为二层资源部门级)</option>
               <option value="L3-项目组级">L3-项目组级</option>
             </select>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
+              注：对于 SW（软件）组织，L2 对应各二层资源部门级。
+            </div>
           </div>
 
           {/* 4. 归属部门 & 群组管理员 (管理员使用 MultiMemberSearchSelect 满足 600+ 用户搜索) */}
