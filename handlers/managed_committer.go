@@ -240,8 +240,12 @@ func GetIRightGroup(c *gin.Context) {
 		return
 	}
 
-	data, err := services.GetIRightGroup(c.Request.Context(), groupID, c.Request.Header)
+	headers := prepareRequestHeaders(c)
+	data, err := services.GetIRightGroup(c.Request.Context(), groupID, headers)
 	if err != nil {
+		if HandleSSOExpired(c, err) {
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -252,4 +256,5 @@ func GetIRightGroup(c *gin.Context) {
 		"status":  200,
 	})
 }
+
 
