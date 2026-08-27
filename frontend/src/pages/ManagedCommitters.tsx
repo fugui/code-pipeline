@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { Pagination, usePagination, Drawer, MultiMemberSearchSelect } from '@code/common'
+import { Pagination, usePagination, Drawer, MemberSearchSelect } from '@code/common'
 import {
   Users,
   UserCheck,
@@ -1510,14 +1510,13 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
                 群组管理员 <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-secondary)' }}>(支持姓名/工号搜索)</span>
               </label>
-              <MultiMemberSearchSelect
-                value={formData.admin_id ? [String(formData.admin_id)] : []}
-                onChange={ids => {
-                  const newId = ids.length > 0 ? Number(ids[ids.length - 1]) : undefined
-                  setFormData(prev => ({ ...prev, admin_id: newId }))
+              <MemberSearchSelect
+                value={formData.admin_id || ''}
+                onChange={userId => {
+                  setFormData(prev => ({ ...prev, admin_id: userId ? Number(userId) : undefined }))
                 }}
-                maxSelections={1}
                 searchEndpoint={`${apiBase}/users`}
+                meEndpoint={`${apiBase}/me`}
                 fetchFn={memberSearchFetchFn}
               />
             </div>
