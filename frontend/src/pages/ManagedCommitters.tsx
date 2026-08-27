@@ -211,10 +211,10 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
           }
         }
 
-        // 3. 匹配群组管理员：优先提取 groupAdmin / groupOwner 中的工号和用户名
+        // 3. 匹配群组管理员：优先提取 groupOwner / groupAdmin 中的工号和用户名
         let matchedAdminId: number | undefined = undefined
         let matchedAdminName = ''
-        const adminRawStr = (data.groupAdmin || data.groupOwner || data.creator || '').trim()
+        const adminRawStr = (data.groupOwner || data.groupAdmin || data.creator || '').trim()
         if (adminRawStr) {
           const tokens = adminRawStr.split(/\s+/).filter(Boolean)
           const employeeIdToken = tokens.find(t => /\d+/.test(t))
@@ -1255,8 +1255,8 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                         <div><span style={{ color: 'var(--text-secondary)' }}>当前人数:</span> <span style={{ fontWeight: 600, color: 'var(--color-success)' }}>{detailIRightData.memberCount} 人</span></div>
                         <div><span style={{ color: 'var(--text-secondary)' }}>所属部门:</span> <span style={{ color: 'var(--text-main)' }}>{detailIRightData.fullName || '-'}</span></div>
-                        <div><span style={{ color: 'var(--text-secondary)' }}>群组管理员:</span> <span style={{ color: 'var(--text-main)' }}>{detailIRightData.groupAdmin || '-'}</span></div>
-                        <div><span style={{ color: 'var(--text-secondary)' }}>群组Owner:</span> <span style={{ color: 'var(--text-main)' }}>{detailIRightData.groupOwner || '-'}</span></div>
+                        <div><span style={{ color: 'var(--text-secondary)' }}>群组管理员:</span> <span style={{ color: 'var(--text-main)' }}>{detailIRightData.groupOwner || detailIRightData.groupAdmin || '-'}</span></div>
+                        <div><span style={{ color: 'var(--text-secondary)' }}>系统状态:</span> <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>正常 (有效)</span></div>
                       </div>
                       {detailIRightData.remark && (
                         <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
@@ -1384,7 +1384,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <input
                   type="text"
-                  placeholder="例如：B95D36E3-7CB0-4B50-901C-C2A1982241B3"
+                  placeholder="例如：3fa85f64-5717-4562-b3fc-2c963f66afa6"
                   value={formData.iright_group_id}
                   onChange={e => {
                     setFormData({ ...formData, iright_group_id: e.target.value })
@@ -1478,7 +1478,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                     <span style={{ color: 'var(--text-main)' }}>{iRightVerifiedData.fullName || iRightVerifiedData.fullEnglishName || '-'}</span>
                   </div>
                   <div>
-                    <span style={{ color: 'var(--text-secondary)' }}>群组负责人：</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>群组管理员：</span>
                     <span style={{ color: 'var(--text-main)' }}>{iRightVerifiedData.groupOwner || iRightVerifiedData.groupAdmin || '-'}</span>
                   </div>
                 </div>
