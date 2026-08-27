@@ -80,6 +80,10 @@ type Config struct {
 		ConfigureProtectionBody string            `yaml:"configure_protection_body"`
 		ConfigureACLBody        string            `yaml:"configure_acl_body"`
 	} `yaml:"codehub"`
+	IRight struct {
+		GetGroupURL string            `yaml:"get_group_url"` // 查询 iRight 群组详情 API (如 http://192.168.56.18:9080/api/v1/iright/groups/{GROUP_ID})
+		Headers     map[string]string `yaml:"headers"`       // 预置 Header
+	} `yaml:"iright"`
 }
 
 var AppConfig Config
@@ -178,6 +182,11 @@ func applyDefaults() {
 		AppConfig.CodeHub.Headers = map[string]string{
 			"Accept":       "application/json",
 			"Content-Type": "application/json",
+		}
+	}
+	if AppConfig.IRight.Headers == nil {
+		AppConfig.IRight.Headers = map[string]string{
+			"Accept": "application/json",
 		}
 	}
 }

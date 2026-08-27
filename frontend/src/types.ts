@@ -357,4 +357,31 @@ export interface ManagedCommitterGroup {
   updated_at: string
 }
 
+// iRight 远程系统群组数据模型
+export interface IRightGroupData {
+  groupID: string
+  groupNameCn: string
+  groupNameEn?: string
+  groupType?: number
+  groupOwner?: string
+  groupAdmin?: string
+  effectDate?: string
+  invalidDate?: string
+  status?: number
+  creator?: string
+  createDate?: string
+  lastUpdateBy?: string
+  lastUpdateDate?: string
+  deptProdID?: string
+  remark?: string
+  fullEnglishName?: string
+  fullDeptProdCode?: string
+  memberCount: number
+  fullName?: string
+  subGroupMemberCount?: number
+  lastCheckTime?: string
+  [key: string]: any
+}
+
+
 

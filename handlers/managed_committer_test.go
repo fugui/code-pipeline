@@ -10,6 +10,7 @@ import (
 
 	"code-pipeline/database"
 	"code-pipeline/models"
+	"code-pipeline/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -138,3 +139,54 @@ func TestManagedCommitterGroupCRUD(t *testing.T) {
 		t.Fatalf("Expected record to be deleted, but still exists")
 	}
 }
+
+func TestGetIRightGroupHandler(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{
+			"data": {
+				"groupID": "B95D36E3-7CB0-4B50-901C-C2A1982241B3",
+				"groupNameCn": "XGLS-SW_LTCOMM-Committer",
+				"memberCount": 13,
+				"groupOwner": "liping 00005055",
+				"groupAdmin": "liwenjun 00015676",
+				"fullName": "新凯来\\装备业务一部",
+				"status": 1
+			},
+			"message": "success",
+			"status": 200
+		}`))
+	}))
+	defer mockServer.Close()
+
+	models.AppConfig.IRight.GetGroupURL = mockServer.URL + "/api/v1/iright/groups/{GROUP_ID}"
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Params = gin.Params{{Key: "id", Value: "B95D36E3-7CB0-4B50-901C-C2A1982241B3"}}
+	c.Request, _ = http.NewRequest(http.MethodGet, "/managed-repos/iright/groups/B95D36E3-7CB0-4B50-901C-C2A1982241B3", nil)
+	c.Request.Header.Set("Authorization", "Bearer test-token")
+
+	GetIRightGroup(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200 OK, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp struct {
+		Data    services.IRightGroupData `json:"data"`
+		Message string                   `json:"message"`
+		Status  int                      `json:"status"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+
+	if resp.Data.GroupID != "B95D36E3-7CB0-4B50-901C-C2A1982241B3" || resp.Data.GroupNameCn != "XGLS-SW_LTCOMM-Committer" || resp.Data.MemberCount != 13 {
+		t.Fatalf("Unexpected parsed data: %+v", resp.Data)
+	}
+}
+
