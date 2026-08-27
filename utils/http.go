@@ -101,7 +101,7 @@ func SendHTTPRequest(ctx context.Context, method, rawURL string, payload interfa
 		}
 	}
 
-	if req.Header.Get("Accept") == "" && len(req.Header["accept"]) == 0 {
+	if req.Header.Get("Accept") == "" {
 		req.Header.Set("Accept", "application/json, text/plain, */*")
 	}
 
