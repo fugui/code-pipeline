@@ -271,15 +271,23 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
     const total = totalCount || committerGroups.length
     const active = committerGroups.filter(g => g.is_active).length
     const boundIRight = committerGroups.filter(g => !!g.iright_group_id).length
+    const l0Count = committerGroups.filter(g => g.level?.startsWith('L0')).length
     const l1Count = committerGroups.filter(g => g.level?.startsWith('L1')).length
     const l2Count = committerGroups.filter(g => g.level?.startsWith('L2')).length
     const l3Count = committerGroups.filter(g => g.level?.startsWith('L3')).length
 
-    return { total, active, boundIRight, l1Count, l2Count, l3Count }
+    return { total, active, boundIRight, l0Count, l1Count, l2Count, l3Count }
   }, [totalCount, committerGroups])
 
   // Get level badge color with proper contrast in both light and dark themes
   const getLevelBadgeStyle = (level: string) => {
+    if (level?.startsWith('L0')) {
+      return {
+        background: 'rgba(244, 63, 94, 0.12)',
+        color: '#e11d48',
+        border: '1px solid rgba(244, 63, 94, 0.3)'
+      }
+    }
     if (level?.startsWith('L1')) {
       return {
         background: 'rgba(168, 85, 247, 0.12)',
@@ -439,13 +447,15 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
             <Layers size={22} />
           </div>
           <div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>层级分布 (L1 / L2 / L3)</div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-main)', marginTop: 2 }}>
-              <span style={{ color: '#a855f7' }}>{stats.l1Count}</span>
-              <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>/</span>
-              <span style={{ color: '#3b82f6' }}>{stats.l2Count}</span>
-              <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>/</span>
-              <span style={{ color: '#10b981' }}>{stats.l3Count}</span>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>层级分布 (L0 / L1 / L2 / L3)</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-main)', marginTop: 2 }}>
+              <span style={{ color: '#e11d48' }} title="L0-集团级">{stats.l0Count}</span>
+              <span style={{ color: 'var(--text-muted)', margin: '0 3px' }}>/</span>
+              <span style={{ color: '#a855f7' }} title="L1-公司级">{stats.l1Count}</span>
+              <span style={{ color: 'var(--text-muted)', margin: '0 3px' }}>/</span>
+              <span style={{ color: '#3b82f6' }} title="L2-一层部门级">{stats.l2Count}</span>
+              <span style={{ color: 'var(--text-muted)', margin: '0 3px' }}>/</span>
+              <span style={{ color: '#10b981' }} title="L3-项目组级">{stats.l3Count}</span>
             </div>
           </div>
         </div>
@@ -584,10 +594,10 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
               }}
             >
               <option value="all">全部层级</option>
+              <option value="L0-集团级">L0-集团级</option>
               <option value="L1-公司级">L1-公司级</option>
-              <option value="L2-产品线/域级">L2-产品线/域级</option>
-              <option value="L3-项目/模块级">L3-项目/模块级</option>
-              <option value="L4-其他">L4-其他</option>
+              <option value="L2-一层部门级（SW为二层资源部门级）">L2-一层部门级（SW为二层资源部门级）</option>
+              <option value="L3-项目组级">L3-项目组级</option>
             </select>
           </div>
 
@@ -1141,10 +1151,10 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                 fontSize: 13
               }}
             >
-              <option value="L1-公司级">L1-公司级（最高权限管辖范围）</option>
-              <option value="L2-产品线/域级">L2-产品线/域级（产品线或业务域）</option>
-              <option value="L3-项目/模块级">L3-项目/模块级（具体子系统或微服务模块）</option>
-              <option value="L4-其他">L4-其他（跨组或专项小组）</option>
+              <option value="L0-集团级">L0-集团级</option>
+              <option value="L1-公司级">L1-公司级</option>
+              <option value="L2-一层部门级（SW为二层资源部门级）">L2-一层部门级（SW为二层资源部门级）</option>
+              <option value="L3-项目组级">L3-项目组级</option>
             </select>
           </div>
 
