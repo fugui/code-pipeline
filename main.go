@@ -94,6 +94,7 @@ func main() {
 					api.GET("/me", handlers.GetMe)
 					api.PATCH("/password", handlers.UpdatePassword)
 					api.GET("/system-options", handlers.GetSystemOptions)
+					api.GET("/users", handlers.GetUsers)
 
 					// Merge Request 实时看护与全览相关接口
 					api.GET("/mr/hook", handlers.GetMrEvents)

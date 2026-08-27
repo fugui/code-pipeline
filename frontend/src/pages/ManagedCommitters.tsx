@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react'
-import { Pagination, usePagination, Drawer } from '@code/common'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import { Pagination, usePagination, Drawer, MultiMemberSearchSelect } from '@code/common'
 import {
   Users,
   UserCheck,
@@ -17,8 +17,8 @@ import {
   CheckCircle2,
   AlertCircle,
   FileText,
-  Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  Lock
 } from 'lucide-react'
 import { ManagedCommitterGroup, Department, IRightGroupData } from '../types'
 import { useToast } from '../components/Toast'
@@ -27,14 +27,6 @@ interface ManagedCommittersProps {
   isAdmin?: boolean
   apiBase: string
   token: string
-}
-
-interface SystemOptionItem {
-  id: number
-  name: string
-  username?: string
-  email?: string
-  department_name?: string
 }
 
 export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = true, apiBase, token }) => {
@@ -49,9 +41,8 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
   const [levelFilter, setLevelFilter] = useState<string>('all')
   const [deptFilter, setDeptFilter] = useState<string>('all')
 
-  // System Dropdown Options (Users & Departments)
+  // System Dropdown Options (Departments)
   const [departments, setDepartments] = useState<Department[]>([])
-  const [users, setUsers] = useState<SystemOptionItem[]>([])
 
   // Pagination standard
   const { page: currentPage, pageSize, setPage: setCurrentPage } = usePagination({ defaultPageSize: 25 })
@@ -85,7 +76,21 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
     description: ''
   })
 
-  // Fetch System Options (Users & Departments)
+  // Authenticated fetchFn for MultiMemberSearchSelect
+  const memberSearchFetchFn = useCallback(
+    (url: string, options?: RequestInit) => {
+      return fetch(url, {
+        ...options,
+        headers: {
+          ...(options?.headers || {}),
+          Authorization: `Bearer ${token}`
+        }
+      })
+    },
+    [token]
+  )
+
+  // Fetch System Options (Departments)
   const fetchSystemOptions = async () => {
     try {
       const res = await fetch(`${apiBase}/system-options`, {
@@ -95,9 +100,6 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
         const data = await res.json()
         if (Array.isArray(data.departments)) {
           setDepartments(data.departments)
-        }
-        if (Array.isArray(data.users)) {
-          setUsers(data.users)
         }
       }
     } catch (err) {
@@ -170,12 +172,13 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
         setIRightError(null)
         showToast(`成功核验 iRight 群组：${data.groupNameCn} (${data.memberCount} 人)`, 'success')
 
-        // 自动带入群组名称与成员人数
+        // 统一自动带入群组名称与成员人数
+        const finalName = data.groupNameCn || data.groupNameEn || ''
         setFormData(prev => ({
           ...prev,
-          iright_group_name: data.groupNameCn || prev.iright_group_name,
-          member_count: data.memberCount !== undefined ? data.memberCount : prev.member_count,
-          name: prev.name ? prev.name : (data.groupNameCn || '')
+          name: finalName,
+          iright_group_name: finalName,
+          member_count: data.memberCount !== undefined ? data.memberCount : prev.member_count
         }))
       } else {
         const errMsg = result.error || result.message || '未在 iRight 系统中查询到该群组 ID'
@@ -243,7 +246,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
       level: group.level || 'L1-公司级',
       department_id: group.department_id,
       admin_id: group.admin_id,
-      iright_group_name: group.iright_group_name || '',
+      iright_group_name: group.iright_group_name || group.name,
       iright_group_id: group.iright_group_id || '',
       member_count: group.member_count || 0,
       is_active: group.is_active,
@@ -268,7 +271,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.name.trim()) {
-      showToast('请输入 Committer Group 名称', 'error')
+      showToast('请先输入 iRight 群组 ID 并校验以自动获取组名', 'error')
       return
     }
 
@@ -285,7 +288,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
         level: formData.level,
         department_id: formData.department_id || null,
         admin_id: formData.admin_id || null,
-        iright_group_name: formData.iright_group_name.trim(),
+        iright_group_name: formData.name.trim(),
         iright_group_id: formData.iright_group_id.trim(),
         member_count: Number(formData.member_count) || 0,
         is_active: formData.is_active,
@@ -858,7 +861,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                         <div>
                           <div style={{ fontWeight: 500, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
                             <Link size={12} />
-                            <span>{group.iright_group_name || '已关联 iRight'}</span>
+                            <span>{group.iright_group_name || group.name || '已关联 iRight'}</span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                             <code
@@ -1113,7 +1116,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                   <div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>iRight 群组名称</div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-main)', marginTop: 2 }}>
-                      {viewGroup.iright_group_name || '未填名称 (已提供 UUID)'}
+                      {viewGroup.name || viewGroup.iright_group_name || '已提供 UUID'}
                     </div>
                   </div>
                   <div>
@@ -1246,110 +1249,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
         }
       >
         <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          {/* Committer Group 名称 */}
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
-              Committer Group 名称 <span style={{ color: 'var(--color-danger)' }}>*</span>
-            </label>
-            <input
-              type="text"
-              placeholder="例如：CORE-ENGINE-COMMITTERS / XGLS-SW_LTCOMM-Committer"
-              value={formData.name}
-              onChange={e => setFormData({ ...formData, name: e.target.value })}
-              required
-              style={{
-                width: '100%',
-                padding: '9px 12px',
-                borderRadius: 8,
-                background: 'var(--color-bg-input)',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-main)',
-                fontSize: 13
-              }}
-            />
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
-              对应托管平台中成员的群组标识（如 list_member 中的 domain_group），代码仓合规巡检将依此核验。
-            </div>
-          </div>
-
-          {/* 所属层级 */}
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
-              所属层级 <span style={{ color: 'var(--color-danger)' }}>*</span>
-            </label>
-            <select
-              value={formData.level}
-              onChange={e => setFormData({ ...formData, level: e.target.value })}
-              required
-              style={{
-                width: '100%',
-                padding: '9px 12px',
-                borderRadius: 8,
-                background: 'var(--color-bg-input)',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-main)',
-                fontSize: 13
-              }}
-            >
-              <option value="L0-集团级">L0-集团级</option>
-              <option value="L1-公司级">L1-公司级</option>
-              <option value="L2-一层部门级（SW为二层资源部门级）">L2-一层部门级（SW为二层资源部门级）</option>
-              <option value="L3-项目组级">L3-项目组级</option>
-            </select>
-          </div>
-
-          {/* 归属部门 & 管理员 */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>归属部门</label>
-              <select
-                value={formData.department_id || ''}
-                onChange={e => setFormData({ ...formData, department_id: e.target.value ? Number(e.target.value) : undefined })}
-                style={{
-                  width: '100%',
-                  padding: '9px 12px',
-                  borderRadius: 8,
-                  background: 'var(--color-bg-input)',
-                  border: '1px solid var(--border-color)',
-                  color: 'var(--text-main)',
-                  fontSize: 13
-                }}
-              >
-                <option value="">-- 请选择部门 --</option>
-                {departments.map(d => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>群组管理员</label>
-              <select
-                value={formData.admin_id || ''}
-                onChange={e => setFormData({ ...formData, admin_id: e.target.value ? Number(e.target.value) : undefined })}
-                style={{
-                  width: '100%',
-                  padding: '9px 12px',
-                  borderRadius: 8,
-                  background: 'var(--color-bg-input)',
-                  border: '1px solid var(--border-color)',
-                  color: 'var(--text-main)',
-                  fontSize: 13
-                }}
-              >
-                <option value="">-- 请选择管理员 --</option>
-                {users.map(u => (
-                  <option key={u.id} value={u.id}>
-                    {u.name || u.username} {u.department_name ? `(${u.department_name})` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* iRight 群组管理系统配置与实时核验 */}
+          {/* 1. iRight 群组管理系统配置与实时核验 (置顶核心) */}
           <div
             style={{
               background: 'var(--color-primary-subtle)',
@@ -1389,7 +1289,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
             {/* iRight 群组 ID (UUID) 与实时校验按钮 */}
             <div>
               <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
-                iRight 群组 ID (UUID 字符串) <span style={{ color: 'var(--text-muted)' }}>- 输入后后台立即查询核验</span>
+                iRight 群组 ID (UUID 字符串) <span style={{ color: 'var(--text-muted)' }}>- 输入后后台立即查询核验真实性并自动带出名称</span>
               </label>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <input
@@ -1472,17 +1372,6 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                     <CheckCircle2 size={14} />
                     已成功匹配 iRight 真实群组
                   </div>
-                  {formData.name !== iRightVerifiedData.groupNameCn && (
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, name: iRightVerifiedData.groupNameCn }))}
-                      className="btn btn-secondary"
-                      style={{ padding: '2px 8px', fontSize: 11, height: 24, borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                      title="将 Committer Group 组名设置为 iRight 中文名称"
-                    >
-                      <Sparkles size={11} color="var(--color-primary)" /> 同步至组名
-                    </button>
-                  )}
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
@@ -1530,31 +1419,111 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                 <span>{iRightError}</span>
               </div>
             )}
+          </div>
 
-            {/* iRight 群组名称 (自动填充 / 可选调整) */}
+          {/* 2. Committer Group 名称 (唯一且 Readonly，保持与三方系统高度一致) */}
+          <div>
+            <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
+              <span>
+                Committer Group 名称 <span style={{ color: 'var(--color-danger)' }}>*</span>
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 400 }}>
+                <Lock size={12} /> 由 iRight 系统自动导入 (只读)
+              </span>
+            </label>
+            <input
+              type="text"
+              placeholder="请先在上方输入 iRight 群组 ID 并校验，系统将自动填充名称..."
+              value={formData.name}
+              readOnly
+              required
+              style={{
+                width: '100%',
+                padding: '9px 12px',
+                borderRadius: 8,
+                background: 'var(--color-bg-muted)',
+                border: '1px solid var(--border-color)',
+                color: formData.name ? 'var(--text-main)' : 'var(--text-muted)',
+                fontSize: 13,
+                fontWeight: formData.name ? 600 : 400,
+                cursor: 'not-allowed'
+              }}
+            />
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
+              名称与 iRight 远程群组管理系统保持严格一致，代码仓合规巡检将依此与托管平台的 domain_group 对齐。
+            </div>
+          </div>
+
+          {/* 3. 所属层级 */}
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
+              所属层级 <span style={{ color: 'var(--color-danger)' }}>*</span>
+            </label>
+            <select
+              value={formData.level}
+              onChange={e => setFormData({ ...formData, level: e.target.value })}
+              required
+              style={{
+                width: '100%',
+                padding: '9px 12px',
+                borderRadius: 8,
+                background: 'var(--color-bg-input)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-main)',
+                fontSize: 13
+              }}
+            >
+              <option value="L0-集团级">L0-集团级</option>
+              <option value="L1-公司级">L1-公司级</option>
+              <option value="L2-一层部门级（SW为二层资源部门级）">L2-一层部门级（SW为二层资源部门级）</option>
+              <option value="L3-项目组级">L3-项目组级</option>
+            </select>
+          </div>
+
+          {/* 4. 归属部门 & 群组管理员 (管理员使用 MultiMemberSearchSelect 满足 600+ 用户搜索) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, alignItems: 'start' }}>
             <div>
-              <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
-                iRight 群组名称 (已自动同步)
-              </label>
-              <input
-                type="text"
-                placeholder="例如：XGLS-SW_LTCOMM-Committer"
-                value={formData.iright_group_name}
-                onChange={e => setFormData({ ...formData, iright_group_name: e.target.value })}
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>归属部门</label>
+              <select
+                value={formData.department_id || ''}
+                onChange={e => setFormData({ ...formData, department_id: e.target.value ? Number(e.target.value) : undefined })}
                 style={{
                   width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: 6,
+                  padding: '9px 12px',
+                  borderRadius: 8,
                   background: 'var(--color-bg-input)',
                   border: '1px solid var(--border-color)',
                   color: 'var(--text-main)',
                   fontSize: 13
                 }}
+              >
+                <option value="">-- 请选择部门 --</option>
+                {departments.map(d => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
+                群组管理员 <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-secondary)' }}>(支持姓名/工号搜索)</span>
+              </label>
+              <MultiMemberSearchSelect
+                value={formData.admin_id ? [String(formData.admin_id)] : []}
+                onChange={ids => {
+                  const newId = ids.length > 0 ? Number(ids[ids.length - 1]) : undefined
+                  setFormData(prev => ({ ...prev, admin_id: newId }))
+                }}
+                maxSelections={1}
+                searchEndpoint={`${apiBase}/users`}
+                fetchFn={memberSearchFetchFn}
               />
             </div>
           </div>
 
-          {/* 成员规模 & 启用开关 */}
+          {/* 5. 成员规模 & 启用开关 */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, alignItems: 'center' }}>
             <div>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
@@ -1593,7 +1562,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
             </div>
           </div>
 
-          {/* 备注/说明 */}
+          {/* 6. 备注/说明 */}
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>备注说明 / 管辖范围</label>
             <textarea
