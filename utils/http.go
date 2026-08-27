@@ -118,21 +118,24 @@ func SendHTTPRequest(ctx context.Context, method, rawURL string, payload interfa
 	}
 	defer resp.Body.Close()
 
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %v", err)
+	}
+
 	// 检查响应 Header 中是否存在 x-login-url，或 set-cookie: uid/prod_cftk/prod_J_SESSION_ID 为空; 代表 SSO 过期
 	if resp.Header.Get("x-login-url") != "" {
+		LogHTTPErrorDetails(contextMsg+" [SSO Expired: x-login-url detected]", req, resp.StatusCode, body)
 		return nil, ErrSSOExpired
 	}
 
 	for _, cookie := range resp.Cookies() {
 		if slices.Contains([]string{"uid", "prod_cftk", "prod_J_SESSION_ID"}, cookie.Name) && cookie.Value == "" {
+			LogHTTPErrorDetails(contextMsg+" [SSO Expired: empty auth cookie detected]", req, resp.StatusCode, body)
 			return nil, ErrSSOExpired
 		}
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %v", err)
-	}
 
 	isExpected := false
 	for _, status := range expectedStatuses {
