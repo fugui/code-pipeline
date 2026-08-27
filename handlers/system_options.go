@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
+	"strings"
 
 	"code-pipeline/database"
 	"code-pipeline/models"
@@ -95,3 +97,56 @@ func GetSystemOptions(c *gin.Context) {
 		"subsystems":  subList,
 	})
 }
+
+// GetUsers 分页与关键字模糊搜索用户列表，支持 MultiMemberSearchSelect 统一组件调用
+func GetUsers(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "20"))
+	search := strings.TrimSpace(c.Query("search"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 20
+	}
+	if pageSize > 1000 {
+		pageSize = 1000
+	}
+
+	query := database.DB.Model(&models.User{}).Preload("Department")
+
+	if search != "" {
+		searchPattern := "%" + search + "%"
+		query = query.Where("name ILIKE ? OR username ILIKE ? OR email ILIKE ? OR employee_id ILIKE ?",
+			searchPattern, searchPattern, searchPattern, searchPattern)
+	}
+
+	deptIDStr := c.Query("department_id")
+	if deptIDStr != "" {
+		if deptID, err := strconv.Atoi(deptIDStr); err == nil && deptID > 0 {
+			query = query.Where("department_id = ?", deptID)
+		}
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取用户总数失败"})
+		return
+	}
+
+	var users []models.User
+	offset := (page - 1) * pageSize
+	if err := query.Order("id ASC").Offset(offset).Limit(pageSize).Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询用户列表失败"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"items":     users,
+		"total":     total,
+		"page":      page,
+		"page_size": pageSize,
+	})
+}
+
