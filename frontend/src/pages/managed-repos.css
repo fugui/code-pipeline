@@ -1,0 +1,312 @@
+/* ==========================================================================
+   CodePipeline - ManagedRepos Page Styles
+   Namespace: .pipeline-repos
+   ========================================================================== */
+
+.pipeline-repos-layout {
+  display: flex;
+  gap: 24px;
+  height: calc(100vh - 120px);
+}
+
+/* 1. 左侧 Group 树导航 */
+.pipeline-repos-sidebar {
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  flex-shrink: 0;
+}
+
+.pipeline-repos-sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.pipeline-repos-sidebar-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.pipeline-repos-sidebar-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pipeline-repos-sidebar-search-box {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.pipeline-repos-sidebar-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+.pipeline-repos-sidebar-search-input {
+  width: 100%;
+  padding: 6px 12px 6px 30px;
+  font-size: 13px;
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm, 6px);
+  color: var(--color-text-primary);
+  outline: none;
+  transition: var(--transition-fast);
+}
+
+.pipeline-repos-sidebar-search-input:focus {
+  border-color: var(--color-primary);
+}
+
+.pipeline-repos-tree-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* 树节点 */
+.pipeline-repos-tree-node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+  font-size: 13px;
+  transition: var(--transition-fast);
+  color: var(--color-text-primary);
+  user-select: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pipeline-repos-tree-node:hover {
+    background: var(--color-bg-hover);
+  }
+}
+
+.pipeline-repos-tree-node--active {
+  background: var(--color-primary-subtle) !important;
+  color: var(--color-primary) !important;
+  font-weight: 600;
+}
+
+.pipeline-repos-tree-node--hidden {
+  opacity: 0.6;
+}
+
+.pipeline-repos-tree-node-text {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.pipeline-repos-tree-node-text--strikethrough {
+  text-decoration: line-through;
+}
+
+/* 2. 右侧主内容区 */
+.pipeline-repos-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* 右侧头部 Header 卡片 */
+.pipeline-repos-header-card {
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.pipeline-repos-group-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-text-primary);
+}
+
+.pipeline-repos-group-subtitle {
+  color: var(--color-text-secondary);
+  margin: 0;
+  font-size: 13px;
+}
+
+.pipeline-repos-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* 3. 被管仓列表卡片 */
+.pipeline-repos-content-card {
+  flex: 1;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pipeline-repos-content-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pipeline-repos-content-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.pipeline-repos-content-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pipeline-repos-search-box {
+  position: relative;
+  width: 260px;
+}
+
+.pipeline-repos-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+.pipeline-repos-search-input {
+  width: 100%;
+  padding: 6px 12px 6px 30px;
+  font-size: 13px;
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm, 6px);
+  color: var(--color-text-primary);
+  outline: none;
+  transition: var(--transition-fast);
+}
+
+.pipeline-repos-search-input:focus {
+  border-color: var(--color-primary);
+}
+
+.pipeline-repos-table-scroll {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.pipeline-repos-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.pipeline-repos-thead-tr {
+  text-align: left;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.pipeline-repos-th {
+  padding: 12px 8px;
+  font-weight: 600;
+}
+
+.pipeline-repos-th--sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.pipeline-repos-tbody-tr {
+  border-bottom: 1px solid var(--color-border-subtle);
+  font-size: 13px;
+  transition: var(--transition-fast);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pipeline-repos-tbody-tr:hover {
+    background: var(--color-bg-hover);
+  }
+}
+
+.pipeline-repos-td {
+  padding: 14px 8px;
+}
+
+/* 状态标签 */
+.pipeline-repos-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.pipeline-repos-tag--active {
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+  border: 1px solid var(--color-success-border);
+}
+
+.pipeline-repos-tag--archived {
+  background: var(--color-bg-muted);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.pipeline-repos-tag--stale {
+  background: var(--color-warning-subtle);
+  color: var(--color-warning);
+  border: 1px solid var(--color-warning-border);
+}
+
+/* 抽屉与详情卡片 */
+.pipeline-repos-drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pipeline-repos-info-card {
+  background: var(--color-bg-muted);
+  padding: 16px;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.pipeline-repos-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  font-size: 13px;
+}
