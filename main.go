@@ -140,8 +140,11 @@ func main() {
 					// Committer 组管理与 iRight 查询接口
 					api.GET("/managed-repos/committer-groups", handlers.GetManagedCommitterGroups)
 					api.GET("/managed-repos/committer-groups/:id", handlers.GetManagedCommitterGroup)
+					api.GET("/committer-groups", handlers.GetManagedCommitterGroups)
+					api.GET("/committer-groups/:id", handlers.GetManagedCommitterGroup)
 					api.GET("/managed-repos/iright/groups/:id", handlers.GetIRightGroup)
 					api.GET("/managed-repos/iright/groups", handlers.GetIRightGroup)
+					api.GET("/iright/query", handlers.GetIRightGroup)
 
 					// 看板状态大屏接口
 					api.GET("/dashboard/stats", handlers.GetDashboardStats)
@@ -184,6 +187,9 @@ func main() {
 						admin.POST("/managed-repos/committer-groups", handlers.CreateManagedCommitterGroup)
 						admin.PUT("/managed-repos/committer-groups/:id", handlers.UpdateManagedCommitterGroup)
 						admin.DELETE("/managed-repos/committer-groups/:id", handlers.DeleteManagedCommitterGroup)
+						admin.POST("/committer-groups", handlers.CreateManagedCommitterGroup)
+						admin.PUT("/committer-groups/:id", handlers.UpdateManagedCommitterGroup)
+						admin.DELETE("/committer-groups/:id", handlers.DeleteManagedCommitterGroup)
 
 						// 流水线组写/管控接口
 						admin.POST("/pipeline-groups", handlers.CreatePipelineGroup)

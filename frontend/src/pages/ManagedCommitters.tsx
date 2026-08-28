@@ -116,7 +116,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
       if (levelFilter !== 'all') params.set('level', levelFilter)
       if (deptFilter !== 'all') params.set('department_id', deptFilter)
 
-      const res = await fetch(`${apiBase}/committer-groups?${params.toString()}`, {
+      const res = await fetch(`${apiBase}/managed-repos/committer-groups?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (res.ok) {
@@ -206,11 +206,11 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
     setQueryingIRight(true)
     setIRightError(null)
     try {
-      const res = await fetch(`${apiBase}/iright/query?groupId=${encodeURIComponent(targetId)}`, {
+      const res = await fetch(`${apiBase}/managed-repos/iright/groups/${encodeURIComponent(targetId)}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
-      if (res.ok && data.success && data.data) {
+      if (res.ok && data.data) {
         const item: IRightGroupData = data.data
         setIRightVerifiedData(item)
         setFormData(prev => ({
@@ -237,11 +237,11 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
     if (!groupId) return
     setDetailQueryingIRight(true)
     try {
-      const res = await fetch(`${apiBase}/iright/query?groupId=${encodeURIComponent(groupId)}`, {
+      const res = await fetch(`${apiBase}/managed-repos/iright/groups/${encodeURIComponent(groupId)}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
-      if (res.ok && data.success && data.data) {
+      if (res.ok && data.data) {
         setDetailIRightData(data.data)
       } else {
         setDetailIRightData(null)
@@ -263,7 +263,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
 
     setIsSubmitting(true)
     try {
-      const url = editingGroup ? `${apiBase}/committer-groups/${editingGroup.id}` : `${apiBase}/committer-groups`
+      const url = editingGroup ? `${apiBase}/managed-repos/committer-groups/${editingGroup.id}` : `${apiBase}/managed-repos/committer-groups`
       const method = editingGroup ? 'PUT' : 'POST'
 
       const res = await fetch(url, {
@@ -299,7 +299,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
     }
 
     try {
-      const res = await fetch(`${apiBase}/committer-groups/${group.id}`, {
+      const res = await fetch(`${apiBase}/managed-repos/committer-groups/${group.id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
