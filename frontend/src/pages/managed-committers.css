@@ -1,0 +1,466 @@
+/* ==========================================================================
+   CodePipeline - ManagedCommitters Page Styles
+   Namespace: .pipeline-committers
+   ========================================================================== */
+
+.pipeline-committers-page {
+  padding: 24px 32px;
+  min-height: 100%;
+  color: var(--color-text-primary);
+}
+
+/* 1. 页面头部 */
+.pipeline-committers-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.pipeline-committers-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pipeline-committers-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text-primary);
+}
+
+.pipeline-committers-title-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-primary-subtle);
+  border: 1px solid var(--color-primary-border);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pipeline-committers-category-tag {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  font-weight: 600;
+  border: 1px solid var(--color-primary-border);
+}
+
+.pipeline-committers-desc {
+  color: var(--color-text-secondary);
+  margin-top: 6px;
+  margin-bottom: 0;
+  font-size: 13px;
+}
+
+.pipeline-committers-header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* 2. 统计卡片 Grid */
+.pipeline-committers-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1024px) {
+  .pipeline-committers-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .pipeline-committers-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pipeline-committers-stat-card {
+  background: var(--color-bg-surface);
+  padding: 16px 20px;
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: var(--transition-fast);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pipeline-committers-stat-card:hover {
+    border-color: var(--color-border-hover);
+  }
+}
+
+.pipeline-committers-stat-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pipeline-committers-stat-icon-box--primary {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+}
+
+.pipeline-committers-stat-icon-box--purple {
+  background: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
+}
+
+.pipeline-committers-stat-icon-box--success {
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+}
+
+.pipeline-committers-stat-icon-box--warning {
+  background: var(--color-warning-subtle);
+  color: var(--color-warning);
+}
+
+.pipeline-committers-stat-label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.pipeline-committers-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-top: 2px;
+}
+
+.pipeline-committers-stat-value--success {
+  color: var(--color-success);
+}
+
+.pipeline-committers-stat-value--warning {
+  color: var(--color-warning);
+}
+
+.pipeline-committers-stat-value--sm {
+  font-size: 17px;
+}
+
+/* 3. 搜索与筛选工具栏 */
+.pipeline-committers-toolbar {
+  background: var(--color-bg-surface);
+  padding: 14px 18px;
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pipeline-committers-search-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 260px;
+}
+
+.pipeline-committers-search-input-wrapper {
+  position: relative;
+  flex: 1;
+  max-width: 360px;
+}
+
+.pipeline-committers-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+.pipeline-committers-search-input {
+  width: 100%;
+  height: 36px;
+  padding-left: 36px;
+  padding-right: 12px;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: var(--transition-fast);
+}
+
+.pipeline-committers-search-input:focus {
+  border-color: var(--color-primary);
+}
+
+.pipeline-committers-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pipeline-committers-filter-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pipeline-committers-filter-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.pipeline-committers-filter-select {
+  height: 36px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.pipeline-committers-filter-select:focus {
+  border-color: var(--color-primary);
+}
+
+/* 4. 数据表格容器与表格 */
+.pipeline-committers-table-card {
+  background: var(--color-bg-surface);
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.pipeline-committers-table-scroll {
+  overflow-x: auto;
+}
+
+.pipeline-committers-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.pipeline-committers-thead-tr {
+  background: var(--color-bg-muted);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.pipeline-committers-th {
+  padding: 14px 16px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.pipeline-committers-tbody-tr {
+  border-bottom: 1px solid var(--color-border-subtle);
+  transition: background 0.2s ease;
+  cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pipeline-committers-tbody-tr:hover {
+    background: var(--color-bg-hover);
+  }
+}
+
+.pipeline-committers-td {
+  padding: 14px 16px;
+}
+
+/* 层级 Badge */
+.pipeline-committers-level-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-xs, 6px);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.pipeline-committers-level-badge--l0 {
+  background: rgba(225, 29, 72, 0.1);
+  color: #e11d48;
+  border: 1px solid rgba(225, 29, 72, 0.2);
+}
+
+.pipeline-committers-level-badge--l1 {
+  background: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.pipeline-committers-level-badge--l2 {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary-border);
+}
+
+.pipeline-committers-level-badge--l3 {
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+  border: 1px solid var(--color-success-border);
+}
+
+/* 状态 Badge */
+.pipeline-committers-status-tag {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.pipeline-committers-status-tag--active {
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+  border: 1px solid var(--color-success-border);
+}
+
+.pipeline-committers-status-tag--inactive {
+  background: var(--color-danger-subtle);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger-border);
+}
+
+/* 管理员头像 */
+.pipeline-committers-user-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* iRight UUID 徽章 */
+.pipeline-committers-uuid-code {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-subtle);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pipeline-committers-copy-btn {
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  transition: var(--transition-fast);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pipeline-committers-copy-btn:hover {
+    color: var(--color-primary);
+  }
+}
+
+.pipeline-committers-copy-btn--copied {
+  color: var(--color-success) !important;
+}
+
+/* 规模气泡 */
+.pipeline-committers-count-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--color-bg-muted);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-subtle);
+}
+
+/* 抽屉内部结构 */
+.pipeline-committers-drawer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pipeline-committers-overview-card {
+  background: var(--color-bg-muted);
+  padding: 18px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border-subtle);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.pipeline-committers-overview-item-label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+}
+
+.pipeline-committers-overview-item-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.pipeline-committers-iright-verify-box {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.pipeline-committers-iright-verify-box--success {
+  border-color: var(--color-success-border);
+  background: var(--color-success-subtle);
+}
+
+.pipeline-committers-iright-verify-box--error {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-subtle);
+}
+
+.pipeline-committers-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border-subtle);
+}
