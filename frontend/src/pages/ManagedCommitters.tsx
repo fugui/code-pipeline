@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { Pagination, usePagination, Drawer, MemberSearchSelect } from '@code/common'
+import { Pagination, usePagination, Drawer, MemberSearchSelect, StatusTag, EmptyState } from '@code/common'
 import {
   Users,
   UserCheck,
@@ -22,7 +22,6 @@ import {
 } from 'lucide-react'
 import { ManagedCommitterGroup, Department, IRightGroupData } from '../types'
 import { useToast } from '../components/Toast'
-import './managed-committers.css'
 
 interface ManagedCommittersProps {
   isAdmin?: boolean
@@ -341,35 +340,35 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
   }, [totalCount, committerGroups])
 
   const getLevelBadgeClass = (level?: string) => {
-    if (level?.startsWith('L0')) return 'pipeline-committers-level-badge--l0'
-    if (level?.startsWith('L1')) return 'pipeline-committers-level-badge--l1'
-    if (level?.startsWith('L2')) return 'pipeline-committers-level-badge--l2'
-    if (level?.startsWith('L3')) return 'pipeline-committers-level-badge--l3'
-    return ''
+    if (level?.startsWith('L0')) return 'code-badge--danger'
+    if (level?.startsWith('L1')) return 'code-badge--warning'
+    if (level?.startsWith('L2')) return 'code-badge--primary'
+    if (level?.startsWith('L3')) return 'code-badge--success'
+    return 'code-badge--muted'
   }
 
   return (
-    <div className="pipeline-committers-page">
-      {/* Top Header */}
-      <div className="pipeline-committers-header">
+    <div className="flex-col gap-lg" style={{ padding: '24px 32px' }}>
+      {/* 1. Header */}
+      <div className="flex-between">
         <div>
-          <div className="pipeline-committers-header-left">
-            <h1 className="pipeline-committers-title">
-              <span className="pipeline-committers-title-icon-box">
+          <div className="flex-center" style={{ justifyContent: 'flex-start', gap: 12 }}>
+            <h1 className="flex-center text-primary" style={{ fontSize: 24, fontWeight: 700, margin: 0, gap: 10 }}>
+              <div className="code-stat-icon" style={{ width: 38, height: 38, background: 'var(--color-primary-subtle)', color: 'var(--color-primary)' }}>
                 <Users size={22} />
-              </span>
+              </div>
               Committer 管理
             </h1>
-            <span className="pipeline-committers-category-tag">
+            <span className="code-badge code-badge--primary" style={{ borderRadius: 20, padding: '3px 10px' }}>
               权限与治理
             </span>
           </div>
-          <p className="pipeline-committers-desc">
+          <p className="text-secondary" style={{ marginTop: 6, marginBottom: 0, fontSize: 13 }}>
             集中维护各层级受控 Committer Group、关联组织部门、管理负责人及 iRight 群组管理系统鉴权标识，保障代码仓合并审批合法合规。
           </p>
         </div>
 
-        <div className="pipeline-committers-header-actions">
+        <div className="flex-center gap-sm">
           <button
             type="button"
             onClick={() => fetchCommitterGroups()}
@@ -393,27 +392,25 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="pipeline-committers-stats-grid">
-        <div className="pipeline-committers-stat-card">
-          <div className="pipeline-committers-stat-icon-box pipeline-committers-stat-icon-box--primary">
+      {/* 2. Stats Cards Grid */}
+      <div className="grid-cols-4 gap-md">
+        <div className="code-stat-card">
+          <div className="code-stat-icon" style={{ background: 'var(--color-primary-subtle)', color: 'var(--color-primary)' }}>
             <Users size={22} />
           </div>
           <div>
-            <div className="pipeline-committers-stat-label">Committer 组总数</div>
-            <div className="pipeline-committers-stat-value">
-              {stats.total}
-            </div>
+            <div className="code-stat-label">Committer 组总数</div>
+            <div className="code-stat-value">{stats.total}</div>
           </div>
         </div>
 
-        <div className="pipeline-committers-stat-card">
-          <div className="pipeline-committers-stat-icon-box pipeline-committers-stat-icon-box--purple">
+        <div className="code-stat-card">
+          <div className="code-stat-icon" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#a855f7' }}>
             <Layers size={22} />
           </div>
           <div>
-            <div className="pipeline-committers-stat-label">层级分布 (L0 / L1 / L2 / L3)</div>
-            <div className="pipeline-committers-stat-value pipeline-committers-stat-value--sm">
+            <div className="code-stat-label">层级分布 (L0 / L1 / L2 / L3)</div>
+            <div className="code-stat-value" style={{ fontSize: 17 }}>
               <span style={{ color: '#e11d48' }} title="L0-集团级">{stats.l0Count}</span>
               <span className="text-muted" style={{ margin: '0 3px' }}>/</span>
               <span style={{ color: '#a855f7' }} title="L1-公司级">{stats.l1Count}</span>
@@ -425,27 +422,27 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
           </div>
         </div>
 
-        <div className="pipeline-committers-stat-card">
-          <div className="pipeline-committers-stat-icon-box pipeline-committers-stat-icon-box--success">
+        <div className="code-stat-card">
+          <div className="code-stat-icon" style={{ background: 'var(--color-success-subtle)', color: 'var(--color-success)' }}>
             <CheckCircle2 size={22} />
           </div>
           <div>
-            <div className="pipeline-committers-stat-label">正常启用状态</div>
-            <div className="pipeline-committers-stat-value pipeline-committers-stat-value--success">
-              {stats.active} <span className="pipeline-committers-stat-label">/ {stats.total}</span>
+            <div className="code-stat-label">正常启用状态</div>
+            <div className="code-stat-value" style={{ color: 'var(--color-success)' }}>
+              {stats.active} <span className="code-stat-label">/ {stats.total}</span>
             </div>
           </div>
         </div>
 
-        <div className="pipeline-committers-stat-card">
-          <div className="pipeline-committers-stat-icon-box pipeline-committers-stat-icon-box--warning">
+        <div className="code-stat-card">
+          <div className="code-stat-icon" style={{ background: 'var(--color-warning-subtle)', color: 'var(--color-warning)' }}>
             <Link size={22} />
           </div>
           <div>
-            <div className="pipeline-committers-stat-label">关联 iRight 绑定</div>
-            <div className="pipeline-committers-stat-value pipeline-committers-stat-value--warning">
+            <div className="code-stat-label">关联 iRight 绑定</div>
+            <div className="code-stat-value" style={{ color: 'var(--color-warning)' }}>
               {stats.boundIRight}{' '}
-              <span className="pipeline-committers-stat-label">
+              <span className="code-stat-label">
                 ({stats.total > 0 ? Math.round((stats.boundIRight / stats.total) * 100) : 0}%)
               </span>
             </div>
@@ -453,17 +450,18 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="pipeline-committers-toolbar">
-        <form onSubmit={handleSearchSubmit} className="pipeline-committers-search-form">
-          <div className="pipeline-committers-search-input-wrapper">
-            <Search size={16} className="pipeline-committers-search-icon" />
+      {/* 3. Toolbar */}
+      <div className="code-card flex-between gap-md" style={{ padding: '14px 18px' }}>
+        <form onSubmit={handleSearchSubmit} className="flex-center flex-1 gap-sm" style={{ maxWidth: 420 }}>
+          <div className="flex-1" style={{ position: 'relative' }}>
+            <Search size={16} className="text-secondary" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
             <input
               type="text"
               placeholder="搜索组名、iRight 名称或 UUID..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="pipeline-committers-search-input"
+              className="code-input w-full"
+              style={{ paddingLeft: 36 }}
             />
           </div>
           <button type="submit" className="btn btn-secondary">
@@ -471,16 +469,16 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
           </button>
         </form>
 
-        <div className="pipeline-committers-filter-group">
-          <div className="pipeline-committers-filter-item">
-            <span className="pipeline-committers-filter-label">所属层级:</span>
+        <div className="flex-center gap-md flex-wrap">
+          <div className="flex-center gap-xs">
+            <span className="text-secondary" style={{ fontSize: 13 }}>所属层级:</span>
             <select
               value={levelFilter}
               onChange={e => {
                 setLevelFilter(e.target.value)
                 setCurrentPage(1)
               }}
-              className="pipeline-committers-filter-select"
+              className="code-select"
             >
               <option value="all">全部层级</option>
               <option value="L0-集团级">L0-集团级</option>
@@ -490,15 +488,15 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
             </select>
           </div>
 
-          <div className="pipeline-committers-filter-item">
-            <span className="pipeline-committers-filter-label">归属部门:</span>
+          <div className="flex-center gap-xs">
+            <span className="text-secondary" style={{ fontSize: 13 }}>归属部门:</span>
             <select
               value={deptFilter}
               onChange={e => {
                 setDeptFilter(e.target.value)
                 setCurrentPage(1)
               }}
-              className="pipeline-committers-filter-select"
+              className="code-select"
               style={{ maxWidth: 160 }}
             >
               <option value="all">全部部门</option>
@@ -512,87 +510,89 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
         </div>
       </div>
 
-      {/* Main Table */}
-      <div className="pipeline-committers-table-card">
-        <div className="pipeline-committers-table-scroll">
-          <table className="pipeline-committers-table">
+      {/* 4. Table */}
+      <div className="code-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="code-table">
             <thead>
-              <tr className="pipeline-committers-thead-tr">
-                <th className="pipeline-committers-th" style={{ width: 60 }}>#</th>
-                <th className="pipeline-committers-th">Committer Group 名称</th>
-                <th className="pipeline-committers-th">所属层级</th>
-                <th className="pipeline-committers-th">归属部门</th>
-                <th className="pipeline-committers-th">管理员</th>
-                <th className="pipeline-committers-th">iRight 关联群组</th>
-                <th className="pipeline-committers-th">状态 / 规模</th>
-                <th className="pipeline-committers-th">创建时间</th>
-                <th className="pipeline-committers-th" style={{ textAlign: 'right' }}>操作</th>
+              <tr>
+                <th style={{ width: 60 }}>#</th>
+                <th>Committer Group 名称</th>
+                <th>所属层级</th>
+                <th>归属部门</th>
+                <th>管理员</th>
+                <th>iRight 关联群组</th>
+                <th>状态 / 规模</th>
+                <th>创建时间</th>
+                <th style={{ textAlign: 'right' }}>操作</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={9} style={{ padding: 48, textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-                    <RefreshCw size={24} className="spin" style={{ margin: '0 auto 10px' }} />
-                    正在加载 Committer Group 列表...
+                  <td colSpan={9} style={{ padding: 48, textAlign: 'center' }}>
+                    <RefreshCw size={24} className="spin text-secondary" style={{ margin: '0 auto 10px' }} />
+                    <div className="text-secondary">正在加载 Committer Group 列表...</div>
                   </td>
                 </tr>
               ) : committerGroups.length === 0 ? (
-                <tr>
-                  <td colSpan={9} style={{ padding: 56, textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-                    <Users size={36} style={{ margin: '0 auto 12px', opacity: 0.35 }} />
-                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>未找到匹配的 Committer Group</div>
-                    <div style={{ fontSize: 13, marginTop: 4, color: 'var(--color-text-secondary)' }}>可调整筛选项或点击右上角新增 Committer 组</div>
-                  </td>
-                </tr>
+                <EmptyState
+                  inTable
+                  colSpan={9}
+                  icon={<Users size={36} />}
+                  title="未找到匹配的 Committer Group"
+                  description="可调整筛选项或点击右上角新增 Committer 组"
+                />
               ) : (
                 committerGroups.map((group, idx) => (
                   <tr
                     key={group.id}
-                    className="pipeline-committers-tbody-tr"
+                    className="cursor-pointer"
                     onClick={() => handleOpenDetailDrawer(group)}
                   >
-                    <td className="pipeline-committers-td" style={{ color: 'var(--color-text-secondary)', fontSize: 12 }}>
+                    <td className="text-secondary" style={{ fontSize: 12 }}>
                       {(currentPage - 1) * pageSize + idx + 1}
                     </td>
-                    <td className="pipeline-committers-td">
-                      <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span>{group.name}</span>
-                        <span className={`pipeline-committers-status-tag ${group.is_active ? 'pipeline-committers-status-tag--active' : 'pipeline-committers-status-tag--inactive'}`}>
-                          {group.is_active ? '启用' : '停用'}
-                        </span>
+                    <td>
+                      <div className="flex-center" style={{ justifyContent: 'flex-start', gap: 8, fontWeight: 600 }}>
+                        <span className="text-primary">{group.name}</span>
+                        <StatusTag
+                          status={group.is_active ? 'success' : 'neutral'}
+                          text={group.is_active ? '启用' : '停用'}
+                          size="sm"
+                        />
                       </div>
                       {group.description && (
-                        <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2, maxWidth: 280 }} className="text-truncate">
+                        <div className="text-secondary text-truncate" style={{ fontSize: 11, marginTop: 2, maxWidth: 280 }}>
                           {group.description}
                         </div>
                       )}
                     </td>
-                    <td className="pipeline-committers-td">
-                      <span className={`pipeline-committers-level-badge ${getLevelBadgeClass(group.level)}`}>
+                    <td>
+                      <span className={`code-badge ${getLevelBadgeClass(group.level)}`}>
                         {group.level || 'L1-公司级'}
                       </span>
                     </td>
-                    <td className="pipeline-committers-td" style={{ color: 'var(--color-text-primary)' }}>
+                    <td>
                       {group.department?.name ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <Building2 size={13} color="var(--color-text-secondary)" />
+                        <div className="flex-center text-primary" style={{ justifyContent: 'flex-start', gap: 5 }}>
+                          <Building2 size={13} className="text-secondary" />
                           <span>{group.department.name}</span>
                         </div>
                       ) : (
                         <span className="text-muted">-</span>
                       )}
                     </td>
-                    <td className="pipeline-committers-td">
+                    <td>
                       {group.admin ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <div className="pipeline-committers-user-avatar">
+                        <div className="flex-center" style={{ justifyContent: 'flex-start', gap: 6 }}>
+                          <div className="code-stat-icon" style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-primary-subtle)', color: 'var(--color-primary)', fontSize: 11, fontWeight: 700 }}>
                             {(group.admin.name || group.admin.username || 'A')[0].toUpperCase()}
                           </div>
                           <div>
-                            <div style={{ fontSize: 12, color: 'var(--color-text-primary)', fontWeight: 500 }}>{group.admin.name || group.admin.username}</div>
+                            <div className="text-primary" style={{ fontSize: 12, fontWeight: 500 }}>{group.admin.name || group.admin.username}</div>
                             {group.admin.username && group.admin.name && (
-                              <div style={{ fontSize: 10, color: 'var(--color-text-secondary)' }}>{group.admin.username}</div>
+                              <div className="text-secondary" style={{ fontSize: 10 }}>{group.admin.username}</div>
                             )}
                           </div>
                         </div>
@@ -600,27 +600,25 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                         <span className="text-muted">-</span>
                       )}
                     </td>
-                    <td className="pipeline-committers-td" onClick={e => e.stopPropagation()}>
+                    <td onClick={e => e.stopPropagation()}>
                       {group.iright_group_id ? (
                         <div>
-                          <div style={{ fontWeight: 500, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <div className="flex-center" style={{ justifyContent: 'flex-start', gap: 4, fontWeight: 500, color: 'var(--color-primary)' }}>
                             <Link size={12} />
                             <span>{group.iright_group_name || group.name || '已关联 iRight'}</span>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                            <code
-                              className="pipeline-committers-uuid-code"
-                              title={group.iright_group_id}
-                            >
+                          <div className="flex-center gap-xs" style={{ justifyContent: 'flex-start', marginTop: 2 }}>
+                            <code className="code-badge code-badge--muted text-truncate" style={{ maxWidth: 160, fontFamily: 'var(--font-family-mono, monospace)', fontSize: 11 }} title={group.iright_group_id}>
                               {group.iright_group_id}
                             </code>
                             <button
                               type="button"
                               onClick={() => handleCopyUUID(group.iright_group_id || '')}
-                              className={`pipeline-committers-copy-btn ${copiedUUID === group.iright_group_id ? 'pipeline-committers-copy-btn--copied' : ''}`}
+                              className="btn btn-secondary"
+                              style={{ padding: '2px 5px', fontSize: 11 }}
                               title="复制 UUID"
                             >
-                              {copiedUUID === group.iright_group_id ? <Check size={12} /> : <Copy size={12} />}
+                              {copiedUUID === group.iright_group_id ? <Check size={12} style={{ color: 'var(--color-success)' }} /> : <Copy size={12} />}
                             </button>
                           </div>
                         </div>
@@ -628,21 +626,21 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                         <span className="text-muted" style={{ fontSize: 12 }}>未绑定</span>
                       )}
                     </td>
-                    <td className="pipeline-committers-td">
-                      <span className="pipeline-committers-count-badge">
+                    <td>
+                      <span className="code-badge code-badge--muted" style={{ borderRadius: 12 }}>
                         {group.member_count || 0} 人
                       </span>
                     </td>
-                    <td className="pipeline-committers-td" style={{ color: 'var(--color-text-secondary)', fontSize: 12 }}>
+                    <td className="text-secondary" style={{ fontSize: 12 }}>
                       {group.created_at ? new Date(group.created_at).toLocaleDateString('zh-CN') : '-'}
                     </td>
-                    <td className="pipeline-committers-td" style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                    <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                      <div className="flex-center gap-xs" style={{ justifyContent: 'flex-end' }}>
                         <button
                           type="button"
                           onClick={() => handleOpenDetailDrawer(group)}
                           className="btn btn-secondary"
-                          style={{ padding: '5px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                          style={{ padding: '5px 8px', fontSize: 12 }}
                           title="查看详情"
                         >
                           <Eye size={13} />
@@ -654,7 +652,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                               type="button"
                               onClick={() => handleOpenEditDrawer(group)}
                               className="btn btn-secondary"
-                              style={{ padding: '5px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                              style={{ padding: '5px 8px', fontSize: 12 }}
                               title="编辑"
                             >
                               <Edit3 size={13} />
@@ -664,7 +662,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                               type="button"
                               onClick={() => handleDeleteGroup(group)}
                               className="btn btn-danger"
-                              style={{ padding: '5px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                              style={{ padding: '5px 8px', fontSize: 12 }}
                               title="删除"
                             >
                               <Trash2 size={13} />
@@ -688,17 +686,17 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
         )}
       </div>
 
-      {/* 侧边栏 1: 查看详情 Drawer */}
+      {/* 5. 查看详情 Drawer */}
       <Drawer
         open={!!viewGroup}
         onClose={() => setViewGroup(null)}
         width="620px"
         title={
           viewGroup ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="flex-center" style={{ justifyContent: 'flex-start', gap: 10 }}>
               <Users size={20} color="var(--color-primary)" />
-              <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)' }}>{viewGroup.name}</span>
-              <span className={`pipeline-committers-level-badge ${getLevelBadgeClass(viewGroup.level)}`}>
+              <span className="text-primary" style={{ fontSize: 18, fontWeight: 700 }}>{viewGroup.name}</span>
+              <span className={`code-badge ${getLevelBadgeClass(viewGroup.level)}`}>
                 {viewGroup.level || 'L1-公司级'}
               </span>
             </div>
@@ -708,61 +706,63 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
         }
       >
         {viewGroup && (
-          <div className="pipeline-committers-drawer-content">
+          <div className="flex-col gap-md">
             {/* 基础概览卡片 */}
-            <div className="pipeline-committers-overview-card">
+            <div className="code-card grid-cols-2 gap-md" style={{ padding: 18, background: 'var(--color-bg-muted)' }}>
               <div>
-                <div className="pipeline-committers-overview-item-label">组 ID 编号</div>
-                <div className="pipeline-committers-overview-item-value">#{viewGroup.id}</div>
+                <div className="code-stat-label">组 ID 编号</div>
+                <div className="text-primary" style={{ fontSize: 14, fontWeight: 600, marginTop: 3 }}>#{viewGroup.id}</div>
               </div>
               <div>
-                <div className="pipeline-committers-overview-item-label">运行状态</div>
+                <div className="code-stat-label">运行状态</div>
                 <div style={{ marginTop: 3 }}>
-                  <span className={`pipeline-committers-status-tag ${viewGroup.is_active ? 'pipeline-committers-status-tag--active' : 'pipeline-committers-status-tag--inactive'}`}>
-                    {viewGroup.is_active ? '正常启用中' : '已停用'}
-                  </span>
+                  <StatusTag
+                    status={viewGroup.is_active ? 'success' : 'neutral'}
+                    text={viewGroup.is_active ? '正常启用中' : '已停用'}
+                    size="sm"
+                  />
                 </div>
               </div>
               <div>
-                <div className="pipeline-committers-overview-item-label">归属部门</div>
-                <div className="pipeline-committers-overview-item-value" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div className="code-stat-label">归属部门</div>
+                <div className="flex-center text-primary" style={{ justifyContent: 'flex-start', gap: 6, fontSize: 14, marginTop: 3 }}>
                   <Building2 size={14} color="var(--color-primary)" />
                   {viewGroup.department?.name || '未指定部门'}
                 </div>
               </div>
               <div>
-                <div className="pipeline-committers-overview-item-label">组内成员数</div>
-                <div className="pipeline-committers-overview-item-value">{viewGroup.member_count || 0} 位 Committer</div>
+                <div className="code-stat-label">组内成员数</div>
+                <div className="text-primary" style={{ fontSize: 14, fontWeight: 600, marginTop: 3 }}>{viewGroup.member_count || 0} 位 Committer</div>
               </div>
             </div>
 
             {/* 管理员卡片 */}
-            <div className="pipeline-committers-detail-section">
-              <div className="pipeline-committers-detail-title">
+            <div className="code-card" style={{ padding: 16 }}>
+              <div className="flex-center text-primary" style={{ justifyContent: 'flex-start', gap: 6, fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
                 <UserCheck size={16} color="var(--color-primary)" />
                 群组管理员信息
               </div>
               {viewGroup.admin ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div className="pipeline-committers-user-avatar" style={{ width: 40, height: 40, fontSize: 16 }}>
+                <div className="flex-center" style={{ justifyContent: 'flex-start', gap: 12 }}>
+                  <div className="code-stat-icon" style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--color-primary-subtle)', color: 'var(--color-primary)', fontSize: 16, fontWeight: 700 }}>
                     {(viewGroup.admin.name || viewGroup.admin.username || 'A')[0].toUpperCase()}
                   </div>
                   <div>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>{viewGroup.admin.name || viewGroup.admin.username}</div>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>
+                    <div className="text-primary" style={{ fontSize: 15, fontWeight: 600 }}>{viewGroup.admin.name || viewGroup.admin.username}</div>
+                    <div className="text-secondary" style={{ fontSize: 12, marginTop: 2 }}>
                       工号/账号: {viewGroup.admin.username} {viewGroup.admin.email ? ` | 邮箱: ${viewGroup.admin.email}` : ''}
                     </div>
                   </div>
                 </div>
               ) : (
-                <div style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>暂未指定群组管理员</div>
+                <div className="text-secondary" style={{ fontSize: 13 }}>暂未指定群组管理员</div>
               )}
             </div>
 
             {/* iRight 群组管理系统 绑定卡片 */}
-            <div className="pipeline-committers-detail-section" style={{ background: 'var(--color-primary-subtle)', borderColor: 'var(--color-primary-border)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div className="code-card" style={{ padding: 16, background: 'var(--color-primary-subtle)', borderColor: 'var(--color-primary-border)' }}>
+              <div className="flex-between" style={{ marginBottom: 12 }}>
+                <div className="flex-center" style={{ gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--color-primary)' }}>
                   <Link size={16} />
                   iRight 群组管理系统关联映射
                 </div>
@@ -771,7 +771,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                     type="button"
                     onClick={() => handleFetchDetailIRight(viewGroup.iright_group_id || '')}
                     className="btn btn-secondary"
-                    style={{ padding: '2px 8px', fontSize: 11, height: 24, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    style={{ padding: '2px 8px', fontSize: 11, height: 24 }}
                     title="从远程 iRight 重新核验并拉取最新详情"
                     disabled={detailQueryingIRight}
                   >
@@ -782,53 +782,42 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
               </div>
 
               {viewGroup.iright_group_id ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div className="flex-col gap-sm">
                   <div>
-                    <div className="pipeline-committers-overview-item-label">iRight 群组名称</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', marginTop: 2 }}>
+                    <div className="code-stat-label">iRight 群组名称</div>
+                    <div className="text-primary" style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>
                       {viewGroup.name || viewGroup.iright_group_name || '已提供 UUID'}
                     </div>
                   </div>
                   <div>
-                    <div className="pipeline-committers-overview-item-label">iRight 鉴权 ID (UUID)</div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        background: 'var(--color-bg-surface)',
-                        border: '1px solid var(--color-border-subtle)',
-                        padding: '8px 12px',
-                        borderRadius: 6,
-                        marginTop: 4
-                      }}
-                    >
+                    <div className="code-stat-label">iRight 鉴权 ID (UUID)</div>
+                    <div className="flex-between code-card" style={{ padding: '8px 12px', marginTop: 4 }}>
                       <code style={{ fontSize: 12, color: 'var(--color-primary)', wordBreak: 'break-all' }}>{viewGroup.iright_group_id}</code>
                       <button
                         type="button"
                         onClick={() => handleCopyUUID(viewGroup.iright_group_id || '')}
                         className="btn btn-secondary"
-                        style={{ padding: '3px 8px', fontSize: 11, marginLeft: 8 }}
+                        style={{ padding: '3px 8px', fontSize: 11 }}
                       >
-                        {copiedUUID === viewGroup.iright_group_id ? <Check size={13} color="var(--color-success)" /> : <Copy size={13} />}
+                        {copiedUUID === viewGroup.iright_group_id ? <Check size={13} style={{ color: 'var(--color-success)' }} /> : <Copy size={13} />}
                       </button>
                     </div>
                   </div>
 
                   {/* 实时核验详情卡片 */}
                   {detailIRightData && (
-                    <div className="pipeline-committers-iright-verify-box pipeline-committers-iright-verify-box--success">
-                      <div style={{ fontWeight: 600, color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
+                    <div className="code-card" style={{ padding: 10, marginTop: 4, fontSize: 12, borderColor: 'var(--color-success-border)', background: 'var(--color-success-subtle)' }}>
+                      <div className="flex-center" style={{ justifyContent: 'flex-start', gap: 5, fontWeight: 600, color: 'var(--color-success)' }}>
                         <ShieldCheck size={14} /> 远程系统实时状态 (已通过验证)
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 12, marginTop: 6 }}>
-                        <div><span style={{ color: 'var(--color-text-secondary)' }}>当前人数:</span> <span style={{ fontWeight: 600, color: 'var(--color-success)' }}>{detailIRightData.memberCount} 人</span></div>
-                        <div><span style={{ color: 'var(--color-text-secondary)' }}>所属部门:</span> <span style={{ color: 'var(--color-text-primary)' }}>{detailIRightData.fullName || '-'}</span></div>
-                        <div><span style={{ color: 'var(--color-text-secondary)' }}>群组管理员:</span> <span style={{ color: 'var(--color-text-primary)' }}>{detailIRightData.groupOwner || detailIRightData.groupAdmin || '-'}</span></div>
-                        <div><span style={{ color: 'var(--color-text-secondary)' }}>系统状态:</span> <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>正常 (有效)</span></div>
+                      <div className="grid-cols-2 gap-xs" style={{ marginTop: 6 }}>
+                        <div><span className="text-secondary">当前人数:</span> <span style={{ fontWeight: 600, color: 'var(--color-success)' }}>{detailIRightData.memberCount} 人</span></div>
+                        <div><span className="text-secondary">所属部门:</span> <span className="text-primary">{detailIRightData.fullName || '-'}</span></div>
+                        <div><span className="text-secondary">群组管理员:</span> <span className="text-primary">{detailIRightData.groupOwner || detailIRightData.groupAdmin || '-'}</span></div>
+                        <div><span className="text-secondary">系统状态:</span> <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>正常 (有效)</span></div>
                       </div>
                       {detailIRightData.remark && (
-                        <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+                        <div className="text-secondary" style={{ marginTop: 4, fontSize: 11 }}>
                           备注说明: {detailIRightData.remark}
                         </div>
                       )}
@@ -836,13 +825,13 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                   )}
                 </div>
               ) : (
-                <div style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>未关联 iRight 群组管理系统标识</div>
+                <div className="text-secondary" style={{ fontSize: 13 }}>未关联 iRight 群组管理系统标识</div>
               )}
             </div>
 
             {/* 描述与备注 */}
-            <div className="pipeline-committers-detail-section">
-              <div className="pipeline-committers-detail-title">
+            <div className="code-card" style={{ padding: 16 }}>
+              <div className="flex-center text-primary" style={{ justifyContent: 'flex-start', gap: 6, fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
                 <FileText size={16} color="var(--color-primary)" />
                 职责描述与备注说明
               </div>
@@ -851,15 +840,9 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
               </div>
             </div>
 
-            {/* 时间审计戳 */}
-            <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', display: 'flex', justifyContent: 'space-between', padding: '0 4px' }}>
-              <span>创建时间: {viewGroup.created_at ? new Date(viewGroup.created_at).toLocaleString('zh-CN', { hour12: false }) : '-'}</span>
-              <span>最后更新: {viewGroup.updated_at ? new Date(viewGroup.updated_at).toLocaleString('zh-CN', { hour12: false }) : '-'}</span>
-            </div>
-
             {/* 底部按钮 */}
             {isAdmin && (
-              <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
+              <div className="flex-center gap-md" style={{ marginTop: 10 }}>
                 <button
                   type="button"
                   onClick={() => {
@@ -867,8 +850,8 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                     setViewGroup(null)
                     handleOpenEditDrawer(target)
                   }}
-                  className="btn btn-primary"
-                  style={{ flex: 1, padding: '10px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  className="btn btn-primary flex-1"
+                  style={{ padding: '10px 0' }}
                 >
                   <Edit3 size={15} />
                   编辑此 Committer Group
@@ -877,7 +860,7 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                   type="button"
                   onClick={() => handleDeleteGroup(viewGroup)}
                   className="btn btn-danger"
-                  style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 6 }}
+                  style={{ padding: '10px 18px' }}
                 >
                   <Trash2 size={15} />
                   删除
@@ -888,54 +871,40 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
         )}
       </Drawer>
 
-      {/* 侧边栏 2: 新增 / 编辑 Drawer */}
+      {/* 6. 新增 / 编辑 Drawer */}
       <Drawer
         open={isFormDrawerOpen}
         onClose={() => setIsFormDrawerOpen(false)}
         width="640px"
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="flex-center" style={{ justifyContent: 'flex-start', gap: 8 }}>
             {editingGroup ? <Edit3 size={18} color="var(--color-primary)" /> : <Plus size={18} color="var(--color-primary)" />}
-            <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+            <span className="text-primary" style={{ fontSize: 18, fontWeight: 700 }}>
               {editingGroup ? `编辑 Committer Group #${editingGroup.id}` : '新增 Committer Group'}
             </span>
           </div>
         }
       >
-        <form onSubmit={handleFormSubmit} className="pipeline-committers-drawer-body">
-          {/* 1. iRight 群组管理系统配置与实时核验 (置顶核心) */}
-          <div className="pipeline-committers-detail-section" style={{ background: 'var(--color-primary-subtle)', borderColor: 'var(--color-primary-border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <form onSubmit={handleFormSubmit} className="flex-col gap-md">
+          {/* 1. iRight 配置与核验 */}
+          <div className="code-card" style={{ padding: 16, background: 'var(--color-primary-subtle)', borderColor: 'var(--color-primary-border)' }}>
+            <div className="flex-between" style={{ marginBottom: 12 }}>
+              <div className="flex-center" style={{ gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--color-primary)' }}>
                 <Link size={15} />
                 iRight 群组管理系统配置与校验
               </div>
               {iRightVerifiedData && (
-                <span
-                  style={{
-                    fontSize: 11,
-                    padding: '2px 8px',
-                    borderRadius: 4,
-                    background: 'var(--color-success-subtle)',
-                    color: 'var(--color-success)',
-                    border: '1px solid var(--color-success-border)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    fontWeight: 600
-                  }}
-                >
+                <span className="code-badge code-badge--success">
                   <CheckCircle2 size={12} /> iRight 已核验通过
                 </span>
               )}
             </div>
 
-            {/* iRight 群组 ID (UUID) 与实时校验按钮 */}
             <div>
-              <label className="pipeline-committers-overview-item-label">
-                iRight 群组 ID (UUID 字符串) <span className="text-muted">- 输入后后台立即查询核验真实性并自动带出名称</span>
+              <label className="code-stat-label">
+                iRight 群组 ID (UUID 字符串) <span className="text-muted">- 输入后自动核验带出</span>
               </label>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div className="flex-center gap-sm" style={{ marginTop: 4 }}>
                 <input
                   type="text"
                   placeholder="例如：3FA85F64-5717-4562-B3FC-2C963F66AFA6"
@@ -944,115 +913,52 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
                     setFormData({ ...formData, iright_group_id: e.target.value.toUpperCase() })
                     setIRightError(null)
                   }}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      handleVerifyIRightGroup()
-                    }
-                  }}
                   className="code-input flex-1"
-                  style={{
-                    border: iRightError
-                      ? '1px solid var(--color-danger)'
-                      : iRightVerifiedData
-                        ? '1px solid var(--color-success)'
-                        : '1px solid var(--color-border-subtle)',
-                    color: 'var(--color-primary)',
-                    fontFamily: 'var(--font-family-mono, monospace)',
-                    fontSize: 12
-                  }}
+                  style={{ fontFamily: 'var(--font-family-mono, monospace)', fontSize: 12 }}
                 />
                 <button
                   type="button"
                   onClick={() => handleVerifyIRightGroup()}
                   disabled={queryingIRight || !formData.iright_group_id.trim()}
                   className="btn btn-secondary"
-                  style={{ padding: '8px 14px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
+                  style={{ padding: '8px 14px', fontSize: 12, whiteSpace: 'nowrap' }}
                 >
                   <RefreshCw size={13} className={queryingIRight ? 'spin' : ''} />
-                  {queryingIRight ? '查询校验中...' : '校验并获取'}
+                  {queryingIRight ? '查询中...' : '校验并获取'}
                 </button>
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-                系统将通过后台配置的 API 实时查询该 ID 的名称、组织归属与成员规模并自动校验同步。
               </div>
             </div>
 
-            {/* 核验成功展示卡片 */}
-            {iRightVerifiedData && (
-              <div className="pipeline-committers-iright-verify-box pipeline-committers-iright-verify-box--success" style={{ marginTop: 10 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid var(--color-success-border)', paddingBottom: 6 }}>
-                  <CheckCircle2 size={14} />
-                  已成功匹配 iRight 真实群组
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, marginTop: 8 }}>
-                  <div>
-                    <span style={{ color: 'var(--color-text-secondary)' }}>群组名称：</span>
-                    <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{iRightVerifiedData.groupNameCn}</span>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--color-text-secondary)' }}>有效成员数：</span>
-                    <span style={{ color: 'var(--color-success)', fontWeight: 700 }}>{iRightVerifiedData.memberCount} 人</span>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--color-text-secondary)' }}>组织全称：</span>
-                    <span style={{ color: 'var(--color-text-primary)' }}>{iRightVerifiedData.fullName || iRightVerifiedData.fullEnglishName || '-'}</span>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--color-text-secondary)' }}>群组管理员：</span>
-                    <span style={{ color: 'var(--color-text-primary)' }}>{iRightVerifiedData.groupOwner || iRightVerifiedData.groupAdmin || '-'}</span>
-                  </div>
-                </div>
-                {iRightVerifiedData.remark && (
-                  <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', background: 'var(--color-bg-muted)', padding: '4px 8px', borderRadius: 4, marginTop: 6 }}>
-                    备注说明：{iRightVerifiedData.remark}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* 核验失败/异常警告 */}
             {iRightError && (
-              <div className="pipeline-committers-iright-verify-box pipeline-committers-iright-verify-box--error" style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--color-danger)' }}>
+              <div className="code-badge code-badge--danger w-full" style={{ marginTop: 10, padding: '8px 12px' }}>
                 <AlertCircle size={14} />
                 <span>{iRightError}</span>
               </div>
             )}
           </div>
 
-          {/* 2. Committer Group 名称 */}
-          <div className="pipeline-committers-form-group">
-            <label className="pipeline-committers-form-label">
-              <span>
-                Committer Group 名称 <span style={{ color: 'var(--color-danger)' }}>*</span>
-              </span>
-              <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 400, marginLeft: 'auto' }}>
-                <Lock size={12} /> 由 iRight 系统自动导入 (只读)
+          {/* 2. Group 名称 */}
+          <div className="flex-col gap-xs">
+            <label className="flex-between text-primary" style={{ fontSize: 13, fontWeight: 600 }}>
+              <span>Committer Group 名称 <span style={{ color: 'var(--color-danger)' }}>*</span></span>
+              <span className="text-secondary flex-center gap-xs" style={{ fontSize: 11, fontWeight: 400 }}>
+                <Lock size={12} /> 由 iRight 自动导入
               </span>
             </label>
             <input
               type="text"
-              placeholder="请先在上方输入 iRight 群组 ID 并校验，系统将自动填充名称..."
               value={formData.name}
               readOnly
               required
               className="code-input"
-              style={{
-                cursor: 'not-allowed',
-                background: 'var(--color-bg-muted)',
-                fontWeight: formData.name ? 600 : 400
-              }}
+              style={{ cursor: 'not-allowed', background: 'var(--color-bg-muted)', fontWeight: 600 }}
             />
-            <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>
-              名称与 iRight 远程群组管理系统保持严格一致，代码仓合规巡检将依此与托管平台的 domain_group 对齐。
-            </div>
           </div>
 
           {/* 3. 所属层级 */}
-          <div className="pipeline-committers-form-group">
-            <label className="pipeline-committers-form-label pipeline-committers-form-label--required">
-              所属层级
+          <div className="flex-col gap-xs">
+            <label className="text-primary" style={{ fontSize: 13, fontWeight: 600 }}>
+              所属层级 <span style={{ color: 'var(--color-danger)' }}>*</span>
             </label>
             <select
               value={formData.level}
@@ -1062,18 +968,15 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
             >
               <option value="L0-集团级">L0-集团级</option>
               <option value="L1-公司级">L1-公司级</option>
-              <option value="L2-一层部门级">L2-一层部门级 (SW为二层资源部门级)</option>
+              <option value="L2-一层部门级">L2-一层部门级</option>
               <option value="L3-项目组级">L3-项目组级</option>
             </select>
-            <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>
-              注：对于 SW（软件）组织，L2 对应各二层资源部门级。
-            </div>
           </div>
 
-          {/* 4. 归属部门 & 群组管理员 */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, alignItems: 'start' }}>
-            <div className="pipeline-committers-form-group">
-              <label className="pipeline-committers-form-label">归属部门</label>
+          {/* 4. 部门与管理员 */}
+          <div className="grid-cols-2 gap-md">
+            <div className="flex-col gap-xs">
+              <label className="text-primary" style={{ fontSize: 13, fontWeight: 600 }}>归属部门</label>
               <select
                 value={formData.department_id || ''}
                 onChange={e => setFormData({ ...formData, department_id: e.target.value ? Number(e.target.value) : undefined })}
@@ -1088,10 +991,8 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
               </select>
             </div>
 
-            <div className="pipeline-committers-form-group">
-              <label className="pipeline-committers-form-label">
-                群组管理员 <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--color-text-secondary)' }}>(支持姓名/工号搜索)</span>
-              </label>
+            <div className="flex-col gap-xs">
+              <label className="text-primary" style={{ fontSize: 13, fontWeight: 600 }}>群组管理员</label>
               <MemberSearchSelect
                 value={formData.admin_id || ''}
                 onChange={userId => {
@@ -1104,12 +1005,10 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
             </div>
           </div>
 
-          {/* 5. 成员规模 & 启用开关 */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, alignItems: 'center' }}>
-            <div className="pipeline-committers-form-group">
-              <label className="pipeline-committers-form-label">
-                成员规模 (人) <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--color-text-secondary)' }}>- 由 iRight 自动拉取</span>
-              </label>
+          {/* 5. 规模与开关 */}
+          <div className="grid-cols-2 gap-md" style={{ alignItems: 'center' }}>
+            <div className="flex-col gap-xs">
+              <label className="text-primary" style={{ fontSize: 13, fontWeight: 600 }}>成员规模 (人)</label>
               <input
                 type="number"
                 min={0}
@@ -1119,9 +1018,9 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
               />
             </div>
 
-            <div className="pipeline-committers-form-group">
-              <label className="pipeline-committers-form-label">启用状态</label>
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+            <div className="flex-col gap-xs">
+              <label className="text-primary" style={{ fontSize: 13, fontWeight: 600 }}>启用状态</label>
+              <label className="flex-center cursor-pointer gap-sm" style={{ justifyContent: 'flex-start', height: 38 }}>
                 <input
                   type="checkbox"
                   checked={formData.is_active}
@@ -1135,12 +1034,12 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
             </div>
           </div>
 
-          {/* 6. 备注/说明 */}
-          <div className="pipeline-committers-form-group">
-            <label className="pipeline-committers-form-label">备注说明 / 管辖范围</label>
+          {/* 6. 备注 */}
+          <div className="flex-col gap-xs">
+            <label className="text-primary" style={{ fontSize: 13, fontWeight: 600 }}>备注说明</label>
             <textarea
               rows={3}
-              placeholder="请输入该 Committer Group 的管辖范围、评审职责要求或说明..."
+              placeholder="请输入说明..."
               value={formData.description}
               onChange={e => setFormData({ ...formData, description: e.target.value })}
               className="code-input"
@@ -1148,8 +1047,8 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
             />
           </div>
 
-          {/* 操作按钮 */}
-          <div className="pipeline-committers-form-footer">
+          {/* Footer 按钮 */}
+          <div className="flex-between" style={{ justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
             <button
               type="button"
               onClick={() => setIsFormDrawerOpen(false)}
