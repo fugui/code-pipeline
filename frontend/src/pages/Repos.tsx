@@ -61,7 +61,7 @@ export const Repos: React.FC<ReposProps> = ({
   const serviceGroup = searchParams.get('service_group') || ''
   const ownerName = searchParams.get('owner_name') || ''
   const hasScheme = searchParams.get('has_scheme') || 'all'
-  const { page, pageSize } = usePagination({ defaultPageSize: 20 })
+  const { page, pageSize } = usePagination({ defaultPageSize: 25 })
 
   useEffect(() => {
     setSearch(searchParams.get('search') || '')
@@ -334,7 +334,7 @@ export const Repos: React.FC<ReposProps> = ({
 
         {result && result.total > 0 && (
           <div style={{ padding: '0 1rem 1rem 1rem' }}>
-            <Pagination totalItems={result.total} defaultPageSize={20} />
+            <Pagination totalItems={result.total} defaultPageSize={25} />
           </div>
         )}
       </div>
