@@ -405,15 +405,15 @@ export const ManagedCommitters: React.FC<ManagedCommittersProps> = ({ isAdmin = 
         </div>
 
         <div className="code-stat-card">
-          <div className="code-stat-icon" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#a855f7' }}>
+          <div className="code-stat-icon" style={{ background: 'var(--color-purple-subtle)', color: 'var(--color-purple)' }}>
             <Layers size={22} />
           </div>
           <div>
             <div className="code-stat-label">层级分布 (L0 / L1 / L2 / L3)</div>
             <div className="code-stat-value" style={{ fontSize: 17 }}>
-              <span style={{ color: '#e11d48' }} title="L0-集团级">{stats.l0Count}</span>
+              <span style={{ color: 'var(--color-danger)' }} title="L0-集团级">{stats.l0Count}</span>
               <span className="text-muted" style={{ margin: '0 3px' }}>/</span>
-              <span style={{ color: '#a855f7' }} title="L1-公司级">{stats.l1Count}</span>
+              <span style={{ color: 'var(--color-purple)' }} title="L1-公司级">{stats.l1Count}</span>
               <span className="text-muted" style={{ margin: '0 3px' }}>/</span>
               <span style={{ color: 'var(--color-primary)' }} title="L2-一层部门级">{stats.l2Count}</span>
               <span className="text-muted" style={{ margin: '0 3px' }}>/</span>
