@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Pagination, usePagination, Drawer, Modal, useToast } from '@code/common'
+import { Pagination, usePagination, Drawer, Modal, useToast, EmptyState } from '@code/common'
+
 import { 
   GitBranch, Folder, Plus, FolderPlus, Info, Search, Users, AlertCircle, RefreshCw, Send, ChevronRight, ChevronDown, Eye, EyeOff, Trash2, Zap, X, Archive, ExternalLink
 } from 'lucide-react'
-import './managed-repos.css'
+
 
 
 interface ManagedGroup {
@@ -822,13 +823,13 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
   const unmergedStale = branches.filter(b => b.status === 'unmerged_stale').length
 
   return (
-    <div className="pipeline-repos-layout">
+    <div className="flex-1 flex-row" style={{ display: 'flex', gap: 24, height: 'calc(100vh - 120px)' }}>
 
       {/* Group Sidebar */}
-      <div className="glass-card pipeline-repos-sidebar">
-        <div className="pipeline-repos-sidebar-header">
-          <h3 className="pipeline-repos-sidebar-title">Groups</h3>
-          <div className="pipeline-repos-sidebar-tools">
+      <div className="code-card flex-col" style={{ width: 280, padding: 20, flexShrink: 0 }}>
+        <div className="flex-between" style={{ marginBottom: 16 }}>
+          <h3 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Groups</h3>
+          <div className="flex-center gap-xs">
             <input 
               type="checkbox" 
               id="checkbox-show-hidden" 
@@ -845,25 +846,26 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
           </div>
         </div>
         
-        <div className="pipeline-repos-sidebar-search-box">
-          <Search size={14} className="pipeline-repos-sidebar-search-icon" />
+        <div style={{ position: 'relative', marginBottom: 16 }}>
+          <Search size={14} className="text-secondary" style={{ position: 'absolute', left: 10, top: 10, pointerEvents: 'none' }} />
           <input 
             type="text" 
             placeholder="搜索组..." 
             value={groupSearchQuery}
             onChange={(e) => setGroupSearchQuery(e.target.value)}
-            className="pipeline-repos-sidebar-search-input"
+            className="code-input w-full"
+            style={{ paddingLeft: 30, fontSize: 13 }}
           />
         </div>
 
-        <div className="pipeline-repos-tree-list">
+        <div className="flex-1 overflow-y-auto flex-col gap-xs">
           <button 
             type="button"
             onClick={() => handleGroupSelect(null)} 
-            className={`group-tree-node ${selectedGroup === null ? 'active' : ''}`}
-            style={{ paddingLeft: 26 }}
+            className={`btn ${selectedGroup === null ? 'btn-primary' : 'btn-secondary'} w-full flex-center`}
+            style={{ justifyContent: 'flex-start', paddingLeft: 12, fontSize: 13, height: 34, gap: 8 }}
           >
-            <Folder size={14} color={selectedGroup === null ? 'var(--border-active)' : 'var(--text-muted)'} /> 
+            <Folder size={14} /> 
             <span>[全部仓库]</span>
           </button>
           
@@ -878,14 +880,19 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
             const depth = g.full_path.split('/').length - 1
             const hasChildren = groups.some(x => x.parent_id === g.id)
             const isSelfOrParentHidden = g.is_hidden || isAnyAncestorHidden(g, groups)
+            const isSelected = selectedGroup?.id === g.id
             return (
               <button 
                 type="button"
                 key={g.id}
                 onClick={() => handleGroupSelect(g)} 
-                className={`group-tree-node ${selectedGroup?.id === g.id ? 'active' : ''}`}
+                className={`btn ${isSelected ? 'btn-primary' : 'btn-secondary'} w-full flex-center`}
                 style={{ 
+                  justifyContent: 'flex-start',
                   paddingLeft: 8 + depth * 14,
+                  fontSize: 13,
+                  height: 34,
+                  gap: 6,
                   opacity: isSelfOrParentHidden ? 0.4 : (g.synced_at ? 1 : 0.65)
                 }}
                 title={
@@ -898,16 +905,8 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                 {hasChildren ? (
                   <span 
                     onClick={(e) => toggleGroupExpand(g.id, e)}
-                    style={{ 
-                      display: 'inline-flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      width: 16, 
-                      height: 16, 
-                      cursor: 'pointer',
-                      color: 'var(--text-muted)',
-                      marginRight: 2
-                    }}
+                    className="flex-center cursor-pointer text-muted"
+                    style={{ width: 16, height: 16, marginRight: 2 }}
                   >
                     {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                   </span>
@@ -915,13 +914,13 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                   <span style={{ width: 16, marginRight: 2 }} />
                 )}
                 
-                <Folder size={14} color={selectedGroup?.id === g.id ? 'var(--border-active)' : 'var(--text-muted)'} /> 
-                <span className={`pipeline-repos-tree-node-text ${isSelfOrParentHidden ? 'pipeline-repos-tree-node-text--strikethrough' : ''}`}>
+                <Folder size={14} /> 
+                <span className="text-truncate flex-1" style={{ textAlign: 'left', textDecoration: isSelfOrParentHidden ? 'line-through' : 'none' }}>
                   {g.name}
                   {isSelfOrParentHidden ? (
-                    <span style={{ fontSize: 10, color: 'var(--color-text-secondary)', marginLeft: 4, fontStyle: 'italic' }}>(已隐藏)</span>
+                    <span className="text-secondary" style={{ fontSize: 10, marginLeft: 4, fontStyle: 'italic' }}>(已隐藏)</span>
                   ) : (
-                    !g.synced_at && <span style={{ fontSize: 10, color: 'var(--color-text-secondary)', marginLeft: 4, fontStyle: 'italic' }}>(未同步)</span>
+                    !g.synced_at && <span className="text-secondary" style={{ fontSize: 10, marginLeft: 4, fontStyle: 'italic' }}>(未同步)</span>
                   )}
                 </span>
               </button>
@@ -931,42 +930,32 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
       </div>
 
       {/* Main Panel */}
-      <div className="pipeline-repos-main">
+      <div className="flex-1 flex-col gap-md overflow-hidden">
         
         {/* Statistics & Quick Actions */}
-        <div className="glass-card pipeline-repos-header-card">
+        <div className="code-card flex-between" style={{ padding: 20 }}>
           <div>
-            <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <h2 className="text-primary flex-center" style={{ justifyContent: 'flex-start', fontSize: 20, fontWeight: 700, margin: '0 0 4px 0', gap: 12 }}>
               {selectedGroup ? `当前组：${selectedGroup.full_path}` : '全部辖区被管代码仓'}
               {selectedGroup && (
-                <span style={{ 
-                  fontSize: 12, 
-                  fontWeight: 500, 
-                  padding: '2px 8px', 
-                  borderRadius: 12, 
-                  background: selectedGroup.synced_at ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', 
-                  color: selectedGroup.synced_at ? '#10b981' : '#ef4444',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4
-                }}>
+                <span className={`code-badge ${selectedGroup.synced_at ? 'code-badge--success' : 'code-badge--danger'}`} style={{ borderRadius: 12 }}>
                   {selectedGroup.synced_at ? `已同步 (${new Date(selectedGroup.synced_at).toLocaleString('zh-CN', { hour12: false }).replace(/:\d{2}$/, '')})` : '未同步'}
                 </span>
               )}
             </h2>
-            <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: 13 }}>
+            <p className="text-secondary" style={{ margin: 0, fontSize: 13 }}>
               所有的代码仓创建与保护分支拉取，均受到统一策略校验和标准化下发。
             </p>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div className="flex-center gap-sm">
             {isAdmin && selectedGroup && (
               <>
                 {!selectedGroup.parent_id ? (
                   <button 
                     onClick={() => handleDeleteGroup(selectedGroup)} 
-                    className="btn btn-secondary"
+                    className="btn btn-danger"
                     title="从系统移除根组及其辖下所有同步数据"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                    style={{ padding: '6px 12px' }}
                   >
                     <Trash2 size={15} />
                     移除根组
@@ -976,7 +965,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                     onClick={() => handleToggleGroupHide(selectedGroup)} 
                     className="btn btn-secondary"
                     title={selectedGroup.is_hidden ? '取消屏蔽隐藏，使此组重新在大盘和树节点中展示' : '将该组屏蔽隐藏，默认不参与展示'}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    style={{ padding: '6px 12px' }}
                   >
                     {selectedGroup.is_hidden ? <Eye size={15} /> : <EyeOff size={15} />}
                     {selectedGroup.is_hidden ? '显示此组' : '隐藏此组'}
@@ -985,7 +974,7 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                 <button 
                   onClick={handleSyncGroup} 
                   className="btn btn-secondary"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  style={{ padding: '6px 12px' }}
                   title="同步当前组子树"
                   disabled={isSyncingGroup}
                 >
@@ -1008,11 +997,11 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
         </div>
 
         {/* Repository Table */}
-        <div className="glass-card pipeline-repos-content-card">
-          <div className="pipeline-repos-content-toolbar">
-            <h3 className="pipeline-repos-content-title">被管仓明细</h3>
-            <div className="pipeline-repos-content-tools">
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--color-text-secondary)', cursor: 'pointer', userSelect: 'none' }}>
+        <div className="code-card flex-1 flex-col overflow-hidden" style={{ padding: 24 }}>
+          <div className="flex-between" style={{ marginBottom: 20 }}>
+            <h3 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>被管仓明细</h3>
+            <div className="flex-center gap-md">
+              <label className="flex-center cursor-pointer text-secondary" style={{ gap: 6, fontSize: 13, userSelect: 'none' }}>
                 <input 
                   type="checkbox" 
                   checked={showArchived}
@@ -1023,61 +1012,63 @@ export const ManagedRepos: React.FC<ManagedReposProps> = ({ isAdmin = true, apiB
                 />
                 显示已归档代码仓
               </label>
-              <div className="pipeline-repos-search-box">
-                <Search size={14} className="pipeline-repos-search-icon" />
+              <div style={{ position: 'relative', width: 260 }}>
+                <Search size={14} className="text-secondary" style={{ position: 'absolute', left: 10, top: 10, pointerEvents: 'none' }} />
                 <input 
                   type="text" 
                   placeholder="检索仓库名称或 SSHURL..." 
                   value={repoSearchQuery}
                   onChange={(e) => setRepoSearchQuery(e.target.value)}
-                  className="pipeline-repos-search-input"
+                  className="code-input w-full"
+                  style={{ paddingLeft: 30, fontSize: 13 }}
                 />
               </div>
             </div>
           </div>
 
-          <div className="pipeline-repos-table-scroll">
-            <table className="pipeline-repos-table">
+          <div className="flex-1 overflow-y-auto">
+            <table className="code-table">
               <thead>
-                <tr className="pipeline-repos-thead-tr">
-                  <th className="pipeline-repos-th">仓库 ID</th>
+                <tr>
+                  <th style={{ width: 80 }}>仓库 ID</th>
                   <th 
                     onClick={() => handleSort('name')} 
-                    className="pipeline-repos-th pipeline-repos-th--sortable"
+                    className="cursor-pointer"
                     title="点击按仓库名称排序"
                   >
                     仓库名称 {sortField === 'name' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'}
                   </th>
-                  <th className="pipeline-repos-th">所属嵌套组</th>
+                  <th>所属嵌套组</th>
                   <th 
                     onClick={() => handleSort('branch_count')} 
-                    className="pipeline-repos-th pipeline-repos-th--sortable"
+                    className="cursor-pointer"
                     title="点击按分支总数排序"
                   >
                     分支数 (活/僵/已合并) {sortField === 'branch_count' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'}
                   </th>
                   <th 
                     onClick={() => handleSort('last_commit_time')} 
-                    className="pipeline-repos-th pipeline-repos-th--sortable"
+                    className="cursor-pointer"
                     title="点击按最新提交时间排序"
                   >
                     最新提交时间 {sortField === 'last_commit_time' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'}
                   </th>
-                  <th className="pipeline-repos-th" style={{ textAlign: 'right' }}>操作</th>
+                  <th style={{ textAlign: 'right' }}>操作</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedRepos.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: 48, color: 'var(--text-secondary)' }}>
-                      <AlertCircle size={32} style={{ margin: '0 auto 12px auto', opacity: 0.5 }} />
-                      <p>未发现符合条件的被管代码仓。</p>
-                    </td>
-                  </tr>
+                  <EmptyState
+                    inTable
+                    colSpan={6}
+                    icon={<AlertCircle size={32} />}
+                    title="未发现符合条件的被管代码仓"
+                    description="您可以尝试切换搜索词或调整左侧分组"
+                  />
                 ) : (
                   paginatedRepos.map(r => (
-                    <tr key={r.id} style={{ borderBottom: '1px solid var(--border-color)', fontSize: 13, opacity: r.is_archived ? 0.65 : 1 }}>
-                      <td style={{ padding: '14px 8px', color: 'var(--text-secondary)' }}>{r.id}</td>
+                    <tr key={r.id} style={{ opacity: r.is_archived ? 0.65 : 1 }}>
+                      <td className="text-secondary">{r.id}</td>
                       <td style={{ padding: '14px 8px', fontWeight: 600 }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
