@@ -1194,7 +1194,7 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
                 placeholder="请输入该流水线组的功能用途与承载说明..."
                 value={activeGroup.description || ''}
                 onChange={(e) => setActiveGroup({ ...activeGroup, description: e.target.value })}
-                className="code-input"
+                className="code-textarea"
                 style={{ width: '100%', resize: 'vertical' }}
               />
             </div>

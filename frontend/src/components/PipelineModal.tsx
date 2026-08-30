@@ -67,22 +67,23 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
       <form id="pipeline-modal-form" onSubmit={onSave} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         {/* 1. 流水线唯一 ID */}
         <div>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 8 }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
             流水线唯一 ID (Pipeline ID)
             <span title="从三方流水线系统获取的唯一标识" style={{ display: 'inline-flex', alignItems: 'center' }}>
-              <HelpCircle size={14} style={{ cursor: 'help', color: 'var(--text-muted)' }} />
+              <HelpCircle size={14} style={{ cursor: 'help', color: 'var(--color-text-muted)' }} />
             </span>
           </label>
           <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
             <input 
               type="text" 
+              className="code-input"
               placeholder="例如: pipeline_demo_01"
               value={activePipeline.pipeline_id || ''} 
               onChange={(e) => onChange({ ...activePipeline, pipeline_id: e.target.value })}
               onBlur={() => !activePipeline.id && activePipeline.pipeline_id && onFetchRemoteInfo(activePipeline.pipeline_id)}
               disabled={!!activePipeline.id || !isAdmin}
               required 
-              style={{ flex: 1 }}
+              style={{ flex: 1, width: '100%' }}
             />
             {!activePipeline.id && isAdmin && (
               <button 
@@ -107,9 +108,9 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
               borderRadius: 8,
               fontSize: 12,
               marginTop: 8,
-              background: pipelineFetchError.includes('提示') ? 'rgba(59, 130, 246, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-              border: pipelineFetchError.includes('提示') ? '1px solid rgba(59, 130, 246, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)',
-              color: pipelineFetchError.includes('提示') ? 'var(--color-primary, #3b82f6)' : 'var(--color-danger, #ef4444)'
+              background: pipelineFetchError.includes('提示') ? 'var(--color-primary-subtle)' : 'var(--color-danger-subtle)',
+              border: pipelineFetchError.includes('提示') ? '1px solid var(--color-primary-border)' : '1px solid var(--color-danger-border)',
+              color: pipelineFetchError.includes('提示') ? 'var(--color-primary)' : 'var(--color-danger)'
             }}>
               <Info size={16} style={{ flexShrink: 0, marginTop: 1 }} />
               <span>{pipelineFetchError}</span>
@@ -119,27 +120,29 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
 
         {/* 2. 流水线名称 */}
         <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 8 }}>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
             流水线名称
           </label>
           <input 
             type="text" 
+            className="code-input"
             placeholder="例如: 每日合并扫描流水线"
             value={activePipeline.name || ''} 
             onChange={(e) => onChange({ ...activePipeline, name: e.target.value })}
             disabled={!isAdmin}
             required 
+            style={{ width: '100%' }}
           />
         </div>
 
         {/* 3. 流水线类型与所属分组 */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 8 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
               流水线类型
             </label>
-            <div style={{ display: 'flex', gap: 16, alignItems: 'center', minHeight: 42 }}>
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: isAdmin ? 'pointer' : 'default', fontSize: 13, userSelect: 'none' }}>
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center', minHeight: 38 }}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: isAdmin ? 'pointer' : 'default', fontSize: 13, color: 'var(--color-text-primary)', userSelect: 'none' }}>
                 <input 
                   type="checkbox" 
                   checked={(activePipeline.type || '').includes('MR')} 
@@ -158,7 +161,7 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
                 />
                 MR 定时看护
               </label>
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: isAdmin ? 'pointer' : 'default', fontSize: 13, userSelect: 'none' }}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: isAdmin ? 'pointer' : 'default', fontSize: 13, color: 'var(--color-text-primary)', userSelect: 'none' }}>
                 <input 
                   type="checkbox" 
                   checked={(activePipeline.type || '').includes('每日构建')} 
@@ -180,10 +183,12 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
             </div>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 8 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
               所属流水线组 (资源池)
             </label>
             <select
+              className="code-select"
+              style={{ width: '100%' }}
               value={activePipeline.group_id || ''}
               onChange={(e) => {
                 const val = e.target.value ? Number(e.target.value) : undefined
@@ -203,8 +208,8 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
 
         {/* 4. 三方平台只读元数据 (卡片展示) */}
         <div style={{
-          background: 'var(--color-bg-muted, rgba(255, 255, 255, 0.03))',
-          border: '1px solid var(--border-color)',
+          background: 'var(--color-bg-muted)',
+          border: '1px solid var(--color-border-primary)',
           borderRadius: 'var(--radius-md, 8px)',
           padding: '14px 16px',
           display: 'flex',
@@ -212,36 +217,36 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
           gap: 12
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <Cloud size={15} style={{ color: 'var(--accent-primary, #6366f1)' }} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Cloud size={15} style={{ color: 'var(--color-primary)' }} />
               三方平台关联属性
             </span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--color-bg-hover)', padding: '2px 8px', borderRadius: 4 }}>
+            <span style={{ fontSize: 11, color: 'var(--color-text-muted)', background: 'var(--color-bg-hover)', padding: '2px 8px', borderRadius: 4 }}>
               只读同步
             </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 12 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ color: 'var(--text-secondary)' }}>三方服务 ID (ServiceID)</span>
-              <span style={{ fontFamily: 'var(--font-mono)', color: activePipeline.service_id ? 'var(--text-main)' : 'var(--text-muted)', background: 'var(--color-bg-input, var(--bg-color))', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border-subtle)' }}>
+              <span style={{ color: 'var(--color-text-secondary)' }}>三方服务 ID (ServiceID)</span>
+              <span style={{ fontFamily: 'var(--font-family-mono)', color: activePipeline.service_id ? 'var(--color-text-primary)' : 'var(--color-text-muted)', background: 'var(--color-bg-input)', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border-subtle)' }}>
                 {activePipeline.service_id || '未拉取'}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ color: 'var(--text-secondary)' }}>三方 Workspace ID</span>
-              <span style={{ fontFamily: 'var(--font-mono)', color: activePipeline.workspace_id ? 'var(--text-main)' : 'var(--text-muted)', background: 'var(--color-bg-input, var(--bg-color))', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border-subtle)' }}>
+              <span style={{ color: 'var(--color-text-secondary)' }}>三方 Workspace ID</span>
+              <span style={{ fontFamily: 'var(--font-family-mono)', color: activePipeline.workspace_id ? 'var(--color-text-primary)' : 'var(--color-text-muted)', background: 'var(--color-bg-input)', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border-subtle)' }}>
                 {activePipeline.workspace_id || '未拉取'}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ color: 'var(--text-secondary)' }}>三方项目 ID (OwnerID)</span>
-              <span style={{ fontFamily: 'var(--font-mono)', color: activePipeline.owner_id ? 'var(--text-main)' : 'var(--text-muted)', background: 'var(--color-bg-input, var(--bg-color))', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border-subtle)' }}>
+              <span style={{ color: 'var(--color-text-secondary)' }}>三方项目 ID (OwnerID)</span>
+              <span style={{ fontFamily: 'var(--font-family-mono)', color: activePipeline.owner_id ? 'var(--color-text-primary)' : 'var(--color-text-muted)', background: 'var(--color-bg-input)', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border-subtle)' }}>
                 {activePipeline.owner_id || '未拉取'}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ color: 'var(--text-secondary)' }}>三方项目名称 (OwnerName)</span>
-              <span style={{ fontFamily: 'var(--font-mono)', color: activePipeline.owner_name ? 'var(--text-main)' : 'var(--text-muted)', background: 'var(--color-bg-input, var(--bg-color))', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border-subtle)' }}>
+              <span style={{ color: 'var(--color-text-secondary)' }}>三方项目名称 (OwnerName)</span>
+              <span style={{ fontFamily: 'var(--font-family-mono)', color: activePipeline.owner_name ? 'var(--color-text-primary)' : 'var(--color-text-muted)', background: 'var(--color-bg-input)', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border-subtle)' }}>
                 {activePipeline.owner_name || '未拉取'}
               </span>
             </div>
@@ -250,16 +255,17 @@ export const PipelineModal: React.FC<PipelineModalProps> = ({
 
         {/* 5. 描述说明 */}
         <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 8 }}>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
             描述说明
           </label>
           <textarea 
+            className="code-textarea"
             placeholder="请输入流水线的描述与用途..."
             rows={3}
             value={activePipeline.description || ''} 
             onChange={(e) => onChange({ ...activePipeline, description: e.target.value })}
             disabled={!isAdmin}
-            style={{ resize: 'vertical', minHeight: 72 }}
+            style={{ width: '100%', resize: 'vertical', minHeight: 80 }}
           />
         </div>
       </form>
