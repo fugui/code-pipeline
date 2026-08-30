@@ -1,6 +1,8 @@
 package database
 
 import (
+	"code-common/backend/testdb"
+	"code-pipeline/internal/testutil"
 	"code-pipeline/models"
 	"testing"
 	"time"
@@ -8,9 +10,19 @@ import (
 	"gorm.io/gorm"
 )
 
+func setupTestDB(t *testing.T) {
+	oldDB := DB
+	t.Cleanup(func() { DB = oldDB })
+
+	db := testdb.SetupIsolatedDB(t, "pipeline_db_hide", testutil.PipelineModels()...)
+	if db == nil {
+		return
+	}
+	DB = db
+}
+
 func TestToggleGroupHideLogic(t *testing.T) {
-	_ = models.LoadConfig("../config.yaml")
-	InitDB()
+	setupTestDB(t)
 
 	// 清理旧的测试数据，以防冲突
 	DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.ManagedBranchMonitor{})
@@ -271,8 +283,7 @@ func TestToggleGroupHideLogic(t *testing.T) {
 }
 
 func TestDeleteManagedGroupLogic(t *testing.T) {
-	_ = models.LoadConfig("../config.yaml")
-	InitDB()
+	setupTestDB(t)
 
 	// 清理旧的测试数据
 	DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.ManagedBranchMonitor{})

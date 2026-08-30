@@ -156,4 +156,3 @@ func GetUsers(c *gin.Context) {
 		"page_size": pageSize,
 	})
 }
-

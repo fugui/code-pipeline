@@ -10,16 +10,19 @@ import (
 	"testing"
 
 	commonAuth "code-common/backend/auth"
+	"code-common/backend/testdb"
 	"code-pipeline/database"
+	"code-pipeline/internal/testutil"
 	"code-pipeline/models"
 )
 
 func setupTestDB(t *testing.T) {
-	if database.DB == nil {
-		if err := models.LoadConfig("../config.yaml"); err != nil {
-			_ = models.LoadConfig("../config.yaml.example")
-		}
-		database.InitDB()
+	oldDB := database.DB
+	t.Cleanup(func() { database.DB = oldDB })
+
+	db := testdb.SetupIsolatedDB(t, "pipeline_client", testutil.PipelineModels()...)
+	if db != nil {
+		database.DB = db
 	}
 }
 

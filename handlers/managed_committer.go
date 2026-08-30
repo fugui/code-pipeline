@@ -256,5 +256,3 @@ func GetIRightGroup(c *gin.Context) {
 		"status":  200,
 	})
 }
-
-

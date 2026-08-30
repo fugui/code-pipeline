@@ -359,37 +359,37 @@ func ConfigureRemoteACL(ctx context.Context, targetType string, targetID string,
 
 // RemoteRepoDetail 远程仓库基本信息详情 (对应 body.json)
 type RemoteRepoDetail struct {
-	ID                       uint     `json:"id"`
-	Name                     string   `json:"name"`
-	NameWithNamespace        string   `json:"name_with_namespace"`
-	Path                     string   `json:"path"`
-	PathWithNamespace        string   `json:"path_with_namespace"`
-	Description              string   `json:"description"`
-	DefaultBranch            string   `json:"default_branch"`
-	MainRepositoryLanguage   *string  `json:"main_repository_language"`
-	Visibility               string   `json:"visibility"`
-	Security                 string   `json:"security"`
-	NetworkType              string   `json:"network_type"`
-	IsKIA                    bool     `json:"is_kia"`
-	Archived                 bool     `json:"archived"`
-	EmptyRepo                bool     `json:"empty_repo"`
-	MergeRequestsEnabled     bool     `json:"merge_requests_enabled"`
-	IssuesEnabled            bool     `json:"issues_enabled"`
-	WikiEnabled              bool     `json:"wiki_enabled"`
-	JobsEnabled              bool     `json:"jobs_enabled"`
-	ContainerRegistryEnabled bool     `json:"container_registry_enabled"`
-	SharedRunnersEnabled     bool     `json:"shared_runners_enabled"`
-	PublicJobs               bool     `json:"public_jobs"`
-	LFSEnabled               bool     `json:"lfs_enabled"`
-	RequestAccessEnabled     bool     `json:"request_access_enabled"`
-	MergeMethod              string   `json:"merge_method"`
-	OnlyAllowMergeIfPipelineSucceeds bool `json:"only_allow_merge_if_pipeline_succeeds"`
-	OnlyAllowMergeIfAllDiscussionsAreResolved bool `json:"only_allow_merge_if_all_discussions_are_resolved"`
-	ResolveOutdatedDiffDiscussions bool `json:"resolve_outdated_diff_discussions"`
-	BranchCount              int      `json:"branch_count"`
-	TagCount                 int      `json:"tag_count"`
-	MemberCount              int      `json:"member_count"`
-	Statistics               struct {
+	ID                                        uint    `json:"id"`
+	Name                                      string  `json:"name"`
+	NameWithNamespace                         string  `json:"name_with_namespace"`
+	Path                                      string  `json:"path"`
+	PathWithNamespace                         string  `json:"path_with_namespace"`
+	Description                               string  `json:"description"`
+	DefaultBranch                             string  `json:"default_branch"`
+	MainRepositoryLanguage                    *string `json:"main_repository_language"`
+	Visibility                                string  `json:"visibility"`
+	Security                                  string  `json:"security"`
+	NetworkType                               string  `json:"network_type"`
+	IsKIA                                     bool    `json:"is_kia"`
+	Archived                                  bool    `json:"archived"`
+	EmptyRepo                                 bool    `json:"empty_repo"`
+	MergeRequestsEnabled                      bool    `json:"merge_requests_enabled"`
+	IssuesEnabled                             bool    `json:"issues_enabled"`
+	WikiEnabled                               bool    `json:"wiki_enabled"`
+	JobsEnabled                               bool    `json:"jobs_enabled"`
+	ContainerRegistryEnabled                  bool    `json:"container_registry_enabled"`
+	SharedRunnersEnabled                      bool    `json:"shared_runners_enabled"`
+	PublicJobs                                bool    `json:"public_jobs"`
+	LFSEnabled                                bool    `json:"lfs_enabled"`
+	RequestAccessEnabled                      bool    `json:"request_access_enabled"`
+	MergeMethod                               string  `json:"merge_method"`
+	OnlyAllowMergeIfPipelineSucceeds          bool    `json:"only_allow_merge_if_pipeline_succeeds"`
+	OnlyAllowMergeIfAllDiscussionsAreResolved bool    `json:"only_allow_merge_if_all_discussions_are_resolved"`
+	ResolveOutdatedDiffDiscussions            bool    `json:"resolve_outdated_diff_discussions"`
+	BranchCount                               int     `json:"branch_count"`
+	TagCount                                  int     `json:"tag_count"`
+	MemberCount                               int     `json:"member_count"`
+	Statistics                                struct {
 		CommitCount      int     `json:"commit_count"`
 		StorageSize      float64 `json:"storage_size"`
 		RepositorySize   float64 `json:"repository_size"`
@@ -408,35 +408,35 @@ type RemoteRepoDetail struct {
 // RemoteMrSetting 远程代码仓 MR 设置详情 (对应 mr_setting.json)
 type RemoteMrSetting struct {
 	MergeRequestSetting struct {
-		ID                               uint   `json:"id"`
-		ProjectID                        uint   `json:"project_id"`
-		DisableMergeBySelf               bool   `json:"disable_merge_by_self"`
-		CanForceMerge                    bool   `json:"can_force_merge"`
-		ResetApprovalsOnPush             bool   `json:"reset_approvals_on_push"`
-		ResetReviewersOnPush             bool   `json:"reset_reviewers_on_push"`
-		ReviewMode                       string `json:"review_mode"`
-		ApprovalRequiredReviewers        int    `json:"approval_required_reviewers"`
-		ApprovalRequiredApprovers        int    `json:"approval_required_approvers"`
-		OnlyCommitterCanApprove          bool   `json:"only_committer_can_approve"`
-		CommitterMustCastTwoVotes        bool   `json:"committer_must_cast_two_votes"`
-		OnlyAllowMergeIfVoteBiggerThan   int    `json:"only_allow_merge_if_vote_bigger_than"`
-		MustPassQualityGate              bool   `json:"must_pass_quality_gate"`
-		MrCodeCheck                      bool   `json:"mr_codecheck"`
-		ForcedRebuildPipelineBeforeMerge  bool   `json:"forced_rebuild_pipeline_before_merge"`
-		SourceBranchPipelineMustSucceeds bool   `json:"source_branch_pipeline_must_succeeds"`
-		NewestPremergePipelineMustSucceeds bool `json:"newest_premerge_pipeline_must_succeeds"`
-		MustRelateIssue                  bool   `json:"must_relate_issue"`
-		NeedAllIssuesCheckPassed         bool   `json:"need_all_issues_check_passed"`
-		DeleteSourceBranchWhenMerged     bool   `json:"delete_source_branch_when_merged"`
-		AutoSquashMerge                  bool   `json:"auto_squash_merge"`
-		ForbiddenGuestCreateMr           bool   `json:"forbidden_guest_create_mr"`
-		CloseIssueWhenMrMerged           bool   `json:"close_issue_when_mr_merged"`
-		EvaluationMergeGate              bool   `json:"evaluation_merge_gate"`
+		ID                                 uint   `json:"id"`
+		ProjectID                          uint   `json:"project_id"`
+		DisableMergeBySelf                 bool   `json:"disable_merge_by_self"`
+		CanForceMerge                      bool   `json:"can_force_merge"`
+		ResetApprovalsOnPush               bool   `json:"reset_approvals_on_push"`
+		ResetReviewersOnPush               bool   `json:"reset_reviewers_on_push"`
+		ReviewMode                         string `json:"review_mode"`
+		ApprovalRequiredReviewers          int    `json:"approval_required_reviewers"`
+		ApprovalRequiredApprovers          int    `json:"approval_required_approvers"`
+		OnlyCommitterCanApprove            bool   `json:"only_committer_can_approve"`
+		CommitterMustCastTwoVotes          bool   `json:"committer_must_cast_two_votes"`
+		OnlyAllowMergeIfVoteBiggerThan     int    `json:"only_allow_merge_if_vote_bigger_than"`
+		MustPassQualityGate                bool   `json:"must_pass_quality_gate"`
+		MrCodeCheck                        bool   `json:"mr_codecheck"`
+		ForcedRebuildPipelineBeforeMerge   bool   `json:"forced_rebuild_pipeline_before_merge"`
+		SourceBranchPipelineMustSucceeds   bool   `json:"source_branch_pipeline_must_succeeds"`
+		NewestPremergePipelineMustSucceeds bool   `json:"newest_premerge_pipeline_must_succeeds"`
+		MustRelateIssue                    bool   `json:"must_relate_issue"`
+		NeedAllIssuesCheckPassed           bool   `json:"need_all_issues_check_passed"`
+		DeleteSourceBranchWhenMerged       bool   `json:"delete_source_branch_when_merged"`
+		AutoSquashMerge                    bool   `json:"auto_squash_merge"`
+		ForbiddenGuestCreateMr             bool   `json:"forbidden_guest_create_mr"`
+		CloseIssueWhenMrMerged             bool   `json:"close_issue_when_mr_merged"`
+		EvaluationMergeGate                bool   `json:"evaluation_merge_gate"`
 	} `json:"merge_request_setting"`
 	OnlyAllowMergeIfAllDiscussionsAreResolved bool   `json:"only_allow_merge_if_all_discussions_are_resolved"`
 	OnlyAllowMergeIfPipelineSucceeds          bool   `json:"only_allow_merge_if_pipeline_succeeds"`
 	MergeMethod                               string `json:"merge_method"`
-	OnlyAllowMergeIfVoteBiggerThan           int    `json:"only_allow_merge_if_vote_bigger_than"`
+	OnlyAllowMergeIfVoteBiggerThan            int    `json:"only_allow_merge_if_vote_bigger_than"`
 }
 
 // GetRemoteRepoDetail 调用托管平台接口获取特定代码仓的详细信息

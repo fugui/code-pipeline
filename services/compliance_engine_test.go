@@ -8,20 +8,23 @@ import (
 	"testing"
 	"time"
 
+	"code-common/backend/testdb"
 	"code-pipeline/database"
+	"code-pipeline/internal/testutil"
 	"code-pipeline/models"
 
 	"gorm.io/datatypes"
 )
 
 func setupComplianceTestDB(t *testing.T) {
-	_ = models.LoadConfig("../config.yaml")
-	database.InitDB()
+	oldDB := database.DB
+	t.Cleanup(func() { database.DB = oldDB })
 
-	// 清理可能遗留的测试数据
-	database.DB.Exec("DELETE FROM managed_repositories WHERE id = 101")
-	database.DB.Exec("DELETE FROM managed_protected_branch_rules WHERE managed_repository_id = 101")
-	database.DB.Exec("DELETE FROM repo_compliance_reports WHERE managed_repository_id = 101")
+	db := testdb.SetupIsolatedDB(t, "pipeline_compliance", testutil.PipelineModels()...)
+	if db == nil {
+		return
+	}
+	database.DB = db
 }
 
 func TestDefaultComplianceRules(t *testing.T) {
