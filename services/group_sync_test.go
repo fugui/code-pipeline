@@ -7,13 +7,25 @@ import (
 	"testing"
 	"time"
 
+	"code-common/backend/testdb"
 	"code-pipeline/database"
+	"code-pipeline/internal/testutil"
 	"code-pipeline/models"
 )
 
+func setupGroupSyncTestDB(t *testing.T) {
+	oldDB := database.DB
+	t.Cleanup(func() { database.DB = oldDB })
+
+	db := testdb.SetupIsolatedDB(t, "pipeline_group_sync", testutil.PipelineModels()...)
+	if db == nil {
+		return
+	}
+	database.DB = db
+}
+
 func TestSyncGroupRecursiveSkipHidden(t *testing.T) {
-	_ = models.LoadConfig("../config.yaml")
-	database.InitDB()
+	setupGroupSyncTestDB(t)
 
 	// 1. 在本地数据库存入一个 is_hidden = true 的分组
 	t1 := time.Now()
@@ -47,8 +59,7 @@ func TestSyncGroupRecursiveSkipHidden(t *testing.T) {
 }
 
 func TestSyncGroupRecursiveUpdatesSubgroupTime(t *testing.T) {
-	_ = models.LoadConfig("../config.yaml")
-	database.InitDB()
+	setupGroupSyncTestDB(t)
 
 	// 1. 本地数据库中创建测试组
 	database.DB.Exec("DELETE FROM managed_groups WHERE id IN (9001, 9002)")

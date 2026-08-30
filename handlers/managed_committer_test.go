@@ -8,7 +8,9 @@ import (
 	"strconv"
 	"testing"
 
+	"code-common/backend/testdb"
 	"code-pipeline/database"
+	"code-pipeline/internal/testutil"
 	"code-pipeline/models"
 	"code-pipeline/services"
 
@@ -17,11 +19,14 @@ import (
 
 func setupCommitterTestDB(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	_ = models.LoadConfig("../config.yaml")
-	database.InitDB()
+	oldDB := database.DB
+	t.Cleanup(func() { database.DB = oldDB })
 
-	// 清理测试残留数据
-	database.DB.Exec("DELETE FROM managed_committer_groups WHERE name LIKE 'TEST-%'")
+	db := testdb.SetupIsolatedDB(t, "pipeline_committer", testutil.PipelineModels()...)
+	if db == nil {
+		return
+	}
+	database.DB = db
 }
 
 func TestManagedCommitterGroupCRUD(t *testing.T) {
@@ -189,4 +194,3 @@ func TestGetIRightGroupHandler(t *testing.T) {
 		t.Fatalf("Unexpected parsed data: %+v", resp.Data)
 	}
 }
-

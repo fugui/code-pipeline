@@ -7,16 +7,27 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"code-common/backend/testdb"
 	"code-pipeline/database"
+	"code-pipeline/internal/testutil"
 	"code-pipeline/models"
 
 	"github.com/gin-gonic/gin"
 )
 
 func setupTestDB(t *testing.T) {
+	// handlers 的部分逻辑依赖 config.yaml 中的默认配置（如三方系统 body 模板），
+	// 这里显式加载配置；数据库本身使用隔离临时库，不读取 config 中的 DSN。
 	_ = models.LoadConfig("../config.yaml")
-	database.InitDB()
-	database.DB.Where("task_id LIKE ?", "check_task_%").Delete(&models.ExecutionReport{})
+
+	oldDB := database.DB
+	t.Cleanup(func() { database.DB = oldDB })
+
+	db := testdb.SetupIsolatedDB(t, "pipeline_execution", testutil.PipelineModels()...)
+	if db == nil {
+		return
+	}
+	database.DB = db
 }
 
 func TestReportExecutionLogAndDashboardStats(t *testing.T) {
@@ -100,6 +111,7 @@ func TestReportExecutionLogAndDashboardStats(t *testing.T) {
 
 func TestReportExecutionLogAndWebhookAuditSkip(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	setupTestDB(t)
 
 	r := gin.New()
 	// 验证请求经过审计中间件后，会被 Skip(c) 成功跳过

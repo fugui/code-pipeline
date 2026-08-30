@@ -81,7 +81,7 @@ type PipelineGroup struct {
 	GroupKey              string     `gorm:"size:100;uniqueIndex;not null;default:''" json:"group_key"` // 组唯一标识，如 "backend-group"
 	Name                  string     `gorm:"size:150;not null;default:''" json:"name"`                  // 组展示名称
 	Type                  string     `gorm:"size:50;default:''" json:"type,omitempty"`                  // 兼容保留
-	MaxSchemesPerPipeline int        `gorm:"default:0" json:"max_schemes_per_pipeline,omitempty"`      // 兼容保留
+	MaxSchemesPerPipeline int        `gorm:"default:0" json:"max_schemes_per_pipeline,omitempty"`       // 兼容保留
 	IsActive              bool       `gorm:"default:true;index" json:"is_active"`                       // 是否启用
 	Description           string     `gorm:"type:text" json:"description"`                              // 描述说明
 	Pipelines             []Pipeline `gorm:"foreignKey:GroupID" json:"pipelines,omitempty"`             // 组内物理流水线
@@ -91,19 +91,19 @@ type PipelineGroup struct {
 
 type Pipeline struct {
 	ID          uint           `gorm:"primaryKey" json:"id"`
-	GroupID     *uint          `gorm:"index" json:"group_id"`                                       // 关联的流水线组 ID (空代表独立流水线)
-	Group       *PipelineGroup `gorm:"foreignKey:GroupID" json:"group,omitempty"`                   // 关联流水线组对象
-	PipelineID  string         `gorm:"uniqueIndex;not null;default:''" json:"pipeline_id"`           // 流水线 ID
-	Name        string         `gorm:"not null;default:''" json:"name"`                              // 名称
-	Type        string         `gorm:"not null;default:''" json:"type"`                              // 类型 (MR, 每日构建)
-	Status      string         `gorm:"size:20;default:'active';index" json:"status"`                 // 节点状态: "active" | "full"
-	GroupName   string         `json:"group_name"`                                                   // 组名称 (兼容保留)
-	Description string         `json:"description"`                                                  // 描述
-	ServiceID   string         `json:"service_id"`                                                   // 第三方服务 ID
-	WorkspaceID string         `json:"workspace_id"`                                                 // 第三方工作区 ID
-	OwnerID     string         `json:"owner_id"`                                                     // 三方项目 ID
-	OwnerName   string         `json:"owner_name"`                                                   // 三方项目名称
-	ServiceName string         `json:"service_name"`                                                 // 第三方服务名称
+	GroupID     *uint          `gorm:"index" json:"group_id"`                              // 关联的流水线组 ID (空代表独立流水线)
+	Group       *PipelineGroup `gorm:"foreignKey:GroupID" json:"group,omitempty"`          // 关联流水线组对象
+	PipelineID  string         `gorm:"uniqueIndex;not null;default:''" json:"pipeline_id"` // 流水线 ID
+	Name        string         `gorm:"not null;default:''" json:"name"`                    // 名称
+	Type        string         `gorm:"not null;default:''" json:"type"`                    // 类型 (MR, 每日构建)
+	Status      string         `gorm:"size:20;default:'active';index" json:"status"`       // 节点状态: "active" | "full"
+	GroupName   string         `json:"group_name"`                                         // 组名称 (兼容保留)
+	Description string         `json:"description"`                                        // 描述
+	ServiceID   string         `json:"service_id"`                                         // 第三方服务 ID
+	WorkspaceID string         `json:"workspace_id"`                                       // 第三方工作区 ID
+	OwnerID     string         `json:"owner_id"`                                           // 三方项目 ID
+	OwnerName   string         `json:"owner_name"`                                         // 三方项目名称
+	ServiceName string         `json:"service_name"`                                       // 第三方服务名称
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	WebURL      string         `gorm:"-" json:"web_url"` // 排除字段，仅在 JSON 序列化中返回
@@ -397,17 +397,17 @@ type ComplianceCheckResult struct {
 // ManagedCommitterGroup Committer 组管理模型
 type ManagedCommitterGroup struct {
 	ID              uint        `gorm:"primaryKey" json:"id"`
-	Name            string      `gorm:"size:150;uniqueIndex;not null;default:''" json:"name"` // Committer Group 名称
-	Level           string      `gorm:"size:50;not null;default:'L1'" json:"level"`           // 所属层级 (如 "L0-集团级", "L1-公司级", "L2-一层部门级", "L3-项目组级")
-	DepartmentID    *uint       `gorm:"index" json:"department_id,omitempty"`                 // 归属部门 ID
-	Department      *Department `gorm:"foreignKey:DepartmentID" json:"department,omitempty"`  // 部门对象
-	AdminID         *uint       `gorm:"index" json:"admin_id,omitempty"`                      // 管理员用户 ID
-	Admin           *User       `gorm:"foreignKey:AdminID" json:"admin,omitempty"`            // 管理员对象
-	IRightGroupName string      `gorm:"column:iright_group_name;size:150;default:''" json:"iright_group_name"`     // iRight 群组管理系统名称
+	Name            string      `gorm:"size:150;uniqueIndex;not null;default:''" json:"name"`                    // Committer Group 名称
+	Level           string      `gorm:"size:50;not null;default:'L1'" json:"level"`                              // 所属层级 (如 "L0-集团级", "L1-公司级", "L2-一层部门级", "L3-项目组级")
+	DepartmentID    *uint       `gorm:"index" json:"department_id,omitempty"`                                    // 归属部门 ID
+	Department      *Department `gorm:"foreignKey:DepartmentID" json:"department,omitempty"`                     // 部门对象
+	AdminID         *uint       `gorm:"index" json:"admin_id,omitempty"`                                         // 管理员用户 ID
+	Admin           *User       `gorm:"foreignKey:AdminID" json:"admin,omitempty"`                               // 管理员对象
+	IRightGroupName string      `gorm:"column:iright_group_name;size:150;default:''" json:"iright_group_name"`   // iRight 群组管理系统名称
 	IRightGroupID   string      `gorm:"column:iright_group_id;size:128;index;default:''" json:"iright_group_id"` // iRight 群组管理系统 UUID 标识
-	MemberCount     int         `gorm:"default:0" json:"member_count"`                                            // 成员数量
-	Description     string      `gorm:"type:text" json:"description"`                                             // 备注/描述说明
-	IsActive        bool        `gorm:"default:true;index" json:"is_active"`                                      // 是否启用
+	MemberCount     int         `gorm:"default:0" json:"member_count"`                                           // 成员数量
+	Description     string      `gorm:"type:text" json:"description"`                                            // 备注/描述说明
+	IsActive        bool        `gorm:"default:true;index" json:"is_active"`                                     // 是否启用
 	CreatedAt       time.Time   `json:"created_at"`
 	UpdatedAt       time.Time   `json:"updated_at"`
 }
