@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { Pipeline, ExecutionScheme, PipelineGroup } from '../types'
 import { SyncDiffModal, CalculateDiffResponse } from '../components/SyncDiffModal'
+import { Modal } from '@code/common'
 
 export interface PipelineConfigProps {
   isAdmin?: boolean
@@ -1124,321 +1125,263 @@ export const PipelineConfig: React.FC<PipelineConfigProps> = ({
       </div>
 
       {/* 流水线组新建 / 编辑 Modal (去除了触发类型与容量) */}
-      {showGroupModal && activeGroup && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'var(--color-bg-overlay, rgba(15, 23, 42, 0.38))',
-          backdropFilter: 'blur(4px)',
-          WebkitBackdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: 24
-        }}>
-          <div className="glass-card" style={{ width: '100%', maxWidth: 560, padding: 28, borderRadius: 14 }}>
-            <h3 style={{ fontSize: 19, fontWeight: 700, marginBottom: 18 }}>
-              {activeGroup.id ? '编辑流水线组' : '新建流水线组 (资源池)'}
-            </h3>
-            <form onSubmit={handleSaveGroup} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                  组唯一标识 (Group Key) <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="例如: backend-group"
-                  value={activeGroup.group_key || ''}
-                  onChange={(e) => setActiveGroup({ ...activeGroup, group_key: e.target.value })}
-                  disabled={!!activeGroup.id}
-                  style={{ width: '100%', padding: '10px 12px', fontSize: 14 }}
-                  required
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                  流水线组展示名称 <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="例如: 后端流水线组"
-                  value={activeGroup.name || ''}
-                  onChange={(e) => setActiveGroup({ ...activeGroup, name: e.target.value })}
-                  style={{ width: '100%', padding: '10px 12px', fontSize: 14 }}
-                  required
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                  描述说明
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="请输入该流水线组的功能用途与承载说明..."
-                  value={activeGroup.description || ''}
-                  onChange={(e) => setActiveGroup({ ...activeGroup, description: e.target.value })}
-                  style={{ width: '100%', padding: '10px 12px', fontSize: 14, resize: 'vertical' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 10 }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setShowGroupModal(false)}
-                  disabled={savingGroup}
-                  style={{ padding: '8px 16px', fontSize: 13 }}
-                >
-                  取消
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={savingGroup}
-                  style={{ padding: '8px 20px', fontSize: 13 }}
-                >
-                  {savingGroup ? '正在保存...' : '确认保存'}
-                </button>
-              </div>
-            </form>
+      <Modal
+        open={showGroupModal && !!activeGroup}
+        title={activeGroup?.id ? '编辑流水线组' : '新建流水线组 (资源池)'}
+        subtitle={activeGroup?.id ? '修改流水线组的基础配置信息' : '创建用于管理和调度物理流水线节点的资源池'}
+        onClose={() => setShowGroupModal(false)}
+        width="md"
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setShowGroupModal(false)}
+              disabled={savingGroup}
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              form="pipeline-group-form"
+              className="btn btn-primary"
+              disabled={savingGroup}
+            >
+              {savingGroup ? '正在保存...' : '确认保存'}
+            </button>
           </div>
-        </div>
-      )}
+        }
+      >
+        {activeGroup && (
+          <form id="pipeline-group-form" onSubmit={handleSaveGroup} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>
+                组唯一标识 (Group Key) <span style={{ color: 'var(--color-danger)' }}>*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="例如: backend-group"
+                value={activeGroup.group_key || ''}
+                onChange={(e) => setActiveGroup({ ...activeGroup, group_key: e.target.value })}
+                disabled={!!activeGroup.id}
+                className="code-input"
+                style={{ width: '100%' }}
+                required
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>
+                流水线组展示名称 <span style={{ color: 'var(--color-danger)' }}>*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="例如: 后端流水线组"
+                value={activeGroup.name || ''}
+                onChange={(e) => setActiveGroup({ ...activeGroup, name: e.target.value })}
+                className="code-input"
+                style={{ width: '100%' }}
+                required
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>
+                描述说明
+              </label>
+              <textarea
+                rows={3}
+                placeholder="请输入该流水线组的功能用途与承载说明..."
+                value={activeGroup.description || ''}
+                onChange={(e) => setActiveGroup({ ...activeGroup, description: e.target.value })}
+                className="code-input"
+                style={{ width: '100%', resize: 'vertical' }}
+              />
+            </div>
+          </form>
+        )}
+      </Modal>
 
       {/* 批量关联物理流水线入组 Modal (从组发起，无类型限制) */}
-      {attachModalGroup && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'var(--color-bg-overlay, rgba(15, 23, 42, 0.38))',
-          backdropFilter: 'blur(4px)',
-          WebkitBackdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: 24
-        }}>
-          <div className="glass-card" style={{ width: '100%', maxWidth: 620, padding: 28, borderRadius: 14 }}>
-            <h3 style={{ fontSize: 19, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <FolderPlus size={22} style={{ color: 'var(--accent-primary, #6366f1)' }} />
-              <span>关联物理流水线至 [{attachModalGroup.name}]</span>
-            </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 18 }}>
-              请勾选尚未归组的物理流水线节点加入该组：
-            </p>
-
-            {(() => {
-              const eligiblePipelines = pipelines.filter(p => !p.group_id || p.group_id === 0)
-
-              if (eligiblePipelines.length === 0) {
-                return (
-                  <div style={{ padding: '32px 16px', textAlign: 'center', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 10, color: 'var(--text-muted)' }}>
-                    <AlertCircle size={22} style={{ margin: '0 auto 10px', opacity: 0.6 }} />
-                    <div>当前没有可加入该组的未归组物理流水线</div>
-                  </div>
-                )
-              }
-
-              return (
-                <div style={{ maxHeight: 320, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20, paddingRight: 4 }}>
-                  {eligiblePipelines.map(p => {
-                    const isChecked = p.id ? selectedPipelineIdsToAttach.includes(p.id) : false
-                    return (
-                      <label 
-                        key={p.id || p.pipeline_id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 12,
-                          padding: '12px 14px',
-                          borderRadius: 8,
-                          background: isChecked ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255, 255, 255, 0.03)',
-                          border: isChecked ? '1px solid var(--accent-primary, #6366f1)' : '1px solid rgba(255, 255, 255, 0.06)',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s'
-                        }}
-                      >
-                        <input 
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(e) => {
-                            if (!p.id) return
-                            if (e.target.checked) {
-                              setSelectedPipelineIdsToAttach([...selectedPipelineIdsToAttach, p.id])
-                            } else {
-                              setSelectedPipelineIdsToAttach(selectedPipelineIdsToAttach.filter(id => id !== p.id))
-                            }
-                          }}
-                        />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span>{p.name}</span>
-                            <span style={{ ...getTypeBadgeStyle(p.type), fontSize: 11, padding: '1px 6px', borderRadius: 10 }}>{p.type}</span>
-                          </div>
-                          <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>ID: {p.pipeline_id} - 负责人: {p.owner_name || '未分配'}</div>
-                        </div>
-                      </label>
-                    )
-                  })}
-                </div>
-              )
-            })()}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 10 }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setAttachModalGroup(null)}
-                disabled={attaching}
-                style={{ padding: '8px 16px', fontSize: 13 }}
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleConfirmAttach}
-                disabled={attaching || selectedPipelineIdsToAttach.length === 0}
-                style={{ padding: '8px 20px', fontSize: 13 }}
-              >
-                {attaching ? '正在关联...' : `确认添加 (${selectedPipelineIdsToAttach.length})`}
-              </button>
-            </div>
+      <Modal
+        open={!!attachModalGroup}
+        title={`关联物理流水线至 [${attachModalGroup?.name || ''}]`}
+        subtitle="请勾选尚未归组的物理流水线节点加入该组"
+        onClose={() => setAttachModalGroup(null)}
+        width="lg"
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setAttachModalGroup(null)}
+              disabled={attaching}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleConfirmAttach}
+              disabled={attaching || selectedPipelineIdsToAttach.length === 0}
+            >
+              {attaching ? '正在关联...' : `确认添加 (${selectedPipelineIdsToAttach.length})`}
+            </button>
           </div>
-        </div>
-      )}
+        }
+      >
+        {attachModalGroup && (() => {
+          const eligiblePipelines = pipelines.filter(p => !p.group_id || p.group_id === 0)
+
+          if (eligiblePipelines.length === 0) {
+            return (
+              <div style={{ padding: '32px 16px', textAlign: 'center', background: 'var(--color-bg-muted)', borderRadius: 10, color: 'var(--color-text-muted)' }}>
+                <AlertCircle size={22} style={{ margin: '0 auto 10px', opacity: 0.6 }} />
+                <div>当前没有可加入该组的未归组物理流水线</div>
+              </div>
+            )
+          }
+
+          return (
+            <div style={{ maxHeight: 360, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, paddingRight: 4 }}>
+              {eligiblePipelines.map(p => {
+                const isChecked = p.id ? selectedPipelineIdsToAttach.includes(p.id) : false
+                return (
+                  <label 
+                    key={p.id || p.pipeline_id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      background: isChecked ? 'var(--color-primary-subtle)' : 'var(--color-bg-muted)',
+                      border: isChecked ? '1px solid var(--color-primary)' : '1px solid var(--color-border-subtle)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <input 
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={(e) => {
+                        if (!p.id) return
+                        if (e.target.checked) {
+                          setSelectedPipelineIdsToAttach([...selectedPipelineIdsToAttach, p.id])
+                        } else {
+                          setSelectedPipelineIdsToAttach(selectedPipelineIdsToAttach.filter(id => id !== p.id))
+                        }
+                      }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-primary)' }}>
+                        <span>{p.name}</span>
+                        <span style={{ ...getTypeBadgeStyle(p.type), fontSize: 11, padding: '1px 6px', borderRadius: 10 }}>{p.type}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--color-text-muted)', fontFamily: 'var(--font-family-mono)', marginTop: 2 }}>
+                        ID: {p.pipeline_id} - 负责人: {p.owner_name || '未分配'}
+                      </div>
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+          )
+        })()}
+      </Modal>
 
       {/* 单条流水线加入指定组 Modal (从未纳入分组发起，下拉框模式) */}
-      {joinModalPipeline && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'var(--color-bg-overlay, rgba(15, 23, 42, 0.38))',
-          backdropFilter: 'blur(4px)',
-          WebkitBackdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: 24
-        }}>
-          <div className="glass-card" style={{ width: '100%', maxWidth: 580, padding: 28, borderRadius: 14 }}>
-            <h3 style={{ fontSize: 19, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <FolderPlus size={22} style={{ color: 'var(--accent-primary, #6366f1)' }} />
-              <span>将流水线加入流水线组</span>
-            </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 18 }}>
-              请选择要将物理流水线 <strong>{joinModalPipeline.name}</strong> {joinModalPipeline.type ? `(${joinModalPipeline.type})` : ''} 归入的目标组：
-            </p>
+      <Modal
+        open={!!joinModalPipeline}
+        title="将流水线加入流水线组"
+        subtitle={joinModalPipeline ? `请选择要将物理流水线 ${joinModalPipeline.name} ${joinModalPipeline.type ? `(${joinModalPipeline.type})` : ''} 归入的目标组` : undefined}
+        onClose={() => setJoinModalPipeline(null)}
+        width="md"
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setJoinModalPipeline(null)}
+              disabled={joining}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleConfirmJoin}
+              disabled={joining || !targetGroupIdToJoin}
+            >
+              {joining ? '正在加入...' : '确认加入'}
+            </button>
+          </div>
+        }
+      >
+        {joinModalPipeline && (() => {
+          if (pipelineGroups.length === 0) {
+            return (
+              <div style={{ padding: '32px 16px', textAlign: 'center', background: 'var(--color-bg-muted)', borderRadius: 10, color: 'var(--color-text-muted)' }}>
+                <AlertCircle size={22} style={{ margin: '0 auto 10px', opacity: 0.6 }} />
+                <div>当前系统中暂无流水线组，请先在上方点击“新建流水线组”。</div>
+              </div>
+            )
+          }
 
-            {(() => {
-              if (pipelineGroups.length === 0) {
-                return (
-                  <div style={{ padding: '32px 16px', textAlign: 'center', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 10, color: 'var(--text-muted)' }}>
-                    <AlertCircle size={22} style={{ margin: '0 auto 10px', opacity: 0.6 }} />
-                    <div>当前系统中暂无流水线组，请先在上方点击“新建流水线组”。</div>
+          const selectedGroup = pipelineGroups.find(g => g.id === Number(targetGroupIdToJoin))
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
+                  目标流水线组 (资源池) <span style={{ color: 'var(--color-danger)' }}>*</span>
+                </label>
+                <select
+                  value={targetGroupIdToJoin || ''}
+                  onChange={(e) => setTargetGroupIdToJoin(e.target.value ? Number(e.target.value) : '')}
+                  className="code-select"
+                  style={{ width: '100%' }}
+                >
+                  <option value="">-- 请选择目标流水线组 --</option>
+                  {pipelineGroups.map(g => (
+                    <option key={g.id} value={g.id}>
+                      {g.name} ({g.group_key}) - 包含 {g.pipeline_count || 0} 条物理流水线
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 选中组的详情提示卡片 */}
+              {selectedGroup && (
+                <div style={{
+                  padding: '14px 16px',
+                  borderRadius: 10,
+                  background: 'var(--color-primary-subtle)',
+                  border: '1px solid var(--color-primary-border)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text-primary)' }}>{selectedGroup.name}</span>
+                    <span style={{ fontSize: 12, fontFamily: 'var(--font-family-mono)', color: 'var(--color-primary)', background: 'var(--color-primary-subtle)', padding: '2px 8px', borderRadius: 4 }}>
+                      {selectedGroup.group_key}
+                    </span>
                   </div>
-                )
-              }
-
-              const selectedGroup = pipelineGroups.find(g => g.id === Number(targetGroupIdToJoin))
-
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                      目标流水线组 (资源池) <span style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <select
-                      value={targetGroupIdToJoin || ''}
-                      onChange={(e) => setTargetGroupIdToJoin(e.target.value ? Number(e.target.value) : '')}
-                      style={{
-                        width: '100%',
-                        padding: '11px 14px',
-                        fontSize: 14,
-                        borderRadius: 8,
-                        background: 'var(--bg-secondary, rgba(255, 255, 255, 0.05))',
-                        color: 'var(--text-main)',
-                        border: '1px solid var(--border-color)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <option value="">-- 请选择目标流水线组 --</option>
-                      {pipelineGroups.map(g => (
-                        <option key={g.id} value={g.id}>
-                          {g.name} ({g.group_key}) - 包含 {g.pipeline_count || 0} 条物理流水线
-                        </option>
-                      ))}
-                    </select>
+                  <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', display: 'flex', gap: 16 }}>
+                    <span>组内物理节点: <strong style={{ color: 'var(--color-text-primary)' }}>{selectedGroup.pipeline_count || 0}</strong> 条</span>
                   </div>
-
-                  {/* 选中组的详情提示卡片 */}
-                  {selectedGroup && (
-                    <div style={{
-                      padding: '14px 16px',
-                      borderRadius: 10,
-                      background: 'rgba(99, 102, 241, 0.06)',
-                      border: '1px solid rgba(99, 102, 241, 0.2)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 6
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-main)' }}>{selectedGroup.name}</span>
-                        <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: '#a5b4fc', background: 'rgba(99, 102, 241, 0.15)', padding: '2px 8px', borderRadius: 4 }}>
-                          {selectedGroup.group_key}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', gap: 16 }}>
-                        <span>组内物理节点: <strong style={{ color: 'var(--text-main)' }}>{selectedGroup.pipeline_count || 0}</strong> 条</span>
-                      </div>
-                      {selectedGroup.description && (
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                          {selectedGroup.description}
-                        </div>
-                      )}
+                  {selectedGroup.description && (
+                    <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>
+                      {selectedGroup.description}
                     </div>
                   )}
                 </div>
-              )
-            })()}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 22 }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setJoinModalPipeline(null)}
-                disabled={joining}
-                style={{ padding: '8px 16px', fontSize: 13 }}
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleConfirmJoin}
-                disabled={joining || !targetGroupIdToJoin}
-                style={{ padding: '8px 20px', fontSize: 13 }}
-              >
-                {joining ? '正在加入...' : '确认加入'}
-              </button>
+              )}
             </div>
-          </div>
-        </div>
-      )}
+          )
+        })()}
+      </Modal>
 
       {/* Sync Diff Modal */}
       <SyncDiffModal 

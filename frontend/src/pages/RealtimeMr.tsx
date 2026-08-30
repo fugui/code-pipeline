@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Pagination, usePagination } from '@code/common';
+import { Modal, Pagination, usePagination } from '@code/common';
 import { useToast } from '../components/Toast';
 
 // Premium SVG Icons
@@ -25,12 +25,7 @@ const CodeIcon = () => (
   </svg>
 );
 
-const CloseIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-    <line x1="18" y1="6" x2="6" y2="18"/>
-    <line x1="6" y1="6" x2="18" y2="18"/>
-  </svg>
-);
+
 
 interface MrEvent {
   id: number;
@@ -528,108 +523,55 @@ export default function RealtimeMr({ apiBase, token }: RealtimeMrProps) {
       )}
 
       {/* Modal Detail Payload View */}
-      {viewingEvent !== null && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          background: 'rgba(15, 23, 42, 0.4)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999
-        }}>
-          <div style={{
-            width: '800px',
-            maxWidth: '90vw',
-            maxHeight: '82vh',
-            display: 'flex',
-            flexDirection: 'column',
-            background: 'var(--card-bg)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '16px',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            overflow: 'hidden'
-          }}>
-            {/* Modal Header */}
-            <div style={{
-              padding: '1.25rem 1.5rem',
-              borderBottom: '1px solid var(--border-color)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              background: 'var(--card-bg)'
-            }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-color)' }}>
-                  Webhook 原始 Payload 数据
-                </h3>
-                <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                  事件ID: {viewingEvent.id} | MR序号: #{viewingEvent.mr_num}
-                </span>
-              </div>
-              <button
-                onClick={() => setViewingEvent(null)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '0.25rem',
-                  color: '#64748b',
-                  borderRadius: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'background-color 0.2s'
-                }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <CloseIcon />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div style={{ flex: 1, overflow: 'auto', padding: '1.5rem', background: '#0f172a' }}>
-              {viewingEvent.is_proto_change && viewingEvent.interface_files && (() => {
-                try {
-                  const files = JSON.parse(viewingEvent.interface_files);
-                  if (files && files.length > 0) {
-                    return (
-                      <div style={{
-                        marginBottom: '1.25rem',
-                        padding: '0.85rem 1.25rem',
-                        borderRadius: '8px',
-                        background: 'rgba(16, 185, 129, 0.08)',
-                        border: '1px solid rgba(16, 185, 129, 0.2)',
-                        color: '#10b981',
-                        fontSize: '0.825rem'
-                      }}>
-                        <strong style={{ display: 'block', marginBottom: '0.5rem', color: '#10b981', fontSize: '0.85rem' }}>
-                          ⚡ 接口修改所涉文件：
-                        </strong>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontFamily: 'monospace', fontSize: '0.78rem' }}>
-                          {files.map((f: string, idx: number) => (
-                            <div key={idx} style={{ paddingLeft: '0.6rem', borderLeft: '2px solid #10b981' }}>{f}</div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  }
-                } catch(e) {}
-                return null;
-              })()}
-              <pre style={{ margin: 0, color: '#38bdf8', fontSize: '0.8rem', fontFamily: "monospace", textAlign: 'left', lineHeight: 1.45 }}>
-                <code>{formatPayload(viewingEvent.payload)}</code>
-              </pre>
-            </div>
+      <Modal
+        open={viewingEvent !== null}
+        title="Webhook 原始 Payload 数据"
+        subtitle={viewingEvent ? `事件ID: ${viewingEvent.id} | MR序号: #${viewingEvent.mr_num}` : undefined}
+        onClose={() => setViewingEvent(null)}
+        width="lg"
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button type="button" onClick={() => setViewingEvent(null)} className="btn btn-secondary">
+              关闭
+            </button>
           </div>
-        </div>
-      )}
+        }
+      >
+        {viewingEvent && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {viewingEvent.is_proto_change && viewingEvent.interface_files && (() => {
+              try {
+                const files = JSON.parse(viewingEvent.interface_files);
+                if (files && files.length > 0) {
+                  return (
+                    <div style={{
+                      padding: '0.85rem 1.25rem',
+                      borderRadius: '8px',
+                      background: 'var(--color-success-subtle)',
+                      border: '1px solid var(--color-success-border)',
+                      color: 'var(--color-success)',
+                      fontSize: '0.825rem'
+                    }}>
+                      <strong style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
+                        ⚡ 接口修改所涉文件：
+                      </strong>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontFamily: 'var(--font-family-mono)', fontSize: '0.78rem' }}>
+                        {files.map((f: string, idx: number) => (
+                          <div key={idx} style={{ paddingLeft: '0.6rem', borderLeft: '2px solid var(--color-success)' }}>{f}</div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+              } catch(e) {}
+              return null;
+            })()}
+            <pre style={{ margin: 0, padding: '1rem', borderRadius: '8px', background: 'var(--color-bg-input)', border: '1px solid var(--color-border-subtle)', color: 'var(--color-info)', fontSize: '0.8rem', fontFamily: "var(--font-family-mono)", textAlign: 'left', lineHeight: 1.45, maxHeight: '50vh', overflowY: 'auto' }}>
+              <code>{formatPayload(viewingEvent.payload)}</code>
+            </pre>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

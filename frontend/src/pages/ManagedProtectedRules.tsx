@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Shield, Plus, Lock, CheckCircle2, RefreshCw, Server } from 'lucide-react'
 import { ManagedProtectedBranchRule, ManagedRepository } from '../types'
 import { useToast } from '../components/Toast'
+import { Modal } from '@code/common'
 
 interface ManagedProtectedRulesProps {
   isAdmin?: boolean
@@ -196,73 +197,75 @@ export const ManagedProtectedRules: React.FC<ManagedProtectedRulesProps> = ({ ap
       </div>
 
       {/* Modal: Create Protected Rule */}
-      {showModal && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="glass-card" style={{ width: 480, padding: 24 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 16px' }}>配置保护分支规则</h3>
-
-            <form onSubmit={handleCreateRule} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>
-                  目标代码仓 <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <select 
-                  className="input" 
-                  style={{ width: '100%' }}
-                  value={selectedRepoID}
-                  onChange={e => setSelectedRepoID(Number(e.target.value))}
-                  required
-                >
-                  {repos.map(r => (
-                    <option key={r.id} value={r.id}>{r.name} ({r.group?.full_path || '根目录'})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>
-                  受保护分支表达式 <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input 
-                  type="text" 
-                  className="input" 
-                  placeholder="例如: master 或 release/*"
-                  value={branchPattern}
-                  onChange={e => setBranchPattern(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 12, borderRadius: 8, background: 'var(--bg-color)' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
-                  <input 
-                    type="checkbox" 
-                    checked={!allowForcePush}
-                    onChange={e => setAllowForcePush(!e.target.checked)}
-                  />
-                  <span>禁止强推 (No Force Push)</span>
-                </label>
-
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
-                  <input 
-                    type="checkbox" 
-                    checked={requireMrAudit}
-                    onChange={e => setRequireMrAudit(e.target.checked)}
-                  />
-                  <span>开启 Merge Request 必审与流水线门禁看护</span>
-                </label>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
-                <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary">取消</button>
-                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                  {isSubmitting ? '正在提交...' : '确认生效'}
-                </button>
-              </div>
-            </form>
+      <Modal
+        open={showModal}
+        title="配置保护分支规则"
+        subtitle="设置目标代码仓受保护分支的强推限制与门禁看护策略"
+        onClose={() => setShowModal(false)}
+        width="md"
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+            <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary">取消</button>
+            <button type="submit" form="protected-rule-form" className="btn btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? '正在提交...' : '确认生效'}
+            </button>
           </div>
-        </div>
-      )}
+        }
+      >
+        <form id="protected-rule-form" onSubmit={handleCreateRule} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: 6, color: 'var(--color-text-primary)' }}>
+              目标代码仓 <span style={{ color: 'var(--color-danger)' }}>*</span>
+            </label>
+            <select 
+              className="code-select" 
+              style={{ width: '100%' }}
+              value={selectedRepoID}
+              onChange={e => setSelectedRepoID(Number(e.target.value))}
+              required
+            >
+              {repos.map(r => (
+                <option key={r.id} value={r.id}>{r.name} ({r.group?.full_path || '根目录'})</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: 6, color: 'var(--color-text-primary)' }}>
+              受保护分支表达式 <span style={{ color: 'var(--color-danger)' }}>*</span>
+            </label>
+            <input 
+              type="text" 
+              className="code-input" 
+              placeholder="例如: master 或 release/*"
+              value={branchPattern}
+              onChange={e => setBranchPattern(e.target.value)}
+              style={{ width: '100%' }}
+              required
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 14, borderRadius: 8, background: 'var(--color-bg-muted)', border: '1px solid var(--color-border-subtle)' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--color-text-primary)' }}>
+              <input 
+                type="checkbox" 
+                checked={!allowForcePush}
+                onChange={e => setAllowForcePush(!e.target.checked)}
+              />
+              <span>禁止强推 (No Force Push)</span>
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--color-text-primary)' }}>
+              <input 
+                type="checkbox" 
+                checked={requireMrAudit}
+                onChange={e => setRequireMrAudit(e.target.checked)}
+              />
+              <span>开启 Merge Request 必审与流水线门禁看护</span>
+            </label>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }
