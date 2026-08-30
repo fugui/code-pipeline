@@ -41,37 +41,23 @@
   -webkit-font-smoothing: antialiased;
 }
 
-.pipeline-app *,
-.modal-root-wrapper *,
-.drawer-root-wrapper *,
-.confirm-dialog-root-wrapper * {
+.pipeline-app * {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  outline: none;
 }
 
 /* Scrollbar styling */
-.pipeline-app ::-webkit-scrollbar,
-.modal-root-wrapper ::-webkit-scrollbar,
-.drawer-root-wrapper ::-webkit-scrollbar {
+.pipeline-app ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-.pipeline-app ::-webkit-scrollbar-track,
-.modal-root-wrapper ::-webkit-scrollbar-track,
-.drawer-root-wrapper ::-webkit-scrollbar-track {
+.pipeline-app ::-webkit-scrollbar-track {
   background: var(--color-bg-muted);
 }
-.pipeline-app ::-webkit-scrollbar-thumb,
-.modal-root-wrapper ::-webkit-scrollbar-thumb,
-.drawer-root-wrapper ::-webkit-scrollbar-thumb {
+.pipeline-app ::-webkit-scrollbar-thumb {
   background: var(--color-border-primary);
   border-radius: var(--radius-xs, 4px);
 }
-.pipeline-app ::-webkit-scrollbar-thumb:hover,
-.modal-root-wrapper ::-webkit-scrollbar-thumb:hover,
-.drawer-root-wrapper ::-webkit-scrollbar-thumb:hover {
+.pipeline-app ::-webkit-scrollbar-thumb:hover {
   background: var(--color-border-hover);
 }
 
@@ -252,16 +238,7 @@
 /* Forms and inputs */
 .pipeline-app input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]),
 .pipeline-app textarea,
-.pipeline-app select,
-.modal-root-wrapper input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]),
-.modal-root-wrapper textarea,
-.modal-root-wrapper select,
-.drawer-root-wrapper input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]),
-.drawer-root-wrapper textarea,
-.drawer-root-wrapper select,
-.confirm-dialog-root-wrapper input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]),
-.confirm-dialog-root-wrapper textarea,
-.confirm-dialog-root-wrapper select {
+.pipeline-app select {
   background: var(--color-bg-input, var(--bg-color));
   border: 1px solid var(--border-color);
   color: var(--text-main);
@@ -276,16 +253,7 @@
 
 .pipeline-app input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]):focus,
 .pipeline-app textarea:focus,
-.pipeline-app select:focus,
-.modal-root-wrapper input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]):focus,
-.modal-root-wrapper textarea:focus,
-.modal-root-wrapper select:focus,
-.drawer-root-wrapper input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]):focus,
-.drawer-root-wrapper textarea:focus,
-.drawer-root-wrapper select:focus,
-.confirm-dialog-root-wrapper input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="image"]):focus,
-.confirm-dialog-root-wrapper textarea:focus,
-.confirm-dialog-root-wrapper select:focus {
+.pipeline-app select:focus {
   border-color: var(--primary-color);
   background: var(--card-bg);
   box-shadow: 0 0 0 2px var(--color-primary-subtle);
@@ -293,13 +261,7 @@
 
 .pipeline-app input:disabled,
 .pipeline-app textarea:disabled,
-.pipeline-app select:disabled,
-.modal-root-wrapper input:disabled,
-.modal-root-wrapper textarea:disabled,
-.modal-root-wrapper select:disabled,
-.drawer-root-wrapper input:disabled,
-.drawer-root-wrapper textarea:disabled,
-.drawer-root-wrapper select:disabled {
+.pipeline-app select:disabled {
   background: var(--color-bg-muted, rgba(255, 255, 255, 0.04));
   color: var(--text-secondary);
   border-color: var(--color-border-subtle);
