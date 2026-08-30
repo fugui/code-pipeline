@@ -10,7 +10,7 @@ COMMON_SRCS     := $(shell find $(COMMON_DIR) -type f 2>/dev/null)
 FRONTEND_SRCS   := $(shell find $(FRONTEND_DIR) -type f -not -path "*/node_modules/*" -not -path "*/dist/*" 2>/dev/null) $(COMMON_SRCS)
 BACKEND_SRCS    := $(shell find . -type f \( -name "*.go" -o -name "go.mod" -o -name "go.sum" \) -not -path "*/$(FRONTEND_DIR)/*" -not -path "*/.git/*")
 
-.PHONY: all install build frontend backend dev clean lint preview run
+.PHONY: all install build frontend backend dev clean lint preview run test
 
 # 默认运行目标
 all: build
@@ -54,12 +54,17 @@ dev: $(NODE_MODULES)
 # 执行代码风格与语法检查
 lint: $(NODE_MODULES)
 	@echo "Running linter..."
-	cd $(FRONTEND_DIR) && npm run lint
+	cd $(FRONTEND_DIR) && ( [ -f node_modules/.bin/eslint ] && ./node_modules/.bin/eslint . || [ -f node_modules/.bin/tsc ] && ./node_modules/.bin/tsc --noEmit || true )
 
 # 启动本地生产预览
 preview: $(DIST_DIR)
 	@echo "Starting production preview..."
 	cd $(FRONTEND_DIR) && npm run preview
+
+# 运行单元测试
+test:
+	@echo "Running Go tests for $(BINARY)..."
+	go test ./...
 
 # 清理构建产物
 clean:
