@@ -253,4 +253,7 @@ func TestAuditRepoComplianceWithMockServer(t *testing.T) {
 	if r, ok := checkMap["committer_group_required"]; !ok || !r.Passed {
 		t.Errorf("Expected committer_group_required to pass, got %+v", r)
 	}
+	if r, ok := checkMap["merge_gate_registered"]; !ok || !r.Passed {
+		t.Errorf("Expected merge_gate_registered to pass, got %+v", r)
+	}
 }

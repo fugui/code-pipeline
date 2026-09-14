@@ -81,6 +81,7 @@ const ruleDescriptions: Record<string, string> = {
   has_subsystem: '代码仓已明确绑定架构第一层级业务子系统。',
   committer_group_required: '【权限治理】所有 Committer 必须来源于受控群组（Domain Group），严禁直接挂载散装个人账号。',
   webhook_registered: '代码仓已注册自动化 Webhook，实现事件与 CI/CD 深度联动。',
+  merge_gate_registered: '代码仓已注册自动化 Merge Gate 门禁，实现合流前置卡点与深度安全把关。',
 }
 
 export const ManagedCompliance: React.FC<ManagedComplianceProps> = ({ isAdmin = true, apiBase, token }) => {
@@ -96,6 +97,23 @@ export const ManagedCompliance: React.FC<ManagedComplianceProps> = ({ isAdmin = 
 
   const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
 
+  const ensureMergeGateRule = (ruleList: ComplianceRule[]): ComplianceRule[] => {
+    if (!ruleList.some(r => r.check_key === 'merge_gate_registered')) {
+      return [
+        ...ruleList,
+        {
+          dimension: 'engineering',
+          check_key: 'merge_gate_registered',
+          label: 'Merge Gate 已注册',
+          severity: 'important',
+          enabled: true,
+          threshold: 0,
+        },
+      ]
+    }
+    return ruleList
+  }
+
   const fetchBaseline = async () => {
     setLoading(true)
     try {
@@ -103,7 +121,7 @@ export const ManagedCompliance: React.FC<ManagedComplianceProps> = ({ isAdmin = 
       if (res.ok) {
         const data: ComplianceBaseline = await res.json()
         setBaseline(data)
-        setRules(data.rules || [])
+        setRules(ensureMergeGateRule(data.rules || []))
         setDescription(data.description || '')
         setIsDirty(false)
       }
@@ -154,7 +172,7 @@ export const ManagedCompliance: React.FC<ManagedComplianceProps> = ({ isAdmin = 
       const res = await fetch(`${apiBase}/managed-repos/compliance/default-rules`, { headers })
       if (res.ok) {
         const defaultRules = await res.json()
-        setRules(defaultRules)
+        setRules(ensureMergeGateRule(defaultRules || []))
         setIsDirty(true)
         showToast('已重置为系统内置默认规则（点击保存后生效）', 'info')
       }

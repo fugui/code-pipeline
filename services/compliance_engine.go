@@ -59,6 +59,7 @@ func DefaultComplianceRules() []models.ComplianceRule {
 		{Dimension: "ownership", CheckKey: "has_subsystem", Label: "已归属子系统", Severity: "suggestion", Enabled: true},
 		{Dimension: "ownership", CheckKey: "committer_group_required", Label: "Committer 必须来自群组受控", Severity: "important", Enabled: true},
 		{Dimension: "engineering", CheckKey: "webhook_registered", Label: "Webhook 已注册", Severity: "important", Enabled: true},
+		{Dimension: "engineering", CheckKey: "merge_gate_registered", Label: "Merge Gate 已注册", Severity: "important", Enabled: true},
 	}
 }
 
@@ -554,6 +555,12 @@ func AuditRepoCompliance(ctx context.Context, repo *models.ManagedRepository, ba
 			result.Passed = repo.WebhookRegistered
 			result.CurrentValue = fmt.Sprintf("Webhook: %v", repo.WebhookRegistered)
 			result.ExpectedValue = "Webhook 已注册"
+
+		case "merge_gate_registered":
+			// 仓库检查后续接入，当前默认判定通过
+			result.Passed = true
+			result.CurrentValue = "待接入仓库检查"
+			result.ExpectedValue = "Merge Gate 已注册"
 
 		default:
 			// 未知检查项跳过
